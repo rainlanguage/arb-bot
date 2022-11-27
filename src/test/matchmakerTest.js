@@ -145,7 +145,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                     return e.symbol == output_.symbol 
                                 }
                             )[0]
-
+                            console.log(output_.symbol, inputs_[k].symbol)
                             // calculate the ratio from WETH based prices
                             let ratio = interpreter.fixedPointDiv(
                                 outputPrice.price,
@@ -187,6 +187,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                         maximumIORatio: threshold,
                                         orders: [takeOrder],
                                     };
+                                    console.log(takeOrdersConfigStruct)
                                     // const data = {
                                     //     sellToken: txQuote.sellTokenAddress,
                                     //     buyToken: txQuote.buyTokenAddress,
