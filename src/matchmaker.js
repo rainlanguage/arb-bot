@@ -32,7 +32,7 @@ let priceAscending = [];
 
 //Cron Job to for Updating Price       
 cron.schedule('*/1 * * * *', ()=>{
-    this.updatePriceArray()
+    updatePriceArray()
 }) 
 
 //Cron Job for Reviweing Sloshed      
@@ -41,7 +41,7 @@ cron.schedule('*/2 * * * *', ()=>{
     findMatch()
 })  
 
-exports.updatePriceArray = async function () {  
+const updatePriceArray = async function () {  
     try { 
         let zexPriceArray = []  
         zexPriceArray = await Promise.all(
@@ -50,7 +50,9 @@ exports.updatePriceArray = async function () {
                     let priceData = await axios.get(
                         `https://api.0x.org/swap/v1/quote?buyToken=${
                             e.tokenAddress
-                        }&sellToken=WETH&sellAmount=1000000000000000000`
+                        }&sellToken=WETH&sellAmount=${
+                            '1' .padEnd(e.decimals, '0')
+                        }`
                     ) 
                     return {
                         symbol : e.symbol,
