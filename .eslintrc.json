@@ -1,0 +1,40 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true
+    },
+    "extends": [
+        "eslint:recommended"
+    ],
+    "plugins": [
+        "prettier"
+    ],
+    "rules": {
+        "indent": [
+            "error",
+            4,
+            { 
+                "VariableDeclarator": "first",
+                "flatTernaryExpressions": true,
+                "offsetTernaryExpressions": false
+            }
+        ],
+        "max-len": [
+            "error",
+            { 
+                "code": 100,
+                "ignoreStrings": true,
+                "ignoreComments": true,
+                "ignoreTemplateLiterals": true
+            }
+        ],
+        "no-console": [
+            0
+        ],
+        "quotes": [
+            "error",
+            "single"
+        ]
+    }
+}

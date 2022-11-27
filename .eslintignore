@@ -1,0 +1,11 @@
+## General
+*.md
+yarn.lock
+.env
+
+## Generated
+node_modules
+artifacts
+cache
+contracts
+docs
