@@ -14,9 +14,9 @@
     ethers "^5.7.2"
     prettier "^2.7.1"
 
-"@beehiveinnovation/rain-protocol@git+https://github.com/beehive-innovation/rain-protocol.git#f962b34a9accb41c6f323547932862244433d946":
+"@beehiveinnovation/rain-protocol@git+https://github.com/beehive-innovation/rain-protocol.git#1ebf749cd26cba6c324b65c30450bbfd2671f20f":
   version "0.0.16"
-  resolved "git+https://github.com/beehive-innovation/rain-protocol.git#f962b34a9accb41c6f323547932862244433d946"
+  resolved "git+https://github.com/beehive-innovation/rain-protocol.git#1ebf749cd26cba6c324b65c30450bbfd2671f20f"
   dependencies:
     "@chainlink/contracts" "^0.5.1"
     "@openzeppelin/contracts-upgradeable" "=4.7.3"

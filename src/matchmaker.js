@@ -30,20 +30,20 @@ let tokenSymbolArray = TrackedTokens;
 let priceDescending = [];
 let priceAscending = [];
 
-//Cron Job to for Updating Price       
+//Cron Job to for Updating Price
 cron.schedule('*/1 * * * *', ()=>{
     updatePriceArray()
-}) 
+})
 
-//Cron Job for Reviweing Sloshed      
-cron.schedule('*/2 * * * *', ()=>{ 
+//Cron Job for Reviweing Sloshed
+cron.schedule('*/2 * * * *', ()=>{
     console.log('findMatch')
     findMatch()
-})  
+})
 
-const updatePriceArray = async function () {  
-    try { 
-        let zexPriceArray = []  
+const updatePriceArray = async function () {
+    try {
+        let zexPriceArray = []
         zexPriceArray = await Promise.all(
             tokenSymbolArray.map(
                 async(e) => {
@@ -51,11 +51,11 @@ const updatePriceArray = async function () {
                         `https://api.0x.org/swap/v1/quote?buyToken=${
                             e.tokenAddress
                         }&sellToken=WETH&sellAmount=1000000000000000000`
-                    ) 
+                    )
                     return {
                         symbol : e.symbol,
                         tokenAddress: e.tokenAddress,
-                        price : e.decimals < 18 
+                        price : e.decimals < 18
                             ? toFixed18(
                                 bnFromFloat(
                                     priceData.data.price,
@@ -69,28 +69,28 @@ const updatePriceArray = async function () {
                     }
                 }
             )
-        )   
+        )
 
         timsort.sort(
-            zexPriceArray, 
+            zexPriceArray,
             (a, b) => a.price.gt(b.price) ? -1 : a.price.lt(b.price) ? 1 : 0
-        ) 
+        )
         priceDescending = zexPriceArray
         Object.assign(priceAscending, zexPriceArray);
         priceAscending.reverse()
-    
-    } 
+
+    }
     catch (error) {
         console.log('error : ', error)
     }
 
-}  
+}
 
-async function findMatch() {  
+async function findMatch() {
 
     let threshold;
 
-    // fetching orders that fit the definition of slosh. 
+    // fetching orders that fit the definition of slosh.
     const result = await axios.post(
         'https://api.thegraph.com/subgraphs/name/siddharth2207/orderbook',
         { query: DefaultQuery },
@@ -99,7 +99,7 @@ async function findMatch() {
 
     let sloshes = result.data.data.orders
 
-    for (let i = 0; i < sloshes.length; i++) {  
+    for (let i = 0; i < sloshes.length; i++) {
 
         let slosh = sloshes[i]
 
@@ -111,7 +111,7 @@ async function findMatch() {
         threshold = (await state.run())[1]
 
         let inputs_ = slosh.validInputs.map(
-            e => { 
+            e => {
                 return {
                     tokenAddress : e.tokenVault.token.id,
                     symbol : e.tokenVault.token.symbol,
@@ -120,34 +120,34 @@ async function findMatch() {
                     )
                 }
             }
-        )  
+        )
         let outputs_ = slosh.validOutputs.map(
-            e => { 
-                return { 
-                    tokenAddress : e.tokenVault.token.id, 
+            e => {
+                return {
+                    tokenAddress : e.tokenVault.token.id,
                     symbol : e.tokenVault.token.symbol,
                     balance : ethers.BigNumber.from(
                         e.tokenVault.balance,
                     )
                 }
             }
-        ) 
+        )
 
         let possibleMatches = []
         for (let j = 0 ; j < outputs_.length ; j++) {
             let output_ = outputs_[j];
 
-            if (output_.balance.gt(0)) { 
-                for (let k = 0 ; k < inputs_.length ; k++ ) { 
+            if (output_.balance.gt(0)) {
+                for (let k = 0 ; k < inputs_.length ; k++ ) {
                     if (inputs_[k].symbol != output_.symbol) {
                         let outputPrice = priceDescending.filter(
-                            e => { 
-                                return e.symbol == output_.symbol 
+                            e => {
+                                return e.symbol == output_.symbol
                             }
                         )[0]
                         let inputPrice = priceAscending.filter(
-                            e => { 
-                                return e.symbol == inputs_[k].symbol 
+                            e => {
+                                return e.symbol == inputs_[k].symbol
                             }
                         )[0]
 
@@ -163,7 +163,7 @@ async function findMatch() {
                         //     `${inputPrice.symbol}-${outputPrice.symbol} ratio : `, ratio.toNumber()
                         // )
 
-                        if (!ratio.lt(threshold)) {  
+                        if (!ratio.lt(threshold)) {
                             possibleMatches.push({
                                 outputToken : output_,
                                 inputToken : inputs_[k],
@@ -176,8 +176,8 @@ async function findMatch() {
                         }
                     }
                 }
-            } 
-        }  
+            }
+        }
 
         if (possibleMatches.length > 1) {
             timsort.sort(
@@ -201,7 +201,7 @@ async function findMatch() {
                     txQuote.price,
                     bestPossibleMatch.inputTokenDecimals
                 )
-            ) 
+            )
 
             if (!livePrice.lt(threshold)) {
                 const takeOrder = {
@@ -231,11 +231,11 @@ async function findMatch() {
         }
         else {
             console.log('no match found, checking next order')
-        } 
+        }
     }
-} 
+}
 
-async function placeOrder(takeOrdersConfig, spender, data) { 
+async function placeOrder(takeOrdersConfig, spender, data) {
     await arb.connect(signer).arb(
         takeOrdersConfig,
         spender,

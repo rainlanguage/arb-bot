@@ -10,9 +10,9 @@ const { SignerWithAddress } = require('@nomiclabs/hardhat-ethers/signers');
 require('dotenv').config();
 
 /**
- * Exposing the Matchmaker Bot as function for running tests. Bot runns until it 
+ * Exposing the Matchmaker Bot as function for running tests. Bot runns until it
  * finds one match for the givven orders and then will return the results.
- * 
+ *
  * @param {SignerWithAddress} signer - Bot wallet as signer
  * @param {ethers.Contract} borrowerAddress - Address of the 0x Flash Borrower contract
  * @param {string} proxyAddress - Address of the 0x proxy contract
@@ -29,7 +29,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     let priceDescending = []
     let priceAscending = []
 
-    //Cron Job to for Updating Price       
+    //Cron Job to for Updating Price
     // cron.schedule('*/1 * * * *', async()=>{
     //     await updatePriceArray()
     // })
@@ -40,9 +40,9 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     //     else return 'bad'
     // })
 
-    const updatePriceArray = async function () {  
-        try { 
-            let zexPriceArray = []  
+    const updatePriceArray = async function () {
+        try {
+            let zexPriceArray = []
             zexPriceArray = await Promise.all(
                 tokenSymbolArray.map(
                     async(e) => {
@@ -51,12 +51,12 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                 e.tokenAddress
                             }&sellToken=WETH&sellAmount=1000000000000000000`,
                             {headers: {'accept-encoding': 'null'}}
-                        ) 
+                        )
                         return {
                             p: priceData.data.price,
                             symbol : e.symbol,
                             tokenAddress: e.tokenAddress,
-                            price : e.decimals < 18 
+                            price : e.decimals < 18
                                 ? toFixed18(
                                     bnFromFloat(
                                         priceData.data.price,
@@ -70,27 +70,27 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                         }
                     }
                 )
-            ) 
+            )
             timsort.sort(
-                zexPriceArray, 
+                zexPriceArray,
                 (a, b) => a.price.gt(b.price) ? -1 : a.price.lt(b.price) ? 1 : 0
-            ) 
-            
+            )
+
             priceDescending = zexPriceArray
             Object.assign(priceAscending, zexPriceArray);
             priceAscending.reverse()
             // console.log(JSON.stringify(priceDescending))
             // console.log(JSON.stringify(priceAscending))
-        } 
+        }
         catch (error) {
             console.log('error : ', error)
         }
-    }  
+    }
 
-    async function findMatch() { 
-        let threshold; 
+    async function findMatch() {
+        let threshold;
         let sloshes = orders
-        for (let i = 0; i < sloshes.length; i++) {  
+        for (let i = 0; i < sloshes.length; i++) {
 
             let slosh = sloshes[i]
 
@@ -104,18 +104,18 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
 
             // map the sg mocked data
             let inputs_ = slosh.validInputs.map(
-                e => { 
+                e => {
                     return {
                         tokenAddress : e.tokenVault.token.id,
                         symbol : e.tokenVault.token.symbol,
                         balance : e.tokenVault.balance,
                     }
                 }
-            )  
+            )
             let outputs_ = slosh.validOutputs.map(
-                e => { 
-                    return { 
-                        tokenAddress : e.tokenVault.token.id, 
+                e => {
+                    return {
+                        tokenAddress : e.tokenVault.token.id,
                         symbol : e.tokenVault.token.symbol,
                         balance : e.tokenVault.balance,
                     }
@@ -132,17 +132,17 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
             for (let j = 0 ; j < outputs_.length ; j++) {
                 let output_ = outputs_[j];
 
-                if (output_.balance.gt(0)) { 
-                    for (let k = 0 ; k < inputs_.length ; k++ ) { 
+                if (output_.balance.gt(0)) {
+                    for (let k = 0 ; k < inputs_.length ; k++ ) {
                         if (inputs_[k].symbol != output_.symbol) {
                             let inputPrice = priceAscending.filter(
-                                e => { 
-                                    return e.symbol == inputs_[k].symbol 
+                                e => {
+                                    return e.symbol == inputs_[k].symbol
                                 }
                             )[0]
                             let outputPrice = priceDescending.filter(
-                                e => { 
-                                    return e.symbol == output_.symbol 
+                                e => {
+                                    return e.symbol == output_.symbol
                                 }
                             )[0]
                             console.log(output_.symbol, inputs_[k].symbol)
@@ -153,7 +153,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                 18
                             )
 
-                            if (!ratio.lt(threshold)) {  
+                            if (!ratio.lt(threshold)) {
                                 let txQuote = (await axios.get(
                                     `https://avalanche.api.0x.org/swap/v1/quote?buyToken=${
                                         inputs_[k].tokenAddress
@@ -170,7 +170,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                         txQuote.price,
                                         inputPrice.decimals
                                     )
-                                ) 
+                                )
                                 // console.log('live price', txQuote.price)
 
                                 if (!livePrice.lt(threshold)) {
@@ -197,6 +197,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                     // };
 
                                     // call the arb contract if there is a match
+                                    console.log(txQuote)
                                     await placeOrder(
                                         takeOrdersConfigStruct,
                                         txQuote.data
@@ -207,14 +208,14 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                             }
                         }
                     }
-                } 
+                }
             }
         }
         return 'bad'
-    } 
+    }
 
     // post the possible match to arb contract
-    async function placeOrder(config, data) { 
+    async function placeOrder(config, data) {
         // console.log('takeOrder conf: ', config)
         // console.log('0x data: ', data)
         // console.log('allowenceTarget/proxy add: ', proxyAddress)

@@ -29,7 +29,7 @@
     },
     "dependencies": {
         "@beehiveinnovation/rain-interpreter-ts": "git+https://github.com/beehive-innovation/rain-interpreter-ts.git#2323addd267d3350542866d262be3917389fc1b1",
-        "@beehiveinnovation/rain-protocol": "git+https://github.com/beehive-innovation/rain-protocol.git#f962b34a9accb41c6f323547932862244433d946",
+        "@beehiveinnovation/rain-protocol": "git+https://github.com/beehive-innovation/rain-protocol.git#1ebf749cd26cba6c324b65c30450bbfd2671f20f",
         "axios": "^1.1.3",
         "dotenv": "^16.0.3",
         "eslint": "^8.26.0",
