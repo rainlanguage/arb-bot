@@ -32,7 +32,7 @@ let priceAscending = [];
 
 //Cron Job to for Updating Price       
 cron.schedule('*/1 * * * *', ()=>{
-    this.updatePriceArray()
+    updatePriceArray()
 }) 
 
 //Cron Job for Reviweing Sloshed      
@@ -41,7 +41,7 @@ cron.schedule('*/2 * * * *', ()=>{
     findMatch()
 })  
 
-exports.updatePriceArray = async function () {  
+const updatePriceArray = async function () {  
     try { 
         let zexPriceArray = []  
         zexPriceArray = await Promise.all(
