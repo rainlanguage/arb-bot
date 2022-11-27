@@ -7,9 +7,9 @@
   resolved "https://registry.yarnpkg.com/@babel/parser/-/parser-7.20.3.tgz#5358cf62e380cf69efcb87a7bb922ff88bfac6e2"
   integrity sha512-OP/s5a94frIPXwjzEcv5S/tpQfc6XhxYUnmWpgdqMWGgYCuErA3SzozaRAMQgSZWKeTJxht9aWAkUY+0UzvOFg==
 
-"@beehiveinnovation/rain-interpreter-ts@git+https://github.com/beehive-innovation/rain-interpreter-ts.git#561bcdf3f8e23bdf76b63925037946de6e0e9e76":
+"@beehiveinnovation/rain-interpreter-ts@git+https://github.com/beehive-innovation/rain-interpreter-ts.git#afdff3b485fe18abc1857ad1411a0075dc00af6a":
   version "0.0.0"
-  resolved "git+https://github.com/beehive-innovation/rain-interpreter-ts.git#561bcdf3f8e23bdf76b63925037946de6e0e9e76"
+  resolved "git+https://github.com/beehive-innovation/rain-interpreter-ts.git#afdff3b485fe18abc1857ad1411a0075dc00af6a"
   dependencies:
     ethers "^5.7.2"
     prettier "^2.7.1"
