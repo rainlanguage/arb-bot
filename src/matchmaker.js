@@ -50,9 +50,7 @@ const updatePriceArray = async function () {
                     let priceData = await axios.get(
                         `https://api.0x.org/swap/v1/quote?buyToken=${
                             e.tokenAddress
-                        }&sellToken=WETH&sellAmount=${
-                            '1' .padEnd(e.decimals, '0')
-                        }`
+                        }&sellToken=WETH&sellAmount=1000000000000000000`
                     ) 
                     return {
                         symbol : e.symbol,
