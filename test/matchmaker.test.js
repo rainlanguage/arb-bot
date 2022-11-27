@@ -245,6 +245,6 @@ describe('OrderBook add order', async function () {
         // initiating matchmaker bot to find a arb trade
         let result = await Matchmaker(bot, arb, proxy, [sgMock], [takeOrderStruct])
         console.log(result)
-        expect(1).to.equal(1, 'hey')
+        expect(result).to.equal('good')
     })
 });
