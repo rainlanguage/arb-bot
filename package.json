@@ -25,7 +25,8 @@
         "run": "./run.js",
         "test": "hardhat test",
         "abis": "mkdir -p contracts && cp -r node_modules/@beehiveinnovation/rain-protocol/contracts . && hardhat compile && mkdir -p src/abis && rm -rf src/abis/* && cp -r artifacts/contracts/orderbook/* src/abis",
-        "docgen": "./node_modules/.bin/jsdoc -c jsdoc.config.json"
+        "docgen": "./node_modules/.bin/jsdoc -c jsdoc.config.json",
+        "lint": "eslint ./src --fix"
     },
     "dependencies": {
         "@beehiveinnovation/rain-interpreter-ts": "git+https://github.com/beehive-innovation/rain-interpreter-ts.git#2323addd267d3350542866d262be3917389fc1b1",

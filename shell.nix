@@ -47,6 +47,10 @@ let
         yarn run docgen
     '';
 
+    lint = pkgs.writeShellScriptBin "lint" ''
+        yarn run lint
+    '';
+
     in
     pkgs.stdenv.mkDerivation {
         name = "shell";
