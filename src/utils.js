@@ -63,5 +63,3 @@ exports.fromFixed18 = (bn, decimals) => {
     }
     else return bn
 }
-
-

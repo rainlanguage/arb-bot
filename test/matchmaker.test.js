@@ -5,7 +5,7 @@ const hardhat = require('hardhat').ethers;
 const { expect } = require('chai');
 const { avaxTokens } = require('../src/test/avaxTokens');
 const { matchmakerTest: Matchmaker} = require('../src/test/matchmakerTest')
-const { 
+const {
     op,
     memoryOperand,
     MemoryType,
@@ -18,7 +18,7 @@ const proxy = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
 const max_uint256 = ethers.constants.MaxUint256;
 const zero = ethers.constants.Zero;
 
-describe('OrderBook add order', async function () {
+describe('Arbitrage Bot Test', async function () {
     let interpreter,
         expressionDeployer,
         FRAX,
@@ -35,7 +35,7 @@ describe('OrderBook add order', async function () {
         await expressionDeployer.deployed();
     });
 
-    it('should add orders', async function () {
+    it('should find an arbitrage trade against an order and successfully execute it', async function () {
         // Impersonate the taker account so that we can submit the quote transaction
         // const slosher = await network.provider.request({
         //     method: 'hardhat_impersonateAccount',
@@ -50,7 +50,7 @@ describe('OrderBook add order', async function () {
 
         // instantiating orderBook and arb contracts
         const orderBook = await basicDeploy('OrderBook');
-        const arbFactory = await hardhat.getContractFactory('ZeroExOrderBookFlashBorrower')
+        const arbFactory = await hardhat.getContractFactory('ZeroExOrderBookFlashBorrower', slosher)
         const arb = await arbFactory.deploy(orderBook.address, proxy);
         await arb.deployed();
 
@@ -88,7 +88,6 @@ describe('OrderBook add order', async function () {
             .connect(slosher)
             .addOrder(orderConfig);
 
-
         // geting the order event
         const { order: askConfig } = (await getEventArgs(
             txAddOrderSlosher,
@@ -115,109 +114,10 @@ describe('OrderBook add order', async function () {
             vaultId: slosherVault,
             amount: amountDAI,
         };
-
-        // increase alloance
-        await DAI.connect(slosher).approve(
-            orderBook.address,
-            zero
-        );
-        await DAI.connect(slosher).approve(
-            arb.address,
-            zero
-        );
-        await DAI.connect(slosher).approve(
-            proxy,
-            zero
-        );
-        await FRAX.connect(slosher).approve(
-            orderBook.address,
-            zero
-        );
-        await FRAX.connect(slosher).approve(
-            arb.address,
-            zero
-        );
-        await FRAX.connect(slosher).approve(
-            proxy,
-            zero
-        );
-
-        await DAI.connect(bot).approve(
-            proxy,
-            zero
-        );
-        await FRAX.connect(bot).approve(
-            proxy,
-            zero
-        );
-        await DAI.connect(bot).approve(
-            arb.address,
-            zero
-        );
-        await FRAX.connect(bot).approve(
-            arb.address,
-            zero
-        );
-        await DAI.connect(bot).approve(
-            orderBook.address,
-            zero
-        );
-        await FRAX.connect(bot).approve(
-            orderBook.address,
-            zero
-        );
-
-
-
         
         await DAI.connect(slosher).approve(
             orderBook.address,
-            max_uint256
-        );
-        await DAI.connect(slosher).approve(
-            arb.address,
-            max_uint256
-        );
-        await DAI.connect(slosher).approve(
-            proxy,
-            max_uint256
-        );
-        await FRAX.connect(slosher).approve(
-            orderBook.address,
-            max_uint256
-        );
-        await FRAX.connect(slosher).approve(
-            arb.address,
-            max_uint256
-        );
-        await FRAX.connect(slosher).approve(
-            proxy,
-            max_uint256
-        );
-
-        await DAI.connect(bot).approve(
-            proxy,
-            max_uint256
-        );
-        await FRAX.connect(bot).approve(
-            proxy,
-            max_uint256
-        );
-        await DAI.connect(bot).approve(
-            arb.address,
-            max_uint256
-        );
-        await FRAX.connect(bot).approve(
-            arb.address,
-            max_uint256
-        );
-        await DAI.connect(bot).approve(
-            orderBook.address,
-            max_uint256
-        );
-        await FRAX.connect(bot).approve(
-            orderBook.address,
-            max_uint256
+            depositConfigStructAlice.amount
         );
 
         // Slosher deposits
@@ -243,8 +143,7 @@ describe('OrderBook add order', async function () {
         };
 
         // initiating matchmaker bot to find a arb trade
-        let result = await Matchmaker(bot, arb, proxy, [sgMock], [takeOrderStruct])
-        console.log(result)
-        expect(1).to.equal(1, 'hey')
+        let result = await Matchmaker(bot, arb, proxy, [sgMock], [takeOrderStruct], slosher)
+        expect(result).to.equal('success')
     })
 });
