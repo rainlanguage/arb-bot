@@ -14,13 +14,13 @@ require('dotenv').config();
  * finds one match for the givven orders and then will return the results.
  *
  * @param {SignerWithAddress} signer - Bot wallet as signer
- * @param {ethers.Contract} borrowerAddress - Address of the 0x Flash Borrower contract
+ * @param {ethers.Contract} borrower - Address of the 0x Flash Borrower contract
  * @param {string} proxyAddress - Address of the 0x proxy contract
  * @param {object} orders - Orders to run the tests for
  * @param {object} ordersStruct - TakeOrder Structs for posting into arb contract
  * @returns {string} A success or failure
  */
-exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersStruct) => {
+exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersStruct, ss) => {
 
     //Tokens and their addresses
     let tokenSymbolArray = avaxTokens;
@@ -49,7 +49,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                         let priceData = await axios.get(
                             `https://avalanche.api.0x.org/swap/v1/quote?buyToken=${
                                 e.tokenAddress
-                            }&sellToken=WETH&sellAmount=1000000000000000000`,
+                            }&sellToken=AVAX&sellAmount=1000000000000000000`,
                             {headers: {'accept-encoding': 'null'}}
                         )
                         return {
@@ -81,7 +81,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
             priceAscending.reverse()
             // console.log(JSON.stringify(priceDescending))
             // console.log(JSON.stringify(priceAscending))
-        }
+        } 
         catch (error) {
             console.log('error : ', error)
         }
@@ -100,7 +100,6 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                 constants: slosh.stateConfig.constants
             })
             threshold = (await state.run())[1]
-            console.log(threshold)
 
             // map the sg mocked data
             let inputs_ = slosh.validInputs.map(
@@ -161,7 +160,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                         output_.tokenAddress
                                     }&sellAmount=${
                                         output_.balance.toString()
-                                    }`,
+                                    }&takerAddress${ss.address}`,
                                     {headers: {'accept-encoding': 'null'}}
                                 )).data
 
@@ -171,7 +170,6 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                         inputPrice.decimals
                                     )
                                 )
-                                // console.log('live price', txQuote.price)
 
                                 if (!livePrice.lt(threshold)) {
                                     const takeOrder = {
@@ -187,7 +185,6 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                         maximumIORatio: threshold,
                                         orders: [takeOrder],
                                     };
-                                    console.log(takeOrdersConfigStruct)
                                     // const data = {
                                     //     sellToken: txQuote.sellTokenAddress,
                                     //     buyToken: txQuote.buyTokenAddress,
@@ -197,13 +194,13 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                     // };
 
                                     // call the arb contract if there is a match
-                                    console.log(txQuote)
+                                    // console.log(txQuote)
                                     await placeOrder(
                                         takeOrdersConfigStruct,
                                         txQuote.data
                                     );
                                     console.log('an was order submited');
-                                    return 'good'
+                                    return 'success'
                                 }
                             }
                         }
@@ -211,8 +208,8 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                 }
             }
         }
-        return 'bad'
-    }
+        return 'failure'
+    } 
 
     // post the possible match to arb contract
     async function placeOrder(config, data) {
@@ -229,6 +226,6 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     // run the functions
     await updatePriceArray();
     const result = await findMatch();
-    if (result == 'good') return 'good';
-    else return 'bad'
+    if (result == 'success') return 'success';
+    else return 'failure'
 }
