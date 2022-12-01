@@ -1,20 +1,20 @@
 {
-    "name": "@beehiveinnovation/rain-orderbook-matchmaker",
+    "name": "@beehiveinnovation/rain-arb-bot",
     "version": "0.0.0",
-    "description": "A bot to find and match Rain Orderbook orders",
+    "description": "A bot to find and match arbitrage trades for Rain Orderbook orders",
     "author": "Beehive Innovation",
     "license": "CAL-1.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/beehive-innovation/rain-orderbook-matchmaker.git"
+        "url": "https://github.com/beehive-innovation/rain-arb-bot.git"
     },
     "keywords": [],
     "bugs": {
-        "url": "https://github.com/beehive-innovation/rain-orderbook-matchmaker/issues"
+        "url": "https://github.com/beehive-innovation/rain-arb-bot/issues"
     },
-    "homepage": "http://beehive-innovation.github.io/rain-orderbook-matchmaker/",
-    "main": "src/matchmaker.js",
-    "module": "src/matchmaker.js",
+    "homepage": "http://beehive-innovation.github.io/rain-arb-bot/",
+    "main": "src/arbBot.js",
+    "module": "src/arbBot.js",
     "type": "commonjs",
     "files": [
         "src",

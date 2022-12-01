@@ -67,6 +67,7 @@ let
             prepare
             flush-all
             docgen
+            lint
         ];
 
         shellHook = ''

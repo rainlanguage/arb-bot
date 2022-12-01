@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-// const fs = require('fs');
-// const path = require('path');
-// const { program } = require('commander');
 const { execSync } = require('child_process');
 const { argv } = require('process');
 require('dotenv').config();
@@ -43,14 +40,14 @@ const main = async() => {
             process.env.NETWORK = args[args.indexOf('-n') + 1]
         }
     }
-    exec('echo starting the Rain Orderbook Matchmaker Arb bot...')
-    exec('node ./src/matchmaker.js')
+    exec('echo starting the Rain Arbitrage bot...')
+    exec('node ./src/arbBot.js')
 }
 
 main().then(
     () => {
         const exit = process.exit;
-        console.log('matchmaker bot has stopped')
+        console.log('Rain arbitrage bot has stopped')
         exit(0);
     }
 ).catch(

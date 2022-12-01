@@ -20,7 +20,7 @@ require('dotenv').config();
  * @param {object} ordersStruct - TakeOrder Structs for posting into arb contract
  * @returns {string} A success or failure
  */
-exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersStruct, ss) => {
+exports.ArbBot = async (signer, borrower, proxyAddress, orders, ordersStruct, ss) => {
 
     //Tokens and their addresses
     let tokenSymbolArray = avaxTokens;

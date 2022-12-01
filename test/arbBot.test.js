@@ -4,7 +4,7 @@ const ethers = require('ethers');
 const hardhat = require('hardhat').ethers;
 const { expect } = require('chai');
 const { avaxTokens } = require('../src/test/avaxTokens');
-const { matchmakerTest: Matchmaker} = require('../src/test/matchmakerTest')
+const ArbBot = require('../src/test/arbBotTest')
 const {
     op,
     memoryOperand,
@@ -143,7 +143,7 @@ describe('Arbitrage Bot Test', async function () {
         };
 
         // initiating matchmaker bot to find a arb trade
-        let result = await Matchmaker(bot, arb, proxy, [sgMock], [takeOrderStruct], slosher)
+        let result = await ArbBot(bot, arb, proxy, [sgMock], [takeOrderStruct], slosher)
         expect(result).to.equal('success')
     })
 });
