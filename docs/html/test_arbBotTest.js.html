@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: test/matchmakerTest.js</title>
+    <title>JSDoc: Source: test/arbBotTest.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: test/matchmakerTest.js</h1>
+    <h1 class="page-title">Source: test/arbBotTest.js</h1>
 
     
 
@@ -38,9 +38,9 @@ const { SignerWithAddress } = require('@nomiclabs/hardhat-ethers/signers');
 require('dotenv').config();
 
 /**
- * Exposing the Matchmaker Bot as function for running tests. Bot runns until it 
+ * Exposing the Matchmaker Bot as function for running tests. Bot runns until it
  * finds one match for the givven orders and then will return the results.
- * 
+ *
  * @param {SignerWithAddress} signer - Bot wallet as signer
  * @param {ethers.Contract} borrower - Address of the 0x Flash Borrower contract
  * @param {string} proxyAddress - Address of the 0x proxy contract
@@ -48,7 +48,7 @@ require('dotenv').config();
  * @param {object} ordersStruct - TakeOrder Structs for posting into arb contract
  * @returns {string} A success or failure
  */
-exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersStruct, ss) => {
+exports.ArbBot = async (signer, borrower, proxyAddress, orders, ordersStruct, ss) => {
 
     //Tokens and their addresses
     let tokenSymbolArray = avaxTokens;
@@ -57,7 +57,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     let priceDescending = []
     let priceAscending = []
 
-    //Cron Job to for Updating Price       
+    //Cron Job to for Updating Price
     // cron.schedule('*/1 * * * *', async()=>{
     //     await updatePriceArray()
     // })
@@ -68,9 +68,9 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     //     else return 'bad'
     // })
 
-    const updatePriceArray = async function () {  
-        try { 
-            let zexPriceArray = []  
+    const updatePriceArray = async function () {
+        try {
+            let zexPriceArray = []
             zexPriceArray = await Promise.all(
                 tokenSymbolArray.map(
                     async(e) => {
@@ -84,7 +84,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                             p: priceData.data.price,
                             symbol : e.symbol,
                             tokenAddress: e.tokenAddress,
-                            price : e.decimals &lt; 18 
+                            price : e.decimals &lt; 18
                                 ? toFixed18(
                                     bnFromFloat(
                                         priceData.data.price,
@@ -98,25 +98,27 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                         }
                     }
                 )
-            ) 
+            )
             timsort.sort(
-                zexPriceArray, 
+                zexPriceArray,
                 (a, b) => a.price.gt(b.price) ? -1 : a.price.lt(b.price) ? 1 : 0
-            ) 
-            
+            )
+
             priceDescending = zexPriceArray
             Object.assign(priceAscending, zexPriceArray);
             priceAscending.reverse()
+            // console.log(JSON.stringify(priceDescending))
+            // console.log(JSON.stringify(priceAscending))
         } 
         catch (error) {
             console.log('error : ', error)
         }
-    }  
+    }
 
-    async function findMatch() { 
-        let threshold; 
+    async function findMatch() {
+        let threshold;
         let sloshes = orders
-        for (let i = 0; i &lt; sloshes.length; i++) {  
+        for (let i = 0; i &lt; sloshes.length; i++) {
 
             let slosh = sloshes[i]
 
@@ -129,18 +131,18 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
 
             // map the sg mocked data
             let inputs_ = slosh.validInputs.map(
-                e => { 
+                e => {
                     return {
                         tokenAddress : e.tokenVault.token.id,
                         symbol : e.tokenVault.token.symbol,
                         balance : e.tokenVault.balance,
                     }
                 }
-            )  
+            )
             let outputs_ = slosh.validOutputs.map(
-                e => { 
-                    return { 
-                        tokenAddress : e.tokenVault.token.id, 
+                e => {
+                    return {
+                        tokenAddress : e.tokenVault.token.id,
                         symbol : e.tokenVault.token.symbol,
                         balance : e.tokenVault.balance,
                     }
@@ -157,17 +159,17 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
             for (let j = 0 ; j &lt; outputs_.length ; j++) {
                 let output_ = outputs_[j];
 
-                if (output_.balance.gt(0)) { 
-                    for (let k = 0 ; k &lt; inputs_.length ; k++ ) { 
+                if (output_.balance.gt(0)) {
+                    for (let k = 0 ; k &lt; inputs_.length ; k++ ) {
                         if (inputs_[k].symbol != output_.symbol) {
                             let inputPrice = priceAscending.filter(
-                                e => { 
-                                    return e.symbol == inputs_[k].symbol 
+                                e => {
+                                    return e.symbol == inputs_[k].symbol
                                 }
                             )[0]
                             let outputPrice = priceDescending.filter(
-                                e => { 
-                                    return e.symbol == output_.symbol 
+                                e => {
+                                    return e.symbol == output_.symbol
                                 }
                             )[0]
                             console.log(output_.symbol, inputs_[k].symbol)
@@ -178,7 +180,7 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                 18
                             )
 
-                            if (!ratio.lt(threshold)) {  
+                            if (!ratio.lt(threshold)) {
                                 let txQuote = (await axios.get(
                                     `https://avalanche.api.0x.org/swap/v1/quote?buyToken=${
                                         inputs_[k].tokenAddress
@@ -220,24 +222,25 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
                                     // };
 
                                     // call the arb contract if there is a match
+                                    // console.log(txQuote)
                                     await placeOrder(
                                         takeOrdersConfigStruct,
                                         txQuote.data
                                     );
                                     console.log('an was order submited');
-                                    return 'good'
+                                    return 'success'
                                 }
                             }
                         }
                     }
-                } 
+                }
             }
         }
-        return 'bad'
+        return 'failure'
     } 
 
     // post the possible match to arb contract
-    async function placeOrder(config, data) { 
+    async function placeOrder(config, data) {
         // console.log('takeOrder conf: ', config)
         // console.log('0x data: ', data)
         // console.log('allowenceTarget/proxy add: ', proxyAddress)
@@ -251,8 +254,8 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
     // run the functions
     await updatePriceArray();
     const result = await findMatch();
-    if (result == 'good') return 'good';
-    else return 'bad'
+    if (result == 'success') return 'success';
+    else return 'failure'
 }</code></pre>
         </article>
     </section>
@@ -263,13 +266,13 @@ exports.matchmakerTest = async (signer, borrower, proxyAddress, orders, ordersSt
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#avaxTokens">avaxTokens</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#matchmakerTest">matchmakerTest</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#ArbBot">ArbBot</a></li><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#avaxTokens">avaxTokens</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Wed Nov 30 2022 03:02:16 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Dec 01 2022 01:47:52 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -232,7 +232,7 @@
     
 
     
-    <h4 class="name" id="fromFixed18"><span class="type-signature"></span>fromFixed18<span class="signature">(bn, decimals)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="ArbBot"><span class="type-signature"></span>ArbBot<span class="signature">(signer, borrower, proxyAddress, orders, ordersStruct)</span><span class="type-signature"> &rarr; {string}</span></h4>
     
 
     
@@ -240,177 +240,7 @@
 
 
 <div class="description">
-    Convert a 18 fixed point BigNumber to a  BigNumber with some other decimals point
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>bn</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">BigNumber</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The BigNumber to convert</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>decimals</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The decimals point of convert the given BigNumber</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line57">line 57</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    A decimals point BigNumber
-</div>
-
-
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="matchmakerTest"><span class="type-signature"></span>matchmakerTest<span class="signature">(signer, borrower, proxyAddress, orders, ordersStruct)</span><span class="type-signature"> &rarr; {string}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Exposing the Matchmaker Bot as function for running tests. Bot runns until it 
+    Exposing the Matchmaker Bot as function for running tests. Bot runns until it
 finds one match for the givven orders and then will return the results.
 </div>
 
@@ -596,7 +426,7 @@ finds one match for the givven orders and then will return the results.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="test_matchmakerTest.js.html">test/matchmakerTest.js</a>, <a href="test_matchmakerTest.js.html#line23">line 23</a>
+        <a href="test_arbBotTest.js.html">test/arbBotTest.js</a>, <a href="test_arbBotTest.js.html#line23">line 23</a>
     </li></ul></dd>
     
 
@@ -641,6 +471,176 @@ finds one match for the givven orders and then will return the results.
 
     </dd>
 </dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="fromFixed18"><span class="type-signature"></span>fromFixed18<span class="signature">(bn, decimals)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Convert a 18 fixed point BigNumber to a  BigNumber with some other decimals point
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bn</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">BigNumber</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The BigNumber to convert</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>decimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The decimals point of convert the given BigNumber</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line57">line 57</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A decimals point BigNumber
+</div>
+
+
 
     
 
@@ -834,13 +834,13 @@ finds one match for the givven orders and then will return the results.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#avaxTokens">avaxTokens</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#matchmakerTest">matchmakerTest</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#ArbBot">ArbBot</a></li><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#avaxTokens">avaxTokens</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Wed Nov 30 2022 03:02:16 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Dec 01 2022 01:47:52 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>
