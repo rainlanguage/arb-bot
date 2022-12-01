@@ -1,2 +1,2 @@
-# rain-orderboook-matchmaker
-A bot to find and match orders
+# Rain Arbitrage Bot
+A bot to find and match arbitrage trades for Rain Orderbook orders
