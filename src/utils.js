@@ -128,4 +128,11 @@ exports.interpreterEval = async (
     );  
     return stack
 
+} 
+
+exports.getIndex = (slosh,address) => { 
+    let sloshOrder = JSON.parse(slosh.orderJSONString) 
+    let validInputs = sloshOrder.validInputs
+    let index = validInputs.findIndex(e => e.token.toLowerCase() == address.toLowerCase()) 
+    return index
 }

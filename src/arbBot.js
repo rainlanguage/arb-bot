@@ -6,7 +6,7 @@ const ethers = require('ethers');
 const timsort = require('timsort');
 const config = require('./config');
 const { DefaultQuery } = require('./defaultQuery');
-const { bnFromFloat, toFixed18, interpreterEval } = require('./utils');
+const { bnFromFloat, toFixed18, interpreterEval, getIndex } = require('./utils');
 const { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.sol/ZeroExOrderBookFlashBorrower.json"); 
 const { abi: obAbi } = require("./abis/orderbook/OrderBook.sol/OrderBook.json"); 
 const { abi: interpreterAbi } = require("./abis/IInterpreterV1.sol/IInterpreterV1.json"); 
@@ -150,7 +150,7 @@ const ETHERSCAN_TX_PAGE = {
                         if (!output.balance.isZero()) {
                             if(input.address.toLowerCase() != output.address.toLowerCase()){ 
             
-                                const { stack: [ maxOutput, ratio ] } = await interpreterEval(
+                                let { stack: [ maxOutput, ratio ] } = await interpreterEval(
                                     input,
                                     output,
                                     slosh,
@@ -163,6 +163,8 @@ const ETHERSCAN_TX_PAGE = {
                                 const quoteAmount = output.balance.lte(maxOutput)
                                 ? output.balance
                                 : maxOutput;  
+
+                                console.log('quoteAmount : ' , quoteAmount.toString() )
         
                                 if (!quoteAmount.isZero()) { 
         
@@ -181,17 +183,19 @@ const ETHERSCAN_TX_PAGE = {
                 
                                     // proceed if 0x quote is valid
                                     const txQuote = response?.data; 
-                
-                                    if (txQuote && txQuote.guaranteedPrice) {
-                
+                                        
+                                    let quotePrice = ethers.utils.parseUnits(txQuote.price) 
+
+                                    if (txQuote && txQuote.guaranteedPrice) { 
+
                                         // compare the ratio against the quote price and try to clear if 
                                         // quote price is greater or equal
-                                        if (ethers.utils.parseUnits(txQuote.price).gte(ratio)) { 
+                                        if (quotePrice.gte(ratio)) { 
                                             // construct the take order config
                                             const takeOrder = {
                                                 order: JSON.parse(slosh.orderJSONString),
-                                                inputIOIndex: j,
-                                                outputIOIndex: k,
+                                                inputIOIndex: getIndex(slosh,input.address),
+                                                outputIOIndex: getIndex(slosh,output.address),
                                                 signedContext: []
                                             }; 
         

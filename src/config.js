@@ -104,7 +104,7 @@ module.exports = [
         defaultRpc: 'https://polygon-rpc.com/',
         arbAddress: '0x57c8a54c37635f6feea837786860b9a02f0e66da',
         proxyAddress: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
-        orderbookAddress: '0x04a2903d24516d2556bbe6f0e06baa378aac9995' ,
+        orderbookAddress: '0x2de560ed9ba8a6cdfe92e26862ecb86e6e2d9705' ,
         interpreterAddress: '0xc318bd7dBdAC1cE35aa4aA1443B41C53246c60e2' ,
         nativeToken: {
             symbol: 'MATIC',

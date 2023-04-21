@@ -3,7 +3,7 @@
  */
 exports.DefaultQuery = `{
     orders(
-      where: {orderActive: true, id: "0xa390823670160ee977b7f0e347facdf24475005bcc1c5ba5090bc986a6206f12"}
+      where: {orderActive: true}
     ) {
       id
       handleIO 
