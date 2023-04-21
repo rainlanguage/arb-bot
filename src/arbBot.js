@@ -6,19 +6,37 @@ const ethers = require('ethers');
 const timsort = require('timsort');
 const config = require('./config');
 const { DefaultQuery } = require('./defaultQuery');
-const { bnFromFloat, toFixed18 } = require('./utils');
-const interpreter = require('@beehiveinnovation/rain-interpreter-ts');
-const { abi: FlashBorrowerABI } = require('./abis/arb/ZeroExOrderBookFlashBorrower.sol/ZeroExOrderBookFlashBorrower.json');
+const { bnFromFloat, toFixed18, interpreterEval } = require('./utils');
+const { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.sol/ZeroExOrderBookFlashBorrower.json"); 
+const { abi: obAbi } = require("./abis/orderbook/OrderBook.sol/OrderBook.json"); 
+const { abi: interpreterAbi } = require("./abis/IInterpreterV1.sol/IInterpreterV1.json"); 
 //const { abi: ERC20ABI } = require('./abis/IERC20Upgradeable.sol/IERC20Upgradeable.json')
 dotenv.config();
 
 
+const MAX_UINT_256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"; 
+const ETHERSCAN_TX_PAGE = {
+    1:          "https://etherscan.io/tx/",
+    5:          "https://goerli.etherscan.io/tx/",
+    10:         "https://optimistic.etherscan.io/tx/",
+    56:         "https://bscscan.com/tx/",
+    137:        "https://polygonscan.com/tx/",
+    250:        "https://ftmscan.com/tx/",
+    42161:      "https://arbiscan.io/tx/",
+    42220:      "https://celoscan.io/tx/",
+    43114:      "https://snowtrace.io/tx/",
+    524289:     "https://mumbai.polygonscan.com/tx/"
+};
+
 
 (async () => {
     let signer
+    let provider
     let chainId
     let trackedTokens
     let arbAddress
+    let orderbookAddress
+    let interpreterAddress
     // let proxyAddress
     let nativeToken
     let nativeTokenDecimals
@@ -26,16 +44,18 @@ dotenv.config();
     try {
 
         // check the env variables before starting
-        if (process.env.BOT_WALLET_PRIVATEKEY) {
-            signer = new ethers.Wallet(process.env.BOT_WALLET_PRIVATEKEY)
+        if (process.env.BOT_WALLET_PRIVATEKEY) { 
+            provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
+            signer = new ethers.Wallet(process.env.BOT_WALLET_PRIVATEKEY, provider); 
             if (process.env.RPC_URL) {
-                signer.connect(new ethers.providers.JsonRpcProvider(process.env.RPC_URL))
                 chainId = await signer.getChainId()
                 let index = config.findIndex(v => Number(v.chainId) === chainId)
                 if (chainId && index > -1) {
                     api = config[index].apiUrl
                     trackedTokens = config[index].trackedTokens
                     arbAddress = config[index].arbAddress
+                    orderbookAddress = config[index].orderbookAddress
+                    interpreterAddress = config[index].interpreterAddress
                     // proxyAddress = config[index].proxyAddress
                     nativeToken = config[index].nativeToken.address
                     nativeTokenDecimals = config[index].nativeToken.decimals
@@ -45,10 +65,11 @@ dotenv.config();
             else if (process.env.NETWORK) {
                 let index = config.findIndex(v => v.network === process.env.NETWORK)
                 if (index > -1) {
-                    signer.connect(new ethers.providers.JsonRpcProvider(config[index].defaultRpc))
                     api = config[index].apiUrl
                     trackedTokens = config[index].trackedTokens
                     arbAddress = config[index].arbAddress
+                    orderbookAddress = config[index].orderbookAddress
+                    interpreterAddress = config[index].interpreterAddress
                     // proxyAddress = config[index].proxyAddress
                     nativeToken = config[index].nativeToken.address
                     nativeTokenDecimals = config[index].nativeToken.decimals
@@ -59,256 +80,177 @@ dotenv.config();
         }
         else throw new Error('bot wallet private key not defined')
 
+        // instantiating arb contract
+        const arb = new ethers.Contract(arbAddress, arbAbi, signer)  
+
         // instantiating orderbook contract
-        const arb = new ethers.Contract(arbAddress, FlashBorrowerABI, signer)
+        const orderBook = new ethers.Contract(orderbookAddress, obAbi, signer)// instantiating arb contract 
 
-        // arrays of token initial token prices based oon WETH for initial match finding
-        let priceDescending = [];
-        let priceAscending = [];
+        // instantiating arb contract
+        const interpreter = new ethers.Contract(interpreterAddress, interpreterAbi, signer) 
 
-        //Cron Job to for Updating Price       
-        cron.schedule('*/1 * * * *', ()=>{
-            updatePriceArray()
-        }) 
+        console.log('----------------------------Arb Bot------------------------------')
+        console.log("Arb : " , arb.address)
+        console.log("OrderBook : " , orderBook.address)
+        console.log("Interpreter : " , interpreter.address)
+        console.log('----------------------------------------')
 
         //Cron Job for Reviweing Sloshed      
-        cron.schedule('*/2 * * * *', ()=>{ 
-            console.log('findMatch')
-            findMatch()
+        cron.schedule('*/5 * * * *', ()=>{ 
+            findMatch2()
         })  
 
-        const updatePriceArray = async function () {  
-            try { 
-                let zexPriceArray = []  
-                const responses = await Promise.allSettled(
-                    trackedTokens.map(
-                        async(e) => {
-                            const response = await axios.get(
-                                `${
-                                    api
-                                }swap/v1/quote?buyToken=${
-                                    e.address.toLowerCase()
-                                }&sellToken=${
-                                    nativeToken.toLowerCase()
-                                }&sellAmount=${
-                                    '1' + '0'.repeat(nativeTokenDecimals)
-                                }`,
-                                { 
-                                    headers: {
-                                        'accept-encoding': 'null'
-                                    } 
-                                }
-                            )
-                            return {
-                                symbol : e.symbol,
-                                address: e.address.toLowerCase(),
-                                decimals: e.decimals,
-                                price : e.decimals < 18 
-                                    ? toFixed18(
-                                        bnFromFloat(
-                                            response.data.price,
-                                            e.decimals,
-                                            true
-                                        ),
-                                        e.decimals
-                                    )
-                                    : bnFromFloat(
-                                        response.data.price,
-                                        e.decimals,
-                                        true
-                                    ),
-                            }
-                        }
-                    )
-                )
+        const findMatch2 = async() => { 
 
-                for (let i = 0; i < responses.length; i++) {
-                    if (responses[i].status == 'fulfilled') zexPriceArray.push(
-                        responses[i].value
-                    )
-                }
-
-                timsort.sort(
-                    zexPriceArray, 
-                    (a, b) => a.price.gt(b.price) ? -1 : a.price.lt(b.price) ? 1 : 0
-                ) 
-
-                priceDescending = zexPriceArray
-                Object.assign(priceAscending, zexPriceArray);
-                priceAscending.reverse()
-            
-            } 
-            catch (error) {
-                console.log('error : ', error)
-            }
-
-        }  
-
-        const findMatch = async() => {  
-
-            let threshold;
-
-            // fetching orders that fit the definition of slosh. 
+            console.log(('-------------------------Checking For Slosh Orders----------------------------'))
             const result = await axios.post(
-                'https://api.thegraph.com/subgraphs/name/siddharth2207/orderbook',
+                'https://api.thegraph.com/subgraphs/name/siddharth2207/rainorderbook',
                 { query: DefaultQuery },
-                { headers: { 'Content-Type': 'application/json' } },
-            )
-
-            let sloshes = result.data.data.orders
+                { headers: { 'Content-Type': 'application/json' } }
+        
+            )   
+        
+            let sloshes = result.data.data.orders  
 
             for (let i = 0; i < sloshes.length; i++) {  
 
-                let slosh = sloshes[i]
-
-                // run interpreterTS to get the threshold
-                let state = new interpreter.RainInterpreterTs({
-                    sources: slosh.stateConfig.sources,
-                    constants: slosh.stateConfig.constants
-                })
-                threshold = (await state.run())[1]
-
+                let slosh = sloshes[i]   
+        
                 let inputs_ = slosh.validInputs.map(
                     e => { 
                         return {
-                            address : e.tokenVault.token.id,
-                            symbol : e.tokenVault.token.symbol,
-                            decimals: e.tokenVault.token.decimals
+                            address : e.token.id,
+                            symbol : e.token.symbol,
+                            decimals: e.token.decimals , 
+                            vaultId : ethers.BigNumber.from(e.vault.id.split('-')[0]),
+                            balance : ethers.BigNumber.from(e.tokenVault.balance)
                         }
                     }
                 )  
                 let outputs_ = slosh.validOutputs.map(
                     e => { 
                         return { 
-                            address : e.tokenVault.token.id, 
-                            symbol : e.tokenVault.token.symbol,
-                            decimals: e.tokenVault.token.decimals,
+                            address : e.token.id, 
+                            symbol : e.token.symbol,
+                            decimals: e.token.decimals,
+                            vaultId : ethers.BigNumber.from(e.vault.id.split('-')[0]),
                             balance : ethers.BigNumber.from(
                                 e.tokenVault.balance,
                             )
                         }
                     }
-                ) 
-
-                let possibleMatches = []
-                let inputPrice
-                for (let j = 0 ; j < outputs_.length ; j++) {
-                    let output_ = outputs_[j];
-
-                    if (output_.balance.gt(0)) { 
-                        for (let k = 0 ; k < inputs_.length ; k++ ) { 
-                            if (inputs_[k].symbol != output_.symbol) {
-                                inputPrice = priceDescending.filter(
-                                    e => e.address == output_.address
-                                )[0]
-                                let outputPrice = priceAscending.filter(
-                                    e => e.address == inputs_[k].address
-                                )[0]
-
-                                // calculate the ratio from WETH based prices
-                                let ratio = interpreter.fixedPointDiv(
-                                    inputPrice.price,
-                                    outputPrice.price,
-                                    18
-                                )
-
-                                if (!ratio.lt(threshold)) {
-                                    possibleMatches.push({
-                                        outputToken : output_,
-                                        inputToken : inputs_[k],
-                                        inputIndex: k,
-                                        outputIndex: j
-                                    })
+                )  
+        
+                for(let j = 0 ; j < inputs_.length ; j++){   
+        
+                    let input = inputs_[j] 
+        
+                    for(let k = 0 ; k < outputs_.length ; k++){
+                        let output = outputs_[k]  
+                        if (!output.balance.isZero()) {
+                            if(input.address.toLowerCase() != output.address.toLowerCase()){ 
+            
+                                const { stack: [ maxOutput, ratio ] } = await interpreterEval(
+                                    input,
+                                    output,
+                                    slosh,
+                                    interpreter,
+                                    arb,
+                                    orderBook
+                                )   
+            
+                                // take minimum of maxOutput and output vault balance for 0x qouting amount
+                                const quoteAmount = output.balance.lte(maxOutput)
+                                ? output.balance
+                                : maxOutput;  
+        
+                                if (!quoteAmount.isZero()) { 
+        
+                                    const response = await axios.get(
+                                        `${
+                                            api
+                                        }swap/v1/quote?buyToken=${
+                                            input.address
+                                        }&sellToken=${
+                                            output.address
+                                        }&sellAmount=${
+                                            quoteAmount.toString()
+                                        }`,
+                                        { headers: { "accept-encoding": "null" } }
+                                    );  
+                
+                                    // proceed if 0x quote is valid
+                                    const txQuote = response?.data; 
+                
+                                    if (txQuote && txQuote.guaranteedPrice) {
+                
+                                        // compare the ratio against the quote price and try to clear if 
+                                        // quote price is greater or equal
+                                        if (ethers.utils.parseUnits(txQuote.price).gte(ratio)) { 
+                                            // construct the take order config
+                                            const takeOrder = {
+                                                order: JSON.parse(slosh.orderJSONString),
+                                                inputIOIndex: j,
+                                                outputIOIndex: k,
+                                                signedContext: []
+                                            }; 
+        
+                                            const takeOrdersConfigStruct = {
+                                                output: input.address,
+                                                input: output.address,
+                                                // max and min input should be exactly the same as quoted sell amount
+                                                // this makes sure the cleared order amount will exactly match the 0x quote
+                                                minimumInput: quoteAmount,
+                                                maximumInput: quoteAmount,
+                                                maximumIORatio: MAX_UINT_256,
+                                                orders: [ takeOrder ],
+                                            }; 
+        
+                                            // submit the transaction
+                                            try {
+                                                const tx = await arb.arb(
+                                                    takeOrdersConfigStruct,
+                                                    txQuote.allowanceTarget,
+                                                    txQuote.data,
+                                                    { gasPrice: txQuote.gasPrice }
+                                                );
+                                                console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
+                                                console.log("Transaction submitted successfully to the network, see the link above for details, waiting for tx to mine...\n");
+                                                try {
+                                                    // Transaction may require some time for confirmation which may interfere with next orders
+                                                    // await tx.wait();
+                                                    console.log(`Clear amount: ${ethers.utils.formatUnits(quoteAmount, output.decimals)}`);
+                                                    console.log(`Clear guaranteed price: ${txQuote.guaranteedPrice}`);
+                                                    console.log("Order cleared successfully, checking next order...\n");
+                                                }
+                                                catch (_e) {
+                                                    console.log("Order did not clear, checking next order...");
+                                                }
+                                            }
+                                            catch (_e) {
+                                                console.log(_e, "\n");
+                                                console.log( "Transaction failed, checking next order...\n");
+                                            }
+                                        }
+                                    }
+        
                                 }
-                            }
-                        }
-                    } 
-                }  
-
-                if (possibleMatches.length > 1) {
-                    timsort.sort(
-                        possibleMatches,
-                        (a, b) => a.ratio.gt(b.ratio) ? -1 : a.ratio.lt(b.ratio) ? 1 : 0
-                    )
-                    for (let j = 0; j < possibleMatches.length; j++) {
-                        let bestPossibleMatch = possibleMatches[j]
-                        let res = (await axios.get(
-                            `${
-                                api
-                            }swap/v1/quote?buyToken=${
-                                bestPossibleMatch.inputToken.address
-                            }&sellToken=${
-                                bestPossibleMatch.outputToken.address
-                            }&sellAmount=${
-                                bestPossibleMatch.outputToken.balance.toString()
-                            }&takerAddress=${
-                                signer.address
-                            }`,
-                            {
-                                headers: {
-                                    'accept-encoding': 'null'
-                                }
-                            }
-                        ))
-                        let txQuote = res?.data
-                        if (txQuote && txQuote.guaranteedPrice) {
-                            const guaranteedPrice = toFixed18(
-                                bnFromFloat(
-                                    txQuote.guaranteedPrice,
-                                    bestPossibleMatch.inputToken.decimals
-                                ),
-                                18
-                            )
-                            const gasCost = (inputPrice.price.mul(
-                                toFixed18(
-                                    ethers.BigNumber.from(txQuote.gas).mul(txQuote.gasPrice),
-                                    nativeTokenDecimals
-                                )
-                            )).div(
-                                '1000000000000000000'
-                            )
-
-                            if (!(guaranteedPrice.sub(gasCost)).lt(threshold)) {
-                                console.log('found a match, submiting the transaction now...') 
-                                const takeOrder = {
-                                    order: {
-                                        owner: slosh.owner,
-                                        interpreter: slosh.interpreter,
-                                        dispatch: slosh.dispatch,
-                                        handleIODispatch: slosh.handleIODispatch,
-                                        validInputs: slosh.validInputs,
-                                        validOutputs: slosh.validOutputs
-                                    },
-                                    inputIOIndex: bestPossibleMatch.inputIndex,
-                                    outputIOIndex: bestPossibleMatch.outputIndex,
-                                };
-                                const takeOrdersConfigStruct = {
-                                    output: bestPossibleMatch.inputToken,
-                                    input: bestPossibleMatch.outputToken,
-                                    minimumInput: bestPossibleMatch.balance,
-                                    maximumInput: bestPossibleMatch.balance,
-                                    // @TODO: handle threshold conversion based on decimals
-                                    maximumIORatio: threshold,
-                                    orders: [takeOrder],
-                                };
-                                const spender = txQuote.allowanceTarget;
-                                const data = txQuote.data;
-
-                                placeOrder(takeOrdersConfigStruct, spender, data)
+        
+                                console.log('-----------------------------------------------------')
+            
+            
                             }
                         }
                     }
+        
                 }
+        
             }
-        } 
 
-        const placeOrder = async(takeOrdersConfig, spender, data) => { 
-            await arb.connect(signer).arb(
-                takeOrdersConfig,
-                spender,
-                data
-            )
+
+
         }
+
     }
     catch(err) {
         console.log(err)

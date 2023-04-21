@@ -62,4 +62,70 @@ exports.fromFixed18 = (bn, decimals) => {
         )
     }
     else return bn
+} 
+/** 
+* Gets orderMaxOutput and ratio for a particular order. 
+* @param {inputDetails} - Input Token details from validInputs Array
+* @param {outputDetails} - Ouput Token details from validInputs Array
+* @param {slosh} - Slosh Order
+* @param {arb} - Arb Contract Address
+* @param {orderbook} - OrderBook contract address
+* @returns An array containing maxOutput and ratio
+
+*/
+exports.interpreterEval = async (
+    inputDetails ,
+    outputDetails ,
+    slosh ,
+    interpreter,
+    arb , 
+    orderbook
+) => { 
+
+    const stack = await interpreter.eval(
+        slosh.interpreterStore,
+        slosh.owner.id,
+        slosh.expression + "00000002",
+        // construct the context for eval
+        [
+            [ 
+                // base column 
+                arb.address, 
+                orderbook.address 
+            ], 
+            [
+                // calling context column 
+                slosh.id, 
+                slosh.owner.id, 
+                arb.address 
+            ], 
+            [
+                // calculateIO context column 
+            ], 
+            [
+                // input context column 
+                inputDetails.address, 
+                inputDetails.decimals, 
+                inputDetails.vaultId , 
+                inputDetails.balance, 
+                "0" 
+            ], 
+            [
+                // output context column 
+                outputDetails.address, 
+                outputDetails.decimals, 
+                outputDetails.vaultId , 
+                outputDetails.balance, 
+                "0" 
+            ], 
+            [
+                // empty context column
+            ], 
+            [
+                // signed context column
+            ] 
+        ]
+    );  
+    return stack
+
 }

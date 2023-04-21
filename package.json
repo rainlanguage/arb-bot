@@ -21,17 +21,13 @@
         "docs"
     ],
     "scripts": {
-        "prepare": "yarn run abis",
         "run": "./run.js",
         "test": "hardhat test",
-        "abis": "mkdir -p contracts && cp -r node_modules/@beehiveinnovation/rain-protocol/contracts . && hardhat compile && mkdir -p src/abis && rm -rf src/abis/* && cp -r artifacts/contracts/orderbook/* src/abis",
         "docgen": "./node_modules/.bin/jsdoc -c jsdoc.config.json",
         "lint": "eslint ./src --fix"
     },
     "dependencies": {
-        "@beehiveinnovation/rain-interpreter-ts": "git+https://github.com/beehive-innovation/rain-interpreter-ts.git#2323addd267d3350542866d262be3917389fc1b1",
-        "@beehiveinnovation/rain-protocol": "git+https://github.com/beehive-innovation/rain-protocol.git#d7ffe19214fb8b3b80c109c46a5868db3b2ade55",
-        "axios": "^1.1.3",
+        "axios": "^1.3.4",
         "dotenv": "^16.0.3",
         "eslint": "^8.26.0",
         "eslint-config-prettier": "^8.5.0",

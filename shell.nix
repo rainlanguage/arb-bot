@@ -19,10 +19,6 @@ let
         yarn run test
     '';
 
-    abis = pkgs.writeShellScriptBin "abis" ''
-        yarn run abis
-    '';
-
     flush-all = pkgs.writeShellScriptBin "flush-all" ''
         rm -rf artifacts
         rm -rf cache
@@ -33,14 +29,12 @@ let
     ci-test = pkgs.writeShellScriptBin "ci-test" ''
         flush-all
         yarn install
-        abis
         local-test
     '';
 
     prepare = pkgs.writeShellScriptBin "prepare" ''
         flush-all
         yarn install
-        abis
     '';
 
     docgen = pkgs.writeShellScriptBin "docgen" ''
@@ -62,7 +56,6 @@ let
             local-node
             local-fork
             local-test
-            abis
             ci-test
             prepare
             flush-all
