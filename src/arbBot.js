@@ -151,8 +151,8 @@ const ETHERSCAN_TX_PAGE = {
                             if(input.address.toLowerCase() != output.address.toLowerCase()){ 
             
                                 let { stack: [ maxOutput, ratio ] } = await interpreterEval(
-                                    input,
                                     output,
+                                    input,
                                     slosh,
                                     interpreter,
                                     arb,
@@ -235,6 +235,10 @@ const ETHERSCAN_TX_PAGE = {
                                                 console.log(_e, "\n");
                                                 console.log( "Transaction failed, checking next order...\n");
                                             }
+                                        }else{
+                                            console.log(
+                                                "Market price is lower than order's ratio, checking next order...\n"
+                                            );
                                         }
                                     }
         
