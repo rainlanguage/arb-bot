@@ -95,10 +95,10 @@ const ETHERSCAN_TX_PAGE = {
         console.log("Interpreter : " , interpreter.address)
         console.log('----------------------------------------')
 
-        //Cron Job for Reviweing Sloshed      
-        cron.schedule('*/5 * * * *', ()=>{ 
-            findMatch2()
-        })  
+        // //Cron Job for Reviweing Sloshed      
+        // cron.schedule('*/5 * * * *', ()=>{ 
+        //     findMatch2()
+        // })  
 
         const findMatch2 = async() => { 
 
@@ -163,8 +163,6 @@ const ETHERSCAN_TX_PAGE = {
                                 const quoteAmount = output.balance.lte(maxOutput)
                                 ? output.balance
                                 : maxOutput;  
-
-                                console.log('quoteAmount : ' , quoteAmount.toString() )
         
                                 if (!quoteAmount.isZero()) { 
         
@@ -257,7 +255,8 @@ const ETHERSCAN_TX_PAGE = {
 
 
 
-        }
+        } 
+        findMatch2()
 
     }
     catch(err) {
