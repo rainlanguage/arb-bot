@@ -16,11 +16,7 @@ let
     '';
 
     local-test = pkgs.writeShellScriptBin "local-test" ''
-        yarn run test
-    '';
-
-    abis = pkgs.writeShellScriptBin "abis" ''
-        yarn run abis
+        npm run test
     '';
 
     flush-all = pkgs.writeShellScriptBin "flush-all" ''
@@ -32,23 +28,21 @@ let
 
     ci-test = pkgs.writeShellScriptBin "ci-test" ''
         flush-all
-        yarn install
-        abis
+        npm install
         local-test
     '';
 
     prepare = pkgs.writeShellScriptBin "prepare" ''
         flush-all
-        yarn install
-        abis
+        npm install
     '';
 
     docgen = pkgs.writeShellScriptBin "docgen" ''
-        yarn run docgen
+        npm run docgen
     '';
 
     lint = pkgs.writeShellScriptBin "lint" ''
-        yarn run lint
+        npm run lint
     '';
 
     in
@@ -62,7 +56,6 @@ let
             local-node
             local-fork
             local-test
-            abis
             ci-test
             prepare
             flush-all
@@ -73,6 +66,6 @@ let
         shellHook = ''
             export PATH=$( npm bin ):$PATH
             # keep it fresh
-            yarn install
+            npm install
         '';
     }

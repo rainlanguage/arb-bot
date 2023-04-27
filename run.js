@@ -27,7 +27,7 @@ const main = async() => {
         process.env.BOT_WALLET_PRIVATEKEY = args[args.indexOf('-p') + 1]
     }
     if (args.indexOf('--rpc-url') > -1) {
-        process.env.RPC_URL = args[args.indexOf('--rpc') + 1]
+        process.env.RPC_URL = args[args.indexOf('--rpc-url') + 1]
     }
     else if (args.indexOf('-r') > -1) {
         process.env.RPC_URL = args[args.indexOf('-r') + 1]

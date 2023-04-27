@@ -3,6 +3,7 @@
 yarn.lock
 .env
 ./src/abis
+*.json
 
 ## Generated
 node_modules
