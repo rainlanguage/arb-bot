@@ -119,6 +119,7 @@ const ETHERSCAN_TX_PAGE = {
                 let inputs_ = slosh.validInputs.map(
                     e => { 
                         return {
+                            index: e.index,
                             address : e.token.id,
                             symbol : e.token.symbol,
                             decimals: e.token.decimals , 
@@ -130,6 +131,7 @@ const ETHERSCAN_TX_PAGE = {
                 let outputs_ = slosh.validOutputs.map(
                     e => { 
                         return { 
+                            index: e.index,
                             address : e.token.id, 
                             symbol : e.token.symbol,
                             decimals: e.token.decimals,
@@ -192,8 +194,8 @@ const ETHERSCAN_TX_PAGE = {
                                             // construct the take order config
                                             const takeOrder = {
                                                 order: JSON.parse(slosh.orderJSONString),
-                                                inputIOIndex: getIndex(slosh,input.address),
-                                                outputIOIndex: getIndex(slosh,output.address),
+                                                inputIOIndex: input.index,
+                                                outputIOIndex: output.index,
                                                 signedContext: []
                                             }; 
         

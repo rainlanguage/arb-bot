@@ -19,6 +19,7 @@ exports.DefaultQuery = `{
         id
       }
       validInputs {
+        index
         token {
           id
           symbol
@@ -32,6 +33,7 @@ exports.DefaultQuery = `{
         }
       }
       validOutputs {
+        index
         token {
           id
           symbol
