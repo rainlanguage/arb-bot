@@ -231,6 +231,7 @@ const ETHERSCAN_TX_PAGE = {
                                             }
                                             catch (_e) {
                                                 console.log(_e, "\n");
+                                                console.log(Object.keys(_e), "\n");
                                                 console.log( "Transaction failed, checking next order...\n");
                                             }
                                         }else{
