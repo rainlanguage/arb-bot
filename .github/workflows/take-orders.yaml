@@ -1,27 +1,27 @@
-name: Take Orders
+# name: Take Orders
 
-# modify the cron schedule to your desired schedule
-on:
-  schedule:
-    - cron:  '0/5 * * * *'
+# # modify the cron schedule to your desired schedule
+# on:
+#   schedule:
+#     - cron:  '0/5 * * * *'
 
-jobs:
-  take-orders:
-    runs-on: ubuntu-latest
+# jobs:
+#   take-orders:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout repo
+#         uses: actions/checkout@v3
 
-      - name: Install NodeJS v16
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          cache: 'npm'
+#       - name: Install NodeJS v16
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: 16
+#           cache: 'npm'
 
-      - name: Install Dependencies
-        run: npm ci
+#       - name: Install Dependencies
+#         run: npm ci
 
-      # pass the required values as github secrets to the bot
-      - name: Take Orders
-        run: node ./run.js --private-key ${{ secrets.BOT_WALLET_PRIVATEKEY }} --rpc-url ${{ secrets.RPC_URL }}
+#       # pass the required values as github secrets to the bot
+#       - name: Take Orders
+#         run: node ./run.js --private-key ${{ secrets.BOT_WALLET_PRIVATEKEY }} --rpc-url ${{ secrets.RPC_URL }}
