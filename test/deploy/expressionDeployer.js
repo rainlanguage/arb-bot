@@ -1,22 +1,18 @@
 const { OpMeta } = require("./meta");
-const { ethers } = require("hardhat");
-const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./rainterpreter");
+const { basicDeploy } = require("../utils");
+const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./rainterpreterDeploy");
 const ExpressionDeployerArtifact = require("../abis/RainterpreterExpressionDeployer.json");
 
 
 exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store) => {
-    const config = {
-        interpreter: interpreter.address,
-        store: store.address,
-        meta: OpMeta,
-    };
-    const factory = await ethers.getContractFactory(
-        ExpressionDeployerArtifact.abi,
-        ExpressionDeployerArtifact.bytecode
+    return await basicDeploy(
+        ExpressionDeployerArtifact,
+        {
+            interpreter: interpreter.address,
+            store: store.address,
+            meta: OpMeta,
+        }
     );
-    const contract = await factory.deploy(config);
-    await contract.deployed();
-    return contract;
 };
 
 exports.getTouchDeployer = async() => {

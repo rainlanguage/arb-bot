@@ -1,11 +1,11 @@
 const { ethers } = require("hardhat");
 const { strict: assert } = require("assert");
-const { getEventArgs } = require("../utils");
 const { cloneFactoryDeploy } = require("./cloneDeploy");
+const { getEventArgs, basicDeploy } = require("../utils");
 const ZeroExOrderBookFlashBorrowerArtifact = require("../../src/abis/ZeroExOrderBookFlashBorrower.json");
 
 
-exports.zeroExCloneDeploy = async (
+exports.zeroExCloneDeploy = async(
     expressionDeployer,
     orderbookAddress,
     proxyAddress,
@@ -21,17 +21,12 @@ exports.zeroExCloneDeploy = async (
             evaluableConfig
         }]
     );
-    const cloneFactory = await cloneFactoryDeploy(expressionDeployer);
 
-    const factory = await ethers.getContractFactory(
-        ZeroExOrderBookFlashBorrowerArtifact.abi,
-        ZeroExOrderBookFlashBorrowerArtifact.bytecode
-    );
-    const contract = await factory.deploy();
-    await contract.deployed();
+    const cloneFactory = await cloneFactoryDeploy(expressionDeployer);
+    const arb = await basicDeploy(ZeroExOrderBookFlashBorrowerArtifact);
 
     const zeroExClone = await cloneFactory.clone(
-        contract.address,
+        arb.address,
         encodedConfig
     );
     const cloneEvent = await getEventArgs(

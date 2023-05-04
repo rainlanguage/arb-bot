@@ -1,5 +1,5 @@
 {
-    "name": "@beehiveinnovation/rain-arb-bot",
+    "name": "@rainprotocol/arb-bot",
     "version": "0.0.0",
     "description": "A nodejs app that clears Rain orderbook orders against 0x liquididty",
     "author": "Beehive Innovation",

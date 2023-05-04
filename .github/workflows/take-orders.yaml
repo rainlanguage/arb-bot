@@ -24,4 +24,4 @@ jobs:
 
       # pass the required values as github secrets to the bot
       - name: Take Orders
-        run: node ./run.js --key ${{ secrets.BOT_WALLET_PRIVATEKEY }} --rpc ${{ secrets.RPC_URL }}
+        run: node ./run.js -k ${{ secrets.BOT_WALLET_PRIVATEKEY }} -r ${{ secrets.RPC_URL }} --orderbook-address 0x2de560ed9ba8a6cdfe92e26862ecb86e6e2d9705 --arb-address 0x34485f25bac528628ece186eac6c32e38ea75d12

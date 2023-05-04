@@ -6,16 +6,19 @@ const { clear, query } = require("./src");
 const { version } = require("./package.json");
 
 
-const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
 const DEFAULT_OPTIONS = {
     key: process?.env?.BOT_WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
+    slippage: "0.001",    // 0.1%
+    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/rainorderbook"
 };
 
 const getOptions = async argv => {
     const commandOptions = new Command("node run.js")
         .option("-k, --key <string>", "Private key of wallet that performs the transactions. Will override the 'WALLET_KEY' in '.env' file")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file")
+        .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%")
+        .option("--subgraph-url <url>", "The subgraph endpoint url used to fetch order details from")
         .option("--orderbook-address <string>", "Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file")
         .option("--arb-address <string>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
         .version(version)
@@ -24,16 +27,20 @@ const getOptions = async argv => {
 
     commandOptions.key = commandOptions.key || DEFAULT_OPTIONS.key;
     commandOptions.rpc = commandOptions.rpc || DEFAULT_OPTIONS.rpc;
+    commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
+    commandOptions.subgraphUrl = commandOptions.subgraphUrl || DEFAULT_OPTIONS.subgraphUrl;
 
     return commandOptions;
 };
 
 const main = async argv => {
+    const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const options = await getOptions(argv);
-
     if (!options.key) throw "undefined wallet private key";
     if (!/^[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     if (!options.rpc) throw "undefined RPC URL";
+    if (!/^\d+(\.\d+)?$/.test(options.slippage)) throw "invalid slippage value";
+    if (!options.subgraphUrl.startsWith("https://api.thegraph.com/subgraphs/name/")) throw "invalid subgraph endpoint URL";
 
     const provider = new ethers.providers.JsonRpcProvider(options.rpc);
     const signer = new ethers.Wallet(options.key, provider);
@@ -56,8 +63,12 @@ const main = async argv => {
     if (!config.arbAddress) throw "undefined arb contract address";
     if (!AddressPattern.test(config.arbAddress)) throw "invalid arb contract address";
 
-    const queryResults = await query("https://api.thegraph.com/subgraphs/name/siddharth2207/rainorderbook");
-    await clear(signer, config, queryResults);
+    await clear(
+        signer,
+        config,
+        await query(options.subgraphUrl),
+        options.slippage
+    );
 };
 
 main(

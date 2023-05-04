@@ -1,28 +1,20 @@
 const axios = require("axios");
 const ethers = require("ethers");
 const { DefaultQuery } = require("./query");
-const { interpreterEval, getOrderStruct } = require("./utils");
 const { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
 const { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
+const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE } = require("./utils");
 
-
-const MAX_UINT_256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-const ETHERSCAN_TX_PAGE = {
-    1:          "https://etherscan.io/tx/",
-    5:          "https://goerli.etherscan.io/tx/",
-    10:         "https://optimistic.etherscan.io/tx/",
-    56:         "https://bscscan.com/tx/",
-    137:        "https://polygonscan.com/tx/",
-    250:        "https://ftmscan.com/tx/",
-    42161:      "https://arbiscan.io/tx/",
-    42220:      "https://celoscan.io/tx/",
-    43114:      "https://snowtrace.io/tx/",
-    524289:     "https://mumbai.polygonscan.com/tx/"
-};
 
 /**
  * Builds initial 0x requests bodies from token addresses that is required
- * for getting token prices with least amount of hits possible.
+ * for getting token prices with least amount of hits possible and that is
+ * to pair up tokens in a way that each show up only once in a request body
+ * so that the number of requests will be: "number-of-tokens / 2" at best or
+ * "(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
+ * This way the responses will include the "rate" for sell/buy tokens to native
+ * network token which will be used to estimate the initial price of all possible
+ * token pair combinations.
  *
  * @param {string} api - The 0x API endpoint URL
  * @param {any[]} quotes - The array that keeps the quotes
@@ -399,7 +391,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                             // this makes sure the cleared order amount will exactly match the 0x quote
                             minimumInput: bundledQuoteAmount,
                             maximumInput: bundledQuoteAmount,
-                            maximumIORatio: MAX_UINT_256,
+                            maximumIORatio: ethers.constants.MaxUint256,
                             orders: bundledOrders[i].takeOrders.map(v => v.takeOrder),
                         };
 
@@ -460,7 +452,8 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
 
                                     // filter out upcoming take orders matching current cleared order
                                     if (i + 1 < bundledOrders.length) console.log(
-                                        ">>> Updating upcoming bundled orders..."
+                                        ">>> Updating upcoming bundled orders...",
+                                        "\n"
                                     );
                                     for (let j = i + 1; j < bundledOrders.length; j++) {
                                         bundledOrders[j].takeOrders = bundledOrders[j].takeOrders
