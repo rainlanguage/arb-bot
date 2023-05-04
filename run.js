@@ -1,8 +1,8 @@
 require("dotenv").config();
 const ethers = require("ethers");
-const { clear } = require("./src");
 const CONFIG = require("./config.json");
 const { Command } = require("commander");
+const { clear, query } = require("./src");
 const { version } = require("./package.json");
 
 
@@ -56,7 +56,8 @@ const main = async argv => {
     if (!config.arbAddress) throw "undefined arb contract address";
     if (!AddressPattern.test(config.arbAddress)) throw "invalid arb contract address";
 
-    await clear(signer, config);
+    const queryResults = await query("https://api.thegraph.com/subgraphs/name/siddharth2207/rainorderbook");
+    await clear(signer, config, queryResults);
 };
 
 main(
