@@ -458,10 +458,11 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                         clearedOrders: bundledOrders[i].takeOrders
                                     });
 
+                                    // filter out upcoming take orders matching current cleared order
+                                    if (i + 1 < bundledOrders.length) console.log(
+                                        ">>> Updating upcoming bundled orders..."
+                                    );
                                     for (let j = i + 1; j < bundledOrders.length; j++) {
-                                        // filter out upcoming take orders matching current cleared order
-                                        console.log(">>> Updating upcoming bundled orders...");
-
                                         bundledOrders[j].takeOrders = bundledOrders[j].takeOrders
                                             .filter(v => {
                                                 for (const item of bundledOrders[i].takeOrders) {
