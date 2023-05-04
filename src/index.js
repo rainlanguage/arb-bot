@@ -433,7 +433,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 try {
                                     const receipt = await tx.wait(1);
                                     console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully!`);
-                                    console.log(`Clear price: ${txQuote.price}`;
+                                    console.log(`Clear price: ${txQuote.price}`);
                                     console.log(`Clear amount: ${
                                         ethers.utils.formatUnits(
                                             bundledQuoteAmount,
