@@ -278,9 +278,8 @@ describe("Rain Arb Bot Test", async function () {
             [USDT, USDC, DAI, FRAX]
         ));
 
-        console.log(await bot.getBalance(), "hey;");
-        const x = await clear(bot, config, sgOrders, undefined, false);
-        console.log(x);
-        console.log(await bot.getBalance());
+        // console.log(await bot.getBalance());
+        console.log(await clear(bot, config, sgOrders, undefined, false));
+        // console.log(await bot.getBalance());
     });
 });
