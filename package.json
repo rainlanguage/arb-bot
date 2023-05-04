@@ -6,13 +6,13 @@
     "license": "CAL-1.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/beehive-innovation/arb-bot.git"
+        "url": "https://github.com/rainprotocol/arb-bot.git"
     },
     "keywords": [],
     "bugs": {
-        "url": "https://github.com/beehive-innovation/arb-bot/issues"
+        "url": "https://github.com/rainprotocol/arb-bot/issues"
     },
-    "homepage": "https://github.com/beehive-innovation/arb-bot/",
+    "homepage": "https://github.com/rainprotocol/arb-bot/",
     "main": "./run.js",
     "files": [
         "src",
@@ -23,7 +23,7 @@
     ],
     "scripts": {
         "test": "hardhat test",
-        "docgen": "./node_modules/.bin/jsdoc -c jsdoc.config.json",
+        "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",
         "lint": "eslint ./src ./test ./run.js",
         "lint-fix": "eslint ./src ./test ./run.js --fix"
     },
@@ -45,6 +45,7 @@
         "hardhat-storage-layout": "^0.1.6",
         "jsdoc": "^4.0.0",
         "jsdoc-to-markdown": "^7.1.1",
-        "mocha": "^10.1.0"
+        "mocha": "^10.1.0",
+        "rimraf": "^5.0.0"
     }
 }
