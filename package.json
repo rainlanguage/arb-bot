@@ -1,6 +1,6 @@
 {
     "name": "@rainprotocol/arb-bot",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "NodeJS app that clears Rain orderbook orders against 0x liquididty",
     "author": "Rain Protocol",
     "license": "CAL-1.0",
