@@ -20,8 +20,8 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       # pass the required values as github secrets to the bot
       - name: Take Orders
-        run: node ./run.js --private-key ${{ secrets.BOT_WALLET_PRIVATEKEY }} --rpc-url ${{ secrets.RPC_URL }}
+        run: node ./run.js --key ${{ secrets.BOT_WALLET_PRIVATEKEY }} --rpc ${{ secrets.RPC_URL }}

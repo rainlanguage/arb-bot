@@ -1,12 +1,10 @@
-const { ethers } = require("hardhat");
 const { OpMeta } = require("./meta");
-const ExpressionDeployerArtifact = require("../abis/RainterpreterExpressionDeployer.json");
+const { ethers } = require("hardhat");
 const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./rainterpreter");
-// const { basicDeploy } = require("../utils");
+const ExpressionDeployerArtifact = require("../abis/RainterpreterExpressionDeployer.json");
 
 
 exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store) => {
-    console.log(ethers.utils.keccak256(OpMeta));
     const config = {
         interpreter: interpreter.address,
         store: store.address,
@@ -19,10 +17,6 @@ exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store) => {
     const contract = await factory.deploy(config);
     await contract.deployed();
     return contract;
-    // return await basicDeploy(
-    //     ExpressionDeployerArtifact,
-    //     config
-    // );
 };
 
 exports.getTouchDeployer = async() => {

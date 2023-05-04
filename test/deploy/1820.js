@@ -1,6 +1,5 @@
-// const { SignerWithAddress } = require("@nomiclabs/hardhat-ethers/signers");
-// const { Signer } = require("ethers");
 const { ethers } = require("hardhat");
+
 
 exports.deploy1820 = async(signer) => {
     const SIGNATURE_ADDRESS = "0xa990077c3205cbDf861e17Fa532eeB069cE9fF96";

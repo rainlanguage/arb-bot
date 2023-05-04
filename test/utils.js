@@ -2,6 +2,16 @@ const { ethers } = require("hardhat");
 
 
 /**
+ * Addresses with token balance to get from with impersonation
+ */
+exports.AddressWithBalance = {
+    usdc:   "0xc47919bbF3276a416Ec34ffE097De3C1D0b7F1CD",
+    usdt:   "0x555e179d64335945fc6b155b7235a31b0a595542",
+    dai:    "0x4aac95EBE2eA6038982566741d1860556e265F8B",
+    frax:   "0x97ee4eD562c7eD22F4Ff7dC3FC4A24B5F0B9627e"
+};
+
+/**
  * Deploys a simple contracts that takes no arguments for deployment
  *
  * @param {object} artifact - The compiled contract artifact
@@ -91,13 +101,106 @@ exports.randomUint256 = () => {
 /**
  * Builds an EvaluableConfig struct with expressionConfig and a store.
  *
- * @param expressionDeployer - The ExpressionDeployer contract instance
- * @param expressionConfig - The ExpressionConfig struct
+ * @param {ethers.Contract} expressionDeployer - The ExpressionDeployer contract instance
+ * @param {object} expressionConfig - The ExpressionConfig struct
  * @returns The evalubaleConfig struct
  */
 exports.generateEvaluableConfig = (expressionDeployer, expressionConfig) => {
     return {
         deployer: expressionDeployer.address,
         ...expressionConfig
+    };
+};
+
+/**
+ * Encodes an string
+ * @param {string} data - The data to encode
+ * @returns The encoded data as hex string
+ */
+exports.encodeMeta = (data) => {
+    return (
+        "0x" +
+        BigInt(0xff0a89c674ee7874n).toString(16).toLowerCase() +
+        ethers.utils.hexlify(ethers.utils.toUtf8Bytes(data)).split("x")[1]
+    );
+};
+
+/**
+ * Constructs subgraph-like query results from an addOrder event
+ *
+ * @param {any} eventArgs - The addOrder event arguments
+ * @param {ethers.Contract} orderbook - The orderbook contract instance
+ * @param {ethers.Contract[]} tokens - The tokens contracts
+ * @returns An array of order details in form of subgraph query result
+ */
+exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
+    const inputDetails = [];
+    const outputDetails = [];
+    for (let i = 0; i < eventArgs.order.validInputs.length; i++) {
+        inputDetails.push({
+            symbol: await (tokens.find(e =>
+                e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase()
+            )).symbol(),
+            balance: await orderbook.vaultBalance(
+                eventArgs.order.owner,
+                eventArgs.order.validInputs[i].token,
+                eventArgs.order.validInputs[i].vaultId.toString()
+            )
+        });
+    }
+    for (let i = 0; i < eventArgs.order.validOutputs.length; i++) {
+        outputDetails.push({
+            symbol: await (tokens.find(e =>
+                e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase()
+            )).symbol(),
+            balance: await orderbook.vaultBalance(
+                eventArgs.order.owner,
+                eventArgs.order.validOutputs[i].token,
+                eventArgs.order.validOutputs[i].vaultId.toString()
+            )
+        });
+    }
+
+    return {
+        id: eventArgs.orderHash.toHexString().toLowerCase(),
+        handleIO: eventArgs.order.handleIO,
+        expression: eventArgs.order.evaluable.expression.toLowerCase(),
+        interpreter: eventArgs.order.evaluable.interpreter.toLowerCase(),
+        interpreterStore: eventArgs.order.evaluable.store.toLowerCase(),
+        owner: {
+            id: eventArgs.order.owner.toLowerCase()
+        },
+        validInputs: eventArgs.order.validInputs.map((v, i) => {
+            return {
+                index: i,
+                token: {
+                    id: v.token.toLowerCase(),
+                    decimals: v.decimals,
+                    symbol: inputDetails[i].symbol
+                },
+                tokenVault: {
+                    balance: inputDetails[i].balance.toString()
+                },
+                vault: {
+                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
+                }
+            };
+        }),
+        validOutputs: eventArgs.order.validOutputs.map((v, i) => {
+            return {
+                index: i,
+                token: {
+                    id: v.token.toLowerCase(),
+                    decimals: v.decimals,
+                    symbol: outputDetails[i].symbol
+                },
+                tokenVault: {
+                    balance: outputDetails[i].balance.toString()
+                },
+                vault: {
+                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
+                }
+            };
+        })
     };
 };

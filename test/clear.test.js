@@ -1,202 +1,286 @@
-/* eslint-disable no-undef */
-require("dotenv").config();
-// const ethers = require("ethers");
-const { ethers } = require("hardhat");
 // const { expect } = require("chai");
-// const { clear } = require("../src");
-const { generateEvaluableConfig } = require("./utils");
-const { deploy1820 } = require("./deploy/1820");
+const { clear } = require("../src");
+const { ethers } = require("hardhat");
 const CONFIG = require("../config.json");
-const ERC20Artifact = require("./abis/IERC20Upgradeable.json");
-const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreter");
-const { rainterpreterExpressionDeployerDeploy } = require("./deploy/expressionDeployer");
+const { zeroExCloneDeploy } = require("./deploy/arb");
 const { deployOrderBook } = require("./deploy/orderbook");
-const { zeroExDeploy } = require("./deploy/arb");
+const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
+const { rainterpreterExpressionDeployerDeploy } = require("./deploy/expressionDeployer");
+const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreter");
+const {
+    encodeMeta,
+    getEventArgs,
+    randomUint256,
+    mockSgFromEvent,
+    AddressWithBalance,
+    generateEvaluableConfig
+} = require("./utils");
 
-// const proxy = "0xdef1c0ded9bec7f1a1670819833240f027b25eff";
-// const max_uint256 = ethers.constants.MaxUint256;
-// const zero = ethers.constants.Zero;
 
-describe("Arbitrage Bot Test", async function () {
+describe("Rain Arb Bot Test", async function () {
     let interpreter,
         store,
         expressionDeployer,
         orderbook,
         arb,
         USDT,
+        USDTDecimals,
         USDC,
-        BUSD,
+        USDCDecimals,
         FRAX,
+        FRAXDecimals,
         DAI,
+        DAIDecimals,
         bot,
+        owners,
         config;
 
     before(async () => {
-        // Deploy ERC1820Registry
-        const signers = await ethers.getSigners();
-        bot = signers[0];
+        [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
-        await deploy1820(bot);
 
+        // deploy contracts
         interpreter = await rainterpreterDeploy();
-        console.log(interpreter.address);
         store = await rainterpreterStoreDeploy();
-        console.log(store.address);
         expressionDeployer = await rainterpreterExpressionDeployerDeploy(
             interpreter,
             store
         );
-        console.log(expressionDeployer.address);
-
         orderbook = await deployOrderBook(expressionDeployer);
-        // arb = await zeroExDeploy(
-        //     orderbook,
-        //     config.proxyAddress,
-        //     generateEvaluableConfig(
-        //         expressionDeployer,
-        //         {
-        //             constants: [bot.address],
-        //             sources: ["0x000c0001000c0000000400000027000000170001"]
-        //         }
-        //     )
-        // );
+        arb = await zeroExCloneDeploy(
+            expressionDeployer,
+            orderbook.address,
+            config.proxyAddress,
+            generateEvaluableConfig(
+                expressionDeployer,
+                {
+                    constants: [bot.address],
+                    sources: ["0x000c0001000c0000000400000027000000170001"]
+                }
+            )
+        );
 
+        // update config with new addresses
+        config.arbAddress = arb.address;
+        config.orderbookAddress = orderbook.address;
+
+        // get token contract instances
         USDT = await ethers.getContractAt(
             ERC20Artifact.abi,
             config.stableTokens.find(v => v.symbol === "USDT").address
         );
+        USDTDecimals = config.stableTokens.find(v => v.symbol === "USDT").decimals;
         USDC = await ethers.getContractAt(
             ERC20Artifact.abi,
             config.stableTokens.find(v => v.symbol === "USDC").address
         );
-        BUSD = await ethers.getContractAt(
-            ERC20Artifact.abi,
-            config.stableTokens.find(v => v.symbol === "BUSD").address
-        );
+        USDCDecimals = config.stableTokens.find(v => v.symbol === "USDC").decimals;
         DAI = await ethers.getContractAt(
             ERC20Artifact.abi,
             config.stableTokens.find(v => v.symbol === "DAI").address
         );
+        DAIDecimals = config.stableTokens.find(v => v.symbol === "DAI").decimals;
         FRAX = await ethers.getContractAt(
             ERC20Artifact.abi,
             config.stableTokens.find(v => v.symbol === "FRAX").address
         );
+        FRAXDecimals = config.stableTokens.find(v => v.symbol === "FRAX").decimals;
+
+        // impersonate addresses with large token balances to fund the owners 1 2 3
+        // accounts with 1000 tokens each used for topping up the order vaults
+        const USDCHolder = await ethers.getImpersonatedSigner(AddressWithBalance.usdc);
+        const USDTHolder = await ethers.getImpersonatedSigner(AddressWithBalance.usdt);
+        const DAIHolder = await ethers.getImpersonatedSigner(AddressWithBalance.dai);
+        const FRAXHolder = await ethers.getImpersonatedSigner(AddressWithBalance.frax);
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5.0"),
+            to: USDTHolder.address
+        });
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5.0"),
+            to: USDCHolder.address
+        });
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5.0"),
+            to: DAIHolder.address
+        });
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5.0"),
+            to: FRAXHolder.address
+        });
+        for (let i = 0; i < 3; i++) {
+            await USDT.connect(USDTHolder).transfer(owners[i].address, "1000" + "0".repeat(USDTDecimals));
+            await USDC.connect(USDCHolder).transfer(owners[i].address, "1000" + "0".repeat(USDCDecimals));
+            await DAI.connect(DAIHolder).transfer(owners[i].address, "1000" + "0".repeat(DAIDecimals));
+            await FRAX.connect(FRAXHolder).transfer(owners[i].address, "1000" + "0".repeat(FRAXDecimals));
+        }
     });
 
-    it("should find an arbitrage trade against an order and successfully execute it", async function () {
-        // Impersonate the taker account so that we can submit the quote transaction
-        // const slosher = await network.provider.request({
-        //     method: 'hardhat_impersonateAccount',
-        //     params: [takerAddress]
-        // });
-        // const slosher = await hardhat.getImpersonatedSigner(
-        //     "0xc47919bbF3276a416Ec34ffE097De3C1D0b7F1CD"
-        // );
+    it("should bundle and clear orders successfully", async function () {
 
-        console.log(await USDC.balanceOf(bot.address));
-        await USDC.approve(bot.address, ethers.constants.MaxUint256);
-        await USDC.transferFrom(USDC.address, bot.address, "10000000000");
-        console.log(await USDC.balanceOf(bot.address));
+        // set up vault ids
+        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
 
-        // // bot wallet as signer
-        // const bot = (await hardhat.getSigners())[0]
+        // topping up owners 1 2 3 vaults with 100 of each token
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: USDC.address,
+                vaultId: USDC_vaultId,
+                amount: "100" + "0".repeat(USDCDecimals),
+            };
+            await USDC
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: USDT.address,
+                vaultId: USDT_vaultId,
+                amount: "100" + "0".repeat(USDTDecimals),
+            };
+            await USDT
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: DAI.address,
+                vaultId: DAI_vaultId,
+                amount: "100" + "0".repeat(DAIDecimals),
+            };
+            await DAI
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: FRAX.address,
+                vaultId: FRAX_vaultId,
+                amount: "100" + "0".repeat(FRAXDecimals),
+            };
+            await FRAX
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
 
-        // // instantiating orderBook and arb contracts
-        // const orderBook = await basicDeploy("OrderBook");
-        // const arbFactory = await ethers.getContractFactory("ZeroExOrderBookFlashBorrower", slosher)
-        // const arb = await arbFactory.deploy(orderBook.address, proxy);
-        // await arb.deployed();
+        const sgOrders = [];
+        const expConfig = {
+            constants: [
+                ethers.constants.MaxUint256.toHexString(),  // max output
+                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+            ],
+            sources: ["0x000c0001000c0003", "0x"]
+        };
 
-        // // building order config
-        // const slosherVault = ethers.BigNumber.from(1);
-        // const threshold = ethers.BigNumber.from("900000000000000000"); // 0.9 below 1, for the pupose of the test
-        // const constants = [max_uint256, threshold];
-        // const vMaxAmount = op(AllStandardOps.READ_MEMORY, memoryOperand(MemoryType.Constant, 0));
-        // const vThreshold = op(AllStandardOps.READ_MEMORY, memoryOperand(MemoryType.Constant, 1));
-        // const source = ethers.utils.concat([
-        //     vMaxAmount,
-        //     vThreshold,
-        // ]);
+        const EvaluableConfig = generateEvaluableConfig(
+            expressionDeployer,
+            expConfig
+        );
 
-        // // slosher's order says she will give anyone 1 DAI who can give her 0.9 FRAX
-        // const orderConfig = {
-        //     interpreter: interpreter.address,
-        //     expressionDeployer: expressionDeployer.address,
-        //     validInputs: [
-        //         { token: FRAX.address, vaultId: slosherVault },
-        //         { token: DAI.address, vaultId: slosherVault }
-        //     ],
-        //     validOutputs: [
-        //         { token: DAI.address, vaultId: slosherVault },
-        //         { token: FRAX.address, vaultId: slosherVault }
-        //     ],
-        //     interpreterStateConfig: {
-        //         sources: [source, []],
-        //         constants: constants,
-        //     },
-        // };
+        // add orders
+        const owner1_order1 = {
+            validInputs: [
+                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
+                { token: DAI.address, decimals: DAIDecimals, vaultId: DAI_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner1_order1"),
+        };
+        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner1_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
 
-        // // add order
-        // const txAddOrderSlosher = await orderBook
-        //     .connect(slosher)
-        //     .addOrder(orderConfig);
+        const owner1_order2 = {
+            validInputs: [
+                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner1_order2"),
+        };
+        const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner1_order2,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
 
-        // // geting the order event
-        // const { order: askConfig } = (await getEventArgs(
-        //     txAddOrderSlosher,
-        //     "AddOrder",
-        //     orderBook
-        // ));
+        const owner2_order1 = {
+            validInputs: [
+                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner2_order1"),
+        };
+        const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner2_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
 
-        // // using emitted order config to build takeOrder config
-        // const takeOrderStruct = {
-        //     owner: askConfig.owner,
-        //     interpreter: askConfig.interpreter,
-        //     dispatch: askConfig.dispatch,
-        //     handleIODispatch: askConfig.handleIODispatch,
-        //     validInputs: askConfig.validInputs,
-        //     validOutputs: askConfig.validOutputs
-        // }
+        const owner3_order1 = {
+            validInputs: [
+                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner3_order1"),
+        };
+        const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner3_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
 
-        // // Slosher deposits DAI into her output vault
-        // const amountDAI = ethers.BigNumber.from("1000000000000000000");
-
-        // // await DAI.transfer(slosher.address, amountDAI);
-        // const depositConfigStructAlice = {
-        //     token: DAI.address,
-        //     vaultId: slosherVault,
-        //     amount: amountDAI,
-        // };
-
-        // await DAI.connect(slosher).approve(
-        //     orderBook.address,
-        //     depositConfigStructAlice.amount
-        // );
-
-        // // Slosher deposits
-        // await orderBook
-        //     .connect(slosher)
-        //     .deposit(depositConfigStructAlice);
-
-
-        // // mocking subgraph data for matchmaker bot
-        // const sgMock = {
-        //     stateConfig: {
-        //         sources: [source],
-        //         constants: constants,
-        //     },
-        //     validInputs: [
-        //         { tokenVault: { balance: zero, vaultId: slosherVault, token: { id: FRAX.address, symbol: "FRAX" }}},
-        //         { tokenVault: { balance: zero, vaultId: slosherVault, token: { id: DAI.address, symbol: "DAI" }}}
-        //     ],
-        //     validOutputs: [
-        //         { tokenVault: { balance: amountDAI, vaultId: slosherVault, token: { id: DAI.address, symbol: "DAI" }}},
-        //         { tokenVault: { balance: zero, vaultId: slosherVault, token: { id: FRAX.address, symbol: "FRAX" }}}
-        //     ]
-        // };
-
-        // // initiating matchmaker bot to find a arb trade
-        // let result = await ArbBot(bot, arb, proxy, [sgMock], [takeOrderStruct], slosher)
-        // expect(result).to.equal("success")
+        console.log(await bot.getBalance(), "hey;");
+        const x = await clear(bot, config, sgOrders, undefined, false);
+        console.log(x);
+        console.log(await bot.getBalance());
     });
 });
