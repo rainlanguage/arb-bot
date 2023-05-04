@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Home</title>
+    <title>JSDoc: Source: query.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,32 +17,63 @@
 
 <div id="main">
 
-    <h1 class="page-title">Home</h1>
+    <h1 class="page-title">Source: query.js</h1>
 
     
 
 
 
     
-
-
-    <h3> </h3>
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The default query used in the matchmaker bot to fetch the orders from subgraph
+ */
+exports.DefaultQuery = `{
+    orders(
+        where: {orderActive: true}
+    ) {
+        id
+        handleIO 
+        expression
+        interpreter
+        interpreterStore
+        orderJSONString
+        owner {
+            id
+        }
+        validInputs(orderBy: index, orderDirection: asc) {
+            index
+            token {
+                id
+                decimals
+                symbol
+            }
+            tokenVault {
+                balance
+            }
+            vault {
+                id
+            }
+        }
+        validOutputs(orderBy: index, orderDirection: asc) {
+            index
+            token {
+                id
+                decimals
+                symbol
+            }
+            tokenVault {
+                balance
+            }
+            vault {
+                id
+            }
+        }
+    }
+}`;</code></pre>
+        </article>
+    </section>
 
 
 

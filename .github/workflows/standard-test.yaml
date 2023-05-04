@@ -1,0 +1,28 @@
+name: Standard Test
+on: [push, pull_request]
+jobs:
+  build-lint-test:
+    name: Build, lint, test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Install NodeJS v16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Test Docs Generation
+        run: npm run docgen

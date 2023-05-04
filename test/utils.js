@@ -1,107 +1,40 @@
-const hardhat = require('hardhat');
-const utils = require('ethers').utils;
-// eslint-disable-next-line no-unused-vars
-const ethers = require('ethers');
+const { ethers } = require("hardhat");
+
 
 /**
- * Rainterpreter Standard Opcodes
+ * Addresses with token balance to get from with impersonation
  */
-const AllStandardOps = {
-    CHAINLINK_PRICE: 0,
-    CALL: 1,
-    CONTEXT: 2,
-    CONTEXT_ROW: 3,
-    DEBUG: 4,
-    DO_WHILE: 5,
-    FOLD_CONTEXT: 6,
-    LOOP_N: 7,
-    READ_MEMORY: 8,
-    SET: 9,
-    HASH: 10,
-    ERC20_BALANCE_OF: 11,
-    ERC20_TOTAL_SUPPLY: 12,
-    ERC20_SNAPSHOT_BALANCE_OF_AT: 13,
-    ERC20_SNAPSHOT_TOTAL_SUPPLY_AT: 14,
-    IERC721_BALANCE_OF: 15,
-    IERC721_OWNER_OF: 16,
-    IERC1155_BALANCE_OF: 17,
-    IERC1155_BALANCE_OF_BATCH: 18,
-    ENSURE: 19,
-    BLOCK_NUMBER: 20,
-    CALLER: 21,
-    THIS_ADDRESS: 22,
-    BLOCK_TIMESTAMP: 23,
-    EXPLODE32: 24,
-    SCALE18: 25,
-    SCALE18_DIV: 26,
-    SCALE18_MUL: 27,
-    SCALE_BY: 28,
-    SCALEN: 29,
-    ANY: 30,
-    EAGER_IF: 31,
-    EQUAL_TO: 32,
-    EVERY: 33,
-    GREATER_THAN: 34,
-    ISZERO: 35,
-    LESS_THAN: 36,
-    SATURATING_ADD: 37,
-    SATURATING_MUL: 38,
-    SATURATING_SUB: 39,
-    ADD: 40,
-    DIV: 41,
-    EXP: 42,
-    MAX: 43,
-    MIN: 44,
-    MOD: 45,
-    MUL: 46,
-    SUB: 47,
-    IORDERBOOKV1_VAULT_BALANCE: 48,
-    ISALEV2_REMAINING_TOKEN_INVENTORY: 49,
-    ISALEV2_RESERVE: 50,
-    ISALEV2_SALE_STATUS: 51,
-    ISALEV2_TOKEN: 52,
-    ISALEV2_TOTAL_RESERVE_RECEIVED: 53,
-    ITIERV2_REPORT: 54,
-    ITIERV2_REPORT_TIME_FOR_TIER: 55,
-    SATURATING_DIFF: 56,
-    SELECT_LTE: 57,
-    UPDATE_TIMES_FOR_TIER_RANGE: 58,
-    length: 59,
-};
-
-/**
- * READ_MEMORY operand types, ie STATE or STACK
- */
-const MemoryType = {
-    Stack: 0,
-    Constant: 1,
+exports.AddressWithBalance = {
+    usdc:   "0xc47919bbF3276a416Ec34ffE097De3C1D0b7F1CD",
+    usdt:   "0x555e179d64335945fc6b155b7235a31b0a595542",
+    dai:    "0x4aac95EBE2eA6038982566741d1860556e265F8B",
+    frax:   "0x97ee4eD562c7eD22F4Ff7dC3FC4A24B5F0B9627e"
 };
 
 /**
  * Deploys a simple contracts that takes no arguments for deployment
- * 
- * @param {string} name - Name of the contract (reference from artifacts)
+ *
+ * @param {object} artifact - The compiled contract artifact
+ * @param {any[]} args - (optional) The arguments for deploying this contract
  * @returns ethers Contract
  */
-const basicDeploy = async (name) => {
-    const factory = await hardhat.ethers.getContractFactory(name)
-
-    const contract = await factory.deploy()
-    await contract.deployed()
-
-    return contract
+exports.basicDeploy = async (artifact, args = []) => {
+    const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode);
+    const contract = await factory.deploy(...args);
+    await contract.deployed();
+    return contract;
 };
 
 /**
  * Extracts an emitted event from a contract
- * 
+ *
  * @param {ethers.ContractTransaction} tx - transaction where event occurs
  * @param {string} eventName - name of event
  * @param {ethers.Contract} contract - contract object holding the address, filters, interface
  * @param {string} contractAddressOverride - (optional) override the contract address which emits this event
  * @returns Array of events with their arguments, which can each be deconstructed by array index or by object key
  */
-const getEvents = async (
+exports.getEvents = async (
     tx,
     eventName,
     contract,
@@ -111,7 +44,7 @@ const getEvents = async (
         ? contractAddressOverride
         : contract.address;
 
-    const eventObjs = (await tx.wait()).events.filter((x) => 
+    const eventObjs = (await tx.wait()).events.filter((x) =>
         x.topics[0] == contract.filters[eventName]().topics[0] && x.address == address
     );
 
@@ -126,14 +59,14 @@ const getEvents = async (
 
 /**
  * Extracts arguments of an emitted event from a contract
- * 
+ *
  * @param {ethers.ContractTransaction} tx - transaction where event occurs
  * @param {string} eventName - name of event
  * @param {ethers.Contract} contract - contract object holding the address, filters, interface
  * @param {string} contractAddressOverride - (optional) override the contract address which emits this event
  * @returns Event arguments of first matching event, can be deconstructed by array index or by object key
  */
-const getEventArgs = async (
+exports.getEventArgs = async (
     tx,
     eventName,
     contract,
@@ -158,50 +91,116 @@ const getEventArgs = async (
     );
 };
 
+/**
+ * @returns a random 32 byte number in hexstring format
+ */
+exports.randomUint256 = () => {
+    return ethers.utils.hexZeroPad(ethers.utils.randomBytes(32), 32);
+};
 
 /**
- * Converts a value to raw bytes representation. Assumes `value` is less than or equal to 1 byte, unless a desired `bytesLength` is specified.
+ * Builds an EvaluableConfig struct with expressionConfig and a store.
  *
- * @param {number | utils.Hexable | ethers.BytesLike} value - value to convert to raw bytes format
- * @param {number} bytesLength - (defaults to 1) number of bytes to left pad if `value` doesn't completely fill the desired amount of memory. 
- * Will throw `InvalidArgument` error if value already exceeds bytes length.
- * @returns {Uint8Array} - raw bytes representation
+ * @param {ethers.Contract} expressionDeployer - The ExpressionDeployer contract instance
+ * @param {object} expressionConfig - The ExpressionConfig struct
+ * @returns The evalubaleConfig struct
  */
-const bytify = (
-    value,
-    bytesLength = 1
-) => {
-    return utils.zeroPad(utils.hexlify(value), bytesLength);
+exports.generateEvaluableConfig = (expressionDeployer, expressionConfig) => {
+    return {
+        deployer: expressionDeployer.address,
+        ...expressionConfig
+    };
 };
 
 /**
- * Converts an opcode and operand to bytes, and returns their concatenation.
- * @param {number} code - the opcode
- * @param {number} erand - the operand, currently limited to 2 bytes (defaults to 0)
+ * Encodes an string
+ * @param {string} data - The data to encode
+ * @returns The encoded data as hex string
  */
-const op = (
-    code,
-    erand = 0
-) => {
-    return utils.concat([bytify(code, 2), bytify(erand, 2)]);
+exports.encodeMeta = (data) => {
+    return (
+        "0x" +
+        BigInt(0xff0a89c674ee7874n).toString(16).toLowerCase() +
+        ethers.utils.hexlify(ethers.utils.toUtf8Bytes(data)).split("x")[1]
+    );
 };
 
 /**
- * Construct a valid operand for READ_MEMORY opcode
- * 
- * @param {number} type - Specifies the type of the opcode, ie STATE or STACK
- * @param {number} offset - Index of the desired item
- * @returns A number in 1 bytes size
+ * Constructs subgraph-like query results from an addOrder event
+ *
+ * @param {any} eventArgs - The addOrder event arguments
+ * @param {ethers.Contract} orderbook - The orderbook contract instance
+ * @param {ethers.Contract[]} tokens - The tokens contracts
+ * @returns An array of order details in form of subgraph query result
  */
-const memoryOperand = (type, offset) => {
-    return (offset << 1) + type;
-};
+exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
+    const inputDetails = [];
+    const outputDetails = [];
+    for (let i = 0; i < eventArgs.order.validInputs.length; i++) {
+        inputDetails.push({
+            symbol: await (tokens.find(e =>
+                e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase()
+            )).symbol(),
+            balance: await orderbook.vaultBalance(
+                eventArgs.order.owner,
+                eventArgs.order.validInputs[i].token,
+                eventArgs.order.validInputs[i].vaultId.toString()
+            )
+        });
+    }
+    for (let i = 0; i < eventArgs.order.validOutputs.length; i++) {
+        outputDetails.push({
+            symbol: await (tokens.find(e =>
+                e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase()
+            )).symbol(),
+            balance: await orderbook.vaultBalance(
+                eventArgs.order.owner,
+                eventArgs.order.validOutputs[i].token,
+                eventArgs.order.validOutputs[i].vaultId.toString()
+            )
+        });
+    }
 
-exports.AllStandardOps = AllStandardOps;
-exports.MemoryType = MemoryType;
-exports.basicDeploy = basicDeploy;
-exports.getEventArgs = getEventArgs;
-exports.getEvents = getEvents;
-exports.memoryOperand = memoryOperand;
-exports.bytify = bytify;
-exports.op = op;
+    return {
+        id: eventArgs.orderHash.toHexString().toLowerCase(),
+        handleIO: eventArgs.order.handleIO,
+        expression: eventArgs.order.evaluable.expression.toLowerCase(),
+        interpreter: eventArgs.order.evaluable.interpreter.toLowerCase(),
+        interpreterStore: eventArgs.order.evaluable.store.toLowerCase(),
+        owner: {
+            id: eventArgs.order.owner.toLowerCase()
+        },
+        validInputs: eventArgs.order.validInputs.map((v, i) => {
+            return {
+                index: i,
+                token: {
+                    id: v.token.toLowerCase(),
+                    decimals: v.decimals,
+                    symbol: inputDetails[i].symbol
+                },
+                tokenVault: {
+                    balance: inputDetails[i].balance.toString()
+                },
+                vault: {
+                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
+                }
+            };
+        }),
+        validOutputs: eventArgs.order.validOutputs.map((v, i) => {
+            return {
+                index: i,
+                token: {
+                    id: v.token.toLowerCase(),
+                    decimals: v.decimals,
+                    symbol: outputDetails[i].symbol
+                },
+                tokenVault: {
+                    balance: outputDetails[i].balance.toString()
+                },
+                vault: {
+                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
+                }
+            };
+        })
+    };
+};

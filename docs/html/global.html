@@ -142,7 +142,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="defaultQuery.js.html">defaultQuery.js</a>, <a href="defaultQuery.js.html#line4">line 4</a>
+        <a href="query.js.html">query.js</a>, <a href="query.js.html#line4">line 4</a>
     </li></ul></dd>
     
 
@@ -159,16 +159,106 @@
 
 
         
-            
-<h4 class="name" id="avaxTokens"><span class="type-signature"></span>avaxTokens<span class="type-signature"></span></h4>
+    
 
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="bnFromFloat"><span class="type-signature"></span>bnFromFloat<span class="signature">(float, decimals)</span><span class="type-signature"></span></h4>
+    
+
+    
 
 
 
 <div class="description">
-    Tokens and their addresses and decimals of avalanche mainnet used for running tests
+    convert float numbers to big number
 </div>
 
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>float</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">any form of number</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>decimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Decimals point of the number</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -204,7 +294,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="test_avaxTokens.js.html">test/avaxTokens.js</a>, <a href="test_avaxTokens.js.html#line4">line 4</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line11">line 11</a>
     </li></ul></dd>
     
 
@@ -220,11 +310,29 @@
 
 
 
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
         
-    
+<div class="param-desc">
+    ethers BigNumber with decimals point
+</div>
+
+
 
     
-        <h3 class="subsection-title">Methods</h3>
+
+
+
+
 
         
             
@@ -232,7 +340,7 @@
     
 
     
-    <h4 class="name" id="ArbBot"><span class="type-signature"></span>ArbBot<span class="signature">(signer, borrower, proxyAddress, orders, ordersStruct)</span><span class="type-signature"> &rarr; {string}</span></h4>
+    <h4 class="name" id="clear"><span class="type-signature"></span>clear<span class="signature">(signer, config, slippage, prioritization)</span><span class="type-signature"></span></h4>
     
 
     
@@ -240,8 +348,7 @@
 
 
 <div class="description">
-    Exposing the Matchmaker Bot as function for running tests. Bot runns until it
-finds one match for the givven orders and then will return the results.
+    Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them
 </div>
 
 
@@ -283,7 +390,7 @@ finds one match for the givven orders and then will return the results.
             <td class="type">
             
                 
-<span class="param-type">SignerWithAddress</span>
+<span class="param-type">ethers.Signer</span>
 
 
             
@@ -293,60 +400,14 @@ finds one match for the givven orders and then will return the results.
 
             
 
-            <td class="description last">Bot wallet as signer</td>
+            <td class="description last">The ethersjs signer constructed from provided private keys and rpc url provider</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>borrower</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">ethers.Contract</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Address of the 0x Flash Borrower contract</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>proxyAddress</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Address of the 0x proxy contract</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>orders</code></td>
+                <td class="name"><code>config</code></td>
             
 
             <td class="type">
@@ -362,20 +423,20 @@ finds one match for the givven orders and then will return the results.
 
             
 
-            <td class="description last">Orders to run the tests for</td>
+            <td class="description last">The configuration object</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>ordersStruct</code></td>
+                <td class="name"><code>slippage</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">object</span>
+<span class="param-type">number</span>
 
 
             
@@ -385,7 +446,30 @@ finds one match for the givven orders and then will return the results.
 
             
 
-            <td class="description last">TakeOrder Structs for posting into arb contract</td>
+            <td class="description last">(optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>prioritization</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
         </tr>
 
     
@@ -426,7 +510,7 @@ finds one match for the givven orders and then will return the results.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="test_arbBotTest.js.html">test/arbBotTest.js</a>, <a href="test_arbBotTest.js.html#line23">line 23</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line172">line 172</a>
     </li></ul></dd>
     
 
@@ -455,22 +539,203 @@ finds one match for the givven orders and then will return the results.
 
         
 <div class="param-desc">
-    A success or failure
+    The report of details of cleared orders
 </div>
 
 
 
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
+    
+
+
+
+
+
         
-<span class="param-type">string</span>
+            
+
+    
+
+    
+    <h4 class="name" id="estimateProfit"><span class="type-signature"></span>estimateProfit<span class="signature">(txQuote, bundledOrder, gas)</span><span class="type-signature"></span></h4>
+    
+
+    
 
 
-    </dd>
+
+<div class="description">
+    Estimates the profit for a single bundled orders struct
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>txQuote</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">any</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The quote from 0x</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>bundledOrder</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The bundled order object</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>gas</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ethers.BigNumber</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The estimated gas cost</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line127">line 127</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
 </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The estimated profit
+</div>
+
+
 
     
 
@@ -608,7 +873,7 @@ finds one match for the givven orders and then will return the results.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line57">line 57</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line58">line 58</a>
     </li></ul></dd>
     
 
@@ -638,6 +903,969 @@ finds one match for the givven orders and then will return the results.
         
 <div class="param-desc">
     A decimals point BigNumber
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="getOrderStruct"><span class="type-signature"></span>getOrderStruct<span class="signature">(orderDetails)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Constructs Order struct from the result of sg default query
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>orderDetails</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The order details fetched from sg</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line148">line 148</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The order struct as js object
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="initRequests"><span class="type-signature"></span>initRequests<span class="signature">(api, quotes, tokenAddress, tokenDecimals)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Builds initial 0x requests bodies from token addresses that is required
+for getting token prices with least amount of hits possible.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>api</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The 0x API endpoint URL</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>quotes</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;any></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The array that keeps the quotes</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tokenAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The token address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tokenDecimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The token decimals</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line32">line 32</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="interpreterEval"><span class="type-signature"></span>interpreterEval<span class="signature">(interpreter, arbAddress, obAddress, order, inputIndex, outputIndex)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Calls eval for a specific order to get its max output and ratio
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>interpreter</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ethers.Contract</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The interpreter ethersjs contract instance</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>arbAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Arb contract address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>obAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">OrderBook contract address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>order</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The order details fetched from sg</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>inputIndex</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The input token index</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>outputIndex</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The ouput token index</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line79">line 79</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The ratio and maxOuput as BigNumber
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="prepareBundledOrders"><span class="type-signature">(async) </span>prepareBundledOrders<span class="signature">(quotes, bundledOrders, sort)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Prepares the bundled orders by getting the best deals from 0x and sorting the
+bundled orders based on the best deals
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>quotes</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">The 0x request quote bodies</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>bundledOrders</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;any></span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">The bundled orders array</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>sort</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
+            
+
+            <td class="description last">(optional) Sort based on best deals or not</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line69">line 69</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="query"><span class="type-signature"></span>query<span class="signature">(subgraphUrl)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Get the order details from a subgraph
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>subgraphUrl</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The subgraph endpoint URL to query for orders' details</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line149">line 149</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    An array of order details
 </div>
 
 
@@ -778,7 +2006,7 @@ finds one match for the givven orders and then will return the results.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line43">line 43</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line44">line 44</a>
     </li></ul></dd>
     
 
@@ -834,13 +2062,13 @@ finds one match for the givven orders and then will return the results.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#ArbBot">ArbBot</a></li><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#avaxTokens">avaxTokens</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepareBundledOrders">prepareBundledOrders</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.0</a> on Thu Dec 01 2022 01:47:52 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu May 04 2023 02:42:43 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

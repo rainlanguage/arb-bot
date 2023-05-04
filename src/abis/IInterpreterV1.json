@@ -1,0 +1,63 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IInterpreterV1",
+  "sourceName": "lib/rain.interface.interpreter/src/IInterpreterV1.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IInterpreterStoreV1",
+          "name": "store",
+          "type": "address"
+        },
+        {
+          "internalType": "StateNamespace",
+          "name": "namespace",
+          "type": "uint256"
+        },
+        {
+          "internalType": "EncodedDispatch",
+          "name": "dispatch",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256[][]",
+          "name": "context",
+          "type": "uint256[][]"
+        }
+      ],
+      "name": "eval",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "stack",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "kvs",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "functionPointers",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
