@@ -425,7 +425,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                     txQuote.data,
                                     { gasPrice: txQuote.gasPrice, gasLimit }
                                 );
-                                console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash);
+                                console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
@@ -433,13 +433,13 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 try {
                                     const receipt = await tx.wait(1);
                                     console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully!`);
-                                    console.log(`Clear price: ${txQuote.price}`, "\n");
+                                    console.log(`Clear price: ${txQuote.price}`;
                                     console.log(`Clear amount: ${
                                         ethers.utils.formatUnits(
                                             bundledQuoteAmount,
                                             bundledOrders[i].sellTokenDecimals
                                         )
-                                    }`);
+                                    }`, "\n");
 
                                     report.push({
                                         tokenPair:
