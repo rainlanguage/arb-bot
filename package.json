@@ -1,18 +1,18 @@
 {
     "name": "@rainprotocol/arb-bot",
     "version": "0.1.0",
-    "description": "A nodejs app that clears Rain orderbook orders against 0x liquididty",
-    "author": "Beehive Innovation",
+    "description": "NodeJS app that clears Rain orderbook orders against 0x liquididty",
+    "author": "Rain Protocol",
     "license": "CAL-1.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/beehive-innovation/rain-arb-bot.git"
+        "url": "https://github.com/beehive-innovation/arb-bot.git"
     },
     "keywords": [],
     "bugs": {
-        "url": "https://github.com/beehive-innovation/rain-arb-bot/issues"
+        "url": "https://github.com/beehive-innovation/arb-bot/issues"
     },
-    "homepage": "http://beehive-innovation.github.io/rain-arb-bot/",
+    "homepage": "https://github.com/beehive-innovation/arb-bot/",
     "main": "./run.js",
     "files": [
         "src",
