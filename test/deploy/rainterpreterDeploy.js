@@ -4,9 +4,9 @@ const RainterpreterStoreArtifact = require("../abis/RainterpreterStore.json");
 
 
 exports.rainterpreterDeploy = async () => {
-    return (await basicDeploy(RainterpreterArtifact));
+    return await basicDeploy(RainterpreterArtifact);
 };
 
 exports.rainterpreterStoreDeploy = async () => {
-    return (await basicDeploy(RainterpreterStoreArtifact));
+    return await basicDeploy(RainterpreterStoreArtifact);
 };

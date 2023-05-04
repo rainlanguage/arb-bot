@@ -7,34 +7,19 @@ let
         })
         { };
 
-    local-node = pkgs.writeShellScriptBin "local-node" ''
-        hardhat node
-    '';
-
-    local-fork = pkgs.writeShellScriptBin "local-fork" ''
-        hardhat node --fork https://api.avax.network/ext/bc/C/rpc
-    '';
 
     local-test = pkgs.writeShellScriptBin "local-test" ''
-        npm run test
+        npm test
     '';
 
-    flush-all = pkgs.writeShellScriptBin "flush-all" ''
-        rm -rf artifacts
-        rm -rf cache
+    flush = pkgs.writeShellScriptBin "flush" ''
         rm -rf node_modules
-        rm -rf contracts
     '';
 
     ci-test = pkgs.writeShellScriptBin "ci-test" ''
-        flush-all
+        flush
         npm install
         local-test
-    '';
-
-    prepare = pkgs.writeShellScriptBin "prepare" ''
-        flush-all
-        npm install
     '';
 
     docgen = pkgs.writeShellScriptBin "docgen" ''
@@ -55,14 +40,10 @@ let
         buildInputs = [
             pkgs.watch
             pkgs.nixpkgs-fmt
-            pkgs.yarn
             pkgs.nodejs-16_x
-            local-node
-            local-fork
             local-test
             ci-test
-            prepare
-            flush-all
+            flush
             docgen
             lint
             lint-fix

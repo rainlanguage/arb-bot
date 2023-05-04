@@ -1,12 +1,12 @@
-// const { expect } = require("chai");
+const { assert } = require("chai");
 const { clear } = require("../src");
 const { ethers } = require("hardhat");
 const CONFIG = require("../config.json");
-const { zeroExCloneDeploy } = require("./deploy/arb");
-const { deployOrderBook } = require("./deploy/orderbook");
+const { zeroExCloneDeploy } = require("./deploy/arbDeploy");
+const { deployOrderBook } = require("./deploy/orderbookDeploy");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { rainterpreterExpressionDeployerDeploy } = require("./deploy/expressionDeployer");
-const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreter");
+const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreterDeploy");
 const {
     encodeMeta,
     getEventArgs,
@@ -17,6 +17,7 @@ const {
 } = require("./utils");
 
 
+// This test runs on hardhat forked network of polygon using 0x live quotes from polygon mainnet
 describe("Rain Arb Bot Test", async function () {
     let interpreter,
         store,
@@ -35,7 +36,7 @@ describe("Rain Arb Bot Test", async function () {
         owners,
         config;
 
-    before(async () => {
+    before(async() => {
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
 
@@ -278,8 +279,102 @@ describe("Rain Arb Bot Test", async function () {
             [USDT, USDC, DAI, FRAX]
         ));
 
-        // console.log(await bot.getBalance());
-        console.log(await clear(bot, config, sgOrders, undefined, false));
-        // console.log(await bot.getBalance());
+        // check that bot's balance is zero for all tokens
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
+
+        // run the clearing process
+        const report = await clear(bot, config, sgOrders, "0.0001", false);
+
+        // should have cleared 2 toke pairs bundled orders
+        assert.ok(report.length == 2);
+
+        // validate first cleared token pair orders
+        assert.equal(report[0].tokenPair, "USDT/USDC");
+        assert.equal(report[0].clearedAmount, "200000000");
+        assert.equal(report[0].clearedOrders.length, 2);
+
+        // check vault balances for orders in cleared token pair USDT/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+
+        // validate second cleared token pair orders
+        assert.equal(report[1].tokenPair, "FRAX/USDC");
+        assert.equal(report[1].clearedAmount, "100000000");
+        assert.equal(report[1].clearedOrders.length, 1);
+
+        // check vault balances for orders in cleared token pair FRAX/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                FRAX.address,
+                FRAX_vaultId
+            )).toString(),
+            "150000000000000000000"
+        );
+
+        // bot should have received the bounty for cleared orders input token
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+
+        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
     });
 });

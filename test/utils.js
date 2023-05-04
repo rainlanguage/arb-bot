@@ -18,7 +18,7 @@ exports.AddressWithBalance = {
  * @param {any[]} args - (optional) The arguments for deploying this contract
  * @returns ethers Contract
  */
-exports.basicDeploy = async (artifact, args = []) => {
+exports.basicDeploy = async (artifact, ...args) => {
     const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode);
     const contract = await factory.deploy(...args);
     await contract.deployed();
