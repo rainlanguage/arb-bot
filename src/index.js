@@ -330,6 +330,10 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                 console.log(`Buy Token Address: ${bundledOrders[i].buyToken}`);
                 console.log(`Sell Token Address: ${bundledOrders[i].sellToken}`, "\n");
                 console.log(">>> Getting current price for this token pair...", "\n");
+                let cumulativeAmount = ethers.constants.Zero;
+                bundledOrders[i].takeOrders.forEach(v => {
+                    cumulativeAmount = cumulativeAmount.add(v.quoteAmount);
+                });
                 const currentPrice = ethers.utils.parseUnits((await axios.get(
                     `${
                         api
@@ -338,7 +342,13 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                     }&sellToken=${
                         bundledOrders[i].sellToken
                     }&sellAmount=${
-                        "1" + "0".repeat(bundledOrders[i].sellTokenDecimals)
+                        (
+                            bundledOrders[i].sellTokenDecimals < 18
+                                ? cumulativeAmount.div(
+                                    "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
+                                )
+                                : cumulativeAmount
+                        ).div(2).toString()
                     }&skipValidation=false`,
                     {headers: { "accept-encoding": "null" }}
                 ))?.data?.price);
@@ -352,20 +362,19 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                 );
 
                 if (bundledOrders[i].takeOrders.length) {
-                    let cumulativeAmount = ethers.constants.Zero;
+
+                    cumulativeAmount = ethers.constants.Zero;
                     bundledOrders[i].takeOrders.forEach(v => {
                         cumulativeAmount = cumulativeAmount.add(v.quoteAmount);
                     });
-                    const _roundAmount = ethers.utils.formatUnits(cumulativeAmount);
-                    const bundledQuoteAmount = ethers.utils.parseUnits(
-                        _roundAmount.includes(".")
-                            ? _roundAmount.slice(
-                                0,
-                                _roundAmount.indexOf(".") + bundledOrders[i].sellTokenDecimals + 1
-                            )
-                            : _roundAmount,
-                        bundledOrders[i].sellTokenDecimals
-                    );
+
+                    let bundledQuoteAmount = cumulativeAmount;
+                    if (bundledOrders[i].sellTokenDecimals < 18) {
+                        bundledQuoteAmount = bundledQuoteAmount.div(
+                            "1" +
+                            "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
+                        );
+                    }
 
                     console.log(">>> Getting quote for this token pair...", "\n");
                     const response = await axios.get(
