@@ -39,6 +39,7 @@ module.exports = {
         hardhat: {
             forking: {
                 url: "https://polygon-rpc.com/", // avalanche network to run the test on
+                blockNumber: 42314555
             },
             // blockGasLimit: 100000000,
             // allowUnlimitedContractSize: true,
