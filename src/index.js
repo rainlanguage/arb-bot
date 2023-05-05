@@ -418,6 +418,16 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 bundledOrders[i],
                                 gasLimit.mul(txQuote.gasPrice)
                             );
+                            console.log(`Estimated profit: ${
+                                ethers.utils.formatUnits(
+                                    bundledOrders[i].buyTokenDecimals < 18
+                                        ? estimatedProfit.div(
+                                            "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
+                                        )
+                                        : estimatedProfit,
+                                    bundledOrders[i].buyTokenDecimals
+                                )
+                            } ${bundledOrders[i].buyTokenSymbol}`, "\n");
                             if (!estimatedProfit.isNegative()) {
                                 console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                 const tx = await arb.arb(
