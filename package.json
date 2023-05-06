@@ -13,7 +13,7 @@
         "url": "https://github.com/rainprotocol/arb-bot/issues"
     },
     "homepage": "https://github.com/rainprotocol/arb-bot/",
-    "main": "./run.js",
+    "main": "./src/index.js",
     "files": [
         "src",
         "docs",
@@ -21,6 +21,9 @@
         "./example.env",
         "./config.json"
     ],
+    "bin": {
+        "arb-bot": "./run.js"
+    },
     "scripts": {
         "test": "hardhat test",
         "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",

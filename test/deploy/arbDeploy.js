@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const { strict: assert } = require("assert");
 const { cloneFactoryDeploy } = require("./cloneDeploy");
 const { getEventArgs, basicDeploy } = require("../utils");
-const ZeroExOrderBookFlashBorrowerArtifact = require("../../src/abis/ZeroExOrderBookFlashBorrower.json");
+const ZeroExOrderBookFlashBorrowerArtifact = require("../abis/ZeroExOrderBookFlashBorrower.json");
 
 
 exports.zeroExCloneDeploy = async(
