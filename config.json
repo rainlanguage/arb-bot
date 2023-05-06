@@ -3,8 +3,8 @@
         "network": "polygon",
         "chainId": 137,
         "apiUrl": "https://polygon.api.0x.org/",
-        "arbAddress": "0x828695f98445da3a64065dacef10efc29f7024bb",
-        "orderbookAddress": "0xd14c2ba8779c6c4fba0d0606f4ff65ecd4c5bb38",
+        "arbAddress": "",
+        "orderbookAddress": "",
         "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
         "nativeToken": {
             "symbol": "MATIC",

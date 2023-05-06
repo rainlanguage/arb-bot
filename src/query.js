@@ -10,7 +10,6 @@ exports.DefaultQuery = `{
         expression
         interpreter
         interpreterStore
-        orderJSONString
         owner {
             id
         }

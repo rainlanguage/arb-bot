@@ -4,6 +4,7 @@ Clearing bundled orders should cover the gas cost of the transaction at least so
 The cost of the transaction is calculated in the profit token currency.
 
 This app requires NodeJS to run.
+This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## Tutorial
 ### CLI
@@ -107,6 +108,11 @@ const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[ ar
 const reports = await arb.clear(wallet, config, queryResult, ...[ slippage, prioritization ])
 ```
 <br>
+
+## Running On Github Actions
+In order to run this app periodically to clear orders in Github Actions, first you need to fork this repository, then you can modify the `./.github/workflows/take-orders.yaml` file with your desired configuration so the app run periodically. You can set the schedule for the app to run by modifying the cron syntax of the mentioned file and in the last line of the file, you can pass the required/optional arguments for the app to run. All the mentioned CLI arguments can be applied, for wallet private key and rpc url, you can set up Github Secrets.
+
+Please be aware that schediled Github Actions can only be run at minimum once every 5 minutes and even that is not guarateed because it depends on Github resource availability at that time, so it is recommended to run the app on personal/reliable host if there is sensitivity with running on a schedule.
 
 ## Developers Guide
 To run the tests:

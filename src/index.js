@@ -450,9 +450,8 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                             console.log(">>> Estimating the profit for this token pair...", "\n");
                             const gasLimit = await arb.estimateGas.arb(
                                 takeOrdersConfigStruct,
-                                // @TODO Submit actual expected amount here.
-                                // Set to zero as we are only submitting profitable txs.
-                                0 ,  
+                                // set to zero because only profitable transactions are submitted
+                                0,
                                 txQuote.allowanceTarget,
                                 txQuote.data,
                                 { gasPrice: txQuote.gasPrice }
@@ -474,10 +473,9 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                             } ${bundledOrders[i].buyTokenSymbol}`, "\n");
                             if (!estimatedProfit.isNegative()) {
                                 console.log(">>> Trying to submit the transaction for this token pair...", "\n");
-                                const tx = await arb.arb(     
+                                const tx = await arb.arb(
                                     takeOrdersConfigStruct,
-                                    // @TODO Submit actual expected amount here.
-                                    // Set to zero as we are only submitting profitable txs.
+                                    // set to zero because only profitable transactions are submitted
                                     0,
                                     txQuote.allowanceTarget,
                                     txQuote.data,
