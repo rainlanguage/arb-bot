@@ -572,7 +572,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line164">line 164</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line195">line 195</a>
     </li></ul></dd>
     
 
@@ -765,7 +765,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line119">line 119</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line122">line 122</a>
     </li></ul></dd>
     
 
@@ -965,6 +965,245 @@
         
 <div class="param-desc">
     A decimals point BigNumber
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="getConfig"><span class="type-signature"></span>getConfig<span class="signature">(wallet, orderbookAddress, arbAddress, interpreterAbiPath, arbAbiPath)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Get the configuration info of a network required for the bot
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>wallet</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ethers.Wallet</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The ethers wallet with private key instance</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>orderbookAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The Rain Orderbook contract address deployed on the network</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>arbAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The Rain Arb contract address deployed on the network</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>interpreterAbiPath</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">(optional) The path to IInterpreter contract ABI, default is ABI in './src/abis' folder</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>arbAbiPath</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">(optional) The path to Arb contract ABI, default is ABI in './src/abis' folder</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line167">line 167</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The configuration object
 </div>
 
 
@@ -1305,7 +1544,7 @@ token pair combinations.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line24">line 24</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line27">line 27</a>
     </li></ul></dd>
     
 
@@ -1767,7 +2006,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line61">line 61</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line64">line 64</a>
     </li></ul></dd>
     
 
@@ -1904,7 +2143,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line141">line 141</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line144">line 144</a>
     </li></ul></dd>
     
 
@@ -2130,13 +2369,13 @@ bundled orders based on the best deals
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepareBundledOrders">prepareBundledOrders</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepareBundledOrders">prepareBundledOrders</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri May 05 2023 01:26:28 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat May 06 2023 01:33:51 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

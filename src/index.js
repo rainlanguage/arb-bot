@@ -1,8 +1,11 @@
+const fs = require("fs");
+const path = require("path");
 const axios = require("axios");
 const ethers = require("ethers");
+const CONFIG = require("../config.json");
 const { DefaultQuery } = require("./query");
-const { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
-const { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
+let { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
+let { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
 const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE } = require("./utils");
 
 
@@ -153,6 +156,34 @@ exports.query = async(subgraphUrl) => {
 };
 
 /**
+ * Get the configuration info of a network required for the bot
+ * @param {ethers.Wallet} wallet - The ethers wallet with private key instance
+ * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
+ * @param {string} arbAddress - The Rain Arb contract address deployed on the network
+ * @param {string} interpreterAbiPath - (optional) The path to IInterpreter contract ABI, default is ABI in './src/abis' folder
+ * @param {string} arbAbiPath - (optional) The path to Arb contract ABI, default is ABI in './src/abis' folder
+ * @returns The configuration object
+ */
+exports.getConfig = async(
+    wallet,
+    orderbookAddress,
+    arbAddress,
+    arbAbiPath = "",
+    interpreterAbiPath = ""
+) => {
+    const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
+    const chainId = (await wallet.getChainId());
+    const config = CONFIG.find(v => v.chainId === chainId);
+    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
+    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+    config.orderbookAddress = orderbookAddress;
+    config.arbAddress = arbAddress;
+    if (interpreterAbiPath) config.interpreterAbi = interpreterAbiPath;
+    if (arbAbiPath) config.arbAbi = arbAbiPath;
+    return config;
+};
+
+/**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them
  *
  * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
@@ -167,6 +198,16 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken.address;
+    const intAbiPath = config.interpreterAbi;
+    const arbAbiPath = config.arbAbi;
+
+    // get the abis if path is provided for them
+    if (intAbiPath) interpreterAbi = (JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, intAbiPath)).toString())
+    )?.abi;
+    if (arbAbiPath) arbAbi = JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, arbAbiPath)).toString()
+    )?.abi;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
