@@ -158,26 +158,26 @@ exports.query = async(subgraphUrl) => {
 /**
  * Get the configuration info of a network required for the bot
  * @param {ethers.Wallet} wallet - The ethers wallet with private key instance
- * @param {string} orderbookAdd - The Rain Orderbook contract address deployed on the network
- * @param {string} arb - The Rain Arb contract address deployed on the network
+ * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
+ * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} interpreterAbiPath - (optional) The path to IInterpreter contract ABI, default is ABI in './src/abis' folder
  * @param {string} arbAbiPath - (optional) The path to Arb contract ABI, default is ABI in './src/abis' folder
  * @returns The configuration object
  */
 exports.getConfig = async(
     wallet,
-    orderbookAdd,
-    arbAdd,
+    orderbookAddress,
+    arbAddress,
     arbAbiPath = "",
     interpreterAbiPath = ""
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const chainId = (await wallet.getChainId());
     const config = CONFIG.find(v => v.chainId === chainId);
-    if (!AddressPattern.test(orderbookAdd)) throw "invalid orderbook contract address";
-    if (!AddressPattern.test(arbAdd)) throw "invalid arb contract address";
-    config.orderbookAddress = orderbookAdd;
-    config.arbAddress = arbAdd;
+    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
+    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+    config.orderbookAddress = orderbookAddress;
+    config.arbAddress = arbAddress;
     if (interpreterAbiPath) config.interpreterAbi = interpreterAbiPath;
     if (arbAbiPath) config.arbAbi = arbAbiPath;
     return config;
