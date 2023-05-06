@@ -12,7 +12,7 @@ const DEFAULT_OPTIONS = {
     key: process?.env?.WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
     slippage: "0.001",    // 0.1%
-    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/rainorderbook"
+    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
 };
 
 const getOptions = async argv => {
