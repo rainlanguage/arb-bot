@@ -22,13 +22,13 @@
         "./config.json"
     ],
     "bin": {
-        "arb-bot": "./run.js"
+        "arb-bot": "./arb-bot.js"
     },
     "scripts": {
         "test": "hardhat test",
         "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",
-        "lint": "eslint ./src ./test ./run.js",
-        "lint-fix": "eslint ./src ./test ./run.js --fix"
+        "lint": "eslint ./src ./test ./arb-bot.js",
+        "lint-fix": "eslint ./src ./test ./arb-bot.js --fix"
     },
     "dependencies": {
         "axios": "^1.3.4",
