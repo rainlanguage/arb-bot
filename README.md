@@ -23,7 +23,7 @@ nix-shell
 <br>
 For starting the app:
 ```bash
-node run -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
+node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
 ```
 The app requires these 4 arguments:
 - `-k` or `--key` A wallet private with eth balance to cover transaction costs, this wallet also receives the profits from submitting the transactions. A wallet private key is 64 length hex string. This can be set as environment variables too, see below.
@@ -42,11 +42,11 @@ Other optional arguments are:
 
 CLI options can be viewed by running:
 ```bash
-node run -h
+node arb-bot -h
 ```
 which will show:
 
-    Usage: node run.js [options]
+    Usage: node arb-bot [options]
 
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'WALLET_KEY' in '.env' file
