@@ -509,7 +509,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 txQuote.data,
                                 { gasPrice: txQuote.gasPrice }
                             );
-                            const estimatedProfit = estimateProfit(
+                            const maxEstimatedProfit = estimateProfit(
                                 txQuote,
                                 bundledOrders[i],
                                 gasLimit.mul(txQuote.gasPrice),
@@ -517,14 +517,14 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                             ).div(
                                 "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                             );
-                            console.log(`Estimated profit: ${
+                            console.log(`Max Estimated Profit: ${
                                 ethers.utils.formatUnits(
-                                    estimatedProfit,
+                                    maxEstimatedProfit,
                                     bundledOrders[i].buyTokenDecimals
                                 )
                             } ${bundledOrders[i].buyTokenSymbol}`, "\n");
 
-                            if (!estimatedProfit.isNegative()) {
+                            if (!maxEstimatedProfit.isNegative()) {
                                 console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                 const tx = await arb.arb(
                                     takeOrdersConfigStruct,
@@ -606,7 +606,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                         clearPrice: txQuote.price,
                                         clearGuaranteedPrice: txQuote.guaranteedPrice,
                                         clearActualPrice,
-                                        estimatedProfit,
+                                        maxEstimatedProfit,
                                         gasUsed: receipt.gasUsed,
                                         gasCost,
                                         income,
