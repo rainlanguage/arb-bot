@@ -647,14 +647,14 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 }
                                 catch (error) {
                                     console.log(">>> Transaction execution failed due to:");
-                                    console.log(error, "\n");
+                                    console.log(error.reason, "\n");
                                 }
                             }
                             else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
                         }
                         catch (error) {
                             console.log(">>> Transaction failed due to:");
-                            console.log(error, "\n");
+                            console.log(error.reason, "\n");
                         }
                     }
                     else console.log("Failed to get quote from 0x", "\n");
