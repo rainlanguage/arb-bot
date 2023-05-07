@@ -572,7 +572,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line195">line 195</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line254">line 254</a>
     </li></ul></dd>
     
 
@@ -618,7 +618,7 @@
     
 
     
-    <h4 class="name" id="estimateProfit"><span class="type-signature"></span>estimateProfit<span class="signature">(txQuote, bundledOrder, gas)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="estimateProfit"><span class="type-signature"></span>estimateProfit<span class="signature">(txQuote, bundledOrder, gas, partialGasCoverage)</span><span class="type-signature"></span></h4>
     
 
     
@@ -652,6 +652,8 @@
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -677,6 +679,10 @@
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The quote from 0x</td>
         </tr>
@@ -699,6 +705,10 @@
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">The bundled order object</td>
@@ -723,8 +733,41 @@
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The estimated gas cost</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>partialGasCoverage</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    1
+                
+                </td>
+            
+
+            <td class="description last">Partially cover gas cost, default is 1 meaning full gas coverage in profit estimation</td>
         </tr>
 
     
@@ -765,7 +808,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line122">line 122</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line124">line 124</a>
     </li></ul></dd>
     
 
@@ -981,6 +1024,268 @@
     
 
     
+    <h4 class="name" id="getActualPrice"><span class="type-signature"></span>getActualPrice<span class="signature">(receipt, orderbook, arb, amount, sellDecimals, buyDecimals)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Calculates the actual clear price from transactioin event
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>receipt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">any</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The transaction receipt</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>orderbook</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The Orderbook contract address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>arb</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The Arb contract address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>amount</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The clear amount</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>sellDecimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The sell token decimals</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>buyDecimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The buy token decimals</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line172">line 172</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The actual clear price or undefined if necessary info not found in transaction events
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
     <h4 class="name" id="getConfig"><span class="type-signature"></span>getConfig<span class="signature">(wallet, orderbookAddress, arbAddress, interpreterAbiPath, arbAbiPath)</span><span class="type-signature"></span></h4>
     
 
@@ -1174,7 +1479,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line167">line 167</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line226">line 226</a>
     </li></ul></dd>
     
 
@@ -1204,6 +1509,176 @@
         
 <div class="param-desc">
     The configuration object
+</div>
+
+
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="getIncome"><span class="type-signature"></span>getIncome<span class="signature">(signer, receipt)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Extracts the income (received token value) from transaction receipt
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>signer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ethers.Wallet</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The ethers wallet instance of the bot</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>receipt</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">any</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The transaction receipt</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line148">line 148</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The income value or undefined if cannot find any valid value
 </div>
 
 
@@ -1544,7 +2019,7 @@ token pair combinations.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line27">line 27</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line28">line 28</a>
     </li></ul></dd>
     
 
@@ -2006,7 +2481,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line64">line 64</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line65">line 65</a>
     </li></ul></dd>
     
 
@@ -2143,7 +2618,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line144">line 144</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line203">line 203</a>
     </li></ul></dd>
     
 
@@ -2369,13 +2844,13 @@ bundled orders based on the best deals
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepareBundledOrders">prepareBundledOrders</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepareBundledOrders">prepareBundledOrders</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#toFixed18">toFixed18</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat May 06 2023 16:04:43 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sun May 07 2023 22:12:46 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>
