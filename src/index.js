@@ -541,7 +541,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 );
 
                                 try {
-                                    const receipt = await tx.wait(1);
+                                    const receipt = await tx.wait();
                                     const income = getIncome(signer, receipt);
                                     const gasCost = ethers.BigNumber.from(
                                         txQuote.gasPrice
