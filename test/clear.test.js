@@ -3,8 +3,8 @@ const { clear } = require("../src");
 const { ethers } = require("hardhat");
 const CONFIG = require("../config.json");
 const { zeroExCloneDeploy } = require("./deploy/arbDeploy");
-const { deployOrderBook } = require("./deploy/orderbookDeploy");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
+const { deployOrderBook } = require("./deploy/orderbookDeploy");
 const { rainterpreterExpressionDeployerDeploy } = require("./deploy/expressionDeployer");
 const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreterDeploy");
 const {
@@ -296,15 +296,15 @@ describe("Rain Arb Bot Test", async function () {
         // run the clearing process
         config.interpreterAbi = "../test/abis/IInterpreterV1.json";
         config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
-        const report = await clear(bot, config, sgOrders, "0.1", false);
+        const reports = await clear(bot, config, sgOrders, "0.1", false);
 
         // should have cleared 2 toke pairs bundled orders
-        assert.ok(report.length == 2);
+        assert.ok(reports.length == 2);
 
         // validate first cleared token pair orders
-        assert.equal(report[0].tokenPair, "USDT/USDC");
-        assert.equal(report[0].clearedAmount, "200000000");
-        assert.equal(report[0].clearedOrders.length, 2);
+        assert.equal(reports[0].tokenPair, "USDT/USDC");
+        assert.equal(reports[0].clearedAmount, "180000000");
+        assert.equal(reports[0].clearedOrders.length, 2);
 
         // check vault balances for orders in cleared token pair USDT/USDC
         assert.equal(
@@ -329,7 +329,7 @@ describe("Rain Arb Bot Test", async function () {
                 USDC.address,
                 USDC_vaultId
             )).toString(),
-            "0"
+            "20000000"
         );
         assert.equal(
             (await orderbook.vaultBalance(
@@ -337,13 +337,13 @@ describe("Rain Arb Bot Test", async function () {
                 USDT.address,
                 USDT_vaultId
             )).toString(),
-            "150000000"
+            "140000000"
         );
 
         // validate second cleared token pair orders
-        assert.equal(report[1].tokenPair, "FRAX/USDC");
-        assert.equal(report[1].clearedAmount, "100000000");
-        assert.equal(report[1].clearedOrders.length, 1);
+        assert.equal(reports[1].tokenPair, "FRAX/USDC");
+        assert.equal(reports[1].clearedAmount, "90000000");
+        assert.equal(reports[1].clearedOrders.length, 1);
 
         // check vault balances for orders in cleared token pair FRAX/USDC
         assert.equal(
@@ -352,7 +352,7 @@ describe("Rain Arb Bot Test", async function () {
                 USDC.address,
                 USDC_vaultId
             )).toString(),
-            "0"
+            "10000000"
         );
         assert.equal(
             (await orderbook.vaultBalance(
@@ -360,7 +360,7 @@ describe("Rain Arb Bot Test", async function () {
                 FRAX.address,
                 FRAX_vaultId
             )).toString(),
-            "150000000000000000000"
+            "145000000000000000000"
         );
 
         // bot should have received the bounty for cleared orders input token
