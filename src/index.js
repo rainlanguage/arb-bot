@@ -458,6 +458,12 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                 ))?.data?.price;
                 const currentPrice = ethers.utils.parseUnits(price);
 
+                console.log(`Quote amount: ${ethers.utils.formatUnits(
+                    cumulativeAmount.div(
+                        "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
+                    ).div(2),
+                    bundledOrders[i].sellTokenDecimals
+                )} ${bundledOrders[i].sellTokenSymbol}`);
                 console.log(`Current market price of this token pair: ${price}`);
                 console.log("Current ratio of the orders in this token pair:");
                 bundledOrders[i].takeOrders.forEach(v => {
