@@ -1,0 +1,5 @@
+services:
+  arb_bot:
+    image: rain/arb_bot
+    build: .
+    env_file: .env
