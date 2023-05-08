@@ -435,7 +435,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmount = cumulativeAmount.add(v.quoteAmount);
                 });
-                const currentPrice = ethers.utils.parseUnits((await axios.get(
+                const price = (await axios.get(
                     `${
                         api
                     }swap/v1/price?buyToken=${
@@ -448,12 +448,21 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         ).div(2).toString()
                     }&skipValidation=false`,
                     {headers: { "accept-encoding": "null" }}
-                ))?.data?.price);
+                ))?.data?.price;
+                const currentPrice = ethers.utils.parseUnits(price);
+
+                console.log(`Current market price of this token pair: ${price}`);
+                console.log("Current ratio of the orders in this token pair:");
+                bundledOrders[i].takeOrders.forEach(v => {
+                    console.log(ethers.utils.formatEther(v.ratio));
+                });
 
                 console.log(
+                    "\n",
                     ">>> Filtering the bundled orders of this token pair with lower ratio than current market price...",
                     "\n"
                 );
+
                 bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
                     v => currentPrice.gte(v.ratio)
                 );
