@@ -8,7 +8,6 @@ artifacts
 
 ## Private
 .env
-privatekey
 
 ## That one annoying file
 .DS_Store

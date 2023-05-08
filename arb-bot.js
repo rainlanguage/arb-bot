@@ -41,7 +41,7 @@ const main = async argv => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const options = await getOptions(argv);
     if (!options.key) throw "undefined wallet private key";
-    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw `invalid wallet private key ${options.key} z`;
+    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw `invalid wallet private key`;
     if (!options.rpc) throw "undefined RPC URL";
     if (!/^\d+(\.\d+)?$/.test(options.slippage)) throw "invalid slippage value";
     if (!options.subgraphUrl.startsWith("https://api.thegraph.com/subgraphs/name/")) throw "invalid subgraph endpoint URL";
