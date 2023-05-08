@@ -288,6 +288,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
         "------------------------- Starting Clearing Process -------------------------",
         "\n"
     );
+    console.log(Date());
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
