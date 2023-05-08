@@ -4,3 +4,6 @@ services:
     build: .
     env_file: .env
     restart: always
+    logging:
+      driver: local
+    pull_policy: build
