@@ -488,7 +488,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         cumulativeAmount = cumulativeAmount.add(v.quoteAmount);
                     });
 
-                    const bundledQuoteAmount = cumulativeAmount.mul(9).div(10).div(
+                    const bundledQuoteAmount = cumulativeAmount.mul(10).div(10).div(
                         "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                     );
 
