@@ -3,3 +3,4 @@ services:
     image: rain/arb_bot
     build: .
     env_file: .env
+    restart: always
