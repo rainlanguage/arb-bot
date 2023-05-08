@@ -21,6 +21,7 @@ If you have Nix installed on your machine you can tun the app on nix environment
 nix-shell
 ```
 <br>
+
 For starting the app:
 ```bash
 node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
