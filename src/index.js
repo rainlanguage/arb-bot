@@ -48,7 +48,7 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals) => {
             }&sellToken=${
                 tokenAddress
             }&sellAmount=${
-                "1" + "0".repeat(tokenDecimals)
+                "100" + "0".repeat(tokenDecimals)
             }`;
         }
     }
@@ -104,6 +104,13 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
 
         if (sort) bundledOrders.sort(
             (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
+        );
+        console.log("Initial token pair prices:");
+        bundledOrders.forEach(
+            v => console.log(
+                ethers.utils.formatEther(v.initPrice),
+                v.buyTokenSymbol + "/" + v.sellTokenSymbol
+            )
         );
     }
     catch (error) {
