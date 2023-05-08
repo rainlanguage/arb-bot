@@ -303,7 +303,7 @@ describe("Rain Arb Bot Test", async function () {
 
         // validate first cleared token pair orders
         assert.equal(reports[0].tokenPair, "USDT/USDC");
-        assert.equal(reports[0].clearedAmount, "180000000");
+        assert.equal(reports[0].clearedAmount, "200000000");
         assert.equal(reports[0].clearedOrders.length, 2);
 
         // check vault balances for orders in cleared token pair USDT/USDC
@@ -329,7 +329,7 @@ describe("Rain Arb Bot Test", async function () {
                 USDC.address,
                 USDC_vaultId
             )).toString(),
-            "20000000"
+            "0"
         );
         assert.equal(
             (await orderbook.vaultBalance(
@@ -337,12 +337,12 @@ describe("Rain Arb Bot Test", async function () {
                 USDT.address,
                 USDT_vaultId
             )).toString(),
-            "140000000"
+            "150000000"
         );
 
         // validate second cleared token pair orders
         assert.equal(reports[1].tokenPair, "FRAX/USDC");
-        assert.equal(reports[1].clearedAmount, "90000000");
+        assert.equal(reports[1].clearedAmount, "100000000");
         assert.equal(reports[1].clearedOrders.length, 1);
 
         // check vault balances for orders in cleared token pair FRAX/USDC
@@ -352,7 +352,7 @@ describe("Rain Arb Bot Test", async function () {
                 USDC.address,
                 USDC_vaultId
             )).toString(),
-            "10000000"
+            "0"
         );
         assert.equal(
             (await orderbook.vaultBalance(
@@ -360,7 +360,7 @@ describe("Rain Arb Bot Test", async function () {
                 FRAX.address,
                 FRAX_vaultId
             )).toString(),
-            "145000000000000000000"
+            "150000000000000000000"
         );
 
         // bot should have received the bounty for cleared orders input token

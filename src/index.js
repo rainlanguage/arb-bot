@@ -488,7 +488,11 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         cumulativeAmount = cumulativeAmount.add(v.quoteAmount);
                     });
 
+<<<<<<< HEAD
                     const bundledQuoteAmount = cumulativeAmount.mul(10).div(10).div(
+=======
+                    const bundledQuoteAmount = cumulativeAmount.div(
+>>>>>>> f395ccbdceb7ed3df23343329bf89f7f8386aed5
                         "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                     );
 
