@@ -23,8 +23,8 @@ const getOptions = async argv => {
         .option("--subgraph-url <url>", "The subgraph endpoint url used to fetch order details from")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file")
         .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
-        .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './stc/abis' folder")
-        .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './stc/abis' folder")
+        .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .version(version)
         .parse(argv)
         .opts();
