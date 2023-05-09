@@ -296,7 +296,7 @@ describe("Rain Arb Bot Test", async function () {
         // run the clearing process
         config.interpreterAbi = "../test/abis/IInterpreterV1.json";
         config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
-        const reports = await clear(bot, config, sgOrders, "0.1", false);
+        const reports = (await clear(bot, config, sgOrders, "0.1", false)).report;
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);

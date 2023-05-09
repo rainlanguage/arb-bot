@@ -291,6 +291,7 @@ exports.getConfig = async(
  * @returns The report of details of cleared orders
  */
 exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritization = true) => {
+    let hits = 0;
     const api = config.apiUrl;
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
@@ -452,6 +453,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
             tokens: ["ETH", initQuotes[initQuotes.length - 1][2]]
         };
     }
+    hits += initQuotes.length;
     await prepareBundledOrders(initQuotes, bundledOrders, prioritization);
 
     if (bundledOrders.length) console.log(
@@ -498,6 +500,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                     }&skipValidation=false`,
                     HEADERS
                 ))?.data?.price;
+                hits++;
                 const currentPrice = ethers.utils.parseUnits(price);
 
                 console.log(`Quote amount: ${ethers.utils.formatUnits(
@@ -547,6 +550,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         }`,
                         HEADERS
                     );
+                    hits++;
 
                     const txQuote = response?.data;
                     if (txQuote) {
@@ -736,5 +740,5 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
         }
     }
     console.log("---------------------------------------------------------------------------", "\n");
-    return report;
+    return { hits, report };
 };

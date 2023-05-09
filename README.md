@@ -38,6 +38,7 @@ Other optional arguments are:
 - `--subgraph-url` A custom subgraph endpoint URL, used to read order details from, the default is Rain Orderbook Subgraph. The custom subgraph should follow the Rain Orderbook Subgraph schema.
 - `--interpreter-abi` The path to IInterpreter ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/IInerpreterV1.json`.
 - `--arb-abi` The path to Arb (ZeroExOrderBookFlashBorrower) ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/ZeroExOrderBookFlashBorrower.json`.
+- `--no-monthly-ratelimit` Used to respect monthly 200k 0x API calls, mainly used when running this app on a bash loop
 - `-h` or `--help` To show the CLI command's help
 - `-v` or `--version` To show the app's version
 <br>
@@ -60,6 +61,7 @@ which will show:
       --arb-address <address>        Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file
       --interpreter-abi <path>       Path to the IInterpreter contract ABI, default is the ABI in the './stc/abis' folder
       --arb-abi <path>               Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, default is the ABI in the './stc/abis' folder
+      --no-monthly-ratelimit         Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when running this app on a bash loop
       -V, --version                  output the version number
       -h, --help                     output usage information
 <br>

@@ -3,11 +3,13 @@
 require("dotenv").config();
 const ethers = require("ethers");
 const CONFIG = require("./config.json");
+const { sleep } = require("./src/utils");
 const { Command } = require("commander");
 const { clear, query } = require("./src");
 const { version } = require("./package.json");
 
 
+const RateLimit = 0.075;    // rate limit per seconf per month
 const DEFAULT_OPTIONS = {
     key: process?.env?.WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
@@ -27,6 +29,7 @@ const getOptions = async argv => {
         .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
         .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when running this app on a bash loop")
         .version(version)
         .parse(argv)
         .opts();
@@ -41,8 +44,10 @@ const getOptions = async argv => {
 };
 
 const main = async argv => {
+    const start = Date.now();
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const options = await getOptions(argv);
+
     if (!options.key) throw "undefined wallet private key";
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     if (!options.rpc) throw "undefined RPC URL";
@@ -73,12 +78,24 @@ const main = async argv => {
     if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
     if (options.arbAbi) config.arbAbi = options.arbAbi;
 
-    await clear(
+    const reports = await clear(
         signer,
         config,
         await query(options.subgraphUrl),
         options.slippage
     );
+
+    // wait to stay within montly ratelimit
+    if (options.monthlyRatelimit) {
+        const rateLimitDuration = Number((((reports.hits / RateLimit) * 1000) + 1).toFixed());
+        const duration = Date.now() - start;
+        console.log(`Executed in ${duration} miliseconds with ${reports.hits} 0x api calls`);
+        const msToWait = rateLimitDuration - duration;
+        if (msToWait > 0) {
+            console.log(`Waiting ${msToWait} more miliseconds to stay within monthly rate limit...`);
+            await sleep(msToWait);
+        }
+    }
 };
 
 main(
