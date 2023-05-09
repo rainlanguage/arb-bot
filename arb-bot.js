@@ -11,6 +11,7 @@ const { version } = require("./package.json");
 const DEFAULT_OPTIONS = {
     key: process?.env?.WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
+    apiKey: process?.env?.API_KEY,
     slippage: "0.001",    // 0.1%
     subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
 };
@@ -20,6 +21,7 @@ const getOptions = async argv => {
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'WALLET_KEY' in '.env' file")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file")
         .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%")
+        .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the API_KEY env variable if a value passed in CLI")
         .option("--subgraph-url <url>", "The subgraph endpoint url used to fetch order details from")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file")
         .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
@@ -31,6 +33,7 @@ const getOptions = async argv => {
 
     commandOptions.key = commandOptions.key || DEFAULT_OPTIONS.key;
     commandOptions.rpc = commandOptions.rpc || DEFAULT_OPTIONS.rpc;
+    commandOptions.apiKey = commandOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
     commandOptions.subgraphUrl = commandOptions.subgraphUrl || DEFAULT_OPTIONS.subgraphUrl;
 

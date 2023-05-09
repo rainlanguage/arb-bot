@@ -33,6 +33,7 @@ The app requires these 4 arguments:
 - `--arb-address` The Arb (ZeroExOrderBookFlashBorrower) contract address deployed on the working network.
 
 Other optional arguments are:
+- `-a` or `--api-key` The 0x API key to use for quoting 0x with. Can also be set in env variables as `API_KEY`, see below.
 - `-s` or `--slippage` The slippage that can be set for the trades, the default is 0.001 which is 0.1%
 - `--subgraph-url` A custom subgraph endpoint URL, used to read order details from, the default is Rain Orderbook Subgraph. The custom subgraph should follow the Rain Orderbook Subgraph schema.
 - `--interpreter-abi` The path to IInterpreter ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/IInerpreterV1.json`.
@@ -53,6 +54,7 @@ which will show:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'WALLET_KEY' in '.env' file
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file
       -s, --slippage <number>        Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%
+      -a, --api-key <key>            0x API key, can be set in env variables, Will override the API_KEY env variable if a value passed in CLI
       --subgraph-url <url>           The subgraph endpoint url used to fetch order details from
       --orderbook-address <address>  Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file
       --arb-address <address>        Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file
@@ -69,6 +71,9 @@ WALLET_PRIVATEKEY="1234567890..."
 
 ## RPC URL of the desired network
 RPC_URL="https://alchemy...."
+
+# 0x API key
+API_KEY="1234..."
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

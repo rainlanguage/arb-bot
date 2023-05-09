@@ -10,6 +10,8 @@ let { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
 const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE } = require("./utils");
 
 
+const HEADERS = { headers: { "accept-encoding": "null" } };
+
 /**
  * Builds initial 0x requests bodies from token addresses that is required
  * for getting token prices with least amount of hits possible and that is
@@ -76,7 +78,7 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
                 async(e) => {
                     const response = await axios.get(
                         e.quote,
-                        {headers: { "accept-encoding": "null" }}
+                        HEADERS
                     );
                     return [
                         {
@@ -281,6 +283,9 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
     const intAbiPath = config.interpreterAbi;
     const arbAbiPath = config.arbAbi;
 
+    // set the api key in headers
+    if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
+
     // get the abis if path is provided for them
     if (intAbiPath) interpreterAbi = (JSON.parse(
         fs.readFileSync(path.resolve(__dirname, intAbiPath)).toString())
@@ -474,7 +479,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                             "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                         ).div(2).toString()
                     }&skipValidation=false`,
-                    {headers: { "accept-encoding": "null" }}
+                    HEADERS
                 ))?.data?.price;
                 const currentPrice = ethers.utils.parseUnits(price);
 
@@ -523,7 +528,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         }&slippagePercentage=${
                             slippage
                         }`,
-                        {headers: { "accept-encoding": "null" }}
+                        HEADERS
                     );
 
                     const txQuote = response?.data;
