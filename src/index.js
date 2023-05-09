@@ -76,7 +76,7 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
         const responses = await Promise.allSettled(
             quotes.map(
                 async(e) => {
-                    await sleep(1200);
+                    await sleep(1000);
                     const response = await axios.get(
                         e.quote,
                         HEADERS
