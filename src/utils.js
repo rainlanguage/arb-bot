@@ -186,3 +186,11 @@ exports.getOrderStruct = (orderDetails) => {
         })
     };
 };
+
+/**
+ * Waits for provided miliseconds
+ * @param ms - Miliseconds to wait
+ */
+exports.sleep = async(ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};

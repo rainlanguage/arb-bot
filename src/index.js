@@ -7,7 +7,7 @@ const { DefaultQuery } = require("./query");
 const { abi: erc20Abi } = require("./abis/ERC20Upgradeable.json");
 let { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
 let { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
-const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE } = require("./utils");
+const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE, sleep } = require("./utils");
 
 
 const HEADERS = { headers: { "accept-encoding": "null" } };
@@ -75,7 +75,8 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
         console.log(">>> Getting initial prices from 0x");
         const responses = await Promise.allSettled(
             quotes.map(
-                async(e) => {
+                async(e, i) => {
+                    if (i > 0 && i / 2 === 0) await sleep(1000);
                     const response = await axios.get(
                         e.quote,
                         HEADERS
@@ -449,6 +450,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
 
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
+        await sleep(1000);
         if (bundledOrders[i].takeOrders.length) {
             try {
                 console.log(
@@ -701,14 +703,21 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         catch (error) {
                             console.log(">>> Transaction failed due to:");
                             console.log(error.reason, "\n");
+                            await sleep(1000);
                         }
                     }
-                    else console.log("Failed to get quote from 0x", "\n");
+                    else {
+                        console.log("Failed to get quote from 0x", "\n");
+                        await sleep(1000);
+                    }
                 }
-                else console.log(
-                    "All orders of this token pair have higher ratio than current market price, checking next token pair...",
-                    "\n"
-                );
+                else {
+                    console.log(
+                        "All orders of this token pair have higher ratio than current market price, checking next token pair...",
+                        "\n"
+                    );
+                    await sleep(1000);
+                }
             }
             catch (error) {
                 console.log(">>> Failed to get quote from 0x due to:", "\n");
