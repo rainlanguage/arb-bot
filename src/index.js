@@ -109,8 +109,8 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
                     rate: v.value.data.buyTokenToEthRate
                 },
                 {
-                    rate: v.value.data.sellTokenToEthRate,
-                    token: v.value.data.sellTokenAddress
+                    token: v.value.data.sellTokenAddress,
+                    rate: v.value.data.sellTokenToEthRate
                 }
             ]);
             else {
