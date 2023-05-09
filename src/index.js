@@ -718,21 +718,14 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                         catch (error) {
                             console.log(">>> Transaction failed due to:");
                             console.log(error.reason, "\n");
-                            await sleep(1000);
                         }
                     }
-                    else {
-                        console.log("Failed to get quote from 0x", "\n");
-                        await sleep(1000);
-                    }
+                    else console.log("Failed to get quote from 0x", "\n");
                 }
-                else {
-                    console.log(
-                        "All orders of this token pair have higher ratio than current market price, checking next token pair...",
-                        "\n"
-                    );
-                    await sleep(1000);
-                }
+                else console.log(
+                    "All orders of this token pair have higher ratio than current market price, checking next token pair...",
+                    "\n"
+                );
             }
             catch (error) {
                 console.log(">>> Failed to get quote from 0x due to:", "\n");
