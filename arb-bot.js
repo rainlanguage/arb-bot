@@ -9,7 +9,7 @@ const { clear, query } = require("./src");
 const { version } = require("./package.json");
 
 
-const RateLimit = 0.075;    // rate limit per seconf per month
+const RateLimit = 0.075;    // rate limit per second per month
 const DEFAULT_OPTIONS = {
     key: process?.env?.WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
@@ -29,7 +29,7 @@ const getOptions = async argv => {
         .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
         .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
-        .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when running this app on a bash loop")
+        .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop")
         .version(version)
         .parse(argv)
         .opts();
