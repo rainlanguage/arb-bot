@@ -73,31 +73,46 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => 
 const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
     try {
         console.log(">>> Getting initial prices from 0x");
-        const responses = await Promise.allSettled(
-            quotes.map(
-                async(e) => {
-                    await sleep(1000);
-                    const response = await axios.get(
-                        e.quote,
-                        HEADERS
-                    );
-                    return [
-                        {
-                            token: response.data.buyTokenAddress,
-                            rate: response.data.buyTokenToEthRate
-                        },
-                        {
-                            rate: response.data.sellTokenToEthRate,
-                            token: response.data.sellTokenAddress
-                        }
-                    ];
-                }
-            )
-        );
+        const promises = [];
+        for (let i = 0; i < quotes.length; i++) {
+            if (i > 0 && i % 2 === 0) await sleep(1000);
+            promises.push(axios.get(quotes[i].quote, HEADERS));
+        }
+        const responses = await Promise.allSettled(promises);
+        // const responses = await Promise.allSettled(
+        //     quotes.map(
+        //         async(e) => {
+        //             await sleep(1000);
+        //             const response = await axios.get(
+        //                 e.quote,
+        //                 HEADERS
+        //             );
+        //             return [
+        //                 {
+        //                     token: response.data.buyTokenAddress,
+        //                     rate: response.data.buyTokenToEthRate
+        //                 },
+        //                 {
+        //                     rate: response.data.sellTokenToEthRate,
+        //                     token: response.data.sellTokenAddress
+        //                 }
+        //             ];
+        //         }
+        //     )
+        // );
 
         let prices = [];
         responses.forEach((v, i) => {
-            if (v.status == "fulfilled") prices.push(v.value);
+            if (v.status == "fulfilled") prices.push([
+                {
+                    token: v.value.data.buyTokenAddress,
+                    rate: v.value.data.buyTokenToEthRate
+                },
+                {
+                    rate: v.value.data.sellTokenToEthRate,
+                    token: v.value.data.sellTokenAddress
+                }
+            ]);
             else {
                 console.log(`Could not get prices for ${quotes[i].tokens[0]} and ${quotes[i].tokens[1]}, reason:`);
                 console.log(v.reason.message);
