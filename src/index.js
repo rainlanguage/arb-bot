@@ -24,32 +24,38 @@ const { interpreterEval, getOrderStruct, ETHERSCAN_TX_PAGE } = require("./utils"
  * @param {any[]} quotes - The array that keeps the quotes
  * @param {string} tokenAddress - The token address
  * @param {number} tokenDecimals - The token decimals
+ * @param {string} tokenSymbol - The token symbol
  */
-const initRequests = (api, quotes, tokenAddress, tokenDecimals) => {
+const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => {
     if (quotes.length === 0) quotes.push([
         tokenAddress,
-        tokenDecimals
+        tokenDecimals,
+        tokenSymbol
     ]);
-    else if (typeof quotes[quotes.length - 1] === "string") {
-        if(!quotes.find(v => v.includes(tokenAddress))) quotes.push([
+    else if (!Array.isArray(quotes[quotes.length - 1])) {
+        if(!quotes.find(v => v.quote.includes(tokenAddress))) quotes.push([
             tokenAddress,
-            tokenDecimals
+            tokenDecimals,
+            tokenSymbol
         ]);
     }
     else {
         if(
             quotes[quotes.length - 1][0] !== tokenAddress &&
-            !quotes.slice(0, -1).find(v => v.includes(tokenAddress))
+            !quotes.slice(0, -1).find(v => v.quote.includes(tokenAddress))
         ) {
-            quotes[quotes.length - 1] = `${
-                api
-            }swap/v1/price?buyToken=${
-                quotes[quotes.length - 1][0]
-            }&sellToken=${
-                tokenAddress
-            }&sellAmount=${
-                "100" + "0".repeat(tokenDecimals)
-            }`;
+            quotes[quotes.length - 1] = {
+                quote: `${
+                    api
+                }swap/v1/price?buyToken=${
+                    quotes[quotes.length - 1][0]
+                }&sellToken=${
+                    tokenAddress
+                }&sellAmount=${
+                    "100" + "0".repeat(tokenDecimals)
+                }`,
+                tokens: [quotes[quotes.length - 1][2], tokenSymbol]
+            };
         }
     }
 };
@@ -64,11 +70,12 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals) => {
  */
 const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
     try {
+        console.log(">>> Getting initial prices from 0x");
         const responses = await Promise.allSettled(
             quotes.map(
                 async(e) => {
                     const response = await axios.get(
-                        e,
+                        e.quote,
                         {headers: { "accept-encoding": "null" }}
                     );
                     return [
@@ -86,32 +93,39 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
         );
 
         let prices = [];
-        responses.forEach(v => {
+        responses.forEach((v, i) => {
             if (v.status == "fulfilled") prices.push(v.value);
+            else {
+                console.log(`Could not get prices for ${quotes[i].tokens[0]} and ${quotes[i].tokens[1]}, reason:`);
+                console.log(v.reason.message);
+            }
         });
         prices = prices.flat();
 
-        [...bundledOrders].forEach((v, i) => {
-            const sellTokenPrice = prices.find(e => e.token === v.sellToken)?.rate;
-            const buyTokenPrice = prices.find(e => e.token === v.buyToken)?.rate;
+        bundledOrders.forEach(v => {
+            console.log(`\nCalculating initial price for ${v.buyTokenSymbol}/${v.sellTokenSymbol} ...`);
+            const sellTokenPrice = prices.find(
+                e => e.token.toLowerCase() === v.sellToken.toLowerCase()
+            )?.rate;
+            const buyTokenPrice = prices.find(
+                e => e.token.toLowerCase() === v.buyToken.toLowerCase()
+            )?.rate;
             if (sellTokenPrice && buyTokenPrice) {
-                bundledOrders[i].initPrice = ethers.utils.parseUnits(buyTokenPrice)
+                v.initPrice = ethers.utils.parseUnits(buyTokenPrice)
                     .mul(ethers.utils.parseUnits("1"))
                     .div(ethers.utils.parseUnits(sellTokenPrice));
+                console.log(`result: ${ethers.utils.formatEther(v.initPrice)}`);
             }
-            else bundledOrders.splice(i, 1);
+            else console.log("Could not calculate initial price for this token pair due to lack of required data!");
         });
+        bundledOrders = bundledOrders.filter(v => v.initPrice !== undefined);
 
-        if (sort) bundledOrders.sort(
-            (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
-        );
-        console.log("Initial token pair prices:");
-        bundledOrders.forEach(
-            v => console.log(
-                ethers.utils.formatEther(v.initPrice),
-                v.buyTokenSymbol + "/" + v.sellTokenSymbol
-            )
-        );
+        if (sort) {
+            console.log("\n", ">>> Sorting the bundled orders based on initial prices...");
+            bundledOrders.sort(
+                (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
+            );
+        }
     }
     catch (error) {
         console.log("something went wrong during the process of getting initial prices!");
@@ -342,13 +356,15 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                     api,
                                     initQuotes,
                                     _output.token.id,
-                                    _output.token.decimals
+                                    _output.token.decimals,
+                                    _output.token.symbol
                                 );
                                 initRequests(
                                     api,
                                     initQuotes,
                                     _input.token.id,
-                                    _input.token.decimals
+                                    _input.token.decimals,
+                                    _input.token.symbol
                                 );
                                 const pair = bundledOrders.find(v =>
                                     v.sellToken === _output.token.id &&
@@ -401,21 +417,24 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
         "------------------------- Getting Best Deals From 0x -------------------------",
         "\n"
     );
-    if (typeof initQuotes[initQuotes.length - 1] !== "string") {
-        initQuotes[initQuotes.length - 1] = `${
-            api
-        }swap/v1/price?buyToken=${
-            nativeToken.toLowerCase()
-        }&sellToken=${
-            initQuotes[initQuotes.length - 1][0]
-        }&sellAmount=${
-            "1" + "0".repeat(initQuotes[initQuotes.length - 1][1])
-        }`;
+    if (Array.isArray(initQuotes[initQuotes.length - 1])) {
+        initQuotes[initQuotes.length - 1] = {
+            quote: `${
+                api
+            }swap/v1/price?buyToken=${
+                nativeToken.toLowerCase()
+            }&sellToken=${
+                initQuotes[initQuotes.length - 1][0]
+            }&sellAmount=${
+                "1" + "0".repeat(initQuotes[initQuotes.length - 1][1])
+            }`,
+            tokens: ["ETH", initQuotes[initQuotes.length - 1][2]]
+        };
     }
     await prepareBundledOrders(initQuotes, bundledOrders, prioritization);
 
     if (bundledOrders.length) console.log(
-        "------------------------- Trying To Clear Bundled Orders -------------------------",
+        "\n------------------------- Trying To Clear Bundled Orders -------------------------",
         "\n"
     );
     else {
@@ -472,8 +491,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                 });
 
                 console.log(
-                    "\n",
-                    ">>> Filtering the bundled orders of this token pair with lower ratio than current market price...",
+                    "\n>>> Filtering the bundled orders of this token pair with lower ratio than current market price...",
                     "\n"
                 );
 
