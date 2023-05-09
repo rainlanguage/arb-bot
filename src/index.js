@@ -79,27 +79,6 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
             promises.push(axios.get(quotes[i].quote, HEADERS));
         }
         const responses = await Promise.allSettled(promises);
-        // const responses = await Promise.allSettled(
-        //     quotes.map(
-        //         async(e) => {
-        //             await sleep(1000);
-        //             const response = await axios.get(
-        //                 e.quote,
-        //                 HEADERS
-        //             );
-        //             return [
-        //                 {
-        //                     token: response.data.buyTokenAddress,
-        //                     rate: response.data.buyTokenToEthRate
-        //                 },
-        //                 {
-        //                     rate: response.data.sellTokenToEthRate,
-        //                     token: response.data.sellTokenAddress
-        //                 }
-        //             ];
-        //         }
-        //     )
-        // );
 
         let prices = [];
         responses.forEach((v, i) => {
@@ -144,10 +123,12 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
                 (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
             );
         }
+        return bundledOrders;
     }
     catch (error) {
         console.log("something went wrong during the process of getting initial prices!");
         console.log(error);
+        return undefined;
     }
 };
 
@@ -334,7 +315,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
     );
 
     const initQuotes = [];
-    const bundledOrders = [];
+    let bundledOrders = [];
 
     if (queryResults.length) console.log(
         "------------------------- Bundling Orders -------------------------", "\n"
@@ -454,7 +435,11 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
         };
     }
     hits += initQuotes.length;
-    await prepareBundledOrders(initQuotes, bundledOrders, prioritization);
+    bundledOrders = await prepareBundledOrders(
+        initQuotes,
+        bundledOrders,
+        prioritization
+    ) ?? bundledOrders;
 
     if (bundledOrders.length) console.log(
         "\n------------------------- Trying To Clear Bundled Orders -------------------------",
