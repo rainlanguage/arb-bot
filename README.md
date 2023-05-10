@@ -52,7 +52,7 @@ which will show:
     Usage: node arb-bot [options]
 
     Options:
-      -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'WALLET_KEY' in '.env' file
+      -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file
       -s, --slippage <number>        Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the API_KEY env variable if a value passed in CLI
@@ -69,7 +69,7 @@ which will show:
 Alternatively wallet private key and RPC URL can be set in a `.env` file or set as environment variables with:
 ```bash
 ## private key of the wallet
-WALLET_PRIVATEKEY="1234567890..."
+BOT_WALLET_PRIVATEKEY="1234567890..."
 
 ## RPC URL of the desired network
 RPC_URL="https://alchemy...."
