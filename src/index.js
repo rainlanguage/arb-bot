@@ -539,6 +539,7 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
 
                     const txQuote = response?.data;
                     if (txQuote) {
+                        console.log("the full quote that will be submitted is:" + "\n" + JSON.stringify(txQuote, null, 2), "\n");
                         const takeOrdersConfigStruct = {
                             output: bundledOrders[i].buyToken,
                             input: bundledOrders[i].sellToken,

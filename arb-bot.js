@@ -11,7 +11,7 @@ const { version } = require("./package.json");
 
 const RateLimit = 0.075;    // rate limit per second per month
 const DEFAULT_OPTIONS = {
-    key: process?.env?.WALLET_PRIVATEKEY,
+    key: process?.env?.BOT_WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
     apiKey: process?.env?.API_KEY,
     slippage: "0.001",    // 0.1%
