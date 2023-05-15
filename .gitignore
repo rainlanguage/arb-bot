@@ -5,6 +5,8 @@ node_modules
 cache
 /contracts
 artifacts
+logs.txt
+logs
 
 ## Private
 .env

@@ -267,11 +267,11 @@ exports.getConfig = async(
  *
  * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
- * @param {number} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
+ * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritization = true) => {
+exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritization = true) => {
     let hits = 0;
     const api = config.apiUrl;
     const chainId = config.chainId;
@@ -700,14 +700,14 @@ exports.clear = async(signer, config, queryResults, slippage = 0.01, prioritizat
                                 }
                                 catch (error) {
                                     console.log(">>> Transaction execution failed due to:");
-                                    console.log(error.reason, "\n");
+                                    console.log(error, "\n");
                                 }
                             }
                             else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
                         }
                         catch (error) {
                             console.log(">>> Transaction failed due to:");
-                            console.log(error.reason, "\n");
+                            console.log(error, "\n");
                         }
                     }
                     else console.log("Failed to get quote from 0x", "\n");
