@@ -38,6 +38,7 @@ Other optional arguments are:
 - `--subgraph-url` A custom subgraph endpoint URL, used to read order details from, the default is Rain Orderbook Subgraph. The custom subgraph should follow the Rain Orderbook Subgraph schema.
 - `--interpreter-abi` The path to IInterpreter ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/IInerpreterV1.json`.
 - `--arb-abi` The path to Arb (ZeroExOrderBookFlashBorrower) ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/ZeroExOrderBookFlashBorrower.json`.
+- `--orderbook-abi` The path to Orderbook ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/OrderBook.json`.
 - `--no-monthly-ratelimit` Used to respect monthly 200k 0x API calls, mainly used when not running this app on a bash loop, e.g. Github Actions
 - `-h` or `--help` To show the CLI command's help
 - `-v` or `--version` To show the app's version
@@ -61,6 +62,7 @@ which will show:
       --arb-address <address>        Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file
       --interpreter-abi <path>       Path to the IInterpreter contract ABI, default is the ABI in the './stc/abis' folder
       --arb-abi <path>               Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, default is the ABI in the './stc/abis' folder
+      --orderbook-abi <path>         Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder
       --no-monthly-ratelimit         Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop
       -V, --version                  output the version number
       -h, --help                     output usage information
@@ -110,7 +112,7 @@ const wallet = new ethers.Wallet(walletPrivateKey, provider)
 const queryResult = await arb.query(subgraphUrl);
 
 // to get the configuration object
-const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[ arbAbiPath, interpreterAbiPath ]);
+const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[ arbAbiPath, interpreterAbiPath, orderbookAbiPath ]);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
 const reports = await arb.clear(wallet, config, queryResult, ...[ slippage, prioritization ])

@@ -20,9 +20,6 @@ exports.DefaultQuery = `{
                 decimals
                 symbol
             }
-            tokenVault {
-                balance
-            }
             vault {
                 id
             }
@@ -33,9 +30,6 @@ exports.DefaultQuery = `{
                 id
                 decimals
                 symbol
-            }
-            tokenVault {
-                balance
             }
             vault {
                 id
