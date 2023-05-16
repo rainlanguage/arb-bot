@@ -338,13 +338,19 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
         const order = queryResults[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
+            // const _outputBalance = ethers.utils.parseUnits(
+            //     ethers.utils.formatUnits(
+            //         await orderbook.vaultBalance(
+            //             order.owner.id,
+            //             _output.token.id,
+            //             _output.vault.id.split("-")[0]
+            //         ),
+            //         _output.token.decimals
+            //     )
+            // );
             const _outputBalance = ethers.utils.parseUnits(
                 ethers.utils.formatUnits(
-                    await orderbook.vaultBalance(
-                        order.owner.id,
-                        _output.token.id,
-                        _output.vault.id.split("-")[0]
-                    ),
+                    _output.tokenVault.balance,
                     _output.token.decimals
                 )
             );
