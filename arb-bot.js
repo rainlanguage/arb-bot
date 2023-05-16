@@ -29,6 +29,7 @@ const getOptions = async argv => {
         .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
         .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        .option("--orderbook-abi <path>", "Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop")
         .version(version)
         .parse(argv)
@@ -77,6 +78,7 @@ const main = async argv => {
 
     if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
     if (options.arbAbi) config.arbAbi = options.arbAbi;
+    if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
 
     const reports = await clear(
         signer,
