@@ -2,6 +2,11 @@ const { ethers, BigNumber } = require("ethers");
 
 
 /**
+ * Headers used for 0x requests
+ */
+exports.HEADERS = { headers: { "accept-encoding": "null" } };
+
+/**
  * Transaction page of etherscan websites paired with their chain id
  */
 exports.ETHERSCAN_TX_PAGE = {

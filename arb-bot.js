@@ -5,7 +5,7 @@ const ethers = require("ethers");
 const CONFIG = require("./config.json");
 const { sleep } = require("./src/utils");
 const { Command } = require("commander");
-const { clear, query } = require("./src");
+const { zeroExClear, query } = require("./src");
 const { version } = require("./package.json");
 
 
@@ -80,7 +80,7 @@ const main = async argv => {
     if (options.arbAbi) config.arbAbi = options.arbAbi;
     if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
 
-    const reports = await clear(
+    const reports = await zeroExClear(
         signer,
         config,
         await query(options.subgraphUrl),
