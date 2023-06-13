@@ -285,7 +285,7 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, interpreterAbi);
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, interpreterAbi);
         for (let i = 0; i < bundledOrders.length; i++) {
             initRequests(
                 api,

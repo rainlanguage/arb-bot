@@ -2,11 +2,12 @@
 
 require("dotenv").config();
 const ethers = require("ethers");
+const { query } = require("./src");
 const CONFIG = require("./config.json");
 const { sleep } = require("./src/utils");
 const { Command } = require("commander");
-const { zeroExClear, query } = require("./src");
 const { version } = require("./package.json");
+const { zeroExClear } = require("./src/zeroex");
 
 
 const RateLimit = 0.075;    // rate limit per second per month

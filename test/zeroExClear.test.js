@@ -1,7 +1,7 @@
 const { assert } = require("chai");
-const { clear } = require("../src");
 const { ethers } = require("hardhat");
 const CONFIG = require("../config.json");
+const { zeroExClear } = require("../src/zeroex");
 const { zeroExCloneDeploy } = require("./deploy/arbDeploy");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { deployOrderBook } = require("./deploy/orderbookDeploy");
@@ -18,7 +18,7 @@ const {
 
 
 // This test runs on hardhat forked network of polygon using 0x live quotes from polygon mainnet
-describe("Rain Arb Bot Test", async function () {
+describe("Rain 0x Arb Bot Test", async function () {
     let interpreter,
         store,
         expressionDeployer,
@@ -296,7 +296,7 @@ describe("Rain Arb Bot Test", async function () {
         // run the clearing process
         config.interpreterAbi = "../test/abis/IInterpreterV1.json";
         config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
-        const reports = (await clear(bot, config, sgOrders, "0.1", false)).report;
+        const reports = (await zeroExClear(bot, config, sgOrders, "0.1", false)).report;
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);

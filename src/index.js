@@ -4,8 +4,6 @@ const axios = require("axios");
 const ethers = require("ethers");
 const CONFIG = require("../config.json");
 const { DefaultQuery } = require("./query");
-const { zeroExClear } = require("./zeroex");
-const { curveClear } = require("./curve");
 // let { abi: orderbookAbi } = require("./abis/OrderBook.json");
 // const { abi: erc20Abi } = require("./abis/ERC20Upgradeable.json");
 // let { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
@@ -74,10 +72,11 @@ const getConfig = async(
  *
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {ethers.Contract} orderbook - The Orderbook EthersJS contract instance with signer
+ * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @param {object} interpreterAbi - The IInterpreterV1 ABI
  * @returns Array of bundled take orders
  */
-const bundleTakeOrders = async(ordersDetails, orderbook, interpreterAbi) => {
+const bundleTakeOrders = async(ordersDetails, orderbook, arb, interpreterAbi) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
@@ -114,8 +113,8 @@ const bundleTakeOrders = async(ordersDetails, orderbook, interpreterAbi) => {
                                 interpreterAbi,
                                 obAsSigner
                             ),
-                            arbAddress,
-                            orderbookAddress,
+                            arb.address,
+                            orderbook.address,
                             order,
                             k,
                             j
@@ -185,8 +184,6 @@ const bundleTakeOrders = async(ordersDetails, orderbook, interpreterAbi) => {
 };
 
 module.exports = {
-    zeroExClear,
-    curveClear,
     query,
     getConfig,
     bundleTakeOrders
