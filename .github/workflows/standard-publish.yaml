@@ -35,7 +35,7 @@ jobs:
       - name: Install Dependencies
         id: install
         if: steps.node.outcome == 'success'
-        run: pnpm install && npm install
+        run: npm install
 
       # Lint the source code
       - name: Lint
