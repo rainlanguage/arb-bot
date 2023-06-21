@@ -24,7 +24,7 @@ const getOptions = async argv => {
     const commandOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file")
-        .option("-z, --zeroex", "Use 0x API platform to clear order, default uses Curve.fi platform for clearing")
+        .option("-z, --zeroex", "Use 0x API platform for the app, default uses Curve.fi platform")
         .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%")
         .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the API_KEY env variable")
         .option("-g, --gas-coverage <number>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage")

@@ -555,16 +555,41 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
 };
 
 /**
+ * Instantiates a DataFetcher
+ * @param {any} config - The network config data
+ */
+exports.getDataFetcher = (config) => {
+    try {
+        const dataFetcher = new DataFetcher(
+            config.chainId,
+            createPublicClient({
+                chain: viemConfig[config.chainId]?.chain,
+                transport: config.rpc && config.rpc !== "test"
+                    ? http(config.rpc)
+                    : this.fallbackTransports[config.chainId].transport
+            })
+        );
+        dataFetcher.startDataFetching();
+        return dataFetcher;
+    }
+    catch(error) {
+        throw "cannot instantiate DataFetcher for this network";
+    }
+};
+
+/**
  * Gets ETH price against a target token
  *
  * @param {*} config - The network config data
  * @param {*} targetTokenAddress - The target token address
  * @param {*} targetTokenDecimals - The target token decimals
+ * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
  */
 exports.getEthPrice = async(
     config,
     targetTokenAddress,
-    targetTokenDecimals
+    targetTokenDecimals,
+    dataFetcher = undefined
 ) => {
     // const originalEmit = process.emit;
     // process.emit = function (name, data, ...args) {
@@ -595,39 +620,42 @@ exports.getEthPrice = async(
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
-    const dataFetcher = new DataFetcher(
-        config.chainId,
-        createPublicClient({
-            chain: viemConfig[config.chainId]?.chain,
-            transport: config.rpc && config.rpc !== "test"
-                ? http(config.rpc)
-                : this.fallbackTransports[config.chainId].transport,
-            // batch: {
-            //     multicall: {
-            //         batchSize: 512
-            //     },
-            // },
-            // pollingInterval: 8_000
-            // contracts: {
-            //     multicall3: {
-            //         address: "0xca11bde05977b3631167028862be2a173976ca11",
-            //         blockCreated: 57746,
-            //     },
-            // },
-        })
-    );
-    dataFetcher.startDataFetching(
-        [
-            LiquidityProviders.UniswapV2,
-            LiquidityProviders.UniswapV3,
-            LiquidityProviders.SushiSwapV2,
-            LiquidityProviders.SushiSwapV3,
-            // LiquidityProviders.QuickSwap,
-            // LiquidityProviders.CurveSwap
-        ]
-    );
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
-    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    if (!dataFetcher) {
+        // dataFetcher = new DataFetcher(
+        //     config.chainId,
+        //     createPublicClient({
+        //         chain: viemConfig[config.chainId]?.chain,
+        //         transport: config.rpc && config.rpc !== "test"
+        //             ? http(config.rpc)
+        //             : this.fallbackTransports[config.chainId].transport,
+        //         // batch: {
+        //         //     multicall: {
+        //         //         batchSize: 512
+        //         //     },
+        //         // },
+        //         // pollingInterval: 8_000
+        //         // contracts: {
+        //         //     multicall3: {
+        //         //         address: "0xca11bde05977b3631167028862be2a173976ca11",
+        //         //         blockCreated: 57746,
+        //         //     },
+        //         // },
+        //     })
+        // );
+        // dataFetcher.startDataFetching(
+        //     // [
+        //     //     LiquidityProviders.UniswapV2,
+        //     //     LiquidityProviders.UniswapV3,
+        //     //     LiquidityProviders.SushiSwapV2,
+        //     //     LiquidityProviders.SushiSwapV3,
+        //     //     // LiquidityProviders.QuickSwap,
+        //     //     // LiquidityProviders.CurveSwap
+        //     // ]
+        // );
+        dataFetcher = this.getDataFetcher(config);
+    }
+    await this.fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    const pcMap = this.getCurrentPoolCodeMapWrapper(dataFetcher, fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
         config.chainId,
@@ -638,7 +666,6 @@ exports.getEthPrice = async(
         // providers,
         // poolFilter
     );
-    // console.log = oldConsole;
     if (route.status == "NoWay") return undefined;
     else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
     // const rpParams = Router.routeProcessor2Params(
@@ -681,4 +708,50 @@ exports.getEthPrice = async(
     //     tx = err;
     // }
     // return tx;
+};
+
+exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, excludePools) => {
+    // ensure that we only fetch the native wrap pools if the
+    // token is the native currency and wrapped native currency
+    if (currency0.wrapped.equals(currency1.wrapped)) {
+        const provider = dataFetcher.providers.find(
+            (p) => p.getType() === LiquidityProviders.NativeWrap
+        );
+        if (provider) {
+            try {
+                await provider.fetchPoolsForToken(
+                    currency0.wrapped,
+                    currency1.wrapped,
+                    excludePools
+                );
+            }
+            catch {}
+        }
+    }
+    else {
+        const [token0, token1] =
+            currency0.wrapped.equals(currency1.wrapped) ||
+            currency0.wrapped.sortsBefore(currency1.wrapped)
+                ? [currency0.wrapped, currency1.wrapped]
+                : [currency1.wrapped, currency0.wrapped];
+        await Promise.allSettled(
+            dataFetcher.providers.map((p) => {
+                try {
+                    return p.fetchPoolsForToken(token0, token1, excludePools);
+                }
+                catch {
+                    return;
+                }
+            })
+        );
+    }
+};
+
+exports.getCurrentPoolCodeMapWrapper = (dataFetcher, currency0, currency1) => {
+    const result = new Map();
+    dataFetcher.providers.forEach((p) => {
+        const poolCodes = p.getCurrentPoolList(currency0.wrapped, currency1.wrapped);
+        poolCodes.forEach((pc) => result.set(pc.pool.address, pc));
+    });
+    return result;
 };

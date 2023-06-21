@@ -1,11 +1,13 @@
 const ethers = require("ethers");
 const { arbAbi, orderbookAbi } = require("./abis");
-const { bundleTakeOrders, getEthPrice } = require("./utils");
 const {
     getIncome,
+    getEthPrice,
+    getDataFetcher,
     getActualPrice,
     estimateProfit,
-    ETHERSCAN_TX_PAGE
+    bundleTakeOrders,
+    ETHERSCAN_TX_PAGE,
 } = require("./utils");
 
 
@@ -285,6 +287,7 @@ exports.curveClear = async(
     );
 
     const report = [];
+    const dataFetcher = getDataFetcher(config);
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
@@ -435,7 +438,8 @@ exports.curveClear = async(
                         config,
                         // "1" + "0".repeat(nativeToken.decimals),
                         bundledOrders[i].buyToken,
-                        bundledOrders[i].buyTokenDecimals
+                        bundledOrders[i].buyTokenDecimals,
+                        dataFetcher
                     );
                     if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                     else {
