@@ -231,8 +231,6 @@ exports.curveClear = async(
     gasCoveragePercentage = "100",
     prioritization = true
 ) => {
-    console.log(gasCoveragePercentage);
-    console.log(Number.isInteger(Number(gasCoveragePercentage)));
     if (
         gasCoveragePercentage < 0 ||
         gasCoveragePercentage > 100 ||

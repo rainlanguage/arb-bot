@@ -301,7 +301,6 @@ describe("Rain Arb Bot Tests", async function () {
         // config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
         // config.apiKey = "1";
         config.rpc = "test";
-        console.log(config.rpc);
         const reports = await clear("curve", bot, config, sgOrders, "0.1", "100", false);
 
         // should have cleared 2 toke pairs bundled orders
