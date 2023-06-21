@@ -28,14 +28,14 @@ jobs:
         if: steps.checkout.outcome == 'success'
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
           cache: 'npm'
 
       # Install deps
       - name: Install Dependencies
         id: install
         if: steps.node.outcome == 'success'
-        run: npm install
+        run: npm install --ignore-scripts
 
       # Lint the source code
       - name: Lint
