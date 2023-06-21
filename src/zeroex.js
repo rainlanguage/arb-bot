@@ -1,20 +1,18 @@
-const fs = require("fs");
-const path = require("path");
 const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders } = require(".");
-let { abi: orderbookAbi } = require("./abis/OrderBook.json");
-const { abi: erc20Abi } = require("./abis/ERC20Upgradeable.json");
-let { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
-let { abi: arbAbi } = require("./abis/ZeroExOrderBookFlashBorrower.json");
+const { bundleTakeOrders } = require("./utils");
+const { arbAbi, orderbookAbi } = require("./abis");
 const {
-    // interpreterEval,
-    // getOrderStruct,
-    ETHERSCAN_TX_PAGE,
     sleep,
-    HEADERS
+    HEADERS,
+    getIncome,
+    getActualPrice,
+    estimateProfit,
+    ETHERSCAN_TX_PAGE
 } = require("./utils");
 
+
+const RateLimit = 0.075;    // rate limit per second per month
 
 /**
  * Builds initial 0x requests bodies from token addresses that is required
@@ -74,13 +72,13 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => 
  * @param {any[]} bundledOrders - The bundled orders array
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
+const prepare = async(quotes, bundledOrders, sort = true) => {
     try {
         console.log(">>> Getting initial prices from 0x");
         const promises = [];
         for (let i = 0; i < quotes.length; i++) {
             if (i > 0 && i % 2 === 0) await sleep(1000);
-            promises.push(axios.get(quotes[i].quote, HEADERS));
+            promises.push(await axios.get(quotes[i].quote, HEADERS));
         }
         const responses = await Promise.allSettled(promises);
 
@@ -137,121 +135,56 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
 };
 
 /**
- * Estimates the profit for a single bundled orders struct
- *
- * @param {any} txQuote - The quote from 0x
- * @param {object} bundledOrder - The bundled order object
- * @param {ethers.BigNumber} gas - The estimated gas cost
- * @param {string} partialGasCoverage - Partially cover gas cost, default is 1 meaning full gas coverage in profit estimation
- * @returns The estimated profit
- */
-const estimateProfit = (txQuote, bundledOrder, gas, partialGasCoverage = "1") => {
-    let income = ethers.constants.Zero;
-    const price = ethers.utils.parseUnits(txQuote.price);
-    const gasCost = ethers.utils.parseEther(txQuote.buyTokenToEthRate)
-        .mul(gas)
-        .div(ethers.utils.parseUnits("1"))
-        .mul(ethers.utils.parseUnits(partialGasCoverage))
-        .div(ethers.utils.parseUnits("1"));
-    for (const takeOrder of bundledOrder.takeOrders) {
-        income = price
-            .sub(takeOrder.ratio)
-            .mul(takeOrder.quoteAmount)
-            .div(ethers.utils.parseUnits("1"))
-            .add(income);
-    }
-    return income.sub(gasCost);
-};
-
-/**
- * Extracts the income (received token value) from transaction receipt
- * @param {ethers.Wallet} signer - The ethers wallet instance of the bot
- * @param {any} receipt - The transaction receipt
- * @returns The income value or undefined if cannot find any valid value
- */
-const getIncome = (signer, receipt) => {
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    return receipt.events.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
-    ).map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    })[0]?.value;
-};
-
-/**
- * Calculates the actual clear price from transactioin event
- * @param {any} receipt - The transaction receipt
- * @param {string} orderbook - The Orderbook contract address
- * @param {string} arb - The Arb contract address
- * @param {string} amount - The clear amount
- * @param {number} sellDecimals - The sell token decimals
- * @param {number} buyDecimals - The buy token decimals
- * @returns The actual clear price or undefined if necessary info not found in transaction events
- */
-const getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDecimals) => {
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    const eventObj = receipt.events.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    }).filter(
-        v =>
-            v &&
-            !ethers.BigNumber.from(v.from).eq(orderbook) &&
-            ethers.BigNumber.from(v.to).eq(arb)
-    );
-    if (eventObj[0] && eventObj[0]?.value) return ethers.utils.formatUnits(
-        eventObj[0].value
-            .mul("1" + "0".repeat(36 - sellDecimals))
-            .div(amount)
-            .div("1" + "0".repeat(18 - sellDecimals)),
-        buyDecimals
-    );
-    else return undefined;
-};
-
-/**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with 0x
  *
  * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
+ * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", prioritization = true) => {
+exports.zeroExClear = async(
+    signer,
+    config,
+    ordersDetails,
+    slippage = "0.01",
+    gasCoveragePercentage = "100",
+    prioritization = true
+) => {
+    if (
+        gasCoveragePercentage < 0 ||
+        gasCoveragePercentage > 100 ||
+        !Number.isInteger(Number(gasCoveragePercentage))
+    ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
+
+    const start = Date.now();
     let hits = 0;
-    const api = config.apiUrl;
+    const api = config.zeroEx.apiUrl;
+    const proxyAddress = config.zeroEx.proxyAddress;
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
-    const nativeToken = config.nativeToken.address;
-    const intAbiPath = config.interpreterAbi;
-    const arbAbiPath = config.arbAbi;
-    const orderbookAbiPath = config.orderbookAbi;
+    const nativeToken = config.nativeToken;
+    // const intAbiPath = config.interpreterAbi;
+    // const arbAbiPath = config.arbAbi;
+    // const orderbookAbiPath = config.orderbookAbi;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
+    else throw "invalid 0x API key";
 
     // get the abis if path is provided for them
-    if (intAbiPath) interpreterAbi = (JSON.parse(
-        fs.readFileSync(path.resolve(__dirname, intAbiPath)).toString())
-    )?.abi;
-    if (arbAbiPath) arbAbi = JSON.parse(
-        fs.readFileSync(path.resolve(__dirname, arbAbiPath)).toString()
-    )?.abi;
-    if (orderbookAbiPath) orderbookAbi = JSON.parse(
-        fs.readFileSync(path.resolve(__dirname, orderbookAbiPath)).toString()
-    )?.abi;
+    // if (intAbiPath) interpreterAbi = (JSON.parse(
+    //     fs.readFileSync(path.resolve(__dirname, intAbiPath)).toString())
+    // )?.abi;
+    // if (arbAbiPath) arbAbi = JSON.parse(
+    //     fs.readFileSync(path.resolve(__dirname, arbAbiPath)).toString()
+    // )?.abi;
+    // if (orderbookAbiPath) orderbookAbi = JSON.parse(
+    //     fs.readFileSync(path.resolve(__dirname, orderbookAbiPath)).toString()
+    // )?.abi;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
@@ -273,11 +206,6 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
-    console.log(
-        "------------------------- Fetching Order Details From Subgraph -------------------------",
-        "\n"
-    );
-
     const initQuotes = [];
     let bundledOrders = [];
 
@@ -285,7 +213,7 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, interpreterAbi);
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         for (let i = 0; i < bundledOrders.length; i++) {
             initRequests(
                 api,
@@ -308,105 +236,6 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
         return;
     }
 
-    // for (let i = 0; i < ordersDetails.length; i++) {
-
-    //     const order = ordersDetails[i];
-    //     for (let j = 0; j < order.validOutputs.length; j++) {
-    //         const _output = order.validOutputs[j];
-    //         // const _outputBalance = ethers.utils.parseUnits(
-    //         //     ethers.utils.formatUnits(
-    //         //         await orderbook.vaultBalance(
-    //         //             order.owner.id,
-    //         //             _output.token.id,
-    //         //             _output.vault.id.split("-")[0]
-    //         //         ),
-    //         //         _output.token.decimals
-    //         //     )
-    //         // );
-    //         const _outputBalance = ethers.utils.parseUnits(
-    //             ethers.utils.formatUnits(
-    //                 _output.tokenVault.balance,
-    //                 _output.token.decimals
-    //             )
-    //         );
-    //         if (!_outputBalance.isZero()) {
-    //             for (let k = 0; k < order.validInputs.length; k ++) {
-    //                 if (_output.token.id !== order.validInputs[k].token.id) {
-    //                     const _input = order.validInputs[k];
-    //                     const { maxOutput, ratio } = await interpreterEval(
-    //                         new ethers.Contract(
-    //                             order.interpreter,
-    //                             interpreterAbi,
-    //                             obAsSigner
-    //                         ),
-    //                         arbAddress,
-    //                         orderbookAddress,
-    //                         order,
-    //                         k,
-    //                         j
-    //                     );
-    //                     if (maxOutput && ratio) {
-    //                         const quoteAmount = _outputBalance.lte(maxOutput)
-    //                             ? _outputBalance
-    //                             : maxOutput;
-
-    //                         if (!quoteAmount.isZero()) {
-    //                             initRequests(
-    //                                 api,
-    //                                 initQuotes,
-    //                                 _output.token.id,
-    //                                 _output.token.decimals,
-    //                                 _output.token.symbol
-    //                             );
-    //                             initRequests(
-    //                                 api,
-    //                                 initQuotes,
-    //                                 _input.token.id,
-    //                                 _input.token.decimals,
-    //                                 _input.token.symbol
-    //                             );
-    //                             const pair = bundledOrders.find(v =>
-    //                                 v.sellToken === _output.token.id &&
-    //                               v.buyToken === _input.token.id
-    //                             );
-    //                             if (pair) pair.takeOrders.push({
-    //                                 id: order.id,
-    //                                 ratio,
-    //                                 quoteAmount,
-    //                                 takeOrder: {
-    //                                     order: getOrderStruct(order),
-    //                                     inputIOIndex: k,
-    //                                     outputIOIndex: j,
-    //                                     signedContext: []
-    //                                 }
-    //                             });
-    //                             else bundledOrders.push({
-    //                                 buyToken: _input.token.id,
-    //                                 buyTokenSymbol: _input.token.symbol,
-    //                                 buyTokenDecimals: _input.token.decimals,
-    //                                 sellToken: _output.token.id,
-    //                                 sellTokenSymbol: _output.token.symbol,
-    //                                 sellTokenDecimals: _output.token.decimals,
-    //                                 takeOrders: [{
-    //                                     id: order.id,
-    //                                     ratio,
-    //                                     quoteAmount,
-    //                                     takeOrder: {
-    //                                         order: getOrderStruct(order),
-    //                                         inputIOIndex: k,
-    //                                         outputIOIndex: j,
-    //                                         signedContext: []
-    //                                     }
-    //                                 }]
-    //                             });
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     if (!bundledOrders.length) {
         console.log("Could not find any order with sufficient balance, exiting...", "\n");
         return;
@@ -421,7 +250,7 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
             quote: `${
                 api
             }swap/v1/price?buyToken=${
-                nativeToken.toLowerCase()
+                nativeToken.address.toLowerCase()
             }&sellToken=${
                 initQuotes[initQuotes.length - 1][0]
             }&sellAmount=${
@@ -431,14 +260,14 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
         };
     }
     hits += initQuotes.length;
-    bundledOrders = await prepareBundledOrders(
+    bundledOrders = await prepare(
         initQuotes,
         bundledOrders,
         prioritization
     ) ?? bundledOrders;
 
     if (bundledOrders.length) console.log(
-        "\n------------------------- Trying To Clear Bundled Orders -------------------------",
+        "------------------------- Trying To Clear Bundled Orders -------------------------",
         "\n"
     );
     else {
@@ -591,20 +420,26 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
 
                             // submit the transaction
                             try {
+                                const data = ethers.utils.defaultAbiCoder.encode(
+                                    ["address", "address", "bytes"],
+                                    [txQuote.allowanceTarget, proxyAddress, txQuote.data]
+                                );
                                 console.log(">>> Estimating the profit for this token pair...", "\n");
                                 const gasLimit = await arb.estimateGas.arb(
                                     takeOrdersConfigStruct,
                                     // set to zero because only profitable transactions are submitted
                                     0,
-                                    txQuote.allowanceTarget,
-                                    txQuote.data,
+                                    data,
+                                    // txQuote.allowanceTarget,
+                                    // txQuote.data,
                                     { gasPrice: txQuote.gasPrice }
                                 );
                                 const maxEstimatedProfit = estimateProfit(
-                                    txQuote,
+                                    txQuote.price,
+                                    txQuote.buyTokenToEthRate,
                                     bundledOrders[i],
                                     gasLimit.mul(txQuote.gasPrice),
-                                    "0.1"
+                                    gasCoveragePercentage
                                 ).div(
                                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                                 );
@@ -621,8 +456,9 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
                                         takeOrdersConfigStruct,
                                         // set to zero because only profitable transactions are submitted
                                         0,
-                                        txQuote.allowanceTarget,
-                                        txQuote.data,
+                                        data,
+                                        // txQuote.allowanceTarget,
+                                        // txQuote.data,
                                         { gasPrice: txQuote.gasPrice, gasLimit }
                                     );
                                     console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
@@ -641,11 +477,12 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
                                             receipt,
                                             orderbookAddress,
                                             arbAddress,
-                                            bundledQuoteAmount.mul(
-                                                "1" + "0".repeat(
-                                                    18 - bundledOrders[i].sellTokenDecimals
-                                                )
-                                            ),
+                                            cumulativeAmount,
+                                            // bundledQuoteAmount.mul(
+                                            //     "1" + "0".repeat(
+                                            //         18 - bundledOrders[i].sellTokenDecimals
+                                            //     )
+                                            // ),
                                             bundledOrders[i].sellTokenDecimals,
                                             bundledOrders[i].buyTokenDecimals
                                         );
@@ -704,37 +541,6 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
                                             netProfit,
                                             clearedOrders: bundledOrders[i].takeOrders,
                                         });
-
-                                        // // filter out upcoming take orders matching current cleared order
-                                        // if (i + 1 < bundledOrders.length) console.log(
-                                        //     ">>> Updating upcoming bundled orders...",
-                                        //     "\n"
-                                        // );
-                                        // for (let j = i + 1; j < bundledOrders.length; j++) {
-                                        //     bundledOrders[j].takeOrders = bundledOrders[j].takeOrders
-                                        //         .filter(v => {
-                                        //             for (const item of bundledOrders[i].takeOrders) {
-                                        //                 if (
-                                        //                     item.id === v.id ||
-                                        //                     (
-                                        //                         bundledOrders[j].sellToken ===
-                                        //                         bundledOrders[i].sellToken &&
-
-                                        //                         v.takeOrder.order.owner ===
-                                        //                             item.takeOrder.order.owner &&
-
-                                        //                         v.takeOrder.order.validOutputs[
-                                        //                             v.takeOrder.outputIOIndex
-                                        //                         ].vaultId ===
-                                        //                             item.takeOrder.order.validOutputs[
-                                        //                                 v.takeOrder.outputIOIndex
-                                        //                             ].vaultId
-                                        //                     )
-                                        //                 ) return false;
-                                        //                 return true;
-                                        //             }
-                                        //         });
-                                        // }
                                     }
                                     catch (error) {
                                         console.log(">>> Transaction execution failed due to:");
@@ -766,5 +572,18 @@ exports.zeroExClear = async(signer, config, ordersDetails, slippage = "0.01", pr
         }
     }
     console.log("---------------------------------------------------------------------------", "\n");
-    return { hits, report };
+
+    // wait to stay within montly ratelimit
+    if (config.monthlyRatelimit) {
+        const rateLimitDuration = Number((((hits / RateLimit) * 1000) + 1).toFixed());
+        const duration = Date.now() - start;
+        console.log(`Executed in ${duration} miliseconds with ${hits} 0x api calls`);
+        const msToWait = rateLimitDuration - duration;
+        if (msToWait > 0) {
+            console.log(`Waiting ${msToWait} more miliseconds to stay within monthly rate limit...`);
+            await sleep(msToWait);
+        }
+        console.log("---------------------------------------------------------------------------", "\n");
+    }
+    return report;
 };

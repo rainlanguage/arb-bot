@@ -1,4 +1,10 @@
 const { ethers, BigNumber } = require("ethers");
+const { ChainId } = require("@sushiswap/chain");
+const { Token } = require("@sushiswap/currency");
+const { erc20Abi, interpreterAbi } = require("./abis");
+const { createPublicClient, http, fallback } = require("viem");
+const { config: viemConfig } = require("@sushiswap/viem-config");
+const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router");
 
 
 /**
@@ -23,9 +29,173 @@ exports.ETHERSCAN_TX_PAGE = {
 };
 
 /**
+ * Fallback transports for viem client
+ */
+exports.fallbackTransports = {
+    [ChainId.ARBITRUM_NOVA]: {
+        transport: http("https://nova.arbitrum.io/rpc"),
+    },
+    [ChainId.ARBITRUM]: {
+        transport: fallback(
+            [
+                http("https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+                http("https://rpc.ankr.com/arbitrum"),
+                http("https://arbitrum-one.public.blastapi.io"),
+                http("https://endpoints.omniatech.io/v1/arbitrum/one/public"),
+                http("https://arb1.croswap.com/rpc"),
+                http("https://1rpc.io/arb"),
+                http("https://arbitrum.blockpi.network/v1/rpc/public"),
+                http("https://arb-mainnet-public.unifra.io"),
+            ],
+            { rank: true }
+        ),
+    },
+    [ChainId.AVALANCHE]: {
+        transport: fallback([
+            http("https://api.avax.network/ext/bc/C/rpc"),
+            http("https://rpc.ankr.com/avalanche")
+        ]),
+    },
+    [ChainId.BOBA]: {
+        transport: fallback([
+            http("https://mainnet.boba.network"),
+            http("https://lightning-replica.boba.network")
+        ]),
+    },
+    [ChainId.BOBA_AVAX]: {
+        transport: fallback([
+            http("https://avax.boba.network"),
+            http("https://replica.avax.boba.network")
+        ]),
+    },
+    [ChainId.BOBA_BNB]: {
+        transport: fallback([
+            http("https://bnb.boba.network"),
+            http("https://replica.bnb.boba.network")
+        ]),
+    },
+    [ChainId.BSC]: {
+        transport: fallback([
+            http("https://rpc.ankr.com/bsc"),
+            http("https://lb.drpc.org/ogrpc?network=bsc&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+            http("https://bsc-dataseed.binance.org"),
+            http("https://bsc-dataseed1.binance.org"),
+            http("https://bsc-dataseed2.binance.org"),
+        ]),
+    },
+    [ChainId.BTTC]: {
+        transport: http("https://rpc.bittorrentchain.io"),
+    },
+    [ChainId.CELO]: {
+        transport: http("https://forno.celo.org")
+    },
+    [ChainId.ETHEREUM]: {
+        transport: fallback(
+            [
+                http("https://lb.drpc.org/ogrpc?network=ethereum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+                http("https://eth.llamarpc.com"),
+                // http('https://eth.rpc.blxrbdn.com'),
+                // http('https://virginia.rpc.blxrbdn.com'),
+                // http('https://singapore.rpc.blxrbdn.com'),
+                // http('https://uk.rpc.blxrbdn.com'),
+                http("https://1rpc.io/eth"),
+                http("https://ethereum.publicnode.com"),
+                http("https://cloudflare-eth.com"),
+            ],
+            { rank: true }
+        ),
+    },
+    [ChainId.FANTOM]: {
+        transport: fallback([
+            http("https://rpc.ankr.com/fantom"),
+            http("https://rpc.fantom.network"),
+            http("https://rpc2.fantom.network"),
+        ]),
+    },
+    [ChainId.FUSE]: {
+        transport: http("https://rpc.fuse.io"),
+    },
+    [ChainId.GNOSIS]: {
+        transport: http("https://rpc.ankr.com/gnosis"),
+    },
+    [ChainId.HARMONY]: {
+        transport: fallback([
+            http("https://api.harmony.one"),
+            http("https://rpc.ankr.com/harmony")
+        ]),
+    },
+    [ChainId.KAVA]: {
+        transport: fallback([
+            http("https://evm.kava.io"),
+            http("https://evm2.kava.io")
+        ]),
+    },
+    [ChainId.MOONBEAM]: {
+        transport: fallback([
+            http("https://rpc.api.moonbeam.network"),
+            http("https://rpc.ankr.com/moonbeam")
+        ]),
+    },
+    [ChainId.MOONRIVER]: {
+        transport: http("https://rpc.api.moonriver.moonbeam.network"),
+    },
+    [ChainId.OPTIMISM]: {
+        transport: fallback(
+            [
+                http("https://lb.drpc.org/ogrpc?network=optimism&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+                http("https://rpc.ankr.com/optimism"),
+                http("https://optimism-mainnet.public.blastapi.io"),
+                http("https://1rpc.io/op"),
+                http("https://optimism.blockpi.network/v1/rpc/public"),
+                http("https://mainnet.optimism.io"),
+            ],
+            { rank: true }
+        ),
+    },
+    [ChainId.POLYGON]: {
+        transport: fallback(
+            [
+                http("https://polygon.llamarpc.com"),
+                // http('https://polygon.rpc.blxrbdn.com'),
+                http("https://polygon-mainnet.public.blastapi.io"),
+                http("https://polygon.blockpi.network/v1/rpc/public"),
+                http("https://polygon-rpc.com"),
+                http("https://rpc.ankr.com/polygon"),
+                http("https://matic-mainnet.chainstacklabs.com"),
+                http("https://polygon-bor.publicnode.com"),
+                http("https://rpc-mainnet.matic.quiknode.pro"),
+                http("https://rpc-mainnet.maticvigil.com"),
+                // ...polygon.rpcUrls.default.http.map((url) => http(url)),
+            ],
+            { rank: true }
+        ),
+    },
+    [ChainId.POLYGON_ZKEVM]: {
+        transport: fallback(
+            [
+                http("https://zkevm-rpc.com"),
+                http("https://rpc.ankr.com/polygon_zkevm"),
+                http("https://rpc.polygon-zkevm.gateway.fm"),
+            ],
+            { rank: true }
+        ),
+    },
+    [ChainId.THUNDERCORE]: {
+        transport: fallback(
+            [
+                http("https://mainnet-rpc.thundercore.com"),
+                http("https://mainnet-rpc.thundercore.io"),
+                http("https://mainnet-rpc.thundertoken.net"),
+            ],
+            { rank: true }
+        ),
+    },
+};
+
+/**
  * convert float numbers to big number
  *
- * @param {*} float - any form of number
+ * @param {any} float - Any form of number
  * @param {number} decimals - Decimals point of the number
  * @returns ethers BigNumber with decimals point
  */
@@ -196,6 +366,319 @@ exports.getOrderStruct = (orderDetails) => {
  * Waits for provided miliseconds
  * @param ms - Miliseconds to wait
  */
-exports.sleep = async(ms) => {
+exports.sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+/**
+ * Extracts the income (received token value) from transaction receipt
+ *
+ * @param {ethers.Wallet} signer - The ethers wallet instance of the bot
+ * @param {any} receipt - The transaction receipt
+ * @returns The income value or undefined if cannot find any valid value
+ */
+exports.getIncome = (signer, receipt) => {
+    const erc20Interface = new ethers.utils.Interface(erc20Abi);
+    return receipt.events.filter(
+        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
+    ).map(v => {
+        try{
+            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+        }
+        catch {
+            return undefined;
+        }
+    })[0]?.value;
+};
+
+/**
+ * Calculates the actual clear price from transactioin event
+ *
+ * @param {any} receipt - The transaction receipt
+ * @param {string} orderbook - The Orderbook contract address
+ * @param {string} arb - The Arb contract address
+ * @param {string} amount - The clear amount
+ * @param {number} sellDecimals - The sell token decimals
+ * @param {number} buyDecimals - The buy token decimals
+ * @returns The actual clear price or undefined if necessary info not found in transaction events
+ */
+exports.getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDecimals) => {
+    const erc20Interface = new ethers.utils.Interface(erc20Abi);
+    const eventObj = receipt.events.map(v => {
+        try{
+            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+        }
+        catch {
+            return undefined;
+        }
+    }).filter(v => v &&
+        !ethers.BigNumber.from(v.from).eq(orderbook) &&
+        ethers.BigNumber.from(v.to).eq(arb)
+    );
+    if (eventObj[0] && eventObj[0]?.value) return ethers.utils.formatUnits(
+        eventObj[0].value
+            .mul("1" + "0".repeat(36 - sellDecimals))
+            .div(amount)
+            .div("1" + "0".repeat(18 - sellDecimals)),
+        buyDecimals
+    );
+    else return undefined;
+};
+
+/**
+ * Estimates the profit for a single bundled orders struct
+ *
+ * @param {string} pairPrice - The price token pair
+ * @param {string} ethPrice - Price of ETH to buy token
+ * @param {object} bundledOrder - The bundled order object
+ * @param {ethers.BigNumber} gas - The estimated gas cost in ETH
+ * @param {string} gasCoveragePercentage - Percentage of gas to cover, default is 100,i.e. full gas coverage
+ * @returns The estimated profit
+ */
+exports.estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePercentage = "100") => {
+    let income = ethers.constants.Zero;
+    const price = ethers.utils.parseUnits(pairPrice);
+    const gasCost = ethers.utils.parseEther(ethPrice)
+        .mul(gas)
+        .div(ethers.utils.parseUnits("1"))
+        .mul(gasCoveragePercentage)
+        .div("100");
+    for (const takeOrder of bundledOrder.takeOrders) {
+        income = price
+            .sub(takeOrder.ratio)
+            .mul(takeOrder.quoteAmount)
+            .div(ethers.utils.parseUnits("1"))
+            .add(income);
+    }
+    return income.sub(gasCost);
+};
+
+/**
+ * Builds and bundles orders which their details are queried from a orderbook subgraph by checking the vault balances and evaling
+ *
+ * @param {any[]} ordersDetails - Orders details queried from subgraph
+ * @param {ethers.Contract} orderbook - The Orderbook EthersJS contract instance with signer
+ * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
+ * @returns Array of bundled take orders
+ */
+exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
+    const bundledOrders = [];
+    const obAsSigner = new ethers.VoidSigner(
+        orderbook.address,
+        orderbook.signer.provider
+    );
+
+    for (let i = 0; i < ordersDetails.length; i++) {
+        const order = ordersDetails[i];
+        for (let j = 0; j < order.validOutputs.length; j++) {
+            const _output = order.validOutputs[j];
+            const _outputBalance = ethers.utils.parseUnits(
+                ethers.utils.formatUnits(
+                    await orderbook.vaultBalance(
+                        order.owner.id,
+                        _output.token.id,
+                        _output.vault.id.split("-")[0]
+                    ),
+                    _output.token.decimals
+                )
+            );
+            // const _outputBalance = ethers.utils.parseUnits(
+            //     ethers.utils.formatUnits(
+            //         _output.tokenVault.balance,
+            //         _output.token.decimals
+            //     )
+            // );
+            if (!_outputBalance.isZero()) {
+                for (let k = 0; k < order.validInputs.length; k ++) {
+                    if (_output.token.id !== order.validInputs[k].token.id) {
+                        const _input = order.validInputs[k];
+                        const { maxOutput, ratio } = await this.interpreterEval(
+                            new ethers.Contract(
+                                order.interpreter,
+                                interpreterAbi,
+                                obAsSigner
+                            ),
+                            arb.address,
+                            orderbook.address,
+                            order,
+                            k,
+                            j
+                        );
+                        if (maxOutput && ratio) {
+                            const quoteAmount = _outputBalance.lte(maxOutput)
+                                ? _outputBalance
+                                : maxOutput;
+
+                            if (!quoteAmount.isZero()) {
+                                const pair = bundledOrders.find(v =>
+                                    v.sellToken === _output.token.id &&
+                                  v.buyToken === _input.token.id
+                                );
+                                if (pair) pair.takeOrders.push({
+                                    id: order.id,
+                                    ratio,
+                                    quoteAmount,
+                                    takeOrder: {
+                                        order: this.getOrderStruct(order),
+                                        inputIOIndex: k,
+                                        outputIOIndex: j,
+                                        signedContext: []
+                                    }
+                                });
+                                else bundledOrders.push({
+                                    buyToken: _input.token.id,
+                                    buyTokenSymbol: _input.token.symbol,
+                                    buyTokenDecimals: _input.token.decimals,
+                                    sellToken: _output.token.id,
+                                    sellTokenSymbol: _output.token.symbol,
+                                    sellTokenDecimals: _output.token.decimals,
+                                    takeOrders: [{
+                                        id: order.id,
+                                        ratio,
+                                        quoteAmount,
+                                        takeOrder: {
+                                            order: this.getOrderStruct(order),
+                                            inputIOIndex: k,
+                                            outputIOIndex: j,
+                                            signedContext: []
+                                        }
+                                    }]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return bundledOrders;
+};
+
+/**
+ * Gets ETH price against a target token
+ *
+ * @param {*} config - The network config data
+ * @param {*} targetTokenAddress - The target token address
+ * @param {*} targetTokenDecimals - The target token decimals
+ */
+exports.getEthPrice = async(
+    config,
+    targetTokenAddress,
+    targetTokenDecimals
+) => {
+    // const originalEmit = process.emit;
+    // process.emit = function (name, data, ...args) {
+    //     if (
+    //         name === "warning" &&
+    //         typeof data === "object" &&
+    //         data.name === "ExperimentalWarning"
+    //         //if you want to only stop certain messages, test for the message here:
+    //         //&& data.message.includes(`Fetch API`)
+    //     ) {
+    //         return false;
+    //     }
+    //     return originalEmit.apply(process, arguments);
+    // };
+    // const oldConsole = console.log;
+    // console.log = function() {};
+    const amountIn = BigNumber.from(
+        "1" + "0".repeat(config.nativeWrappedToken.decimals)
+    );
+    const fromToken = new Token({
+        chainId: config.chainId,
+        decimals: config.nativeWrappedToken.decimals,
+        address: config.nativeWrappedToken.address,
+        symbol: config.nativeWrappedToken.symbol
+    });
+    const toToken = new Token({
+        chainId: config.chainId,
+        decimals: targetTokenDecimals,
+        address: targetTokenAddress
+    });
+    const dataFetcher = new DataFetcher(
+        config.chainId,
+        createPublicClient({
+            chain: viemConfig[config.chainId]?.chain,
+            transport: config.rpc && config.rpc !== "test"
+                ? http(config.rpc)
+                : this.fallbackTransports[config.chainId].transport,
+            // batch: {
+            //     multicall: {
+            //         batchSize: 512
+            //     },
+            // },
+            // pollingInterval: 8_000
+            // contracts: {
+            //     multicall3: {
+            //         address: "0xca11bde05977b3631167028862be2a173976ca11",
+            //         blockCreated: 57746,
+            //     },
+            // },
+        })
+    );
+    dataFetcher.startDataFetching(
+        [
+            LiquidityProviders.UniswapV2,
+            LiquidityProviders.UniswapV3,
+            LiquidityProviders.SushiSwapV2,
+            LiquidityProviders.SushiSwapV3,
+            // LiquidityProviders.QuickSwap,
+            // LiquidityProviders.CurveSwap
+        ]
+    );
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    const route = Router.findBestRoute(
+        pcMap,
+        config.chainId,
+        fromToken,
+        amountIn,
+        toToken,
+        30e9,
+        // providers,
+        // poolFilter
+    );
+    // console.log = oldConsole;
+    if (route.status == "NoWay") return undefined;
+    else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
+    // const rpParams = Router.routeProcessor2Params(
+    //     pcMap,
+    //     route,
+    //     fromToken,
+    //     toToken,
+    //     // env.user.address,
+    //     signer.address,
+    //     // env.rp.address,
+    //     config.sushiswap.router,
+    //     // permits
+    //     // [],
+    //     // "0.0047"
+    // );
+    // const routerContract = new ethers.Contract(config.sushiswap.router, sushiswapRouterAbi, signer);
+    // let tx;
+    // try {
+    //     if (rpParams.value)
+    //         tx = await routerContract.callStatic.processRoute(
+    //             rpParams.tokenIn,
+    //             rpParams.amountIn,
+    //             rpParams.tokenOut,
+    //             rpParams.amountOutMin,
+    //             rpParams.to,
+    //             rpParams.routeCode,
+    //             { value: rpParams.value }
+    //         );
+    //     else
+    //         tx = await routerContract.callStatic.processRoute(
+    //             rpParams.tokenIn,
+    //             rpParams.amountIn,
+    //             rpParams.tokenOut,
+    //             rpParams.amountOutMin,
+    //             rpParams.to,
+    //             rpParams.routeCode
+    //         );
+    // }
+    // catch (err) {
+    //     tx = err;
+    // }
+    // return tx;
 };

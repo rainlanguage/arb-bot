@@ -2,20 +2,21 @@
 
 require("dotenv").config();
 const ethers = require("ethers");
-const { query } = require("./src");
 const CONFIG = require("./config.json");
-const { sleep } = require("./src/utils");
 const { Command } = require("commander");
+const { query, clear } = require("./src");
 const { version } = require("./package.json");
-const { zeroExClear } = require("./src/zeroex");
 
 
-const RateLimit = 0.075;    // rate limit per second per month
+/**
+ * Default CLI arguments
+ */
 const DEFAULT_OPTIONS = {
     key: process?.env?.BOT_WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
     apiKey: process?.env?.API_KEY,
     slippage: "0.001",    // 0.1%
+    gasCoverage: "100",
     subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
 };
 
@@ -23,15 +24,17 @@ const getOptions = async argv => {
     const commandOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file")
+        .option("-z, --zeroex", "Use 0x API platform to clear order, default uses Curve.fi platform for clearing")
         .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%")
-        .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the API_KEY env variable if a value passed in CLI")
+        .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the API_KEY env variable")
+        .option("-g, --gas-coverage <number>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage")
+        .option("--orderbook-address <address>", "Address of the deployed orderbook contract.")
+        .option("--arb-address <address>", "Address of the deployed arb contract.")
         .option("--subgraph-url <url>", "The subgraph endpoint url used to fetch order details from")
-        .option("--orderbook-address <address>", "Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file")
-        .option("--arb-address <address>", "Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file")
-        .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
-        .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
-        .option("--orderbook-abi <path>", "Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
-        .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop")
+        // .option("--interpreter-abi <path>", "Path to the IInterpreter contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        // .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        // .option("--orderbook-abi <path>", "Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
+        .option("--no-monthly-ratelimit", "Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop")
         .version(version)
         .parse(argv)
         .opts();
@@ -40,13 +43,13 @@ const getOptions = async argv => {
     commandOptions.rpc = commandOptions.rpc || DEFAULT_OPTIONS.rpc;
     commandOptions.apiKey = commandOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
+    commandOptions.gasCoverage = commandOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
     commandOptions.subgraphUrl = commandOptions.subgraphUrl || DEFAULT_OPTIONS.subgraphUrl;
 
     return commandOptions;
 };
 
 const main = async argv => {
-    const start = Date.now();
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const options = await getOptions(argv);
 
@@ -55,6 +58,11 @@ const main = async argv => {
     if (!options.rpc) throw "undefined RPC URL";
     if (!/^\d+(\.\d+)?$/.test(options.slippage)) throw "invalid slippage value";
     if (!options.subgraphUrl.startsWith("https://api.thegraph.com/subgraphs/name/")) throw "invalid subgraph endpoint URL";
+    if (
+        options.gasCoverage < 0 ||
+        options.gasCoverage > 100 ||
+        !Number.isInteger(Number(options.gasCoverage))
+    ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
 
     const provider = new ethers.providers.JsonRpcProvider(options.rpc);
     const signer = new ethers.Wallet(options.key, provider);
@@ -66,45 +74,47 @@ const main = async argv => {
         if (options.orderbookAddress && AddressPattern.test(options.orderbookAddress)) {
             config.orderbookAddress = options.orderbookAddress;
         }
+        else throw "invalid orderbook contract address";
         if (options.arbAddress && AddressPattern.test(options.arbAddress)) {
             config.arbAddress = options.arbAddress;
         }
+        else throw "invalid arb contract address";
     }
 
-    if (!config.orderbookAddress) throw "undfined orderbook contract address";
-    if (!AddressPattern.test(config.orderbookAddress)) throw "invalid orderbook contract address";
+    // if (!config.orderbookAddress) throw "undfined orderbook contract address";
+    // if (!AddressPattern.test(config.orderbookAddress)) throw "invalid orderbook contract address";
 
-    if (!config.arbAddress) throw "undefined arb contract address";
-    if (!AddressPattern.test(config.arbAddress)) throw "invalid arb contract address";
+    // if (!config.arbAddress) throw "undefined arb contract address";
+    // if (!AddressPattern.test(config.arbAddress)) throw "invalid arb contract address";
 
-    if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
-    if (options.arbAbi) config.arbAbi = options.arbAbi;
-    if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
+    // if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
+    // if (options.arbAbi) config.arbAbi = options.arbAbi;
+    // if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
+    config.rpc = options.rpc;
+    config.apiKey = options.apiKey;
+    config.monthlyRatelimit = options.monthlyRatelimit;
 
-    const reports = await zeroExClear(
+    const queryResults = await query(options.subgraphUrl);
+    await clear(
+        options.zeroex ? "0x" : "curve",
         signer,
         config,
-        await query(options.subgraphUrl),
-        options.slippage
+        queryResults,
+        options.slippage,
+        options.gasCoverage
     );
-
-    // wait to stay within montly ratelimit
-    if (options.monthlyRatelimit) {
-        const rateLimitDuration = Number((((reports.hits / RateLimit) * 1000) + 1).toFixed());
-        const duration = Date.now() - start;
-        console.log(`Executed in ${duration} miliseconds with ${reports.hits} 0x api calls`);
-        const msToWait = rateLimitDuration - duration;
-        if (msToWait > 0) {
-            console.log(`Waiting ${msToWait} more miliseconds to stay within monthly rate limit...`);
-            await sleep(msToWait);
-        }
-    }
 };
 
 main(
     process.argv
 ).then(
-    () => console.log("Rain orderbook arbitrage clearing process finished successfully!")
+    () => {
+        console.log("Rain orderbook arbitrage clearing process finished successfully!");
+        process.exit(0);
+    }
 ).catch(
-    v => console.log(v)
+    v => {
+        console.log(v);
+        process.exit(1);
+    }
 );
