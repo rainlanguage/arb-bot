@@ -52,6 +52,6 @@ let
         shellHook = ''
             export PATH=$( npm bin ):$PATH
             # keep it fresh
-            npm install
+            npm install || npm install --ignore-scripts
         '';
     }
