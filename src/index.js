@@ -86,7 +86,7 @@ const clear = async(
     gasCoveragePercentage = "100",
     prioritization = true
 ) => {
-    if (mode.toLowerCase() === "0x") return zeroExClear(
+    if (mode.toLowerCase() === "0x") return await zeroExClear(
         signer,
         config,
         ordersDetails,
@@ -94,7 +94,7 @@ const clear = async(
         gasCoveragePercentage,
         prioritization
     );
-    else if (mode.toLowerCase() === "curve") return curveClear(
+    else if (mode.toLowerCase() === "curve") return await curveClear(
         signer,
         config,
         ordersDetails,
@@ -102,7 +102,7 @@ const clear = async(
         gasCoveragePercentage,
         prioritization
     );
-    else if (mode.toLowerCase() === "router") return routerClear(
+    else if (mode.toLowerCase() === "router") return await routerClear(
         signer,
         config,
         ordersDetails,
