@@ -155,6 +155,7 @@ exports.fallbackTransports = {
     [ChainId.POLYGON]: {
         transport: fallback(
             [
+                http("https://polygon-mainnet.g.alchemy.com/v2/WLWVvo6m4MXAZ3GkzmMI8ZnLIg_bBNaO"),
                 http("https://polygon.llamarpc.com"),
                 // http('https://polygon.rpc.blxrbdn.com'),
                 http("https://polygon-mainnet.public.blastapi.io"),
@@ -557,8 +558,9 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
 /**
  * Instantiates a DataFetcher
  * @param {any} config - The network config data
+ * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
  */
-exports.getDataFetcher = (config) => {
+exports.getDataFetcher = (config, liquidityProviders = []) => {
     try {
         const dataFetcher = new DataFetcher(
             config.chainId,
@@ -569,7 +571,8 @@ exports.getDataFetcher = (config) => {
                     : this.fallbackTransports[config.chainId].transport
             })
         );
-        dataFetcher.startDataFetching();
+        const lp = !liquidityProviders.length ? undefined : liquidityProviders;
+        dataFetcher.startDataFetching(lp);
         return dataFetcher;
     }
     catch(error) {
@@ -655,7 +658,7 @@ exports.getEthPrice = async(
         dataFetcher = this.getDataFetcher(config);
     }
     await this.fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
-    const pcMap = this.getCurrentPoolCodeMapWrapper(dataFetcher, fromToken, toToken);
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
         config.chainId,
@@ -668,46 +671,6 @@ exports.getEthPrice = async(
     );
     if (route.status == "NoWay") return undefined;
     else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
-    // const rpParams = Router.routeProcessor2Params(
-    //     pcMap,
-    //     route,
-    //     fromToken,
-    //     toToken,
-    //     // env.user.address,
-    //     signer.address,
-    //     // env.rp.address,
-    //     config.sushiswap.router,
-    //     // permits
-    //     // [],
-    //     // "0.0047"
-    // );
-    // const routerContract = new ethers.Contract(config.sushiswap.router, sushiswapRouterAbi, signer);
-    // let tx;
-    // try {
-    //     if (rpParams.value)
-    //         tx = await routerContract.callStatic.processRoute(
-    //             rpParams.tokenIn,
-    //             rpParams.amountIn,
-    //             rpParams.tokenOut,
-    //             rpParams.amountOutMin,
-    //             rpParams.to,
-    //             rpParams.routeCode,
-    //             { value: rpParams.value }
-    //         );
-    //     else
-    //         tx = await routerContract.callStatic.processRoute(
-    //             rpParams.tokenIn,
-    //             rpParams.amountIn,
-    //             rpParams.tokenOut,
-    //             rpParams.amountOutMin,
-    //             rpParams.to,
-    //             rpParams.routeCode
-    //         );
-    // }
-    // catch (err) {
-    //     tx = err;
-    // }
-    // return tx;
 };
 
 exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, excludePools) => {
@@ -747,11 +710,27 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, exc
     }
 };
 
-exports.getCurrentPoolCodeMapWrapper = (dataFetcher, currency0, currency1) => {
-    const result = new Map();
-    dataFetcher.providers.forEach((p) => {
-        const poolCodes = p.getCurrentPoolList(currency0.wrapped, currency1.wrapped);
-        poolCodes.forEach((pc) => result.set(pc.pool.address, pc));
-    });
-    return result;
+// exports.getCurrentPoolCodeMapWrapper = (dataFetcher, currency0, currency1) => {
+//     const result = new Map();
+//     dataFetcher.providers.forEach((p) => {
+//         const poolCodes = p.getCurrentPoolList(currency0.wrapped, currency1.wrapped);
+//         poolCodes.forEach((pc) => result.set(pc.pool.address, pc));
+//     });
+//     return result;
+// };
+
+/**
+ * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
+ * @param {string[]} liquidityProviders - List of liquidity providers
+ */
+exports.resolveLps = (liquidityProviders) => {
+    if (!liquidityProviders || !liquidityProviders.length) return undefined;
+    const _lps = [];
+    const LP_ORG = Object.values(LiquidityProviders);
+    const LP_LC = Object.values(LiquidityProviders).map(v => v.toLowerCase());
+    for (let i = 0; i < liquidityProviders.length; i++) {
+        const index = LP_LC.findIndex(v => v === liquidityProviders[i].toLowerCase());
+        if (index > -1 && !_lps.includes(LP_ORG[index])) _lps.push(LP_ORG[index]);
+    }
+    return _lps;
 };

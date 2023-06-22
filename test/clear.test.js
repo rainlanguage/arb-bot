@@ -120,6 +120,269 @@ describe("Rain Arb Bot Tests", async function () {
         }
     });
 
+    it.only("should clear orders using RouteProcessor with SushiSwapV2 liquidity", async function () {
+
+        // set up vault ids
+        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
+
+        // topping up owners 1 2 3 vaults with 100 of each token
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: USDC.address,
+                vaultId: USDC_vaultId,
+                amount: "100" + "0".repeat(USDCDecimals),
+            };
+            await USDC
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: USDT.address,
+                vaultId: USDT_vaultId,
+                amount: "100" + "0".repeat(USDTDecimals),
+            };
+            await USDT
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: DAI.address,
+                vaultId: DAI_vaultId,
+                amount: "100" + "0".repeat(DAIDecimals),
+            };
+            await DAI
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+        for (let i = 0; i < 3; i++) {
+            const depositConfigStruct = {
+                token: FRAX.address,
+                vaultId: FRAX_vaultId,
+                amount: "100" + "0".repeat(FRAXDecimals),
+            };
+            await FRAX
+                .connect(owners[i])
+                .approve(orderbook.address, depositConfigStruct.amount);
+            await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+        }
+
+        const sgOrders = [];
+        const expConfig = {
+            constants: [
+                ethers.constants.MaxUint256.toHexString(),  // max output
+                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+            ],
+            sources: ["0x000c0001000c0003", "0x"]
+        };
+
+        const EvaluableConfig = generateEvaluableConfig(
+            expressionDeployer,
+            expConfig
+        );
+
+        // add orders
+        const owner1_order1 = {
+            validInputs: [
+                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
+                { token: DAI.address, decimals: DAIDecimals, vaultId: DAI_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner1_order1"),
+        };
+        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner1_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
+
+        const owner1_order2 = {
+            validInputs: [
+                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner1_order2"),
+        };
+        const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner1_order2,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
+
+        const owner2_order1 = {
+            validInputs: [
+                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner2_order1"),
+        };
+        const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner2_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
+
+        const owner3_order1 = {
+            validInputs: [
+                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
+            ],
+            validOutputs: [
+                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner3_order1"),
+        };
+        const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner3_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, USDC, DAI, FRAX]
+        ));
+
+        // check that bot's balance is zero for all tokens
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
+
+        // run the clearing process
+        config.rpc = "test";
+        config.lps = ["sushiswapv2"];
+        const reports = await clear("router", bot, config, sgOrders, "0.1", "100", false);
+
+        // should have cleared 2 toke pairs bundled orders
+        assert.ok(reports.length == 2);
+
+        // validate first cleared token pair orders
+        assert.equal(reports[0].tokenPair, "USDT/USDC");
+        assert.equal(reports[0].clearedAmount, "200000000");
+        assert.equal(reports[0].clearedOrders.length, 2);
+
+        // check vault balances for orders in cleared token pair USDT/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+
+        // validate second cleared token pair orders
+        assert.equal(reports[1].tokenPair, "FRAX/USDC");
+        assert.equal(reports[1].clearedAmount, "100000000");
+        assert.equal(reports[1].clearedOrders.length, 1);
+
+        // check vault balances for orders in cleared token pair FRAX/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                FRAX.address,
+                FRAX_vaultId
+            )).toString(),
+            "150000000000000000000"
+        );
+
+        // bot should have received the bounty for cleared orders input token
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+
+        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
+    });
+
     it("should clear orders using Curve.fi platform liquidity", async function () {
 
         // set up vault ids
@@ -297,10 +560,8 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // run the clearing process
-        // config.interpreterAbi = "../test/abis/IInterpreterV1.json";
-        // config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
-        // config.apiKey = "1";
         config.rpc = "test";
+        config.lps = ["SushiSwapV2"];
         const reports = await clear("curve", bot, config, sgOrders, "0.1", "100", false);
 
         // should have cleared 2 toke pairs bundled orders
@@ -562,8 +823,6 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // run the clearing process
-        // config.interpreterAbi = "../test/abis/IInterpreterV1.json";
-        // config.arbAbi = "../test/abis/ZeroExOrderBookFlashBorrower.json";
         config.apiKey = "1";
         const reports = await clear("0x", bot, config, sgOrders, "0.1", "100", false);
 

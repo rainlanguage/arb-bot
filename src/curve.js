@@ -8,6 +8,7 @@ const {
     estimateProfit,
     bundleTakeOrders,
     ETHERSCAN_TX_PAGE,
+    resolveLps,
 } = require("./utils");
 
 
@@ -287,7 +288,7 @@ exports.curveClear = async(
     );
 
     const report = [];
-    const dataFetcher = getDataFetcher(config);
+    const dataFetcher = getDataFetcher(config, resolveLps(config.lps));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
@@ -355,6 +356,7 @@ exports.curveClear = async(
                 const bundledQuoteAmount = cumulativeAmount.div(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                 );
+                console.log(bundledQuoteAmount.toString());
 
                 const takeOrdersConfigStruct = {
                     output: bundledOrders[i].buyToken,
@@ -369,10 +371,9 @@ exports.curveClear = async(
 
                 // submit the transaction
                 try {
-                    const guaranteedAmount = cumulativeAmount
+                    const guaranteedAmount = bundledQuoteAmount
                         .mul(ethers.utils.parseUnits(("100" - slippage).toString(), 2))
-                        .div("10000")
-                        .div("1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals));
+                        .div("10000");
                     let fnData;
                     let data;
                     let iface;

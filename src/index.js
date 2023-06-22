@@ -3,6 +3,7 @@ const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
+const { dexClear } = require("./router");
 
 
 /**
@@ -91,6 +92,14 @@ const clear = async(
         prioritization
     );
     else if (mode.toLowerCase() === "curve") return curveClear(
+        signer,
+        config,
+        ordersDetails,
+        slippage,
+        gasCoveragePercentage,
+        prioritization
+    );
+    else if (mode.toLowerCase() === "router") return dexClear(
         signer,
         config,
         ordersDetails,

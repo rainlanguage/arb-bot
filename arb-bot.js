@@ -15,6 +15,7 @@ const DEFAULT_OPTIONS = {
     key: process?.env?.BOT_WALLET_PRIVATEKEY,
     rpc: process?.env?.RPC_URL,
     apiKey: process?.env?.API_KEY,
+    mode: "router",
     slippage: "0.001",    // 0.1%
     gasCoverage: "100",
     subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
@@ -24,7 +25,8 @@ const getOptions = async argv => {
     const commandOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file")
-        .option("-z, --zeroex", "Use 0x API platform for the app, default uses Curve.fi platform")
+        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`")
+        .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3'")
         .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%")
         .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the API_KEY env variable")
         .option("-g, --gas-coverage <number>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage")
@@ -41,6 +43,7 @@ const getOptions = async argv => {
 
     commandOptions.key = commandOptions.key || DEFAULT_OPTIONS.key;
     commandOptions.rpc = commandOptions.rpc || DEFAULT_OPTIONS.rpc;
+    commandOptions.mode = commandOptions.mode || DEFAULT_OPTIONS.mode;
     commandOptions.apiKey = commandOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
     commandOptions.gasCoverage = commandOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
@@ -53,6 +56,7 @@ const main = async argv => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const options = await getOptions(argv);
 
+    if (!options.mode.match(/^0x$|^curve$|^router$/)) throw "invalid mode, must be one of '0x', 'curve', 'router'";
     if (!options.key) throw "undefined wallet private key";
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     if (!options.rpc) throw "undefined RPC URL";
@@ -93,10 +97,13 @@ const main = async argv => {
     config.rpc = options.rpc;
     config.apiKey = options.apiKey;
     config.monthlyRatelimit = options.monthlyRatelimit;
+    if (options.lps) config.lsp = Array.from(
+        options.lps.matchAll(/[^,\s]+/g)).map(v => v[0]
+    );
 
     const queryResults = await query(options.subgraphUrl);
     await clear(
-        options.zeroex ? "0x" : "curve",
+        options.mode,
         signer,
         config,
         queryResults,

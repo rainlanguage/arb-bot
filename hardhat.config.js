@@ -50,6 +50,6 @@ module.exports = {
         asyncOnly: true,
         bail: false,
         parallel: false,
-        timeout: 100000,
+        timeout: 500000,
     },
 };

@@ -33,7 +33,8 @@ The app requires these 4 arguments:
 - `--arb-address` The Arb (ZeroExOrderBookFlashBorrower) contract address deployed on the working network.
 
 Other optional arguments are:
-- `-z` or `--zeroex` Use 0x API platform for the app, default uses Curve.fi platform
+- `-m` or `--mode` Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`
+- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: `"SushiSwapV2,UniswapV3"`
 - `-a` or `--api-key` The 0x API key to use for quoting 0x with. Can also be set in env variables as `API_KEY`, see below.
 - `-s` or `--slippage` The slippage that can be set for the trades, the default is 0.001 which is 0.1%
 - `-g` or `--gas-coverage` The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage
@@ -54,7 +55,8 @@ which will show:
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file
-      -z, --zeroex                   Use 0x API platform for the app, default uses Curve.fi platform
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`
+      -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3'
       -s, --slippage <number>        Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the API_KEY env variable
       -g, --gas-coverage <number>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage
