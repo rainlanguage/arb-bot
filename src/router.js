@@ -4,14 +4,14 @@ const { Token } = require("@sushiswap/currency");
 const { arbAbi, orderbookAbi, sushiswapRouterAbi } = require("./abis");
 const {
     getIncome,
+    processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
     estimateProfit,
     bundleTakeOrders,
     ETHERSCAN_TX_PAGE,
-    fetchPoolsForTokenWrapper,
-    resolveLps,
+    fetchPoolsForTokenWrapper
 } = require("./utils");
 
 
@@ -106,7 +106,7 @@ const prepare = async(bundledOrders, dataFetcher, config, sort = true) => {
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.dexClear = async(
+exports.routerClear = async(
     signer,
     config,
     ordersDetails,
@@ -121,7 +121,7 @@ exports.dexClear = async(
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
 
 
-    const dataFetcher = getDataFetcher(config, resolveLps(config.lps));
+    const dataFetcher = getDataFetcher(config, processLps(config.lps));
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
@@ -265,7 +265,6 @@ exports.dexClear = async(
                     // providers,
                     // poolFilter
                 );
-
                 if (route.status == "NoWay") throw "could not find any route for this token pair";
 
                 const rateFixed = route.amountOutBN.mul(
@@ -304,6 +303,28 @@ exports.dexClear = async(
                         // poolFilter
                     );
                     if (route.status == "NoWay") throw "could not find any route for this token pair";
+                    let routeText = "";
+                    route.legs.forEach((v, i) => {
+                        if (i === 0) routeText =
+                            routeText +
+                            v.tokenTo.symbol +
+                            "/" +
+                            v.tokenFrom.symbol +
+                            "(" +
+                            v.poolName +
+                            ")";
+                        else routeText =
+                            routeText +
+                            " + " +
+                            v.tokenTo.symbol +
+                            "/" +
+                            v.tokenFrom.symbol +
+                            "(" +
+                            v.poolName +
+                            ")";
+                    });
+                    // console.log(route.legs);
+                    console.log(">>> Route portions: ", routeText);
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,
                         route,
@@ -312,10 +333,8 @@ exports.dexClear = async(
                         arb.address,
                         config.sushiswap.router,
                         // permits
-                        // [],
                         // "0.005"
                     );
-                    console.log(">>> Route legs count: ", route.legs.length);
 
                     const takeOrdersConfigStruct = {
                         output: bundledOrders[i].buyToken,
@@ -331,8 +350,8 @@ exports.dexClear = async(
                     // submit the transaction
                     try {
                         const guaranteedAmount = bundledQuoteAmount
-                            .mul(ethers.utils.parseUnits(("100" - slippage).toString(), 2))
-                            .div("10000");
+                            .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
+                            .div("100");
                         const iface = new ethers.utils.Interface(sushiswapRouterAbi);
                         const fnData = iface.encodeFunctionData(
                             "processRoute",
@@ -340,7 +359,8 @@ exports.dexClear = async(
                                 rpParams.tokenIn,
                                 rpParams.amountIn,
                                 rpParams.tokenOut,
-                                rpParams.amountOutMin,
+                                // rpParams.amountOutMin,
+                                guaranteedAmount,
                                 rpParams.to,
                                 rpParams.routeCode
                             ]

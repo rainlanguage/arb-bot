@@ -3,7 +3,7 @@ const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
-const { dexClear } = require("./router");
+const { routerClear } = require("./router");
 
 
 /**
@@ -99,7 +99,7 @@ const clear = async(
         gasCoveragePercentage,
         prioritization
     );
-    else if (mode.toLowerCase() === "router") return dexClear(
+    else if (mode.toLowerCase() === "router") return routerClear(
         signer,
         config,
         ordersDetails,

@@ -2,13 +2,13 @@ const ethers = require("ethers");
 const { arbAbi, orderbookAbi } = require("./abis");
 const {
     getIncome,
+    processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
     estimateProfit,
     bundleTakeOrders,
     ETHERSCAN_TX_PAGE,
-    resolveLps,
 } = require("./utils");
 
 
@@ -288,7 +288,7 @@ exports.curveClear = async(
     );
 
     const report = [];
-    const dataFetcher = getDataFetcher(config, resolveLps(config.lps));
+    const dataFetcher = getDataFetcher(config, processLps(config.lps));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
@@ -371,8 +371,8 @@ exports.curveClear = async(
                 // submit the transaction
                 try {
                     const guaranteedAmount = bundledQuoteAmount
-                        .mul(ethers.utils.parseUnits(("100" - slippage).toString(), 2))
-                        .div("10000");
+                        .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
+                        .div("100");
                     let fnData;
                     let data;
                     let iface;

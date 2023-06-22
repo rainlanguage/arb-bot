@@ -723,7 +723,7 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, exc
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
-exports.resolveLps = (liquidityProviders) => {
+exports.processLps = (liquidityProviders) => {
     if (!liquidityProviders || !liquidityProviders.length) return undefined;
     const _lps = [];
     const LP_ORG = Object.values(LiquidityProviders);
