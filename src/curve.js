@@ -356,7 +356,6 @@ exports.curveClear = async(
                 const bundledQuoteAmount = cumulativeAmount.div(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                 );
-                console.log(bundledQuoteAmount.toString());
 
                 const takeOrdersConfigStruct = {
                     output: bundledOrders[i].buyToken,
