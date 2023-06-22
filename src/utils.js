@@ -8,11 +8,6 @@ const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router")
 
 
 /**
- * Headers used for 0x requests
- */
-exports.HEADERS = { headers: { "accept-encoding": "null" } };
-
-/**
  * Transaction page of etherscan websites paired with their chain id
  */
 exports.ETHERSCAN_TX_PAGE = {
@@ -567,11 +562,18 @@ exports.getDataFetcher = (config, liquidityProviders = []) => {
                 chain: viemConfig[config.chainId]?.chain,
                 transport: config.rpc && config.rpc !== "test"
                     ? http(config.rpc)
-                    : this.fallbackTransports[config.chainId].transport
+                    : this.fallbackTransports[config.chainId].transport,
+                // batch: {
+                //     multicall: {
+                //         batchSize: 512
+                //     },
+                // },
+                // pollingInterval: 8_000,
             })
         );
-        const lp = !liquidityProviders.length ? undefined : liquidityProviders;
-        dataFetcher.startDataFetching(lp);
+        dataFetcher.startDataFetching(
+            !liquidityProviders.length ? undefined : liquidityProviders
+        );
         return dataFetcher;
     }
     catch(error) {
@@ -582,32 +584,19 @@ exports.getDataFetcher = (config, liquidityProviders = []) => {
 /**
  * Gets ETH price against a target token
  *
- * @param {*} config - The network config data
- * @param {*} targetTokenAddress - The target token address
- * @param {*} targetTokenDecimals - The target token decimals
+ * @param {any} config - The network config data
+ * @param {string} targetTokenAddress - The target token address
+ * @param {number} targetTokenDecimals - The target token decimals
+ * @param {BigNumber} gasPrice - The network gas price
  * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
  */
 exports.getEthPrice = async(
     config,
     targetTokenAddress,
     targetTokenDecimals,
+    gasPrice,
     dataFetcher = undefined
 ) => {
-    // const originalEmit = process.emit;
-    // process.emit = function (name, data, ...args) {
-    //     if (
-    //         name === "warning" &&
-    //         typeof data === "object" &&
-    //         data.name === "ExperimentalWarning"
-    //         //if you want to only stop certain messages, test for the message here:
-    //         //&& data.message.includes(`Fetch API`)
-    //     ) {
-    //         return false;
-    //     }
-    //     return originalEmit.apply(process, arguments);
-    // };
-    // const oldConsole = console.log;
-    // console.log = function() {};
     const amountIn = BigNumber.from(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
     );
@@ -622,40 +611,7 @@ exports.getEthPrice = async(
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
-    if (!dataFetcher) {
-        // dataFetcher = new DataFetcher(
-        //     config.chainId,
-        //     createPublicClient({
-        //         chain: viemConfig[config.chainId]?.chain,
-        //         transport: config.rpc && config.rpc !== "test"
-        //             ? http(config.rpc)
-        //             : this.fallbackTransports[config.chainId].transport,
-        //         // batch: {
-        //         //     multicall: {
-        //         //         batchSize: 512
-        //         //     },
-        //         // },
-        //         // pollingInterval: 8_000
-        //         // contracts: {
-        //         //     multicall3: {
-        //         //         address: "0xca11bde05977b3631167028862be2a173976ca11",
-        //         //         blockCreated: 57746,
-        //         //     },
-        //         // },
-        //     })
-        // );
-        // dataFetcher.startDataFetching(
-        //     // [
-        //     //     LiquidityProviders.UniswapV2,
-        //     //     LiquidityProviders.UniswapV3,
-        //     //     LiquidityProviders.SushiSwapV2,
-        //     //     LiquidityProviders.SushiSwapV3,
-        //     //     // LiquidityProviders.QuickSwap,
-        //     //     // LiquidityProviders.CurveSwap
-        //     // ]
-        // );
-        dataFetcher = this.getDataFetcher(config);
-    }
+    if (!dataFetcher) dataFetcher = this.getDataFetcher(config);
     await this.fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
@@ -664,7 +620,8 @@ exports.getEthPrice = async(
         fromToken,
         amountIn,
         toToken,
-        30e9,
+        gasPrice.toNumber()
+        // 30e9,
         // providers,
         // poolFilter
     );
@@ -672,18 +629,26 @@ exports.getEthPrice = async(
     else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
 };
 
-exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, excludePools) => {
+/**
+ * A wrapper for DataFetcher fetchPoolsForToken() to avoid any errors for liquidity providers that are not available for target chain
+ *
+ * @param {DataFetcher} dataFetcher - DataFetcher instance
+ * @param {Token} fromToken - The from token
+ * @param {Token} toToken - The to token
+ * @param {string[]} excludePools - Set of pools to exclude
+ */
+exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
     // ensure that we only fetch the native wrap pools if the
     // token is the native currency and wrapped native currency
-    if (currency0.wrapped.equals(currency1.wrapped)) {
+    if (fromToken.wrapped.equals(toToken.wrapped)) {
         const provider = dataFetcher.providers.find(
             (p) => p.getType() === LiquidityProviders.NativeWrap
         );
         if (provider) {
             try {
                 await provider.fetchPoolsForToken(
-                    currency0.wrapped,
-                    currency1.wrapped,
+                    fromToken.wrapped,
+                    toToken.wrapped,
                     excludePools
                 );
             }
@@ -692,10 +657,10 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, exc
     }
     else {
         const [token0, token1] =
-            currency0.wrapped.equals(currency1.wrapped) ||
-            currency0.wrapped.sortsBefore(currency1.wrapped)
-                ? [currency0.wrapped, currency1.wrapped]
-                : [currency1.wrapped, currency0.wrapped];
+            fromToken.wrapped.equals(toToken.wrapped) ||
+            fromToken.wrapped.sortsBefore(toToken.wrapped)
+                ? [fromToken.wrapped, toToken.wrapped]
+                : [toToken.wrapped, fromToken.wrapped];
         await Promise.allSettled(
             dataFetcher.providers.map((p) => {
                 try {

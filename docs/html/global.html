@@ -204,68 +204,6 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line18">line 18</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="HEADERS"><span class="type-signature"></span>HEADERS<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    Headers used for 0x requests
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
         <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line13">line 13</a>
     </li></ul></dd>
     
@@ -452,7 +390,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line34">line 34</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line29">line 29</a>
     </li></ul></dd>
     
 
@@ -604,7 +542,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line202">line 202</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line197">line 197</a>
     </li></ul></dd>
     
 
@@ -797,7 +735,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line464">line 464</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line459">line 459</a>
     </li></ul></dd>
     
 
@@ -1119,7 +1057,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line80">line 80</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line71">line 71</a>
     </li></ul></dd>
     
 
@@ -1621,7 +1559,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line438">line 438</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line433">line 433</a>
     </li></ul></dd>
     
 
@@ -1656,6 +1594,212 @@ for it to be considered profitable and get submitted</td>
 
 
     
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="fetchPoolsForTokenWrapper"><span class="type-signature"></span>fetchPoolsForTokenWrapper<span class="signature">(dataFetcher, fromToken, toToken, excludePools)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    A wrapper for DataFetcher fetchPoolsForToken() to avoid any errors for liquidity providers that are not available for target chain
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>dataFetcher</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">DataFetcher</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">DataFetcher instance</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fromToken</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Token</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The from token</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>toToken</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Token</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The to token</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>excludePools</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Set of pools to exclude</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line640">line 640</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1791,7 +1935,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line249">line 249</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line244">line 244</a>
     </li></ul></dd>
     
 
@@ -2053,7 +2197,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line405">line 405</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line400">line 400</a>
     </li></ul></dd>
     
 
@@ -2236,7 +2380,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="getConfig"><span class="type-signature">(async) </span>getConfig<span class="signature">(wallet, orderbookAddress, arbAddress, zerExApiKey, liquidityProviders, zeroExApiKey)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getConfig"><span class="type-signature">(async) </span>getConfig<span class="signature">(wallet, orderbookAddress, arbAddress, zerExApiKey, liquidityProviders)</span><span class="type-signature"></span></h4>
     
 
     
@@ -2392,24 +2536,6 @@ for it to be considered profitable and get submitted</td>
         </tr>
 
     
-
-        <tr>
-            
-                <td class="name"><code>zeroExApiKey</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
     </tbody>
 </table>
 
@@ -2447,7 +2573,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line42">line 42</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line39">line 39</a>
     </li></ul></dd>
     
 
@@ -2617,7 +2743,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line562">line 562</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line557">line 557</a>
     </li></ul></dd>
     
 
@@ -2653,7 +2779,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="getEthPrice"><span class="type-signature"></span>getEthPrice<span class="signature">(config, targetTokenAddress, targetTokenDecimals, dataFetcher)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getEthPrice"><span class="type-signature"></span>getEthPrice<span class="signature">(config, targetTokenAddress, targetTokenDecimals, gasPrice, dataFetcher)</span><span class="type-signature"></span></h4>
     
 
     
@@ -2703,7 +2829,7 @@ for it to be considered profitable and get submitted</td>
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">any</span>
 
 
             
@@ -2726,7 +2852,7 @@ for it to be considered profitable and get submitted</td>
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">string</span>
 
 
             
@@ -2749,7 +2875,7 @@ for it to be considered profitable and get submitted</td>
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">number</span>
 
 
             
@@ -2760,6 +2886,29 @@ for it to be considered profitable and get submitted</td>
             
 
             <td class="description last">The target token decimals</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>gasPrice</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">BigNumber</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The network gas price</td>
         </tr>
 
     
@@ -2823,7 +2972,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line590">line 590</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line593">line 593</a>
     </li></ul></dd>
     
 
@@ -2983,7 +3132,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line380">line 380</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line375">line 375</a>
     </li></ul></dd>
     
 
@@ -3130,7 +3279,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line339">line 339</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line334">line 334</a>
     </li></ul></dd>
     
 
@@ -3628,7 +3777,7 @@ token pair combinations.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line270">line 270</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line265">line 265</a>
     </li></ul></dd>
     
 
@@ -3904,7 +4053,7 @@ bundled orders based on the best deals
     
 
     
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, dataFetcher, config, sort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
     
 
     
@@ -4032,6 +4181,33 @@ bundled orders based on the best deals
 
         <tr>
             
+                <td class="name"><code>gasPrice</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ethers.BigNumber</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">The network gas price</td>
+        </tr>
+
+    
+
+        <tr>
+            
                 <td class="name"><code>sort</code></td>
             
 
@@ -4095,7 +4271,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line27">line 27</a>
+        <a href="router.js.html">router.js</a>, <a href="router.js.html#line28">line 28</a>
     </li></ul></dd>
     
 
@@ -4432,7 +4608,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line725">line 725</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line690">line 690</a>
     </li></ul></dd>
     
 
@@ -4832,7 +5008,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line109">line 109</a>
+        <a href="router.js.html">router.js</a>, <a href="router.js.html#line110">line 110</a>
     </li></ul></dd>
     
 
@@ -4974,7 +5150,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line369">line 369</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line364">line 364</a>
     </li></ul></dd>
     
 
@@ -5134,7 +5310,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line235">line 235</a>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line230">line 230</a>
     </li></ul></dd>
     
 
@@ -5452,13 +5628,13 @@ for it to be considered profitable and get submitted</td>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#HEADERS">HEADERS</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Jun 22 2023 19:23:32 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Jun 22 2023 21:24:30 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

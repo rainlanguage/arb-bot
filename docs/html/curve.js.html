@@ -271,13 +271,14 @@ exports.curveClear = async(
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
-    // const nativeToken = config.nativeToken;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
+
+    const gasPrice = await signer.provider.getGasPrice();
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -464,26 +465,19 @@ exports.curveClear = async(
                     console.log(">>> Estimating the profit for this token pair...", "\n");
                     const ethPrice = await getEthPrice(
                         config,
-                        // "1" + "0".repeat(nativeToken.decimals),
                         bundledOrders[i].buyToken,
                         bundledOrders[i].buyTokenDecimals,
+                        gasPrice,
                         dataFetcher
                     );
                     if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                     else {
-                        // if (ethPrice instanceof ethers.BigNumber) {
-                        //     ethPrice = ethers.utils.formatUnits(
-                        //         ethPrice,
-                        //         bundledOrders[i].buyTokenDecimals
-                        //     );
-                        // }
-                        const gasPrice = await signer.provider.getGasPrice();
                         const gasLimit = await arb.estimateGas.arb(
                             takeOrdersConfigStruct,
                             // set to zero because only profitable transactions are submitted
                             0,
-                            data
-                            // { gasPrice: txQuote.gasPrice }
+                            data,
+                            { gasPrice }
                         );
                         const maxEstimatedProfit = estimateProfit(
                             ethers.utils.formatEther(bundledOrders[i].initPrice),
@@ -512,7 +506,7 @@ exports.curveClear = async(
                                 // set to zero because only profitable transactions are submitted
                                 0,
                                 data,
-                                // { gasPrice: txQuote.gasPrice, gasLimit }
+                                { gasPrice, gasLimit }
                             );
                             console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
                             console.log(
@@ -530,11 +524,6 @@ exports.curveClear = async(
                                     receipt,
                                     orderbookAddress,
                                     arbAddress,
-                                    // bundledQuoteAmount.mul(
-                                    //     "1" + "0".repeat(
-                                    //         18 - bundledOrders[i].sellTokenDecimals
-                                    //     )
-                                    // ),
                                     cumulativeAmount,
                                     bundledOrders[i].sellTokenDecimals,
                                     bundledOrders[i].buyTokenDecimals
@@ -629,13 +618,13 @@ exports.curveClear = async(
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#HEADERS">HEADERS</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#ETHERSCAN_TX_PAGE">ETHERSCAN_TX_PAGE</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Jun 22 2023 19:23:32 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Jun 22 2023 21:24:30 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

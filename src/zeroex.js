@@ -4,7 +4,6 @@ const { bundleTakeOrders } = require("./utils");
 const { arbAbi, orderbookAbi } = require("./abis");
 const {
     sleep,
-    HEADERS,
     getIncome,
     getActualPrice,
     estimateProfit,
@@ -13,6 +12,7 @@ const {
 
 
 const RateLimit = 0.075;    // rate limit per second per month
+const HEADERS = { headers: { "accept-encoding": "null" } };
 
 /**
  * Builds initial 0x requests bodies from token addresses that is required
@@ -167,36 +167,16 @@ exports.zeroExClear = async(
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken;
-    // const intAbiPath = config.interpreterAbi;
-    // const arbAbiPath = config.arbAbi;
-    // const orderbookAbiPath = config.orderbookAbi;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
     else throw "invalid 0x API key";
-
-    // get the abis if path is provided for them
-    // if (intAbiPath) interpreterAbi = (JSON.parse(
-    //     fs.readFileSync(path.resolve(__dirname, intAbiPath)).toString())
-    // )?.abi;
-    // if (arbAbiPath) arbAbi = JSON.parse(
-    //     fs.readFileSync(path.resolve(__dirname, arbAbiPath)).toString()
-    // )?.abi;
-    // if (orderbookAbiPath) orderbookAbi = JSON.parse(
-    //     fs.readFileSync(path.resolve(__dirname, orderbookAbiPath)).toString()
-    // )?.abi;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
-
-    // orderbook as signer used for eval
-    // const obAsSigner = new ethers.VoidSigner(
-    //     orderbookAddress,
-    //     signer.provider
-    // );
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -430,8 +410,6 @@ exports.zeroExClear = async(
                                     // set to zero because only profitable transactions are submitted
                                     0,
                                     data,
-                                    // txQuote.allowanceTarget,
-                                    // txQuote.data,
                                     { gasPrice: txQuote.gasPrice }
                                 );
                                 const maxEstimatedProfit = estimateProfit(
@@ -457,8 +435,6 @@ exports.zeroExClear = async(
                                         // set to zero because only profitable transactions are submitted
                                         0,
                                         data,
-                                        // txQuote.allowanceTarget,
-                                        // txQuote.data,
                                         { gasPrice: txQuote.gasPrice, gasLimit }
                                     );
                                     console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
@@ -478,11 +454,6 @@ exports.zeroExClear = async(
                                             orderbookAddress,
                                             arbAddress,
                                             cumulativeAmount,
-                                            // bundledQuoteAmount.mul(
-                                            //     "1" + "0".repeat(
-                                            //         18 - bundledOrders[i].sellTokenDecimals
-                                            //     )
-                                            // ),
                                             bundledOrders[i].sellTokenDecimals,
                                             bundledOrders[i].buyTokenDecimals
                                         );

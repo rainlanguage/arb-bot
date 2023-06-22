@@ -22,9 +22,10 @@ const {
  * @param {any[]} bundledOrders - The bundled orders array
  * @param {any} dataFetcher - The DataFetcher instance
  * @param {any} config - The network config data
+ * @param {ethers.BigNumber} gasPrice - The network gas price
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepare = async(bundledOrders, dataFetcher, config, sort = true) => {
+const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true) => {
     for (let i = 0; i < bundledOrders.length; i++) {
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
@@ -56,7 +57,7 @@ const prepare = async(bundledOrders, dataFetcher, config, sort = true) => {
                 fromToken,
                 cumulativeAmount,
                 toToken,
-                30e9,
+                gasPrice.toNumber(),
                 // providers,
                 // poolFilter
             );
@@ -120,18 +121,18 @@ exports.routerClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
 
-
     const dataFetcher = getDataFetcher(config, processLps(config.lps));
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
-    // const nativeToken = config.nativeToken;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
+
+    const gasPrice = await signer.provider.getGasPrice();
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -151,7 +152,7 @@ exports.routerClear = async(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
-        await prepare(bundledOrders, dataFetcher, config, prioritization);
+        await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -229,7 +230,6 @@ exports.routerClear = async(
             );
             else {
                 console.log(">>> Getting best route for this token pair", "\n");
-                const gasPrice = await signer.provider.getGasPrice();
 
                 let cumulativeAmountFixed = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
@@ -323,7 +323,6 @@ exports.routerClear = async(
                             v.poolName +
                             ")";
                     });
-                    // console.log(route.legs);
                     console.log(">>> Route portions: ", routeText);
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,
@@ -377,9 +376,9 @@ exports.routerClear = async(
                         console.log(">>> Estimating the profit for this token pair...", "\n");
                         const ethPrice = await getEthPrice(
                             config,
-                            // "1" + "0".repeat(nativeToken.decimals),
                             bundledOrders[i].buyToken,
                             bundledOrders[i].buyTokenDecimals,
+                            gasPrice,
                             dataFetcher
                         );
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
@@ -418,7 +417,7 @@ exports.routerClear = async(
                                     // set to zero because only profitable transactions are submitted
                                     0,
                                     data,
-                                    // { gasPrice: txQuote.gasPrice, gasLimit }
+                                    { gasPrice, gasLimit }
                                 );
                                 console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
                                 console.log(
@@ -436,11 +435,6 @@ exports.routerClear = async(
                                         receipt,
                                         orderbookAddress,
                                         arbAddress,
-                                        // bundledQuoteAmount.mul(
-                                        //     "1" + "0".repeat(
-                                        //         18 - bundledOrders[i].sellTokenDecimals
-                                        //     )
-                                        // ),
                                         cumulativeAmount,
                                         bundledOrders[i].sellTokenDecimals,
                                         bundledOrders[i].buyTokenDecimals
@@ -527,28 +521,3 @@ exports.routerClear = async(
     }
     return report;
 };
-
-// /**
-//  *
-//  * @param {ethers.Signer} signer
-//  * @param {*} token
-//  * @param {*} amount
-//  * @param {*} rp
-//  * @returns
-//  */
-// const makePermit = async(signer, token, amount, rp) => {
-//     console.log("hyyyy1");
-//     const userAddress = await signer.getAddress();
-//     console.log("hyyyy2");
-//     const result = await signERC2612Permit(
-//         signer, token.address, userAddress, rp, amount.toHexString()
-//     );
-//     console.log("hyyyy3");
-//     return {
-//         value: BigNumber.from(result.value),
-//         deadline: BigNumber.from(result.deadline),
-//         v: result.v,
-//         r: result.r,
-//         s: result.s,
-//     };
-// };

@@ -26,9 +26,6 @@ const query = async(subgraphUrl) => {
     }
 };
 
-//  * @param {string} arbAbiPath - (optional) The path to Arb contract ABI, default is ABI in './src/abis' folder
-//  * @param {string} interpreterAbiPath - (optional) The path to IInterpreter contract ABI, default is ABI in './src/abis' folder
-//  * @param {string} orderbookAbiPath - (optional) The path to Orderbook contract ABI, default is ABI in './src/abis' folder
 /**
  * Get the configuration info of a network required for the bot
  *
@@ -43,9 +40,6 @@ const getConfig = async(
     wallet,
     orderbookAddress,
     arbAddress,
-    // arbAbiPath = "",
-    // interpreterAbiPath = "",
-    // orderbookAbiPath = "",
     zeroExApiKey = undefined,
     liquidityProviders = undefined
 ) => {
@@ -57,9 +51,6 @@ const getConfig = async(
     config.orderbookAddress = orderbookAddress;
     config.arbAddress = arbAddress;
     config.lps = liquidityProviders;
-    // if (interpreterAbiPath) config.interpreterAbi = interpreterAbiPath;
-    // if (arbAbiPath) config.arbAbi = arbAbiPath;
-    // if (orderbookAbiPath) config.orderbookAbi = orderbookAbiPath;
     if (zeroExApiKey) config.apiKey = zeroExApiKey;
     return config;
 };

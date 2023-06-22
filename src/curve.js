@@ -243,13 +243,14 @@ exports.curveClear = async(
     const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
-    // const nativeToken = config.nativeToken;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
+
+    const gasPrice = await signer.provider.getGasPrice();
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -436,26 +437,19 @@ exports.curveClear = async(
                     console.log(">>> Estimating the profit for this token pair...", "\n");
                     const ethPrice = await getEthPrice(
                         config,
-                        // "1" + "0".repeat(nativeToken.decimals),
                         bundledOrders[i].buyToken,
                         bundledOrders[i].buyTokenDecimals,
+                        gasPrice,
                         dataFetcher
                     );
                     if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                     else {
-                        // if (ethPrice instanceof ethers.BigNumber) {
-                        //     ethPrice = ethers.utils.formatUnits(
-                        //         ethPrice,
-                        //         bundledOrders[i].buyTokenDecimals
-                        //     );
-                        // }
-                        const gasPrice = await signer.provider.getGasPrice();
                         const gasLimit = await arb.estimateGas.arb(
                             takeOrdersConfigStruct,
                             // set to zero because only profitable transactions are submitted
                             0,
-                            data
-                            // { gasPrice: txQuote.gasPrice }
+                            data,
+                            { gasPrice }
                         );
                         const maxEstimatedProfit = estimateProfit(
                             ethers.utils.formatEther(bundledOrders[i].initPrice),
@@ -484,7 +478,7 @@ exports.curveClear = async(
                                 // set to zero because only profitable transactions are submitted
                                 0,
                                 data,
-                                // { gasPrice: txQuote.gasPrice, gasLimit }
+                                { gasPrice, gasLimit }
                             );
                             console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
                             console.log(
@@ -502,11 +496,6 @@ exports.curveClear = async(
                                     receipt,
                                     orderbookAddress,
                                     arbAddress,
-                                    // bundledQuoteAmount.mul(
-                                    //     "1" + "0".repeat(
-                                    //         18 - bundledOrders[i].sellTokenDecimals
-                                    //     )
-                                    // ),
                                     cumulativeAmount,
                                     bundledOrders[i].sellTokenDecimals,
                                     bundledOrders[i].buyTokenDecimals

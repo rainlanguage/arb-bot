@@ -84,16 +84,6 @@ const main = async argv => {
         }
         else throw "invalid arb contract address";
     }
-
-    // if (!config.orderbookAddress) throw "undfined orderbook contract address";
-    // if (!AddressPattern.test(config.orderbookAddress)) throw "invalid orderbook contract address";
-
-    // if (!config.arbAddress) throw "undefined arb contract address";
-    // if (!AddressPattern.test(config.arbAddress)) throw "invalid arb contract address";
-
-    // if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
-    // if (options.arbAbi) config.arbAbi = options.arbAbi;
-    // if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
     config.rpc = options.rpc;
     config.apiKey = options.apiKey;
     config.monthlyRatelimit = options.monthlyRatelimit;
