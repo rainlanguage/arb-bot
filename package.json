@@ -1,7 +1,7 @@
 {
     "name": "@rainprotocol/arb-bot",
     "version": "0.4.0",
-    "description": "NodeJS app that clears Rain orderbook orders against 0x liquididty",
+    "description": "NodeJS app that clears Rain orderbook orders against decentralized liquididty providers (decentralized exchanges)",
     "author": "Rain Protocol",
     "license": "CAL-1.0",
     "repository": {
@@ -17,7 +17,7 @@
     "files": [
         "src",
         "docs",
-        "./run.js",
+        "./arb-bot.js",
         "./example.env",
         "./config.json"
     ],
@@ -35,9 +35,7 @@
         "axios": "^1.3.4",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "node-cron": "^3.0.2",
-        "node-fetch": "^3.3.1",
-        "timsort": "^0.3.0"
+        "node-fetch": "^3.3.1"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
