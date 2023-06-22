@@ -120,7 +120,7 @@ describe("Rain Arb Bot Tests", async function () {
         }
     });
 
-    it.only("should clear orders using RouteProcessor with SushiSwapV2 liquidity", async function () {
+    it("should clear orders using RouteProcessor with SushiSwapV2 liquidity", async function () {
 
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
