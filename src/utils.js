@@ -726,11 +726,10 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, currency0, currency1, exc
 exports.processLps = (liquidityProviders) => {
     if (!liquidityProviders || !liquidityProviders.length) return undefined;
     const _lps = [];
-    const LP_ORG = Object.values(LiquidityProviders);
-    const LP_LC = Object.values(LiquidityProviders).map(v => v.toLowerCase());
+    const LP = Object.values(LiquidityProviders);
     for (let i = 0; i < liquidityProviders.length; i++) {
-        const index = LP_LC.findIndex(v => v === liquidityProviders[i].toLowerCase());
-        if (index > -1 && !_lps.includes(LP_ORG[index])) _lps.push(LP_ORG[index]);
+        const index = LP.findIndex(v => v.toLowerCase() === liquidityProviders[i].toLowerCase());
+        if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
     return _lps;
 };
