@@ -29,10 +29,12 @@ describe("Rain Arb Bot Tests", async function () {
         USDTDecimals,
         USDC,
         USDCDecimals,
-        FRAX,
-        FRAXDecimals,
+        BUSD,
+        BUSDDecimals,
         DAI,
         DAIDecimals,
+        FRAX,
+        FRAXDecimals,
         bot,
         owners,
         config;
@@ -84,6 +86,11 @@ describe("Rain Arb Bot Tests", async function () {
             config.stableTokens.find(v => v.symbol === "DAI").address
         );
         DAIDecimals = config.stableTokens.find(v => v.symbol === "DAI").decimals;
+        BUSD = await ethers.getContractAt(
+            ERC20Artifact.abi,
+            config.stableTokens.find(v => v.symbol === "BUSD").address
+        );
+        BUSDDecimals = config.stableTokens.find(v => v.symbol === "BUSD").decimals;
         FRAX = await ethers.getContractAt(
             ERC20Artifact.abi,
             config.stableTokens.find(v => v.symbol === "FRAX").address
@@ -95,6 +102,7 @@ describe("Rain Arb Bot Tests", async function () {
         const USDCHolder = await ethers.getImpersonatedSigner(AddressWithBalance.usdc);
         const USDTHolder = await ethers.getImpersonatedSigner(AddressWithBalance.usdt);
         const DAIHolder = await ethers.getImpersonatedSigner(AddressWithBalance.dai);
+        const BUSDHolder = await ethers.getImpersonatedSigner(AddressWithBalance.busd);
         const FRAXHolder = await ethers.getImpersonatedSigner(AddressWithBalance.frax);
         await bot.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
@@ -110,23 +118,28 @@ describe("Rain Arb Bot Tests", async function () {
         });
         await bot.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
+            to: BUSDHolder.address
+        });
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5.0"),
             to: FRAXHolder.address
         });
         for (let i = 0; i < 3; i++) {
             await USDT.connect(USDTHolder).transfer(owners[i].address, "1000" + "0".repeat(USDTDecimals));
             await USDC.connect(USDCHolder).transfer(owners[i].address, "1000" + "0".repeat(USDCDecimals));
             await DAI.connect(DAIHolder).transfer(owners[i].address, "1000" + "0".repeat(DAIDecimals));
+            await BUSD.connect(BUSDHolder).transfer(owners[i].address, "1000" + "0".repeat(BUSDDecimals));
             await FRAX.connect(FRAXHolder).transfer(owners[i].address, "1000" + "0".repeat(FRAXDecimals));
         }
     });
 
-    it("should clear orders using RouteProcessor with SushiSwapV2 liquidity", async function () {
+    it("should clear orders using RouteProcessor", async function () {
 
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
         const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
+        const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
 
         // topping up owners 1 2 3 vaults with 100 of each token
         for (let i = 0; i < 3; i++) {
@@ -170,11 +183,11 @@ describe("Rain Arb Bot Tests", async function () {
         }
         for (let i = 0; i < 3; i++) {
             const depositConfigStruct = {
-                token: FRAX.address,
-                vaultId: FRAX_vaultId,
-                amount: "100" + "0".repeat(FRAXDecimals),
+                token: BUSD.address,
+                vaultId: BUSD_vaultId,
+                amount: "100" + "0".repeat(BUSDDecimals),
             };
-            await FRAX
+            await BUSD
                 .connect(owners[i])
                 .approve(orderbook.address, depositConfigStruct.amount);
             await orderbook
@@ -216,12 +229,12 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner1_order2 = {
             validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
             ],
             validOutputs: [
                 { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
@@ -237,12 +250,12 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner2_order1 = {
             validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
             ],
             validOutputs: [
                 { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
@@ -258,7 +271,7 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner3_order1 = {
@@ -279,7 +292,7 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         // check that bot's balance is zero for all tokens
@@ -293,12 +306,12 @@ describe("Rain Arb Bot Tests", async function () {
             (await DAI.connect(bot).balanceOf(bot.address)).isZero()
         );
         assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
         );
 
         // run the clearing process
         config.rpc = "test";
-        config.lps = ["sushiswapv2"];
+        config.lps = ["quickswap", "uniswapv2", "uniswapv3"];
         const reports = await clear("router", bot, config, sgOrders, "0.1", "100", false);
 
         // should have cleared 2 toke pairs bundled orders
@@ -344,11 +357,11 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "FRAX/USDC");
+        assert.equal(reports[1].tokenPair, "BUSD/USDC");
         assert.equal(reports[1].clearedAmount, "100000000");
         assert.equal(reports[1].clearedOrders.length, 1);
 
-        // check vault balances for orders in cleared token pair FRAX/USDC
+        // check vault balances for orders in cleared token pair BUSD/USDC
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
@@ -360,8 +373,8 @@ describe("Rain Arb Bot Tests", async function () {
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
-                FRAX.address,
-                FRAX_vaultId
+                BUSD.address,
+                BUSD_vaultId
             )).toString(),
             "150000000000000000000"
         );
@@ -371,7 +384,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
         );
         assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).gt("0")
+            (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
         );
 
         // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
@@ -652,7 +665,7 @@ describe("Rain Arb Bot Tests", async function () {
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
         const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
+        const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
 
         // topping up owners 1 2 3 vaults with 100 of each token
         for (let i = 0; i < 3; i++) {
@@ -696,11 +709,11 @@ describe("Rain Arb Bot Tests", async function () {
         }
         for (let i = 0; i < 3; i++) {
             const depositConfigStruct = {
-                token: FRAX.address,
-                vaultId: FRAX_vaultId,
-                amount: "100" + "0".repeat(FRAXDecimals),
+                token: BUSD.address,
+                vaultId: BUSD_vaultId,
+                amount: "100" + "0".repeat(BUSDDecimals),
             };
-            await FRAX
+            await BUSD
                 .connect(owners[i])
                 .approve(orderbook.address, depositConfigStruct.amount);
             await orderbook
@@ -742,12 +755,12 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner1_order2 = {
             validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
             ],
             validOutputs: [
                 { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
@@ -763,12 +776,12 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner2_order1 = {
             validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
+                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
             ],
             validOutputs: [
                 { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
@@ -784,7 +797,7 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         const owner3_order1 = {
@@ -805,7 +818,7 @@ describe("Rain Arb Bot Tests", async function () {
                 orderbook
             ),
             orderbook,
-            [USDT, USDC, DAI, FRAX]
+            [USDT, USDC, DAI, BUSD]
         ));
 
         // check that bot's balance is zero for all tokens
@@ -819,7 +832,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await DAI.connect(bot).balanceOf(bot.address)).isZero()
         );
         assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
         );
 
         // run the clearing process
@@ -869,11 +882,11 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "FRAX/USDC");
+        assert.equal(reports[1].tokenPair, "BUSD/USDC");
         assert.equal(reports[1].clearedAmount, "100000000");
         assert.equal(reports[1].clearedOrders.length, 1);
 
-        // check vault balances for orders in cleared token pair FRAX/USDC
+        // check vault balances for orders in cleared token pair BUSD/USDC
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
@@ -885,8 +898,8 @@ describe("Rain Arb Bot Tests", async function () {
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
-                FRAX.address,
-                FRAX_vaultId
+                BUSD.address,
+                BUSD_vaultId
             )).toString(),
             "150000000000000000000"
         );
@@ -896,7 +909,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
         );
         assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).gt("0")
+            (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
         );
 
         // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
