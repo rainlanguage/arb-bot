@@ -148,7 +148,7 @@ exports.routerClear = async(
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         console.log(
-            "------------------------- Getting Best Deals From Curve -------------------------",
+            "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
         await prepare(bundledOrders, dataFetcher, config, prioritization);

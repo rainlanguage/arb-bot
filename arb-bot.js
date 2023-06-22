@@ -97,9 +97,7 @@ const main = async argv => {
     config.rpc = options.rpc;
     config.apiKey = options.apiKey;
     config.monthlyRatelimit = options.monthlyRatelimit;
-    if (options.lps) config.lsp = Array.from(
-        options.lps.matchAll(/[^,\s]+/g)).map(v => v[0]
-    );
+    if (options.lps) config.lsp = Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0]);
 
     const queryResults = await query(options.subgraphUrl);
     await clear(
