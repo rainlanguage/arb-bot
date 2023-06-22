@@ -36,6 +36,7 @@ const query = async(subgraphUrl) => {
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} zerExApiKey - (optional) The 0x API key
+ * @param {string[]} liquidityProviders - (optional) List of liquidity providers for router contract tomoperate on
  * @returns The configuration object
  */
 const getConfig = async(
@@ -46,6 +47,7 @@ const getConfig = async(
     // interpreterAbiPath = "",
     // orderbookAbiPath = "",
     zeroExApiKey = undefined,
+    liquidityProviders = undefined
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     const chainId = (await wallet.getChainId());
@@ -54,6 +56,7 @@ const getConfig = async(
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
     config.orderbookAddress = orderbookAddress;
     config.arbAddress = arbAddress;
+    config.lps = liquidityProviders;
     // if (interpreterAbiPath) config.interpreterAbi = interpreterAbiPath;
     // if (arbAbiPath) config.arbAbi = arbAbiPath;
     // if (orderbookAbiPath) config.orderbookAbi = orderbookAbiPath;

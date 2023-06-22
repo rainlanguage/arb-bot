@@ -112,7 +112,7 @@ const wallet = new ethers.Wallet(walletPrivateKey, provider)
 const queryResult = await arb.query(subgraphUrl);
 
 // to get the configuration object
-const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[zeroExApiKey]);
+const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[zeroExApiKey, liquidityProviders]);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
 const reports = await arb.clear(mode, wallet, config, queryResult, ...[slippage, gasCoveragePercenatge, prioritization])
