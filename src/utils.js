@@ -155,7 +155,6 @@ exports.fallbackTransports = {
     [ChainId.POLYGON]: {
         transport: fallback(
             [
-                http("https://polygon-mainnet.g.alchemy.com/v2/WLWVvo6m4MXAZ3GkzmMI8ZnLIg_bBNaO"),
                 http("https://polygon.llamarpc.com"),
                 // http('https://polygon.rpc.blxrbdn.com'),
                 http("https://polygon-mainnet.public.blastapi.io"),
