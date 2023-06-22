@@ -67,7 +67,7 @@ const getConfig = async(
 /**
  * Method to clear orders against a liquidity provider
  *
- * @param {string} mode - The mode for clearing, either "0x" or "curve"
+ * @param {string} mode - The mode for clearing, either "0x" or "curve" or "router"
  * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
