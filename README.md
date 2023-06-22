@@ -1,5 +1,5 @@
 # Rain Orderbook Arbitrage Bot
-NodeJS app that clears Rain orderbook orders against 0x liquididty by finding 0x trades for token pairs of order details queried from a subgraph, bundling the `takeOrders` and submitting them to [Rain ZeroExOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
+NodeJS app that clears Rain orderbook orders against 0x liquididty by finding 0x trades for token pairs of order details queried from a subgraph, bundling the `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
 Clearing bundled orders should cover the gas cost of the transaction at least so the transactions gets submitted, otherwise they will be skipped.
 The cost of the transaction is calculated in the profit token currency.
 
