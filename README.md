@@ -144,7 +144,7 @@ The app can be executed through API:
 const arb = require("@rainprotocol/arb-bot");
 
 // to run the app:
-// options
+// options (all properties are optional)
 const configOptions = {
   zeroExApiKey: "123..", // required for '0x' mode
   liquidityProviders: ["sushiswapv2", "uniswapv2"],  // optional for specifying liquidity providers
@@ -164,6 +164,7 @@ const source = "/home/orders.json" // path to a local json file or a subgraph UR
 const orderDetails = await arb.getOrderDetails(source, config.signer);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
+const mode = "router" // mode can be one of "router", "0x" or "curve"
 const reports = await arb.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>
