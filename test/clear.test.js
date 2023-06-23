@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { assert } = require("chai");
 const { clear } = require("../src");
 const { ethers } = require("hardhat");
@@ -369,7 +370,8 @@ describe("Rain Arb Bot Tests", async function () {
         );
     });
 
-    // uses 0x live quotes from polygon mainnet
+    // uses 0x live quotes from polygon mainnet and requires 0x api key set in .env
+    // uncomment for testing
     // it("should clear orders using 0x platform", async function () {
 
     //     // set up vault ids
@@ -402,7 +404,7 @@ describe("Rain Arb Bot Tests", async function () {
     //     );
 
     //     // run the clearing process
-    //     config.apiKey = "2";
+    //     config.apiKey = process?.env?.API_KEY;
     //     const reports = await clear("0x", bot, config, sgOrders, "0.1", "100", false);
 
     //     // should have cleared 2 toke pairs bundled orders
