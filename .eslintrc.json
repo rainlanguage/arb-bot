@@ -14,10 +14,10 @@
         "prefer-const": "error",
         "no-trailing-spaces": "error",
         "semi": [ "error", "always" ],
-        // "no-unused-vars": [
-        //     "error",
-        //     { "varsIgnorePattern": "^_" }
-        // ],
+        "no-unused-vars": [
+            "error",
+            { "varsIgnorePattern": "^_" }
+        ],
         "quotes": [
             "error",
             "double"

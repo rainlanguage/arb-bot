@@ -672,7 +672,12 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclu
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
 exports.processLps = (liquidityProviders) => {
-    if (!liquidityProviders || !liquidityProviders.length) return undefined;
+    if (
+        !liquidityProviders ||
+        !Array.isArray(liquidityProviders) ||
+        !liquidityProviders.length ||
+        !liquidityProviders.every(v => typeof v === "string")
+    ) return undefined;
     const _lps = [];
     const LP = Object.values(LiquidityProviders);
     for (let i = 0; i < liquidityProviders.length; i++) {
@@ -680,4 +685,149 @@ exports.processLps = (liquidityProviders) => {
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
     return _lps.length ? _lps : undefined;
+};
+
+/**
+ * Validates content of an array of orders
+ * @param {any[]} orders - Array of order struct
+ */
+exports.validateOrders = (orders) => {
+    const addressPattern = /^0x[a-fA-F0-9]{40}$/;
+    const vaultIdPattern = /^0x[a-fA-F0-9]{64}$/;
+    return Array.isArray(orders)
+        && orders.every(v => typeof v.owner === "string"
+            && addressPattern.test(v.owner)
+            && typeof v.handleIO === "boolean"
+            && v.evaluable !== null
+            && typeof v.evaluable === "object"
+            && typeof v.evaluable.interpreter === "string"
+            && addressPattern.test(v.evaluable.interpreter)
+            && typeof v.evaluable.store === "string"
+            && addressPattern.test(v.evaluable.store)
+            && typeof v.evaluable.expression === "string"
+            && addressPattern.test(v.evaluable.expression)
+            && Array.isArray(v.validInputs)
+            && v.validInputs.length > 0
+            && v.validInputs.every(e =>
+                typeof e.token === "string"
+                && addressPattern.test(e.token)
+                && typeof e.decimals === "number"
+                && e.decimals > 0
+                && typeof e.vaultId === "string"
+                && vaultIdPattern.test(e.vaultId)
+            )
+            && Array.isArray(v.validOutputs)
+            && v.validOutputs.length > 0
+            && v.validOutputs.every(e =>
+                typeof e.token === "string"
+                && addressPattern.test(e.token)
+                && typeof e.decimals === "number"
+                && e.decimals > 0
+                && typeof e.vaultId === "string"
+                && vaultIdPattern.test(e.vaultId)
+            )
+        );
+};
+
+/**
+ * Get the order hash from an order struct
+ * @param {any} order - The order struct
+ * @returns The order hash
+ */
+exports.getOrderHash = (order) => {
+    return ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+            [
+                "tuple("
+                    + "address,"
+                    + "bool,"
+                    + "tuple(address,address,address),"
+                    + "tuple[](address,uint8,uint256),"
+                    + "tuple[](address,uint8,uint256)" +
+                ")"
+            ],
+            [[
+                order.owner,
+                order.handleIO,
+                [
+                    order.evaluable.interpreter,
+                    order.evaluable.store,
+                    order.evaluable.expression
+                ],
+                [[
+                    order.validInputs[inputIndex].token,
+                    order.validInputs[inputIndex].decimals,
+                    order.validInputs[inputIndex].vaultId
+                ]],
+                [[
+                    order.validOutputs[outputIndex].token,
+                    order.validOutputs[outputIndex].decimals,
+                    order.validOutputs[outputIndex].vaultId
+                ]]
+            ]]
+        )
+    );
+};
+
+/**
+ * Get order details from an array of order struct
+ * @param {string} jsonContent - Content of a JSON file containing orders struct
+ */
+exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
+    const orders = JSON.parse(jsonContent);
+    if (!this.validateOrders(orders)) throw "invalid orders format";
+    const orderDetails = [];
+    for (let i = 0; i < orders.length; i++) {
+        const _inputSymbols = [];
+        const _outputSymbols = [];
+        for (let j = 0; j < orders[i].validInputs.length; j++) {
+            const erc20 = new ethers.Contract(orders[i].validInputs[j].token, erc20Abi, signer);
+            const symbol = await erc20.symbol();
+            _inputSymbols.push(symbol);
+        }
+        for (let j = 0; j < orders[i].validOutputs.length; j++) {
+            const erc20 = new ethers.Contract(orders[i].validOutputs[j].token, erc20Abi, signer);
+            const symbol = await erc20.symbol();
+            _outputSymbols.push(symbol);
+        }
+        orderDetails.push({
+            id: this.getOrderHash(orders[i]).toLowerCase(),
+            handleIO: orders[i].handleIO,
+            expression: orders[i].evaluable.expression.toLowerCase(),
+            interpreter: orders[i].evaluable.interpreter.toLowerCase(),
+            interpreterStore: orders[i].evaluable.store.toLowerCase(),
+            owner: {
+                id: orders[i].owner.toLowerCase()
+            },
+            validInputs: orders[i].validInputs.map((v, i) => {
+                const _input = {
+                    index: i,
+                    token: {
+                        id: v.token.toLowerCase(),
+                        decimals: v.decimals,
+                        symbol: _inputSymbols[i]
+                    },
+                    vault: {
+                        id: v.token.toLowerCase() + "-" + v.vaultId.toLowerCase()
+                    }
+                };
+                return _input;
+            }),
+            validOutputs: orders[i].validOutputs.map((v, i) => {
+                const _output = {
+                    index: i,
+                    token: {
+                        id: v.token.toLowerCase(),
+                        decimals: v.decimals,
+                        symbol: _outputSymbols[i]
+                    },
+                    vault: {
+                        id: v.token.toLowerCase() + "-" + v.vaultId.toLowerCase()
+                    }
+                };
+                return _output;
+            })
+        });
+    }
+    return orderDetails;
 };

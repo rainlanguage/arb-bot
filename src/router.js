@@ -97,7 +97,6 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
 /**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with router contract
  *
- * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
@@ -107,7 +106,6 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
  * @returns The report of details of cleared orders
  */
 exports.routerClear = async(
-    signer,
     config,
     ordersDetails,
     slippage = "0.01",
@@ -119,8 +117,11 @@ exports.routerClear = async(
         gasCoveragePercentage > 100 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
+    if (!/^\d+(\.\d+)?$/.test(slippage)) throw "invalid slippage value";
+    if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const dataFetcher = getDataFetcher(config, processLps(config.lps));
+    const signer = config.signer;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
 

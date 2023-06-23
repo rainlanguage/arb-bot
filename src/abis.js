@@ -2,7 +2,8 @@
  * Minimal ABI for ERC20 contract only including Transfer event
  */
 exports.erc20Abi = [
-    "event Transfer(address indexed from, address indexed to, uint256 value)"
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
+    "function symbol() public view virtual returns (string memory)"
 ];
 
 /**
