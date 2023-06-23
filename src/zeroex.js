@@ -6,8 +6,7 @@ const {
     sleep,
     getIncome,
     getActualPrice,
-    estimateProfit,
-    ETHERSCAN_TX_PAGE
+    estimateProfit
 } = require("./utils");
 
 
@@ -163,7 +162,6 @@ exports.zeroExClear = async(
     let hits = 0;
     const api = config.zeroEx.apiUrl;
     const proxyAddress = config.zeroEx.proxyAddress;
-    const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken;
@@ -437,7 +435,7 @@ exports.zeroExClear = async(
                                         data,
                                         { gasPrice: txQuote.gasPrice, gasLimit }
                                     );
-                                    console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
+                                    console.log(config.explorer + "tx/" + tx.hash, "\n");
                                     console.log(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"

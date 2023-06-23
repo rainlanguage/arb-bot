@@ -8,22 +8,6 @@ const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router")
 
 
 /**
- * Transaction page of etherscan websites paired with their chain id
- */
-exports.ETHERSCAN_TX_PAGE = {
-    1:          "https://etherscan.io/tx/",
-    5:          "https://goerli.etherscan.io/tx/",
-    10:         "https://optimistic.etherscan.io/tx/",
-    56:         "https://bscscan.com/tx/",
-    137:        "https://polygonscan.com/tx/",
-    250:        "https://ftmscan.com/tx/",
-    42161:      "https://arbiscan.io/tx/",
-    42220:      "https://celoscan.io/tx/",
-    43114:      "https://snowtrace.io/tx/",
-    80001:      "https://mumbai.polygonscan.com/tx/"
-};
-
-/**
  * Fallback transports for viem client
  */
 exports.fallbackTransports = {

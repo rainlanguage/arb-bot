@@ -7,8 +7,7 @@ const {
     getDataFetcher,
     getActualPrice,
     estimateProfit,
-    bundleTakeOrders,
-    ETHERSCAN_TX_PAGE,
+    bundleTakeOrders
 } = require("./utils");
 
 
@@ -240,7 +239,6 @@ exports.curveClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
 
-    const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
 
@@ -480,7 +478,7 @@ exports.curveClear = async(
                                 data,
                                 { gasPrice, gasLimit }
                             );
-                            console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
+                            console.log(config.explorer + "tx/" + tx.hash, "\n");
                             console.log(
                                 ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                 "\n"

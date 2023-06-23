@@ -2,6 +2,7 @@
     {
         "network": "polygon",
         "chainId": 137,
+        "explorer": "https://polygonscan.com/",
         "routeProcessor3Address": "0x0a6e511Fe663827b9cA7e2D2542b20B37fC217A6",
         "zeroEx": {
             "apiUrl": "https://polygon.api.0x.org/",
@@ -204,6 +205,7 @@
     {
         "network": "homestead",
         "chainId": 1,
+        "explorer": "https://etherscan.io/",
         "routeProcessor3Address": "0x827179dD56d07A7eeA32e3873493835da2866976",
         "zeroEx": {
             "apiUrl": "https://api.0x.org/",
@@ -308,6 +310,7 @@
     {
         "network": "goerli",
         "chainId": 5,
+        "explorer": "https://goerli.etherscan.io/",
         "zeroEx": {
             "apiUrl": "https://goerli.api.0x.org/",
             "proxyAddress": "0xf91bb752490473b8342a3e964e855b9f9a2a668e"
@@ -329,6 +332,7 @@
     {
         "network": "avalanche",
         "chainId": 43114,
+        "explorer": "https://snowtrace.io/",
         "routeProcessor3Address": "0x717b7948AA264DeCf4D780aa6914482e5F46Da3e",
         "zeroEx": {
             "apiUrl": "https://avalanche.api.0x.org/",
@@ -413,6 +417,7 @@
     {
         "network": "arbitrum",
         "chainId": 42161,
+        "explorer": "https://arbiscan.io/",
         "routeProcessor3Address": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674",
         "zeroEx": {
             "apiUrl": "https://arbitrum.api.0x.org/",
@@ -482,6 +487,7 @@
     {
         "network": "fantom",
         "chainId": 250,
+        "explorer": "https://ftmscan.com/",
         "routeProcessor3Address": "0x2214A42d8e2A1d20635c2cb0664422c528B6A432",
         "zeroEx": {
             "apiUrl": "https://fantom.api.0x.org/",
@@ -561,6 +567,7 @@
     {
         "network": "bsc",
         "chainId": 56,
+        "explorer": "https://bscscan.com/",
         "routeProcessor3Address": "0x400d75dAb26bBc18D163AEA3e83D9Ea68F6c1804",
         "zeroEx": {
             "apiUrl": "https://bsc.api.0x.org/",
@@ -640,6 +647,7 @@
     {
         "network": "celo",
         "chainId": 42220,
+        "explorer": "https://celoscan.io/",
         "routeProcessor3Address": "0x2f686751b19a9d91cc3d57d90150Bc767f050066",
         "zeroEx": {
             "apiUrl": "https://celo.api.0x.org/",
@@ -669,6 +677,7 @@
     {
         "network": "optimism",
         "chainId": 10,
+        "explorer": "https://optimistic.etherscan.io/",
         "routeProcessor3Address": "0x4C5D5234f232BD2D76B96aA33F5AE4FCF0E4BFAb",
         "zeroEx": {
             "apiUrl": "https://optimism.api.0x.org/",
@@ -694,6 +703,7 @@
     {
         "network": "mumbai",
         "chainId": 80001,
+        "explorer": "https://mumbai.polygonscan.com/",
         "zeroEx": {
             "apiUrl": "https://mumbai.api.0x.org/",
             "proxyAddress": "0xf471d32cb40837bf24529fcf17418fc1a4807626"

@@ -10,7 +10,6 @@ const {
     getActualPrice,
     estimateProfit,
     bundleTakeOrders,
-    ETHERSCAN_TX_PAGE,
     fetchPoolsForTokenWrapper
 } = require("./utils");
 
@@ -122,7 +121,6 @@ exports.routerClear = async(
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
 
     const dataFetcher = getDataFetcher(config, processLps(config.lps));
-    const chainId = config.chainId;
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
 
@@ -419,7 +417,7 @@ exports.routerClear = async(
                                     data,
                                     { gasPrice, gasLimit }
                                 );
-                                console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
+                                console.log(config.explorer + "tx/" + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"

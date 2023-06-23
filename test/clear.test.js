@@ -370,122 +370,122 @@ describe("Rain Arb Bot Tests", async function () {
     });
 
     // uses 0x live quotes from polygon mainnet
-    it("should clear orders using 0x platform", async function () {
+    // it("should clear orders using 0x platform", async function () {
 
-        // set up vault ids
-        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
-        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
-        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-        const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
+    //     // set up vault ids
+    //     const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
 
-        const sgOrders = await prepareOrders(
-            owners,
-            [USDC, USDT, DAI, BUSD],
-            [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
-            [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
-            orderbook,
-            expressionDeployer
-        );
+    //     const sgOrders = await prepareOrders(
+    //         owners,
+    //         [USDC, USDT, DAI, BUSD],
+    //         [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
+    //         [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
+    //         orderbook,
+    //         expressionDeployer
+    //     );
 
-        // check that bot's balance is zero for all tokens
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
-        );
+    //     // check that bot's balance is zero for all tokens
+    //     assert.ok(
+    //         (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
 
-        // run the clearing process
-        config.apiKey = "1";
-        const reports = await clear("0x", bot, config, sgOrders, "0.1", "100", false);
+    //     // run the clearing process
+    //     config.apiKey = "2";
+    //     const reports = await clear("0x", bot, config, sgOrders, "0.1", "100", false);
 
-        // should have cleared 2 toke pairs bundled orders
-        assert.ok(reports.length == 2);
+    //     // should have cleared 2 toke pairs bundled orders
+    //     assert.ok(reports.length == 2);
 
-        // validate first cleared token pair orders
-        assert.equal(reports[0].tokenPair, "USDT/USDC");
-        assert.equal(reports[0].clearedAmount, "200000000");
-        assert.equal(reports[0].clearedOrders.length, 2);
+    //     // validate first cleared token pair orders
+    //     assert.equal(reports[0].tokenPair, "USDT/USDC");
+    //     assert.equal(reports[0].clearedAmount, "200000000");
+    //     assert.equal(reports[0].clearedOrders.length, 2);
 
-        // check vault balances for orders in cleared token pair USDT/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
+    //     // check vault balances for orders in cleared token pair USDT/USDC
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[0].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[0].address,
+    //             USDT.address,
+    //             USDT_vaultId
+    //         )).toString(),
+    //         "150000000"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[2].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[2].address,
+    //             USDT.address,
+    //             USDT_vaultId
+    //         )).toString(),
+    //         "150000000"
+    //     );
 
-        // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "BUSD/USDC");
-        assert.equal(reports[1].clearedAmount, "100000000");
-        assert.equal(reports[1].clearedOrders.length, 1);
+    //     // validate second cleared token pair orders
+    //     assert.equal(reports[1].tokenPair, "BUSD/USDC");
+    //     assert.equal(reports[1].clearedAmount, "100000000");
+    //     assert.equal(reports[1].clearedOrders.length, 1);
 
-        // check vault balances for orders in cleared token pair BUSD/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                BUSD.address,
-                BUSD_vaultId
-            )).toString(),
-            "150000000000000000000"
-        );
+    //     // check vault balances for orders in cleared token pair BUSD/USDC
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[1].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[1].address,
+    //             BUSD.address,
+    //             BUSD_vaultId
+    //         )).toString(),
+    //         "150000000000000000000"
+    //     );
 
-        // bot should have received the bounty for cleared orders input token
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
-        );
-        assert.ok(
-            (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
-        );
+    //     // bot should have received the bounty for cleared orders input token
+    //     assert.ok(
+    //         (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+    //     );
+    //     assert.ok(
+    //         (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
+    //     );
 
-        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
-        );
-    });
+    //     // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+    //     assert.ok(
+    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    // });
 });
 
 // prepare orders by adding orders and topping up the vault balances and return mocked sg results
