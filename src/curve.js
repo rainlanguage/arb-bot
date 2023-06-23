@@ -218,7 +218,6 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
  *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction
  * for it to be considered profitable and get submitted
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
@@ -227,7 +226,6 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
 exports.curveClear = async(
     config,
     ordersDetails,
-    slippage = "0.01",
     gasCoveragePercentage = "100",
     prioritization = true
 ) => {
@@ -236,7 +234,6 @@ exports.curveClear = async(
         gasCoveragePercentage > 100 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
-    if (!/^\d+(\.\d+)?$/.test(slippage)) throw "invalid slippage value";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const signer = config.signer;
@@ -370,9 +367,9 @@ exports.curveClear = async(
 
                 // submit the transaction
                 try {
-                    const guaranteedAmount = bundledQuoteAmount
-                        .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
-                        .div("100");
+                    // const guaranteedAmount = bundledQuoteAmount
+                    //     .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
+                    //     .div("100");
                     let fnData;
                     let data;
                     let iface;
@@ -386,7 +383,8 @@ exports.curveClear = async(
                                     bundledOrders[i].sellTokenIndex.toString(),
                                     bundledOrders[i].buyTokenIndex.toString(),
                                     bundledQuoteAmount.toString(),
-                                    guaranteedAmount.toString()
+                                    // guaranteedAmount.toString()
+                                    "0"
                                 ]
                             );
                             data = ethers.utils.defaultAbiCoder.encode(
@@ -409,7 +407,8 @@ exports.curveClear = async(
                                     bundledOrders[i].sellTokenIndex.toString(),
                                     bundledOrders[i].buyTokenIndex.toString(),
                                     bundledQuoteAmount.toString(),
-                                    guaranteedAmount.toString()
+                                    // guaranteedAmount.toString()
+                                    "0"
                                 ]
                             );
                         }
@@ -420,7 +419,8 @@ exports.curveClear = async(
                                     bundledOrders[i].sellTokenIndex.toString(),
                                     bundledOrders[i].buyTokenIndex.toString(),
                                     bundledQuoteAmount.toString(),
-                                    guaranteedAmount.toString()
+                                    // guaranteedAmount.toString()
+                                    "0"
                                 ]
                             );
                         }
@@ -547,10 +547,10 @@ exports.curveClear = async(
                                     clearPrice: ethers.utils.formatEther(
                                         bundledOrders[i].initPrice
                                     ),
-                                    clearGuaranteedPrice: ethers.utils.formatUnits(
-                                        guaranteedAmount,
-                                        bundledOrders[i].buyTokenDecimals
-                                    ),
+                                    // clearGuaranteedPrice: ethers.utils.formatUnits(
+                                    //     guaranteedAmount,
+                                    //     bundledOrders[i].buyTokenDecimals
+                                    // ),
                                     clearActualPrice,
                                     maxEstimatedProfit,
                                     gasUsed: receipt.gasUsed,

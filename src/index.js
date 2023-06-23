@@ -24,17 +24,13 @@ const configOptions = {
     /**
      * Option to make the app respect 200k 0x API calls per month rate limit
      */
-    monthlyRatelimit: undefined
+    monthlyRatelimit: true
 };
 
 /**
  * Options for clear()
  */
 const clearOptions = {
-    /**
-     * The slippage for clearing orders, default is 0.01 i.e. 1 percent
-     */
-    slippage: "0.01",
     /**
      * The percentage of the gas cost to cover on each transaction
      * for it to be considered profitable and get submitted
@@ -128,7 +124,6 @@ const clear = async(
     ordersDetails,
     options = clearOptions
 ) => {
-    const slippage = options.slippage ? options.slippage : clearOptions.slippage;
     const prioritization = options.prioritization
         ? options.prioritization
         : clearOptions.prioritization;
@@ -138,21 +133,18 @@ const clear = async(
     if (mode.toLowerCase() === "0x") return await zeroExClear(
         config,
         ordersDetails,
-        slippage,
         gasCoveragePercentage,
         prioritization
     );
     else if (mode.toLowerCase() === "curve") return await curveClear(
         config,
         ordersDetails,
-        slippage,
         gasCoveragePercentage,
         prioritization
     );
     else if (mode.toLowerCase() === "router") return await routerClear(
         config,
         ordersDetails,
-        slippage,
         gasCoveragePercentage,
         prioritization
     );

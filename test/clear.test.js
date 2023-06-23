@@ -169,7 +169,7 @@ describe("Rain Arb Bot Tests", async function () {
         config.rpc = "test";
         config.signer = bot;
         config.lps = ["quickswap", "uniswapv2", "uniswapv3"];
-        const reports = await clear("router", config, sgOrders, {slippage: "0.1", prioritization: false});
+        const reports = await clear("router", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -288,7 +288,7 @@ describe("Rain Arb Bot Tests", async function () {
         config.rpc = "test";
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
-        const reports = await clear("curve", config, sgOrders, {slippage: "0.1", prioritization: false});
+        const reports = await clear("curve", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -408,7 +408,7 @@ describe("Rain Arb Bot Tests", async function () {
     //     // run the clearing process
     //     config.apiKey = process?.env?.API_KEY;
     //     config.signer = bot;
-    //     const reports = await clear("0x", config, sgOrders, "0.1", "100", false);
+    //     const reports = await clear("0x", config, sgOrders, {prioritization: false});
 
     //     // should have cleared 2 toke pairs bundled orders
     //     assert.ok(reports.length == 2);

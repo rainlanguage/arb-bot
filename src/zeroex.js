@@ -138,7 +138,6 @@ const prepare = async(quotes, bundledOrders, sort = true) => {
  *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
@@ -146,7 +145,6 @@ const prepare = async(quotes, bundledOrders, sort = true) => {
 exports.zeroExClear = async(
     config,
     ordersDetails,
-    slippage = "0.01",
     gasCoveragePercentage = "100",
     prioritization = true
 ) => {
@@ -155,7 +153,6 @@ exports.zeroExClear = async(
         gasCoveragePercentage > 100 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
-    if (!/^\d+(\.\d+)?$/.test(slippage)) throw "invalid slippage value";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const start = Date.now();
@@ -376,8 +373,6 @@ exports.zeroExClear = async(
                                 bundledOrders[i].sellToken
                             }&sellAmount=${
                                 bundledQuoteAmount.toString()
-                            }&slippagePercentage=${
-                                slippage
                             }`,
                             HEADERS
                         );

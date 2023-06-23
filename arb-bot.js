@@ -18,9 +18,12 @@ const DEFAULT_OPTIONS = {
     ordersSource: process?.env?.ORDERS_SOURCE || "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph",
     apiKey: process?.env?.API_KEY,
     lps: process?.env?.LIQUIDITY_PROVIDERS,
-    slippage: process?.env?.SLIPPAGE || "0.001",    // 0.1%
     gasCoverage: process?.env?.GAS_COVER || "100",
-    monthlyRatelimit: !!process?.env?.MONTHLY_RATELIMIT
+    monthlyRatelimit: process?.env?.MONTHLY_RATELIMIT === undefined
+        ? true
+        : process?.env?.MONTHLY_RATELIMIT.toLowerCase() === "false"
+            ? false
+            : true
 };
 
 const getOptions = async argv => {
@@ -32,7 +35,6 @@ const getOptions = async argv => {
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables")
-        .option("-s, --slippage <number>", "Sets the slippage percentage for the clearing orders, default is 0.001 i.e 0.1%, Will override the 'SLIPPAGE' in env variables")
         .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the 'API_KEY' env variable")
         .option("-g, --gas-coverage <number>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--no-monthly-ratelimit", "Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables")
@@ -85,7 +87,6 @@ const main = async argv => {
         config,
         ordersDetails,
         {
-            slippage: options.slippage,
             gasCoveragePercentage: options.gasCoverage
         }
     );
