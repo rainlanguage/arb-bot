@@ -510,7 +510,9 @@ exports.zeroExClear = async(
                                             gasCost,
                                             income,
                                             netProfit,
-                                            clearedOrders: bundledOrders[i].takeOrders,
+                                            clearedOrders: bundledOrders[i].takeOrders.map(
+                                                v => v.id
+                                            ),
                                         });
                                     }
                                     catch (error) {

@@ -20,7 +20,7 @@ exports.ETHERSCAN_TX_PAGE = {
     42161:      "https://arbiscan.io/tx/",
     42220:      "https://celoscan.io/tx/",
     43114:      "https://snowtrace.io/tx/",
-    524289:     "https://mumbai.polygonscan.com/tx/"
+    80001:      "https://mumbai.polygonscan.com/tx/"
 };
 
 /**

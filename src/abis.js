@@ -31,7 +31,7 @@ exports.interpreterAbi = [
 /**
 * Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
 */
-exports.sushiswapRouterAbi = [
+exports.routeProcessor3Abi = [
     `function processRoute(
         address tokenIn,
         uint256 amountIn,

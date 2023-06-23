@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("@sushiswap/router");
 const { Token } = require("@sushiswap/currency");
-const { arbAbi, orderbookAbi, sushiswapRouterAbi } = require("./abis");
+const { arbAbi, orderbookAbi, routeProcessor3Abi } = require("./abis");
 const {
     getIncome,
     processLps,
@@ -330,7 +330,7 @@ exports.routerClear = async(
                         fromToken,
                         toToken,
                         arb.address,
-                        config.sushiswap.router,
+                        config.routeProcessor3Address,
                         // permits
                         // "0.005"
                     );
@@ -351,7 +351,7 @@ exports.routerClear = async(
                         const guaranteedAmount = bundledQuoteAmount
                             .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
                             .div("100");
-                        const iface = new ethers.utils.Interface(sushiswapRouterAbi);
+                        const iface = new ethers.utils.Interface(routeProcessor3Abi);
                         const fnData = iface.encodeFunctionData(
                             "processRoute",
                             [
@@ -367,8 +367,8 @@ exports.routerClear = async(
                         const data = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
-                                config.sushiswap.router,
-                                config.sushiswap.router,
+                                config.routeProcessor3Address,
+                                config.routeProcessor3Address,
                                 fnData
                             ]
                         );
@@ -497,7 +497,7 @@ exports.routerClear = async(
                                         gasCost,
                                         income,
                                         netProfit,
-                                        clearedOrders: bundledOrders[i].takeOrders,
+                                        clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),
                                     });
                                 }
                                 catch (error) {

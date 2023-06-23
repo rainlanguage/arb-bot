@@ -2,9 +2,7 @@
     {
         "network": "polygon",
         "chainId": 137,
-        "sushiswap": {
-            "router": "0x0a6e511Fe663827b9cA7e2D2542b20B37fC217A6"
-        },
+        "routeProcessor3Address": "0x0a6e511Fe663827b9cA7e2D2542b20B37fC217A6",
         "zeroEx": {
             "apiUrl": "https://polygon.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -206,9 +204,7 @@
     {
         "network": "homestead",
         "chainId": 1,
-        "sushiswap": {
-            "router": "0x827179dD56d07A7eeA32e3873493835da2866976"
-        },
+        "routeProcessor3Address": "0x827179dD56d07A7eeA32e3873493835da2866976",
         "zeroEx": {
             "apiUrl": "https://api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -333,9 +329,7 @@
     {
         "network": "avalanche",
         "chainId": 43114,
-        "sushiswap": {
-            "router": "0x717b7948AA264DeCf4D780aa6914482e5F46Da3e"
-        },
+        "routeProcessor3Address": "0x717b7948AA264DeCf4D780aa6914482e5F46Da3e",
         "zeroEx": {
             "apiUrl": "https://avalanche.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -419,9 +413,7 @@
     {
         "network": "arbitrum",
         "chainId": 42161,
-        "sushiswap": {
-            "router": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674"
-        },
+        "routeProcessor3Address": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674",
         "zeroEx": {
             "apiUrl": "https://arbitrum.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -490,9 +482,7 @@
     {
         "network": "fantom",
         "chainId": 250,
-        "sushiswap": {
-            "router": "0x2214A42d8e2A1d20635c2cb0664422c528B6A432"
-        },
+        "routeProcessor3Address": "0x2214A42d8e2A1d20635c2cb0664422c528B6A432",
         "zeroEx": {
             "apiUrl": "https://fantom.api.0x.org/",
             "proxyAddress": "0xdef189deaef76e379df891899eb5a00a94cbc250"
@@ -571,9 +561,7 @@
     {
         "network": "bsc",
         "chainId": 56,
-        "sushiswap": {
-            "router": "0x400d75dAb26bBc18D163AEA3e83D9Ea68F6c1804"
-        },
+        "routeProcessor3Address": "0x400d75dAb26bBc18D163AEA3e83D9Ea68F6c1804",
         "zeroEx": {
             "apiUrl": "https://bsc.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -652,9 +640,7 @@
     {
         "network": "celo",
         "chainId": 42220,
-        "sushiswap": {
-            "router": "0x2f686751b19a9d91cc3d57d90150Bc767f050066"
-        },
+        "routeProcessor3Address": "0x2f686751b19a9d91cc3d57d90150Bc767f050066",
         "zeroEx": {
             "apiUrl": "https://celo.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
@@ -683,9 +669,7 @@
     {
         "network": "optimism",
         "chainId": 10,
-        "sushiswap": {
-            "router": "0x4C5D5234f232BD2D76B96aA33F5AE4FCF0E4BFAb"
-        },
+        "routeProcessor3Address": "0x4C5D5234f232BD2D76B96aA33F5AE4FCF0E4BFAb",
         "zeroEx": {
             "apiUrl": "https://optimism.api.0x.org/",
             "proxyAddress": "0xdef1abe32c034e558cdd535791643c58a13acc10"

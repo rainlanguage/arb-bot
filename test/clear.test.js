@@ -133,7 +133,7 @@ describe("Rain Arb Bot Tests", async function () {
         }
     });
 
-    it("should clear orders using RouteProcessor", async function () {
+    it("should clear orders using RouteProcessor3 contract", async function () {
 
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
@@ -141,159 +141,14 @@ describe("Rain Arb Bot Tests", async function () {
         const DAI_vaultId = ethers.BigNumber.from(randomUint256());
         const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
 
-        // topping up owners 1 2 3 vaults with 100 of each token
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDC.address,
-                vaultId: USDC_vaultId,
-                amount: "100" + "0".repeat(USDCDecimals),
-            };
-            await USDC
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDT.address,
-                vaultId: USDT_vaultId,
-                amount: "100" + "0".repeat(USDTDecimals),
-            };
-            await USDT
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: DAI.address,
-                vaultId: DAI_vaultId,
-                amount: "100" + "0".repeat(DAIDecimals),
-            };
-            await DAI
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: BUSD.address,
-                vaultId: BUSD_vaultId,
-                amount: "100" + "0".repeat(BUSDDecimals),
-            };
-            await BUSD
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-
-        const sgOrders = [];
-        const expConfig = {
-            constants: [
-                ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-            ],
-            sources: ["0x000c0001000c0003", "0x"]
-        };
-
-        const EvaluableConfig = generateEvaluableConfig(
-            expressionDeployer,
-            expConfig
+        const sgOrders = await prepareOrders(
+            owners,
+            [USDC, USDT, DAI, BUSD],
+            [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
+            [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
+            orderbook,
+            expressionDeployer
         );
-
-        // add orders
-        const owner1_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-                { token: DAI.address, decimals: DAIDecimals, vaultId: DAI_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order1"),
-        };
-        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner1_order2 = {
-            validInputs: [
-                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order2"),
-        };
-        const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order2,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner2_order1 = {
-            validInputs: [
-                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner2_order1"),
-        };
-        const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner2_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner3_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner3_order1"),
-        };
-        const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner3_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
 
         // check that bot's balance is zero for all tokens
         assert.ok(
@@ -404,159 +259,14 @@ describe("Rain Arb Bot Tests", async function () {
         const DAI_vaultId = ethers.BigNumber.from(randomUint256());
         const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
 
-        // topping up owners 1 2 3 vaults with 100 of each token
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDC.address,
-                vaultId: USDC_vaultId,
-                amount: "100" + "0".repeat(USDCDecimals),
-            };
-            await USDC
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDT.address,
-                vaultId: USDT_vaultId,
-                amount: "100" + "0".repeat(USDTDecimals),
-            };
-            await USDT
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: DAI.address,
-                vaultId: DAI_vaultId,
-                amount: "100" + "0".repeat(DAIDecimals),
-            };
-            await DAI
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: FRAX.address,
-                vaultId: FRAX_vaultId,
-                amount: "100" + "0".repeat(FRAXDecimals),
-            };
-            await FRAX
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-
-        const sgOrders = [];
-        const expConfig = {
-            constants: [
-                ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-            ],
-            sources: ["0x000c0001000c0003", "0x"]
-        };
-
-        const EvaluableConfig = generateEvaluableConfig(
-            expressionDeployer,
-            expConfig
+        const sgOrders = await prepareOrders(
+            owners,
+            [USDC, USDT, DAI, FRAX],
+            [USDCDecimals, USDTDecimals, DAIDecimals, FRAXDecimals],
+            [USDC_vaultId, USDT_vaultId, DAI_vaultId, FRAX_vaultId],
+            orderbook,
+            expressionDeployer
         );
-
-        // add orders
-        const owner1_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-                { token: DAI.address, decimals: DAIDecimals, vaultId: DAI_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order1"),
-        };
-        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, FRAX]
-        ));
-
-        const owner1_order2 = {
-            validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order2"),
-        };
-        const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order2,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, FRAX]
-        ));
-
-        const owner2_order1 = {
-            validInputs: [
-                { token: FRAX.address, decimals: FRAXDecimals, vaultId: FRAX_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner2_order1"),
-        };
-        const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner2_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, FRAX]
-        ));
-
-        const owner3_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner3_order1"),
-        };
-        const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner3_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, FRAX]
-        ));
 
         // check that bot's balance is zero for all tokens
         assert.ok(
@@ -661,165 +371,21 @@ describe("Rain Arb Bot Tests", async function () {
 
     // uses 0x live quotes from polygon mainnet
     it("should clear orders using 0x platform", async function () {
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
         const DAI_vaultId = ethers.BigNumber.from(randomUint256());
         const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
 
-        // topping up owners 1 2 3 vaults with 100 of each token
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDC.address,
-                vaultId: USDC_vaultId,
-                amount: "100" + "0".repeat(USDCDecimals),
-            };
-            await USDC
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: USDT.address,
-                vaultId: USDT_vaultId,
-                amount: "100" + "0".repeat(USDTDecimals),
-            };
-            await USDT
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: DAI.address,
-                vaultId: DAI_vaultId,
-                amount: "100" + "0".repeat(DAIDecimals),
-            };
-            await DAI
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-        for (let i = 0; i < 3; i++) {
-            const depositConfigStruct = {
-                token: BUSD.address,
-                vaultId: BUSD_vaultId,
-                amount: "100" + "0".repeat(BUSDDecimals),
-            };
-            await BUSD
-                .connect(owners[i])
-                .approve(orderbook.address, depositConfigStruct.amount);
-            await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
-        }
-
-        const sgOrders = [];
-        const expConfig = {
-            constants: [
-                ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-            ],
-            sources: ["0x000c0001000c0003", "0x"]
-        };
-
-        const EvaluableConfig = generateEvaluableConfig(
-            expressionDeployer,
-            expConfig
+        const sgOrders = await prepareOrders(
+            owners,
+            [USDC, USDT, DAI, BUSD],
+            [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
+            [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
+            orderbook,
+            expressionDeployer
         );
-
-        // add orders
-        const owner1_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-                { token: DAI.address, decimals: DAIDecimals, vaultId: DAI_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order1"),
-        };
-        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner1_order2 = {
-            validInputs: [
-                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner1_order2"),
-        };
-        const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner1_order2,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner2_order1 = {
-            validInputs: [
-                { token: BUSD.address, decimals: BUSDDecimals, vaultId: BUSD_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner2_order1"),
-        };
-        const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner2_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
-
-        const owner3_order1 = {
-            validInputs: [
-                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
-            ],
-            validOutputs: [
-                { token: USDC.address, decimals: USDCDecimals, vaultId: USDC_vaultId },
-            ],
-            evaluableConfig: EvaluableConfig,
-            meta: encodeMeta("owner3_order1"),
-        };
-        const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
-        sgOrders.push(await mockSgFromEvent(
-            await getEventArgs(
-                tx_owner3_order1,
-                "AddOrder",
-                orderbook
-            ),
-            orderbook,
-            [USDT, USDC, DAI, BUSD]
-        ));
 
         // check that bot's balance is zero for all tokens
         assert.ok(
@@ -921,3 +487,171 @@ describe("Rain Arb Bot Tests", async function () {
         );
     });
 });
+
+// prepare orders by adding orders and topping up the vault balances and return mocked sg results
+const prepareOrders = async(
+    owners,
+    tokens,
+    tokensDecimals,
+    vaultIds,
+    orderbook,
+    expressionDeployer
+) => {
+    // topping up owners 1 2 3 vaults with 100 of each token
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[0].address,
+            vaultId: vaultIds[0],
+            amount: "100" + "0".repeat(tokensDecimals[0]),
+        };
+        await tokens[0]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        await orderbook
+            .connect(owners[i])
+            .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[1].address,
+            vaultId: vaultIds[1],
+            amount: "100" + "0".repeat(tokensDecimals[1]),
+        };
+        await tokens[1]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        await orderbook
+            .connect(owners[i])
+            .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[2].address,
+            vaultId: vaultIds[2],
+            amount: "100" + "0".repeat(tokensDecimals[2]),
+        };
+        await tokens[2]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        await orderbook
+            .connect(owners[i])
+            .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[3].address,
+            vaultId: vaultIds[3],
+            amount: "100" + "0".repeat(tokensDecimals[3]),
+        };
+        await tokens[3]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        await orderbook
+            .connect(owners[i])
+            .deposit(depositConfigStruct);
+    }
+
+    const sgOrders = [];
+    // order expression config
+    const expConfig = {
+        constants: [
+            ethers.constants.MaxUint256.toHexString(),  // max output
+            "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+        ],
+        sources: ["0x000c0001000c0003", "0x"]
+    };
+
+    const EvaluableConfig = generateEvaluableConfig(
+        expressionDeployer,
+        expConfig
+    );
+
+    // add orders
+    const owner1_order1 = {
+        validInputs: [
+            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
+            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: encodeMeta("owner1_order1"),
+    };
+    const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
+    // get sg-like order details from tx event
+    sgOrders.push(await mockSgFromEvent(
+        await getEventArgs(
+            tx_owner1_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        [tokens[1], tokens[0], tokens[2], tokens[3]]
+    ));
+
+    const owner1_order2 = {
+        validInputs: [
+            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: encodeMeta("owner1_order2"),
+    };
+    const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
+    sgOrders.push(await mockSgFromEvent(
+        await getEventArgs(
+            tx_owner1_order2,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        [tokens[1], tokens[0], tokens[2], tokens[3]]
+    ));
+
+    const owner2_order1 = {
+        validInputs: [
+            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: encodeMeta("owner2_order1"),
+    };
+    const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
+    sgOrders.push(await mockSgFromEvent(
+        await getEventArgs(
+            tx_owner2_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        [tokens[1], tokens[0], tokens[2], tokens[3]]
+    ));
+
+    const owner3_order1 = {
+        validInputs: [
+            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: encodeMeta("owner3_order1"),
+    };
+    const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
+    sgOrders.push(await mockSgFromEvent(
+        await getEventArgs(
+            tx_owner3_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        [tokens[1], tokens[0], tokens[2], tokens[3]]
+    ));
+
+    return sgOrders;
+};
