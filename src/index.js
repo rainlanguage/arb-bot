@@ -1,5 +1,6 @@
 const fs = require("fs");
 const axios = require("axios");
+const { ethers } = require("ethers");
 const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
@@ -49,6 +50,7 @@ const clearOptions = {
  * Get the order details from a source, i.e subgraph or a local json file
  *
  * @param {string} source - The subgraph endpoint URL to query for orders' details
+ * @param {ethers.signer} signer - The ethers signer
  * @returns An array of order details
  */
 const getOrderDetails = async(source, signer) => {

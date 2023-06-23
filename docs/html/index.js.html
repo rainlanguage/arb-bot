@@ -26,60 +26,118 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>const axios = require("axios");
+            <pre class="prettyprint source linenums"><code>const fs = require("fs");
+const axios = require("axios");
+const { ethers } = require("ethers");
 const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
+const { getOrderDetailsFromJson } = require("./utils");
 
 
 /**
- * Get the order details from a subgraph
+ * Options for getConfig()
+ */
+const configOptions = {
+    /**
+     * The 0x API key
+     */
+    zeroExApiKey: undefined,
+    /**
+     * List of liquidity providers for router contract tomoperate on
+     */
+    liquidityProviders: undefined,
+    /**
+     * Option to make the app respect 200k 0x API calls per month rate limit
+     */
+    monthlyRatelimit: undefined
+};
+
+/**
+ * Options for clear()
+ */
+const clearOptions = {
+    /**
+     * The slippage for clearing orders, default is 0.01 i.e. 1 percent
+     */
+    slippage: "0.01",
+    /**
+     * The percentage of the gas cost to cover on each transaction
+     * for it to be considered profitable and get submitted
+     */
+    gasCoveragePercentage: "100",
+    /**
+     * Prioritize better deals to get cleared first, default is true
+     */
+    prioritization: true
+};
+
+/**
+ * Get the order details from a source, i.e subgraph or a local json file
  *
- * @param {string} subgraphUrl - The subgraph endpoint URL to query for orders' details
+ * @param {string} source - The subgraph endpoint URL to query for orders' details
+ * @param {ethers.signer} signer - The ethers signer
  * @returns An array of order details
  */
-const query = async(subgraphUrl) => {
-    try {
-        const result = await axios.post(
-            subgraphUrl,
-            { query: DefaultQuery },
-            { headers: { "Content-Type": "application/json" } }
-        );
-        return result.data.data.orders;
+const getOrderDetails = async(source, signer) => {
+    if (source.startsWith("https://api.thegraph.com/subgraphs/name/")) {
+        try {
+            const result = await axios.post(
+                source,
+                { query: DefaultQuery },
+                { headers: { "Content-Type": "application/json" } }
+            );
+            return result.data.data.orders;
+        }
+        catch {
+            throw "Cannot get order details from subgraph";
+        }
     }
-    catch {
-        throw "Cannot get order details from subgraph";
+    else if (source.endsWith(".json")) {
+        const content = fs.readFileSync(source).toString();
+        return await getOrderDetailsFromJson(content, signer);
     }
+    else throw "invalid source for orders";
 };
 
 /**
  * Get the configuration info of a network required for the bot
  *
- * @param {ethers.Wallet} wallet - The ethers wallet with private key instance
+ * @param {string} rpcUrl - The RPC URL
+ * @param {string} walletPrivateKey - The wallet private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
- * @param {string} zerExApiKey - (optional) The 0x API key
- * @param {string[]} liquidityProviders - (optional) List of liquidity providers for router contract tomoperate on
+ * @param {configOptions} options - (optional) Optional parameters, 0x API key, liquidity providers and monthly ratelimit
  * @returns The configuration object
  */
 const getConfig = async(
-    wallet,
+    rpcUrl,
+    walletPrivateKey,
     orderbookAddress,
     arbAddress,
-    zeroExApiKey = undefined,
-    liquidityProviders = undefined
+    options = configOptions
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
-    const chainId = (await wallet.getChainId());
+    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
+
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(walletPrivateKey, provider);
+    const chainId = await signer.getChainId();
     const config = CONFIG.find(v => v.chainId === chainId);
+    if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
+
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+
+    config.rpc = rpcUrl;
+    config.signer = signer;
     config.orderbookAddress = orderbookAddress;
     config.arbAddress = arbAddress;
-    config.lps = liquidityProviders;
-    if (zeroExApiKey) config.apiKey = zeroExApiKey;
+    config.lps = options?.liquidityProviders;
+    config.apiKey = options?.zeroExApiKey;
+    config.monthlyRatelimit = !!options?.monthlyRatelimit;
     return config;
 };
 
@@ -87,26 +145,25 @@ const getConfig = async(
  * Method to clear orders against a liquidity provider
  *
  * @param {string} mode - The mode for clearing, either "0x" or "curve" or "router"
- * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
- * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction
- * for it to be considered profitable and get submitted
- * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
+ * @param {clearOptions} options - The options for clear, 'slippage',' gasCoveragePercentage' and 'prioritization'
  * @returns The report of details of cleared orders
  */
 const clear = async(
     mode,
-    signer,
     config,
     ordersDetails,
-    slippage = "0.01",
-    gasCoveragePercentage = "100",
-    prioritization = true
+    options = clearOptions
 ) => {
+    const slippage = options.slippage ? options.slippage : clearOptions.slippage;
+    const prioritization = options.prioritization
+        ? options.prioritization
+        : clearOptions.prioritization;
+    const gasCoveragePercentage = options.gasCoveragePercentage
+        ? options.gasCoveragePercentage
+        : clearOptions.gasCoveragePercentage;
     if (mode.toLowerCase() === "0x") return await zeroExClear(
-        signer,
         config,
         ordersDetails,
         slippage,
@@ -114,7 +171,6 @@ const clear = async(
         prioritization
     );
     else if (mode.toLowerCase() === "curve") return await curveClear(
-        signer,
         config,
         ordersDetails,
         slippage,
@@ -122,18 +178,17 @@ const clear = async(
         prioritization
     );
     else if (mode.toLowerCase() === "router") return await routerClear(
-        signer,
         config,
         ordersDetails,
         slippage,
         gasCoveragePercentage,
         prioritization
     );
-    else throw "unknown mode, must be 0x or curve";
+    else throw "unknown mode, must be '0x' or 'curve' or 'router'";
 };
 
 module.exports = {
-    query,
+    getOrderDetails,
     getConfig,
     clear
 };</code></pre>
@@ -146,13 +201,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 23 2023 00:36:10 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 23 2023 19:39:38 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

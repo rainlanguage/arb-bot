@@ -164,7 +164,6 @@ const prepare = async(quotes, bundledOrders, sort = true) => {
 /**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with 0x
  *
- * @param {ethers.Signer} signer - The ethersjs signer constructed from provided private keys and rpc url provider
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {string} slippage - (optional) The slippage for clearing orders, default is 0.01 i.e. 1 percent
@@ -173,7 +172,6 @@ const prepare = async(quotes, bundledOrders, sort = true) => {
  * @returns The report of details of cleared orders
  */
 exports.zeroExClear = async(
-    signer,
     config,
     ordersDetails,
     slippage = "0.01",
@@ -185,9 +183,12 @@ exports.zeroExClear = async(
         gasCoveragePercentage > 100 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
+    if (!/^\d+(\.\d+)?$/.test(slippage)) throw "invalid slippage value";
+    if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const start = Date.now();
     let hits = 0;
+    const signer = config.signer;
     const api = config.zeroEx.apiUrl;
     const proxyAddress = config.zeroEx.proxyAddress;
     const arbAddress = config.arbAddress;
@@ -595,13 +596,13 @@ exports.zeroExClear = async(
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#query">query</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 23 2023 00:36:10 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 23 2023 19:39:38 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

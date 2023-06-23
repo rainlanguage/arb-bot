@@ -58,12 +58,12 @@ const getOptions = async argv => {
 const main = async argv => {
     const options = await getOptions(argv);
 
-    if (!options.mode.match(/^0x$|^curve$|^router$/)) throw "invalid mode, must be one of '0x', 'curve', 'router'";
     if (!options.key) throw "undefined wallet private key";
     if (!options.rpc) throw "undefined RPC URL";
     if (!options.arbAddress) throw "undefined arb contract address";
     if (!options.orderbookAddress) throw "undefined orderbook contract address";
-    if (!/^\d+(\.\d+)?$/.test(options.slippage)) throw "invalid slippage value";
+    if (!options.ordersSource) throw "undefined source for orders";
+    if (!options.mode) throw "undefined operating mode";
 
     const config = await getConfig(
         options.rpc,
