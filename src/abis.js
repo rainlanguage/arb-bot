@@ -40,7 +40,7 @@ exports.routeProcessor3Abi = [
         uint256 amountOutMin,
         address to,
         bytes memory route
-    ) external payable lock returns (uint256 amountOut)`
+    ) external payable returns (uint256 amountOut)`
 ];
 
 /**
