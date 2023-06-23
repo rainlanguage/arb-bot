@@ -245,7 +245,7 @@ exports.curveClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    const gasPrice = await signer.provider.getGasPrice();
+    let gasPrice = await signer.provider.getGasPrice();
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -287,6 +287,7 @@ exports.curveClear = async(
     const dataFetcher = getDataFetcher(config, processLps(config.lps));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
+            gasPrice = await signer.provider.getGasPrice();
             console.log(
                 `------------------------- Trying To Clear ${
                     bundledOrders[i].buyTokenSymbol

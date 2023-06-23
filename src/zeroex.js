@@ -2,12 +2,7 @@ const axios = require("axios");
 const ethers = require("ethers");
 const { bundleTakeOrders } = require("./utils");
 const { arbAbi, orderbookAbi } = require("./abis");
-const {
-    sleep,
-    getIncome,
-    getActualPrice,
-    estimateProfit
-} = require("./utils");
+const { sleep, getIncome, getActualPrice, estimateProfit } = require("./utils");
 
 
 const RateLimit = 0.075;    // rate limit per second per month

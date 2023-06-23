@@ -127,7 +127,7 @@ exports.routerClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    const gasPrice = await signer.provider.getGasPrice();
+    let gasPrice = await signer.provider.getGasPrice();
 
     console.log(
         "------------------------- Starting Clearing Process -------------------------",
@@ -167,6 +167,7 @@ exports.routerClear = async(
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
+            gasPrice = await signer.provider.getGasPrice();
             console.log(
                 `------------------------- Trying To Clear ${
                     bundledOrders[i].buyTokenSymbol

@@ -5,7 +5,6 @@ const { erc20Abi, interpreterAbi } = require("./abis");
 const { createPublicClient, http, fallback } = require("viem");
 const { config: viemConfig } = require("@sushiswap/viem-config");
 const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router");
-require("dotenv").config();
 
 
 /**
@@ -656,15 +655,6 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclu
     }
 };
 
-// exports.getCurrentPoolCodeMapWrapper = (dataFetcher, currency0, currency1) => {
-//     const result = new Map();
-//     dataFetcher.providers.forEach((p) => {
-//         const poolCodes = p.getCurrentPoolList(currency0.wrapped, currency1.wrapped);
-//         poolCodes.forEach((pc) => result.set(pc.pool.address, pc));
-//     });
-//     return result;
-// };
-
 /**
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  * @param {string[]} liquidityProviders - List of liquidity providers
@@ -706,6 +696,8 @@ exports.validateOrders = (orders) => {
             && addressPattern.test(v.evaluable.expression)
             && Array.isArray(v.validInputs)
             && v.validInputs.length > 0
+            && Array.isArray(v.validOutputs)
+            && v.validOutputs.length > 0
             && v.validInputs.every(e =>
                 typeof e.token === "string"
                 && addressPattern.test(e.token)
@@ -714,8 +706,6 @@ exports.validateOrders = (orders) => {
                 && typeof e.vaultId === "string"
                 && vaultIdPattern.test(e.vaultId)
             )
-            && Array.isArray(v.validOutputs)
-            && v.validOutputs.length > 0
             && v.validOutputs.every(e =>
                 typeof e.token === "string"
                 && addressPattern.test(e.token)
@@ -762,16 +752,6 @@ exports.getOrderHash = (order) => {
                     v.decimals,
                     v.vaultId
                 ])
-                // [[
-                //     order.validInputs[inputIndex].token,
-                //     order.validInputs[inputIndex].decimals,
-                //     order.validInputs[inputIndex].vaultId
-                // ]],
-                // [[
-                //     order.validOutputs[outputIndex].token,
-                //     order.validOutputs[outputIndex].decimals,
-                //     order.validOutputs[outputIndex].vaultId
-                // ]]
             ]]
         )
     );
