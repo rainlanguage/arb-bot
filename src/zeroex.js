@@ -480,7 +480,11 @@ exports.zeroExClear = async(
                                                 bundledOrders[i].sellTokenDecimals
                                             )
                                         } ${bundledOrders[i].sellTokenSymbol}`);
-                                        console.log(`Consumed Gas: ${ethers.utils.formatEther(actualGasCost)} ETH`, "\n");
+                                        console.log(`Consumed Gas: ${
+                                            ethers.utils.formatEther(actualGasCost)
+                                        } ${
+                                            config.nativeToken.symbol
+                                        }`, "\n");
                                         if (income) {
                                             console.log(`Raw Income: ${ethers.utils.formatUnits(
                                                 income,
