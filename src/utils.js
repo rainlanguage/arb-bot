@@ -5,6 +5,7 @@ const { erc20Abi, interpreterAbi } = require("./abis");
 const { createPublicClient, http, fallback } = require("viem");
 const { config: viemConfig } = require("@sushiswap/viem-config");
 const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router");
+require("dotenv").config();
 
 
 /**
@@ -754,16 +755,26 @@ exports.getOrderHash = (order) => {
                     order.evaluable.store,
                     order.evaluable.expression
                 ],
-                [[
-                    order.validInputs[inputIndex].token,
-                    order.validInputs[inputIndex].decimals,
-                    order.validInputs[inputIndex].vaultId
-                ]],
-                [[
-                    order.validOutputs[outputIndex].token,
-                    order.validOutputs[outputIndex].decimals,
-                    order.validOutputs[outputIndex].vaultId
-                ]]
+                order.validInputs.map(v => [
+                    v.token,
+                    v.decimals,
+                    v.vaultId
+                ]),
+                order.validOutputs.map(v => [
+                    v.token,
+                    v.decimals,
+                    v.vaultId
+                ])
+                // [[
+                //     order.validInputs[inputIndex].token,
+                //     order.validInputs[inputIndex].decimals,
+                //     order.validInputs[inputIndex].vaultId
+                // ]],
+                // [[
+                //     order.validOutputs[outputIndex].token,
+                //     order.validOutputs[outputIndex].decimals,
+                //     order.validOutputs[outputIndex].vaultId
+                // ]]
             ]]
         )
     );
@@ -808,7 +819,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
                         symbol: _inputSymbols[i]
                     },
                     vault: {
-                        id: v.token.toLowerCase() + "-" + v.vaultId.toLowerCase()
+                        id: v.vaultId.toLowerCase() + "-" + v.token.toLowerCase()
                     }
                 };
                 return _input;
@@ -822,7 +833,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
                         symbol: _outputSymbols[i]
                     },
                     vault: {
-                        id: v.token.toLowerCase() + "-" + v.vaultId.toLowerCase()
+                        id: v.vaultId.toLowerCase() + "-" + v.token.toLowerCase()
                     }
                 };
                 return _output;
