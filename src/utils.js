@@ -819,7 +819,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
                         symbol: _inputSymbols[i]
                     },
                     vault: {
-                        id: v.vaultId.toLowerCase() + "-" + v.token.toLowerCase()
+                        id: v.vaultId.toLowerCase() + "-" + orders[i].owner.toLowerCase()
                     }
                 };
                 return _input;
@@ -833,7 +833,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
                         symbol: _outputSymbols[i]
                     },
                     vault: {
-                        id: v.vaultId.toLowerCase() + "-" + v.token.toLowerCase()
+                        id: v.vaultId.toLowerCase() + "-" + orders[i].owner.toLowerCase()
                     }
                 };
                 return _output;
