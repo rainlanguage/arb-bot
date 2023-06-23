@@ -3,7 +3,7 @@
  */
 exports.erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
-    "function symbol() public view virtual returns (string memory)"
+    "function symbol() public view returns (string memory)"
 ];
 
 /**

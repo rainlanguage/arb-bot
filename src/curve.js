@@ -231,9 +231,8 @@ exports.curveClear = async(
 ) => {
     if (
         gasCoveragePercentage < 0 ||
-        gasCoveragePercentage > 100 ||
         !Number.isInteger(Number(gasCoveragePercentage))
-    ) throw "invalid gas coverage percentage, must be an integer between 0 - 100";
+    ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const signer = config.signer;
@@ -445,16 +444,17 @@ exports.curveClear = async(
                     else {
                         const gasLimit = await arb.estimateGas.arb(
                             takeOrdersConfigStruct,
-                            // set to zero because only profitable transactions are submitted
+                            // set to zero for estimation
                             0,
                             data,
                             { gasPrice }
                         );
+                        const gasCost = gasLimit.mul(gasPrice);
                         const maxEstimatedProfit = estimateProfit(
                             ethers.utils.formatEther(bundledOrders[i].initPrice),
                             ethPrice,
                             bundledOrders[i],
-                            gasLimit.mul(gasPrice),
+                            gasCost,
                             gasCoveragePercentage
                         ).div(
                             "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
@@ -472,10 +472,19 @@ exports.curveClear = async(
                         );
                         else {
                             console.log(">>> Trying to submit the transaction for this token pair...", "\n");
+                            const gasCostInToken = ethers.utils.parseUnits(
+                                ethPrice
+                            ).mul(
+                                gasCost
+                            ).div(
+                                "1" + "0".repeat(
+                                    36 - bundledOrders[i].buyTokenDecimals
+                                )
+                            );
                             const tx = await arb.arb(
                                 takeOrdersConfigStruct,
                                 // set to zero because only profitable transactions are submitted
-                                0,
+                                gasCostInToken.mul(gasCoveragePercentage).div(100),
                                 data,
                                 { gasPrice, gasLimit }
                             );
@@ -488,29 +497,27 @@ exports.curveClear = async(
                             try {
                                 const receipt = await tx.wait();
                                 const income = getIncome(signer, receipt);
-                                const gasCost = ethers.BigNumber.from(
-                                    receipt.effectiveGasPrice
-                                ).mul(receipt.gasUsed);
                                 const clearActualPrice = getActualPrice(
                                     receipt,
                                     orderbookAddress,
                                     arbAddress,
                                     cumulativeAmount,
-                                    bundledOrders[i].sellTokenDecimals,
                                     bundledOrders[i].buyTokenDecimals
                                 );
-                                const netProfit = income
-                                    ? income.sub(
-                                        ethers.utils.parseUnits(
-                                            ethPrice
-                                        ).mul(
-                                            gasCost
-                                        ).div(
-                                            "1" + "0".repeat(
-                                                36 - bundledOrders[i].buyTokenDecimals
-                                            )
-                                        )
+                                const actualGasCost = ethers.BigNumber.from(
+                                    receipt.effectiveGasPrice
+                                ).mul(receipt.gasUsed);
+                                const actualGasCostInToken = ethers.utils.parseUnits(
+                                    ethPrice
+                                ).mul(
+                                    actualGasCost
+                                ).div(
+                                    "1" + "0".repeat(
+                                        36 - bundledOrders[i].buyTokenDecimals
                                     )
+                                );
+                                const netProfit = income
+                                    ? income.sub(actualGasCostInToken)
                                     : undefined;
                                 console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`, "\n");
                                 console.log(`Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`);
@@ -521,7 +528,7 @@ exports.curveClear = async(
                                         bundledOrders[i].sellTokenDecimals
                                     )
                                 } ${bundledOrders[i].sellTokenSymbol}`);
-                                console.log(`Consumed Gas: ${ethers.utils.formatEther(gasCost)} ETH`, "\n");
+                                console.log(`Consumed Gas: ${ethers.utils.formatEther(actualGasCost)} ETH`, "\n");
                                 if (income) {
                                     console.log(`Raw Income: ${ethers.utils.formatUnits(
                                         income,
@@ -554,7 +561,7 @@ exports.curveClear = async(
                                     clearActualPrice,
                                     maxEstimatedProfit,
                                     gasUsed: receipt.gasUsed,
-                                    gasCost,
+                                    gasCost: actualGasCost,
                                     income,
                                     netProfit,
                                     clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),

@@ -378,11 +378,10 @@ exports.getIncome = (signer, receipt) => {
  * @param {string} orderbook - The Orderbook contract address
  * @param {string} arb - The Arb contract address
  * @param {string} amount - The clear amount
- * @param {number} sellDecimals - The sell token decimals
  * @param {number} buyDecimals - The buy token decimals
  * @returns The actual clear price or undefined if necessary info not found in transaction events
  */
-exports.getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDecimals) => {
+exports.getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
     const eventObj = receipt.events.map(v => {
         try{
@@ -397,10 +396,8 @@ exports.getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDeci
     );
     if (eventObj[0] && eventObj[0]?.value) return ethers.utils.formatUnits(
         eventObj[0].value
-            .mul("1" + "0".repeat(36 - sellDecimals))
+            .mul("1" + "0".repeat(36 - buyDecimals))
             .div(amount)
-            .div("1" + "0".repeat(18 - sellDecimals)),
-        buyDecimals
     );
     else return undefined;
 };

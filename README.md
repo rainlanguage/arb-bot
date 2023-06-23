@@ -37,7 +37,7 @@ The app requires these 4 arguments:
 Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
 - `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
-- `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
+- `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -86,7 +86,7 @@ which will show:
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
       -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
-      -g, --gas-coverage <number>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, between 0 - 100, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
+      -g, --gas-coverage <number>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
       --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
       -V, --version                  output the version number
       -h, --help                     output usage information
