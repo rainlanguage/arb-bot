@@ -695,5 +695,5 @@ exports.processLps = (liquidityProviders) => {
         const index = LP.findIndex(v => v.toLowerCase() === liquidityProviders[i].toLowerCase());
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
-    return _lps;
+    return _lps.length ? _lps : undefined;
 };
