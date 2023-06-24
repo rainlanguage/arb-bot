@@ -38,7 +38,6 @@ const getOptions = async argv => {
         .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the 'API_KEY' env variable")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--no-monthly-ratelimit", "Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables")
-        .option("-s, --sleep <integer>", "Seconds to wait between each run in dockerized mode, only used for dockerized mode, default is 20")
         .version(version)
         .parse(argv)
         .opts();
@@ -55,13 +54,6 @@ const getOptions = async argv => {
     cmdOptions.gasCoverage      = cmdOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
-    if (cmdOptions.sleep) {
-        if (/^\d+$/.test(cmdOptions.sleep)) process.env.SLEEP = cmdOptions.sleep;
-        else process.env.SLEEP = "20";
-    }
-    else {
-        if (!/^\d+$/.test(process.env.SLEEP)) process.env.SLEEP = "20";
-    }
 
     return cmdOptions;
 };
