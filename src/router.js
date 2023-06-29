@@ -10,7 +10,8 @@ const {
     getActualPrice,
     estimateProfit,
     bundleTakeOrders,
-    fetchPoolsForTokenWrapper
+    fetchPoolsForTokenWrapper,
+    hideRpc
 } = require("./utils");
 
 
@@ -78,7 +79,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
         }
         catch(error) {
             console.log(`>>> could not get price for this ${pair} due to:`);
-            console.log(error);
+            console.log(hideRpc(error, config.rpc), "\n");
         }
     }
     console.log(
@@ -92,6 +93,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
             (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
         );
     }
+    return bundledOrders;
 };
 
 /**
@@ -142,12 +144,17 @@ exports.routerClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        try {
+            bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        }
+        catch (error) {
+            throw hideRpc(error, config.rpc);
+        }
         console.log(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
-        await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
+        bundledOrders = await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -211,7 +218,7 @@ exports.routerClear = async(
                     console.log(`Could not get vault balance for order ${
                         bundledOrders[i].takeOrders[j].id
                     } due to:`);
-                    console.log(v.reason);
+                    console.log(hideRpc(v.reason, config.rpc));
                     bundledOrders[i].takeOrders[j].quoteAmount = ethers.BigNumber.from("0");
                 }
             });
@@ -369,7 +376,6 @@ exports.routerClear = async(
                                 fnData
                             ]
                         );
-                        console.log("");
                         console.log(">>> Estimating the profit for this token pair...", "\n");
                         const ethPrice = await getEthPrice(
                             config,
@@ -511,21 +517,21 @@ exports.routerClear = async(
                                 }
                                 catch (error) {
                                     console.log(">>> Transaction execution failed due to:");
-                                    console.log(error, "\n");
+                                    console.log(hideRpc(error, config.rpc), "\n");
                                 }
                             }
                         }
                     }
                     catch (error) {
                         console.log(">>> Transaction failed due to:");
-                        console.log(error, "\n");
+                        console.log(hideRpc(error, config.rpc), "\n");
                     }
                 }
             }
         }
         catch (error) {
             console.log(">>> Something went wrong, reason:", "\n");
-            console.log(error);
+            console.log(hideRpc(error, config.rpc));
         }
     }
     return report;

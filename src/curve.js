@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { arbAbi, orderbookAbi } = require("./abis");
 const {
+    hideRpc,
     getIncome,
     processLps,
     getEthPrice,
@@ -196,7 +197,7 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
             }
             catch(error) {
                 console.log(`>>> could not get price for this ${pair} due to:`);
-                console.log(error);
+                console.log(hideRpc(error, config.rpc));
             }
         }
     }
@@ -211,6 +212,7 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
             (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
         );
     }
+    return bundledOrders;
 };
 
 /**
@@ -260,13 +262,24 @@ exports.curveClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        try {
+            bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        }
+        catch (error) {
+            throw hideRpc(error, config.rpc);
+        }
         console.log(
             "------------------------- Getting Best Deals From Curve -------------------------",
             "\n"
         );
         const availableSwaps = getAvailableSwaps(config);
-        await prepare(bundledOrders, availableSwaps, config, signer, prioritization);
+        bundledOrders = await prepare(
+            bundledOrders,
+            availableSwaps,
+            config,
+            signer,
+            prioritization
+        );
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -574,20 +587,20 @@ exports.curveClear = async(
                             }
                             catch (error) {
                                 console.log(">>> Transaction execution failed due to:");
-                                console.log(error, "\n");
+                                console.log(hideRpc(error, config.rpc), "\n");
                             }
                         }
                     }
                 }
                 catch (error) {
                     console.log(">>> Transaction failed due to:");
-                    console.log(error, "\n");
+                    console.log(hideRpc(error, config.rpc), "\n");
                 }
             }
         }
         catch (error) {
             console.log(">>> Something went wrong, reason:", "\n");
-            console.log(error);
+            console.log(hideRpc(error, config.rpc));
         }
     }
     return report;

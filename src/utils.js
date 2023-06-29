@@ -819,3 +819,16 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
     }
     return orderDetails;
 };
+
+/**
+ * Hides the RPC URL from an error msg
+ * @param {any} error - The error
+ * @param {string} rpc - The rpc
+ */
+exports.hideRpc = (error, rpc) => {
+    let strErr = JSON.stringify(error);
+    while (strErr.includes(rpc)) {
+        strErr = strErr.replace(rpc, "*".repeat(rpc.length));
+    }
+    return JSON.parse(strErr);
+};

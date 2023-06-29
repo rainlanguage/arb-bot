@@ -123,9 +123,6 @@ GAS_COVER="100"
 
 # respect 0x monthly rate limit
 MONTHLY_RATELIMIT="true"
-
-# seconds to wait between each run in dockerized mode, only for dockerized mode
-SLEEP=10
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
