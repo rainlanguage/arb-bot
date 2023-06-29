@@ -7,8 +7,9 @@ services:
       driver: local
     pull_policy: always
     volumes:
-      - "rainprotocol-arb-bot-${DOCKER_CHANNEL}:/etc/rainprotocol/arb-bot:Z"
+      - "rainprotocol-arb-bot:/etc/rainprotocol/arb-bot:Z"
 
 volumes:
-  rainprotocol-arb-bot-${DOCKER_CHANNEL}:
-    external: true
+  rainprotocol-arb-bot:
+    external:
+      name: rainprotocol-arb-bot-${DOCKER_CHANNEL}
