@@ -1,6 +1,6 @@
 services:
   arb_bot:
-    image: rain/arb_bot:${DOCKER_CHANNEL:-latest}
+    image: rainprotocol/arb_bot:${DOCKER_CHANNEL:-latest}
     env_file: .env
     restart: always
     logging:
