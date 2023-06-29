@@ -1,9 +1,8 @@
 services:
   arb_bot:
-    image: rain/arb_bot
-    build: .
+    image: rain/arb_bot:${DOCKER_CHANNEL:-latest}
     env_file: .env
     restart: always
     logging:
       driver: local
-    pull_policy: build
+    pull_policy: always
