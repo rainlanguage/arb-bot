@@ -1,6 +1,6 @@
 services:
   arb_bot:
-    image: rainprotocol/arb_bot:${DOCKER_CHANNEL}
+    image: rainprotocol/arb-bot:${DOCKER_CHANNEL}
     env_file: .env
     restart: always
     logging:
@@ -11,5 +11,5 @@ services:
 
 volumes:
   rainprotocol-arb-bot:
-    external:
-      name: rainprotocol-arb-bot-${DOCKER_CHANNEL}
+    external: true
+    name: rainprotocol-arb-bot-${DOCKER_CHANNEL}
