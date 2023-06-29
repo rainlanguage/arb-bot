@@ -205,3 +205,41 @@ lint
 ```bash
 lint-fix
 ```
+
+## Docker
+
+Use docker compose if possible as it handles several things for you:
+
+- Restart policy
+- Rebuild policy
+- Volume management
+- Log rotation/policy
+- Potentially other stuff like networking
+
+### .env
+
+Docker compose natively supports .env so configure it as per example.env and above.
+
+Notably `DOCKER_CHANNEL` MUST be set to the git branch that you're currently on,
+and you should be at the HEAD of said branch when attempting to interact with it.
+
+This ensures that you'll download a docker image compatible with the current code
+in your repository.
+
+### Up & volumes
+
+Run `docker compose up -d` to bring the container up. If this is the first time
+you are doing this for the current channel you will likely see a complaint about
+a missing volume.
+
+You can create the volume however you want using `docker volume` but if you want
+to map a specific path on the host to the volume mounted in the guest you'll need
+to tell Docker to do so. The default behaviour of Docker is that it manages
+volumes opaquely within its own system files, which has pros and cons. Either way
+the default behaviour won't give you a predictable path on the host to work with.
+
+To create a bind mount to a specific absolute path on the host
+
+```
+docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>
+```
