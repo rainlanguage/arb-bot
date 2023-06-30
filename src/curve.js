@@ -261,7 +261,8 @@ exports.curveClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);nsole.log(
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        console.log(
             "------------------------- Getting Best Deals From Curve -------------------------",
             "\n"
         );
