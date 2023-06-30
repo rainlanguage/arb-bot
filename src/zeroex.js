@@ -50,7 +50,7 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => 
                 }&sellToken=${
                     tokenAddress
                 }&sellAmount=${
-                    "100" + "0".repeat(tokenDecimals)
+                    "1" + "0".repeat(tokenDecimals)
                 }`,
                 tokens: [quotes[quotes.length - 1][2], tokenSymbol]
             };
@@ -482,7 +482,7 @@ exports.zeroExClear = async(
                                             config.nativeToken.symbol
                                         }`, "\n");
                                         if (income) {
-                                            console.log(`Raw Income: ${ethers.utils.formatUnits(
+                                            console.log(`Gross Income: ${ethers.utils.formatUnits(
                                                 income,
                                                 bundledOrders[i].buyTokenDecimals
                                             )} ${bundledOrders[i].buyTokenSymbol}`);

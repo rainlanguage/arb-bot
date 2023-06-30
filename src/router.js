@@ -29,13 +29,13 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
         try {
-            let cumulativeAmountFixed = ethers.constants.Zero;
-            bOrder.takeOrders.forEach(v => {
-                cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
-            });
-            const cumulativeAmount = cumulativeAmountFixed.div(
-                "1" + "0".repeat(18 - bOrder.sellTokenDecimals)
-            );
+            // let cumulativeAmountFixed = ethers.constants.Zero;
+            // bOrder.takeOrders.forEach(v => {
+            //     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
+            // });
+            // const cumulativeAmount = cumulativeAmountFixed.div(
+            //     "1" + "0".repeat(18 - bOrder.sellTokenDecimals)
+            // );
             const fromToken = new Token({
                 chainId: config.chainId,
                 decimals: bOrder.sellTokenDecimals,
@@ -54,7 +54,8 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
                 pcMap,
                 config.chainId,
                 fromToken,
-                cumulativeAmount,
+                // cumulativeAmount,
+                "1" + "0".repeat(bOrder.sellTokenDecimals),
                 toToken,
                 gasPrice.toNumber(),
                 // providers,
@@ -62,11 +63,12 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
             );
             if (route.status == "NoWay") throw "could not find any route for this token pair";
 
-            const rateFixed = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
-            const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+            // const rateFixed = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
+            // const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+            const price = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
             bOrder.initPrice = price;
 
-            console.log(`Current market price for ${pair}: ${ethers.utils.formatEther(price)}`);
+            console.log(`Current market price for ${pair} for: ${ethers.utils.formatEther(price)}`);
             console.log("Current ratio of the orders in this token pair:");
             bOrder.takeOrders.forEach(v => {
                 console.log(ethers.utils.formatEther(v.ratio));
@@ -251,7 +253,7 @@ exports.routerClear = async(
 
                 await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
                 const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
-                let route = Router.findBestRoute(
+                const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
                     fromToken,
@@ -288,17 +290,17 @@ exports.routerClear = async(
                     );
 
                     // find best route with final qoute amount and get routeProcessor params
-                    route = Router.findBestRoute(
-                        pcMap,
-                        config.chainId,
-                        fromToken,
-                        bundledQuoteAmount,
-                        toToken,
-                        gasPrice.toNumber(),
-                        // 30e9
-                        // providers,
-                        // poolFilter
-                    );
+                    // route = Router.findBestRoute(
+                    //     pcMap,
+                    //     config.chainId,
+                    //     fromToken,
+                    //     bundledQuoteAmount,
+                    //     toToken,
+                    //     gasPrice.toNumber(),
+                    //     // 30e9
+                    //     // providers,
+                    //     // poolFilter
+                    // );
                     if (route.status == "NoWay") throw "could not find any route for this token pair";
                     let routeText = "";
                     route.legs.forEach((v, i) => {
@@ -331,7 +333,6 @@ exports.routerClear = async(
                         // permits
                         // "0.005"
                     );
-
                     const takeOrdersConfigStruct = {
                         output: bundledOrders[i].buyToken,
                         input: bundledOrders[i].sellToken,
@@ -353,7 +354,8 @@ exports.routerClear = async(
                             "processRoute",
                             [
                                 rpParams.tokenIn,
-                                rpParams.amountIn,
+                                // rpParams.amountIn,
+                                bundledQuoteAmount,
                                 rpParams.tokenOut,
                                 // rpParams.amountOutMin,
                                 // guaranteedAmount,
@@ -472,7 +474,7 @@ exports.routerClear = async(
                                         config.nativeToken.symbol
                                     }`, "\n");
                                     if (income) {
-                                        console.log(`Raw Income: ${ethers.utils.formatUnits(
+                                        console.log(`Gross Income: ${ethers.utils.formatUnits(
                                             income,
                                             bundledOrders[i].buyTokenDecimals
                                         )} ${bundledOrders[i].buyTokenSymbol}`);

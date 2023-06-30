@@ -161,27 +161,30 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
                     );
             try {
                 let rate;
-                let cumulativeAmountFixed = ethers.constants.Zero;
-                bOrder.takeOrders.forEach(v => {
-                    cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
-                });
-                const cumulativeAmount = cumulativeAmountFixed.div("1" + "0".repeat(18 - bOrder.sellTokenDecimals));
+                // let cumulativeAmountFixed = ethers.constants.Zero;
+                // bOrder.takeOrders.forEach(v => {
+                //     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
+                // });
+                // const cumulativeAmount = cumulativeAmountFixed.div("1" + "0".repeat(18 - bOrder.sellTokenDecimals));
                 if (pairFormat === "c") {
                     rate = await bOrder.poolContract.get_dy(
                         bOrder.sellTokenIndex,
                         bOrder.buyTokenIndex,
-                        cumulativeAmount
+                        // cumulativeAmount
+                        "1" + "0".repeat(bOrder.sellTokenDecimals)
                     );
                 }
                 else {
                     rate = await bOrder.poolContract.get_dy_underlying(
                         bOrder.sellTokenIndex,
                         bOrder.buyTokenIndex,
-                        cumulativeAmount
+                        // cumulativeAmount
+                        "1" + "0".repeat(bOrder.sellTokenDecimals)
                     );
                 }
-                const rateFixed = rate.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
-                const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+                // const rateFixed = rate.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
+                // const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+                const price = rate.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
                 bOrder.initPrice = price;
 
                 console.log(`Current market price for ${pair}: ${ethers.utils.formatEther(price)}`);
@@ -542,7 +545,7 @@ exports.curveClear = async(
                                     config.nativeToken.symbol
                                 }`, "\n");
                                 if (income) {
-                                    console.log(`Raw Income: ${ethers.utils.formatUnits(
+                                    console.log(`Gross Income: ${ethers.utils.formatUnits(
                                         income,
                                         bundledOrders[i].buyTokenDecimals
                                     )} ${bundledOrders[i].buyTokenSymbol}`);

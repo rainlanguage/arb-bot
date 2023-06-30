@@ -13,8 +13,6 @@
             "pools": [
                 {
                     "address": "0x445fe580ef8d70ff569ab36e80c647af338db351",
-                    "poolAbi": "CurveStableSwapAave.json",
-                    "poolType": 1,
                     "coins": [
                         {
                             "symbol": "amDAI",
@@ -52,8 +50,6 @@
                 },
                 {
                     "address": "0x5e5A23b52Cb48F5E70271Be83079cA5bC9c9e9ac",
-                    "abiFileName": "CurveMetaPool.json",
-                    "poolType": 2,
                     "coins": [
                         {
                             "symbol": "FRAX",
