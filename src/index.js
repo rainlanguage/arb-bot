@@ -6,7 +6,7 @@ const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
-const { getOrderDetailsFromJson } = require("./utils");
+const { getOrderDetailsFromJson, hideSensitiveData } = require("./utils");
 
 
 /**
@@ -24,7 +24,11 @@ const configOptions = {
     /**
      * Option to make the app respect 200k 0x API calls per month rate limit
      */
-    monthlyRatelimit: true
+    monthlyRatelimit: true,
+    /**
+     * Hides sensitive data such as rpc url and wallet private key from apearing in logs
+     */
+    hideSensitiveData: true
 };
 
 /**
@@ -43,31 +47,60 @@ const clearOptions = {
 };
 
 /**
- * Get the order details from a source, i.e subgraph or a local json file
+ * Get the order details from a source, i.e subgraph and/or a local json file
  *
- * @param {string} source - The subgraph endpoint URL to query for orders' details
+ * @param {string} sg - The subgraph endpoint URL to query for orders' details
+ * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
  * @returns An array of order details
  */
-const getOrderDetails = async(source, signer) => {
-    if (source.startsWith("https://api.thegraph.com/subgraphs/name/")) {
-        try {
-            const result = await axios.post(
-                source,
-                { query: DefaultQuery },
-                { headers: { "Content-Type": "application/json" } }
-            );
-            return result.data.data.orders;
+const getOrderDetails = async(sg, json, signer) => {
+    const ordersDetails = [];
+    const isInvalidJson = !json?.endsWith(".json");
+    const isInvalidSg = !sg?.startsWith("https://api.thegraph.com/subgraphs/name/");
+
+    if (isInvalidSg && isInvalidJson) throw "provided sources are invalid";
+    else {
+        let type = "sg";
+        const promises = [];
+        if (!isInvalidJson) {
+            try {
+                const content = fs.readFileSync(json).toString();
+                promises.push(getOrderDetailsFromJson(content, signer));
+                type = "json";
+            }
+            catch (error) {
+                console.log(error);
+            }
         }
-        catch {
-            throw "Cannot get order details from subgraph";
+        if (!isInvalidSg) promises.push(axios.post(
+            sg,
+            { query: DefaultQuery },
+            { headers: { "Content-Type": "application/json" } }
+        ));
+
+        const responses = await Promise.allSettled(promises);
+        if (responses.every(v => v.status === "rejected")) {
+            throw "could not read anything from provided sources";
+        }
+        else {
+            if (responses[0].status === "fulfilled") {
+                if (type === "json") ordersDetails.push(...responses[0].value);
+                else ordersDetails.push(...responses[0].value.data.data.orders);
+            }
+            else {
+                if (type === "json") console.log(responses[0].reason);
+                else console.log("Cannot get order details from subgraph");
+            }
+            if (responses.length > 1) {
+                if (responses[1].status === "fulfilled") {
+                    ordersDetails.push(...responses[1].value.data.data.orders);
+                }
+                else console.log("Cannot get order details from subgraph");
+            }
         }
     }
-    else if (source.endsWith(".json")) {
-        const content = fs.readFileSync(source).toString();
-        return await getOrderDetailsFromJson(content, signer);
-    }
-    else throw "invalid source for orders";
+    return ordersDetails;
 };
 
 /**
@@ -87,6 +120,12 @@ const getConfig = async(
     arbAddress,
     options = configOptions
 ) => {
+    if (options.hideSensitiveData) hideSensitiveData(
+        rpcUrl,
+        walletPrivateKey,
+        options?.zeroExApiKey
+    );
+
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
 
@@ -124,7 +163,7 @@ const clear = async(
     ordersDetails,
     options = clearOptions
 ) => {
-    const prioritization = options.prioritization
+    const prioritization = options.prioritization !== undefined
         ? options.prioritization
         : clearOptions.prioritization;
     const gasCoveragePercentage = options.gasCoveragePercentage

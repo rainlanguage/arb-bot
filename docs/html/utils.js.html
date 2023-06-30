@@ -846,6 +846,73 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
         });
     }
     return orderDetails;
+};
+
+/**
+ * Hides sensitive data from appearing in logs
+ * @param {...any} data - The original data to hide
+ */
+exports.hideSensitiveData = (...data) => {
+    const consoleMethods = ["log", "warn", "error", "info", "debug"];
+    consoleMethods.forEach(methodName => {
+        const orgConsole = console[methodName];
+        console[methodName] = function (...params) {
+            const scrubbedParams = [];
+            for (let i = 0; i &lt; params.length; i++) {
+                if (
+                    typeof params[i] === "number" ||
+                    typeof params[i] === "bigint" ||
+                    typeof params[i] === "boolean" ||
+                    typeof params[i] === "symbol"
+                ) {
+                    params[i] = params[i].toString();
+                }
+                if (typeof params[i] === "string") {
+                    let str = params[i];
+                    for (let j = 0; j &lt; data.length; j++) {
+                        if (data[i] &amp;&amp; data[i]?.toString()) {
+                            while (str.includes(data[i].toString())) {
+                                str = str.replace(data[i], "***");
+                            }
+                        }
+                    }
+                    scrubbedParams.push(str);
+                }
+                else if (typeof params[i] === "object" &amp;&amp; params[i] !== null) {
+                    if (params[i] instanceof Error) {
+                        for (let j = 0; j &lt; data.length; j++) {
+                            if (data[i] &amp;&amp; data[i]?.toString()) {
+                                while (params[i].stack.includes(data[i].toString())) {
+                                    params[i].stack = params[i].stack.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        for (let j = 0; j &lt; data.length; j++) {
+                            if (data[i] &amp;&amp; data[i]?.toString()) {
+                                while (params[i].message.includes(data[i].toString())) {
+                                    params[i].message = params[i].message.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        scrubbedParams.push(params[i]);
+                    }
+                    else {
+                        let strObj = JSON.stringify(params[i]);
+                        for (let j = 0; j &lt; data.length; j++) {
+                            if (data[i] &amp;&amp; data[i]?.toString()) {
+                                while (strObj.includes(data[i].toString())) {
+                                    strObj = strObj.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        scrubbedParams.push(JSON.parse(strObj));
+                    }
+                }
+                else scrubbedParams.push(params[i]);
+            }
+            orgConsole.apply(console, scrubbedParams);
+        };
+    });
 };</code></pre>
         </article>
     </section>
@@ -856,13 +923,13 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#hideSensitiveData">hideSensitiveData</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 23 2023 23:37:01 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Jun 30 2023 01:43:27 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

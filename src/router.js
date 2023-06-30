@@ -10,8 +10,7 @@ const {
     getActualPrice,
     estimateProfit,
     bundleTakeOrders,
-    fetchPoolsForTokenWrapper,
-    hideRpc
+    fetchPoolsForTokenWrapper
 } = require("./utils");
 
 
@@ -79,7 +78,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
         }
         catch(error) {
             console.log(`>>> could not get price for this ${pair} due to:`);
-            console.log(hideRpc(error, config.rpc), "\n");
+            console.log(error, "\n");
         }
     }
     console.log(
@@ -144,12 +143,7 @@ exports.routerClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        try {
-            bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
-        }
-        catch (error) {
-            throw hideRpc(error, config.rpc);
-        }
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         console.log(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
@@ -218,7 +212,7 @@ exports.routerClear = async(
                     console.log(`Could not get vault balance for order ${
                         bundledOrders[i].takeOrders[j].id
                     } due to:`);
-                    console.log(hideRpc(v.reason, config.rpc));
+                    console.log(v.reason);
                     bundledOrders[i].takeOrders[j].quoteAmount = ethers.BigNumber.from("0");
                 }
             });
@@ -517,21 +511,21 @@ exports.routerClear = async(
                                 }
                                 catch (error) {
                                     console.log(">>> Transaction execution failed due to:");
-                                    console.log(hideRpc(error, config.rpc), "\n");
+                                    console.log(error, "\n");
                                 }
                             }
                         }
                     }
                     catch (error) {
                         console.log(">>> Transaction failed due to:");
-                        console.log(hideRpc(error, config.rpc), "\n");
+                        console.log(error, "\n");
                     }
                 }
             }
         }
         catch (error) {
             console.log(">>> Something went wrong, reason:", "\n");
-            console.log(hideRpc(error, config.rpc));
+            console.log(error);
         }
     }
     return report;

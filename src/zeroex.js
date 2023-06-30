@@ -1,6 +1,6 @@
 const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders, hideRpc } = require("./utils");
+const { bundleTakeOrders } = require("./utils");
 const { arbAbi, orderbookAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice, estimateProfit } = require("./utils");
 
@@ -90,7 +90,7 @@ const prepare = async(quotes, bundledOrders, config, sort = true) => {
             ]);
             else {
                 console.log(`Could not get prices for ${quotes[i].tokens[0]} and ${quotes[i].tokens[1]}, reason:`);
-                console.log(hideRpc(v.reason.message, config.rpc));
+                console.log(v.reason.message);
             }
         });
         prices = prices.flat();
@@ -123,7 +123,7 @@ const prepare = async(quotes, bundledOrders, config, sort = true) => {
     }
     catch (error) {
         console.log("something went wrong during the process of getting initial prices!");
-        console.log(hideRpc(error, config.rpc));
+        console.log(error);
         return undefined;
     }
 };
@@ -183,12 +183,7 @@ exports.zeroExClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        try {
-            bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
-        }
-        catch (error) {
-            throw hideRpc(error, config.rpc);
-        }
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         for (let i = 0; i < bundledOrders.length; i++) {
             initRequests(
                 api,
@@ -523,14 +518,14 @@ exports.zeroExClear = async(
                                     }
                                     catch (error) {
                                         console.log(">>> Transaction execution failed due to:");
-                                        console.log(hideRpc(error, config.rpc), "\n");
+                                        console.log(error, "\n");
                                     }
                                 }
                                 else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
                             }
                             catch (error) {
                                 console.log(">>> Transaction failed due to:");
-                                console.log(hideRpc(error, config.rpc), "\n");
+                                console.log(error, "\n");
                             }
                         }
                         else console.log("Failed to get quote from 0x", "\n");
@@ -544,9 +539,9 @@ exports.zeroExClear = async(
             }
             catch (error) {
                 console.log(">>> Failed to get quote from 0x due to:", "\n");
-                console.log(hideRpc(error.message, config.rpc));
+                console.log(error.message);
                 console.log("data:");
-                console.log(JSON.stringify(hideRpc(error.response.data, config.rpc), null, 2), "\n");
+                console.log(JSON.stringify(error.response.data, null, 2), "\n");
             }
         }
     }

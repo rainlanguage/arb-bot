@@ -821,14 +821,68 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
 };
 
 /**
- * Hides the RPC URL from an error msg
- * @param {any} error - The error
- * @param {string} rpc - The rpc
+ * Hides sensitive data from appearing in logs
+ * @param {...any} data - The original data to hide
  */
-exports.hideRpc = (error, rpc) => {
-    let strErr = JSON.stringify(error);
-    while (strErr.includes(rpc)) {
-        strErr = strErr.replace(rpc, "*".repeat(rpc.length));
-    }
-    return JSON.parse(strErr);
+exports.hideSensitiveData = (...data) => {
+    const consoleMethods = ["log", "warn", "error", "info", "debug"];
+    consoleMethods.forEach(methodName => {
+        const orgConsole = console[methodName];
+        console[methodName] = function (...params) {
+            const scrubbedParams = [];
+            for (let i = 0; i < params.length; i++) {
+                if (
+                    typeof params[i] === "number" ||
+                    typeof params[i] === "bigint" ||
+                    typeof params[i] === "boolean" ||
+                    typeof params[i] === "symbol"
+                ) {
+                    params[i] = params[i].toString();
+                }
+                if (typeof params[i] === "string") {
+                    let str = params[i];
+                    for (let j = 0; j < data.length; j++) {
+                        if (data[i] && data[i]?.toString()) {
+                            while (str.includes(data[i].toString())) {
+                                str = str.replace(data[i], "***");
+                            }
+                        }
+                    }
+                    scrubbedParams.push(str);
+                }
+                else if (typeof params[i] === "object" && params[i] !== null) {
+                    if (params[i] instanceof Error) {
+                        for (let j = 0; j < data.length; j++) {
+                            if (data[i] && data[i]?.toString()) {
+                                while (params[i].stack.includes(data[i].toString())) {
+                                    params[i].stack = params[i].stack.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        for (let j = 0; j < data.length; j++) {
+                            if (data[i] && data[i]?.toString()) {
+                                while (params[i].message.includes(data[i].toString())) {
+                                    params[i].message = params[i].message.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        scrubbedParams.push(params[i]);
+                    }
+                    else {
+                        let strObj = JSON.stringify(params[i]);
+                        for (let j = 0; j < data.length; j++) {
+                            if (data[i] && data[i]?.toString()) {
+                                while (strObj.includes(data[i].toString())) {
+                                    strObj = strObj.replace(data[i], "***");
+                                }
+                            }
+                        }
+                        scrubbedParams.push(JSON.parse(strObj));
+                    }
+                }
+                else scrubbedParams.push(params[i]);
+            }
+            orgConsole.apply(console, scrubbedParams);
+        };
+    });
 };

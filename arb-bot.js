@@ -15,7 +15,8 @@ const DEFAULT_OPTIONS = {
     mode: process?.env?.MODE || "router",
     arbAddress: process?.env?.ARB_ADDRESS,
     orderbookAddress: process?.env?.ORDERBOOK_ADDRESS,
-    ordersSource: process?.env?.ORDERS_SOURCE || "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph",
+    orders: process?.env?.ORDERS,
+    subgraph: process?.env?.SUBGRAPH,
     apiKey: process?.env?.API_KEY,
     lps: process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage: process?.env?.GAS_COVER || "100",
@@ -31,7 +32,8 @@ const getOptions = async argv => {
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables")
         .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables")
-        .option("--orders-source <url or path>", "The source to read orders details from, either a subgraph URL or an ABSOLUTE path to a local json file, Rain Orderbook's Subgraph is default, Will override the 'ORDERS_SOURCE' in env variables")
+        .option("-o, --orders <path>", "The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
+        .option("-s, --subgraph <url>", "Subgraph URL to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables")
@@ -47,7 +49,8 @@ const getOptions = async argv => {
     cmdOptions.mode             = cmdOptions.mode || DEFAULT_OPTIONS.mode;
     cmdOptions.arbAddress       = cmdOptions.arbAddress || DEFAULT_OPTIONS.arbAddress;
     cmdOptions.orderbookAddress = cmdOptions.orderbookAddress || DEFAULT_OPTIONS.orderbookAddress;
-    cmdOptions.ordersSource     = cmdOptions.ordersSource || DEFAULT_OPTIONS.ordersSource;
+    cmdOptions.orders           = cmdOptions.orders || DEFAULT_OPTIONS.orders;
+    cmdOptions.subgraph         = cmdOptions.subgraph || DEFAULT_OPTIONS.subgraph;
     cmdOptions.apiKey           = cmdOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     cmdOptions.lps              = cmdOptions.lps || DEFAULT_OPTIONS.lps;
     cmdOptions.slippage         = cmdOptions.slippage || DEFAULT_OPTIONS.slippage;
@@ -65,7 +68,6 @@ const main = async argv => {
     if (!options.rpc) throw "undefined RPC URL";
     if (!options.arbAddress) throw "undefined arb contract address";
     if (!options.orderbookAddress) throw "undefined orderbook contract address";
-    if (!options.ordersSource) throw "undefined source for orders";
     if (!options.mode) throw "undefined operating mode";
 
     const config = await getConfig(
@@ -78,11 +80,15 @@ const main = async argv => {
             liquidityProviders: options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
-            monthlyRatelimit: options.monthlyRatelimit
+            monthlyRatelimit: options.monthlyRatelimit,
+            hideSensitiveData: true
         }
     );
-
-    const ordersDetails = await getOrderDetails(options.ordersSource, options.signer);
+    const ordersDetails = await getOrderDetails(
+        options.subgraph,
+        options.orders,
+        options.signer
+    );
     await clear(
         options.mode,
         config,
@@ -101,7 +107,7 @@ main(
         process.exit(0);
     }
 ).catch(
-    v => {
+    (v) => {
         console.log("An error occured during execution: ");
         console.log(v);
         process.exit(1);

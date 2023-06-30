@@ -408,6 +408,7 @@ describe("Rain Arb Bot Tests", async function () {
     //     // run the clearing process
     //     config.apiKey = process?.env?.API_KEY;
     //     config.signer = bot;
+    //     require("../src/utils").hideSensitiveData(config.apiKey);
     //     const reports = await clear("0x", config, sgOrders, {prioritization: false});
 
     //     // should have cleared 2 toke pairs bundled orders

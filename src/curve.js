@@ -1,7 +1,6 @@
 const ethers = require("ethers");
 const { arbAbi, orderbookAbi } = require("./abis");
 const {
-    hideRpc,
     getIncome,
     processLps,
     getEthPrice,
@@ -197,7 +196,7 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
             }
             catch(error) {
                 console.log(`>>> could not get price for this ${pair} due to:`);
-                console.log(hideRpc(error, config.rpc));
+                console.log(error);
             }
         }
     }
@@ -262,13 +261,7 @@ exports.curveClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        try {
-            bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
-        }
-        catch (error) {
-            throw hideRpc(error, config.rpc);
-        }
-        console.log(
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);nsole.log(
             "------------------------- Getting Best Deals From Curve -------------------------",
             "\n"
         );
@@ -587,20 +580,20 @@ exports.curveClear = async(
                             }
                             catch (error) {
                                 console.log(">>> Transaction execution failed due to:");
-                                console.log(hideRpc(error, config.rpc), "\n");
+                                console.log(error, "\n");
                             }
                         }
                     }
                 }
                 catch (error) {
                     console.log(">>> Transaction failed due to:");
-                    console.log(hideRpc(error, config.rpc), "\n");
+                    console.log(error, "\n");
                 }
             }
         }
         catch (error) {
             console.log(">>> Something went wrong, reason:", "\n");
-            console.log(hideRpc(error, config.rpc));
+            console.log(error);
         }
     }
     return report;
