@@ -16,7 +16,9 @@ const DEFAULT_OPTIONS = {
     arbAddress: process?.env?.ARB_ADDRESS,
     orderbookAddress: process?.env?.ORDERBOOK_ADDRESS,
     orders: process?.env?.ORDERS,
-    subgraph: process?.env?.SUBGRAPH,
+    subgraph: process?.env?.SUBGRAPH
+        ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
+        : undefined,
     apiKey: process?.env?.API_KEY,
     lps: process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage: process?.env?.GAS_COVER || "100",
@@ -29,11 +31,12 @@ const DEFAULT_OPTIONS = {
 
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
+        .description("A NodeJS app to find arbitrage opportunities from liquidity providers and clear Rain Orderbook orders against them")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
         .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables")
         .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables")
         .option("-o, --orders <path>", "The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
-        .option("-s, --subgraph <url>", "Subgraph URL to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
+        .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables")

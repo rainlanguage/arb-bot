@@ -31,7 +31,7 @@ The app requires these 4 arguments:
 - `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
 - `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
 - `-o` or `--orders`, The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
- - `-s` or `--subgraph`, Subgraph URL to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
+ - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 
@@ -83,7 +83,7 @@ which will show:
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
       -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
       -o, --orders <path>            The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
-      -s, --subgraph <url>           Subgraph URL to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
+      -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
       -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
@@ -111,8 +111,9 @@ ARB_ADDRESS="0x123..."
 # orderbook contract address
 ORDERBOOK_ADDRESS="0x123..."
 
-# a subgraph url to read orders details from, can be used in combination with ORDERS
-SUBGRAPH="https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
+# one or more subgraph urls to read orders details from, can be used in combination with ORDERS
+# for more than 1 subgraphs, seperate them by comma and a space
+SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
 
 # path to a .json file containing orders details, can be used in combination with SUBGRAPH 
 # OR e.g. the path to the volume mounted by docker compose
@@ -161,9 +162,9 @@ const clearOptions = {
 const config = await arb.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
-const subgraph = "https://api.thegraph.com/subgraphs/name/xxx/yyy" // subgraph URL
+const subgraphs = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
 const ordersJson = "/home/orders.json" // path to a local json file 
-const orderDetails = await arb.getOrderDetails(subgraph, ordersJson, config.signer);
+const orderDetails = await arb.getOrderDetails(subgraphs, ordersJson, config.signer);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
 const mode = "router" // mode can be one of "router", "0x" or "curve"

@@ -47,17 +47,18 @@ const clearOptions = {
 };
 
 /**
- * Get the order details from a source, i.e subgraph and/or a local json file
+ * Get the order details from a source, i.e array of subgraphs and/or a local json file
  *
- * @param {string} sg - The subgraph endpoint URL to query for orders' details
+ * @param {string[]} sgs - The subgraph endpoint URL(s) to query for orders' details
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
  * @returns An array of order details
  */
-const getOrderDetails = async(sg, json, signer) => {
+const getOrderDetails = async(sgs, json, signer) => {
     const ordersDetails = [];
     const isInvalidJson = !json?.endsWith(".json");
-    const isInvalidSg = !sg?.startsWith("https://api.thegraph.com/subgraphs/name/");
+    const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
+    // const isInvalidSg = !sg?.startsWith("https://api.thegraph.com/subgraphs/name/");
 
     if (isInvalidSg && isInvalidJson) throw "provided sources are invalid";
     else {
@@ -73,30 +74,40 @@ const getOrderDetails = async(sg, json, signer) => {
                 console.log(error);
             }
         }
-        if (!isInvalidSg) promises.push(axios.post(
-            sg,
-            { query: DefaultQuery },
-            { headers: { "Content-Type": "application/json" } }
-        ));
+        if (!isInvalidSg) {
+            sgs.forEach(v => {
+                if (v?.startsWith("https://api.thegraph.com/subgraphs/name/")) {
+                    promises.push(axios.post(
+                        sgs,
+                        { query: DefaultQuery },
+                        { headers: { "Content-Type": "application/json" } }
+                    ));
+                }
+            });
+        }
 
         const responses = await Promise.allSettled(promises);
         if (responses.every(v => v.status === "rejected")) {
             throw "could not read anything from provided sources";
         }
         else {
-            if (responses[0].status === "fulfilled") {
-                if (type === "json") ordersDetails.push(...responses[0].value);
-                else ordersDetails.push(...responses[0].value.data.data.orders);
-            }
-            else {
-                if (type === "json") console.log(responses[0].reason);
-                else console.log("Cannot get order details from subgraph");
-            }
-            if (responses.length > 1) {
-                if (responses[1].status === "fulfilled") {
-                    ordersDetails.push(...responses[1].value.data.data.orders);
+            for (let i = 0; i < responses.length; i++) {
+                if (i === 0) {
+                    if (responses[0].status === "fulfilled") {
+                        if (type === "json") ordersDetails.push(...responses[0].value);
+                        else ordersDetails.push(...responses[0].value.data.data.orders);
+                    }
+                    else {
+                        if (type === "json") console.log(responses[0].reason);
+                        else console.log("Cannot get order details from subgraph");
+                    }
                 }
-                else console.log("Cannot get order details from subgraph");
+                else {
+                    if (responses[i].status === "fulfilled") {
+                        ordersDetails.push(...responses[i].value.data.data.orders);
+                    }
+                    else console.log("Cannot get order details from subgraph");
+                }
             }
         }
     }
