@@ -158,6 +158,7 @@ exports.zeroExClear = async(
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken;
     const mode = config.useZeroexArb;
+    const takeNegProfit = config.useZeroexArb;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
@@ -425,8 +426,7 @@ exports.zeroExClear = async(
                                         bundledOrders[i].buyTokenDecimals
                                     )
                                 } ${bundledOrders[i].buyTokenSymbol}`, "\n");
-
-                                if (!maxEstimatedProfit.isNegative()) {
+                                if (!maxEstimatedProfit.isNegative() || takeNegProfit) {
                                     console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                     const gasCostInToken = ethers.utils.parseUnits(
                                         txQuote.buyTokenToEthRate
