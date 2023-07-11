@@ -1,7 +1,7 @@
 const axios = require("axios");
 const ethers = require("ethers");
 const { bundleTakeOrders } = require("./utils");
-const { arbAbi, orderbookAbi } = require("./abis");
+const { genericArbAbi, orderbookAbi, zeroExArbAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice, estimateProfit } = require("./utils");
 
 
@@ -157,13 +157,14 @@ exports.zeroExClear = async(
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken;
+    const mode = config.useZeroExArb;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
     else throw "invalid 0x API key";
 
     // instantiating arb contract
-    const arb = new ethers.Contract(arbAddress, arbAbi, signer);
+    const arb = new ethers.Contract(arbAddress, mode ? zeroExArbAbi : genericArbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
@@ -394,9 +395,16 @@ exports.zeroExClear = async(
                                     [txQuote.allowanceTarget, proxyAddress, txQuote.data]
                                 );
                                 console.log(">>> Estimating the profit for this token pair...", "\n");
-                                const gasLimit = await arb.estimateGas.arb(
+                                let gasLimit;
+                                if (mode) gasLimit = await arb.estimateGas.arb(
                                     takeOrdersConfigStruct,
-                                    // set to zero because only profitable transactions are submitted
+                                    0,
+                                    txQuote.allowanceTarget,
+                                    txQuote.data,
+                                    { gasPrice: txQuote.gasPrice }
+                                );
+                                else gasLimit = await arb.estimateGas.arb(
+                                    takeOrdersConfigStruct,
                                     0,
                                     data,
                                     { gasPrice: txQuote.gasPrice }
@@ -429,9 +437,17 @@ exports.zeroExClear = async(
                                             36 - bundledOrders[i].buyTokenDecimals
                                         )
                                     );
-                                    const tx = await arb.arb(
+                                    let tx;
+                                    if (mode) tx = await arb.arb(
                                         takeOrdersConfigStruct,
-                                        // set to zero because only profitable transactions are submitted
+                                        gasCostInToken.mul(gasCoveragePercentage).div(100),
+                                        // 0,
+                                        txQuote.allowanceTarget,
+                                        txQuote.data,
+                                        { gasPrice: txQuote.gasPrice, gasLimit }
+                                    );
+                                    else tx = await arb.arb(
+                                        takeOrdersConfigStruct,
                                         gasCostInToken.mul(gasCoveragePercentage).div(100),
                                         data,
                                         { gasPrice: txQuote.gasPrice, gasLimit }

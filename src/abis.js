@@ -44,9 +44,9 @@ exports.routeProcessor3Abi = [
 ];
 
 /**
-* Minimal ABI for Arb contract only including arb() function
+* Minimal ABI for Generic Arb contract only including arb() function
 */
-exports.arbAbi = [
+exports.genericArbAbi = [
     {
         "inputs": [
             {
@@ -211,6 +211,189 @@ exports.arbAbi = [
             {
                 "internalType": "bytes",
                 "name": "exchangeData_",
+                "type": "bytes"
+            }
+        ],
+        "name": "arb",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+];
+
+/**
+* Minimal ABI for 0x Arb contract only including arb() function
+*/
+exports.zeroExArbAbi = [
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "output",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "input",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "minimumInput",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "maximumInput",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "maximumIORatio",
+                        "type": "uint256"
+                    },
+                    {
+                        "components": [
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "owner",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "bool",
+                                        "name": "handleIO",
+                                        "type": "bool"
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "internalType": "contract IInterpreterV1",
+                                                "name": "interpreter",
+                                                "type": "address"
+                                            },
+                                            {
+                                                "internalType": "contract IInterpreterStoreV1",
+                                                "name": "store",
+                                                "type": "address"
+                                            },
+                                            {
+                                                "internalType": "address",
+                                                "name": "expression",
+                                                "type": "address"
+                                            }
+                                        ],
+                                        "internalType": "struct Evaluable",
+                                        "name": "evaluable",
+                                        "type": "tuple"
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "internalType": "address",
+                                                "name": "token",
+                                                "type": "address"
+                                            },
+                                            {
+                                                "internalType": "uint8",
+                                                "name": "decimals",
+                                                "type": "uint8"
+                                            },
+                                            {
+                                                "internalType": "uint256",
+                                                "name": "vaultId",
+                                                "type": "uint256"
+                                            }
+                                        ],
+                                        "internalType": "struct IO[]",
+                                        "name": "validInputs",
+                                        "type": "tuple[]"
+                                    },
+                                    {
+                                        "components": [
+                                            {
+                                                "internalType": "address",
+                                                "name": "token",
+                                                "type": "address"
+                                            },
+                                            {
+                                                "internalType": "uint8",
+                                                "name": "decimals",
+                                                "type": "uint8"
+                                            },
+                                            {
+                                                "internalType": "uint256",
+                                                "name": "vaultId",
+                                                "type": "uint256"
+                                            }
+                                        ],
+                                        "internalType": "struct IO[]",
+                                        "name": "validOutputs",
+                                        "type": "tuple[]"
+                                    }
+                                ],
+                                "internalType": "struct Order",
+                                "name": "order",
+                                "type": "tuple"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "inputIOIndex",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "outputIOIndex",
+                                "type": "uint256"
+                            },
+                            {
+                                "components": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "signer",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "uint256[]",
+                                        "name": "context",
+                                        "type": "uint256[]"
+                                    },
+                                    {
+                                        "internalType": "bytes",
+                                        "name": "signature",
+                                        "type": "bytes"
+                                    }
+                                ],
+                                "internalType": "struct SignedContextV1[]",
+                                "name": "signedContext",
+                                "type": "tuple[]"
+                            }
+                        ],
+                        "internalType": "struct TakeOrderConfig[]",
+                        "name": "orders",
+                        "type": "tuple[]"
+                    }
+                ],
+                "internalType": "struct TakeOrdersConfig",
+                "name": "takeOrders_",
+                "type": "tuple"
+            },
+            {
+                "internalType": "uint256",
+                "name": "minimumSenderOutput_",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "zeroExSpender_",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "zeroExData_",
                 "type": "bytes"
             }
         ],

@@ -40,6 +40,7 @@ Other optional arguments are:
 - `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+- `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -90,6 +91,7 @@ which will show:
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
       -g, --gas-coverage <integer>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
       --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
       -h, --help                     output usage information
 <br>
@@ -130,6 +132,9 @@ GAS_COVER="100"
 
 # respect 0x monthly rate limit
 MONTHLY_RATELIMIT="true"
+
+# option to use old version of arb contract for 0x mode, i.e dedicated 0x arb contract
+USE_ZEROEX_ARB="false"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -149,6 +154,7 @@ const arb = require("@rainprotocol/arb-bot");
 // options (all properties are optional)
 const configOptions = {
   zeroExApiKey: "123..", // required for '0x' mode
+  useZeroEx: false,   // option to use old zeroex arb contract
   liquidityProviders: ["sushiswapv2", "uniswapv2"],  // optional for specifying liquidity providers
   monthlyRatelimit: false  // option for 0x mode to respect its monthly rate limit
   hideSensitiveData: true  // hides sensitive data such as wallet private key or rpc url from apearing in logs

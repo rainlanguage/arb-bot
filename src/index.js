@@ -18,6 +18,10 @@ const configOptions = {
      */
     zeroExApiKey: undefined,
     /**
+     * Use specific 0x Arb contract, old version
+     */
+    useZeroExArb: false,
+    /**
      * List of liquidity providers for router contract tomoperate on
      */
     liquidityProviders: undefined,
@@ -156,6 +160,7 @@ const getConfig = async(
     config.lps = options?.liquidityProviders;
     config.apiKey = options?.zeroExApiKey;
     config.monthlyRatelimit = !!options?.monthlyRatelimit;
+    config.useZeroExArb = !!options?.useZeroExArb;
     return config;
 };
 

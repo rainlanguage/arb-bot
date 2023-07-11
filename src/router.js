@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("@sushiswap/router");
 const { Token } = require("@sushiswap/currency");
-const { arbAbi, orderbookAbi, routeProcessor3Abi } = require("./abis");
+const { genericArbAbi, orderbookAbi, routeProcessor3Abi } = require("./abis");
 const {
     getIncome,
     processLps,
@@ -125,7 +125,7 @@ exports.routerClear = async(
     const orderbookAddress = config.orderbookAddress;
 
     // instantiating arb contract
-    const arb = new ethers.Contract(arbAddress, arbAbi, signer);
+    const arb = new ethers.Contract(arbAddress, genericArbAbi, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);

@@ -26,7 +26,10 @@ const DEFAULT_OPTIONS = {
         ? true
         : process?.env?.MONTHLY_RATELIMIT.toLowerCase() === "false"
             ? false
-            : true
+            : true,
+    useZeroexArb: process?.env?.USE_ZEROEX_ARB?.toLowerCase() === "true"
+        ? true
+        : false
 };
 
 const getOptions = async argv => {
@@ -43,6 +46,7 @@ const getOptions = async argv => {
         .option("-a, --api-key <key>", "0x API key, can be set in env variables, Will override the 'API_KEY' env variable")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--no-monthly-ratelimit", "Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables")
+        .option("--use-zeroex-arb", "Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode")
         .version(version)
         .parse(argv)
         .opts();
@@ -56,10 +60,9 @@ const getOptions = async argv => {
     cmdOptions.subgraph         = cmdOptions.subgraph || DEFAULT_OPTIONS.subgraph;
     cmdOptions.apiKey           = cmdOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     cmdOptions.lps              = cmdOptions.lps || DEFAULT_OPTIONS.lps;
-    cmdOptions.slippage         = cmdOptions.slippage || DEFAULT_OPTIONS.slippage;
     cmdOptions.gasCoverage      = cmdOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
-    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
+    cmdOptions.useZeroexArb     = cmdOptions.useZeroexArb || DEFAULT_OPTIONS.useZeroexArb;
 
     return cmdOptions;
 };
@@ -80,6 +83,7 @@ const main = async argv => {
         options.arbAddress,
         {
             zeroExApiKey: options.apiKey,
+            useZeroExArb: options.useZeroexArb,
             liquidityProviders: options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
