@@ -94,7 +94,7 @@ const main = async argv => {
     const ordersDetails = await getOrderDetails(
         options.subgraph,
         options.orders,
-        options.signer
+        config.signer
     );
     await clear(
         options.mode,
