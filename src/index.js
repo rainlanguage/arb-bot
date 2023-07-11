@@ -331,7 +331,11 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
     if (queryResults.length) console.log(
         "------------------------- Bundling Orders -------------------------", "\n"
     );
-    else console.log("No orders found, exiting...", "\n");
+    else{ 
+        console.log("No orders found, exiting...", "\n"); 
+        return { hits: 0, report : []} ;
+    } 
+        
 
     for (let i = 0; i < queryResults.length; i++) {
 
@@ -434,7 +438,7 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
 
     if (!bundledOrders.length) {
         console.log("Could not find any order with sufficient balance, exiting...", "\n");
-        return;
+        return { hits: 0, report : []} ;
     }
 
     console.log(
@@ -468,7 +472,7 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
     );
     else {
         console.log("Could not find any order to clear for current market price, exiting...", "\n");
-        return;
+        return { hits: 0, report : []};
     }
 
     const report = [];
