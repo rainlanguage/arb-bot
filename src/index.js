@@ -221,7 +221,7 @@ const getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDecima
  * @param {string} subgraphUrl - The subgraph endpoint URL to query for orders' details
  * @returns An array of order details
  */
-exports.query = async(subgraphUrl,hash) => {  
+exports.query = async(subgraphUrl,hash) => {
     try {
         const result = await axios.post(
             subgraphUrl,
@@ -640,131 +640,131 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
                                     )
                                 } ${bundledOrders[i].buyTokenSymbol}`, "\n");
 
-                                    console.log(">>> Trying to submit the transaction for this token pair...", "\n");
-                                    const tx = await arb.arb(
-                                        takeOrdersConfigStruct,
-                                        // set to zero because only profitable transactions are submitted
-                                        0,
-                                        txQuote.allowanceTarget,
-                                        txQuote.data,
-                                        { gasPrice: txQuote.gasPrice, gasLimit }
-                                    );
-                                    console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
-                                    console.log(
-                                        ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
-                                        "\n"
-                                    );
+                                console.log(">>> Trying to submit the transaction for this token pair...", "\n");
+                                const tx = await arb.arb(
+                                    takeOrdersConfigStruct,
+                                    // set to zero because only profitable transactions are submitted
+                                    0,
+                                    txQuote.allowanceTarget,
+                                    txQuote.data,
+                                    { gasPrice: txQuote.gasPrice, gasLimit }
+                                );
+                                console.log(ETHERSCAN_TX_PAGE[chainId] + tx.hash, "\n");
+                                console.log(
+                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
+                                    "\n"
+                                );
 
-                                    try {
-                                        const receipt = await tx.wait();
-                                        const income = getIncome(signer, receipt);
-                                        const gasCost = ethers.BigNumber.from(
-                                            txQuote.gasPrice
-                                        ).mul(receipt.gasUsed);
-                                        const clearActualPrice = getActualPrice(
-                                            receipt,
-                                            orderbookAddress,
-                                            arbAddress,
-                                            bundledQuoteAmount.mul(
+                                try {
+                                    const receipt = await tx.wait();
+                                    const income = getIncome(signer, receipt);
+                                    const gasCost = ethers.BigNumber.from(
+                                        txQuote.gasPrice
+                                    ).mul(receipt.gasUsed);
+                                    const clearActualPrice = getActualPrice(
+                                        receipt,
+                                        orderbookAddress,
+                                        arbAddress,
+                                        bundledQuoteAmount.mul(
+                                            "1" + "0".repeat(
+                                                18 - bundledOrders[i].sellTokenDecimals
+                                            )
+                                        ),
+                                        bundledOrders[i].sellTokenDecimals,
+                                        bundledOrders[i].buyTokenDecimals
+                                    );
+                                    const netProfit = income
+                                        ? income.sub(
+                                            ethers.utils.parseUnits(
+                                                txQuote.buyTokenToEthRate
+                                            ).mul(
+                                                gasCost
+                                            ).div(
                                                 "1" + "0".repeat(
-                                                    18 - bundledOrders[i].sellTokenDecimals
+                                                    36 - bundledOrders[i].buyTokenDecimals
                                                 )
-                                            ),
-                                            bundledOrders[i].sellTokenDecimals,
+                                            )
+                                        )
+                                        : undefined;
+                                    console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully!`);
+                                    console.log(`Clear Quote Price: ${txQuote.price}`);
+                                    console.log(`Clear Actual Price: ${clearActualPrice}`);
+                                    console.log(`Clear Amount: ${
+                                        ethers.utils.formatUnits(
+                                            bundledQuoteAmount,
+                                            bundledOrders[i].sellTokenDecimals
+                                        )
+                                    } ${bundledOrders[i].sellTokenSymbol}`);
+                                    console.log(`Consumed Gas: ${ethers.utils.formatEther(gasCost)} ETH`, "\n");
+                                    if (income) {
+                                        console.log(`Raw Income: ${ethers.utils.formatUnits(
+                                            income,
                                             bundledOrders[i].buyTokenDecimals
-                                        );
-                                        const netProfit = income
-                                            ? income.sub(
-                                                ethers.utils.parseUnits(
-                                                    txQuote.buyTokenToEthRate
-                                                ).mul(
-                                                    gasCost
-                                                ).div(
-                                                    "1" + "0".repeat(
-                                                        36 - bundledOrders[i].buyTokenDecimals
-                                                    )
-                                                )
-                                            )
-                                            : undefined;
-                                        console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully!`);
-                                        console.log(`Clear Quote Price: ${txQuote.price}`);
-                                        console.log(`Clear Actual Price: ${clearActualPrice}`);
-                                        console.log(`Clear Amount: ${
-                                            ethers.utils.formatUnits(
-                                                bundledQuoteAmount,
-                                                bundledOrders[i].sellTokenDecimals
-                                            )
-                                        } ${bundledOrders[i].sellTokenSymbol}`);
-                                        console.log(`Consumed Gas: ${ethers.utils.formatEther(gasCost)} ETH`, "\n");
-                                        if (income) {
-                                            console.log(`Raw Income: ${ethers.utils.formatUnits(
-                                                income,
-                                                bundledOrders[i].buyTokenDecimals
-                                            )} ${bundledOrders[i].buyTokenSymbol}`);
-                                            console.log(`Net Profit: ${ethers.utils.formatUnits(
-                                                netProfit,
-                                                bundledOrders[i].buyTokenDecimals
-                                            )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
-                                        }
+                                        )} ${bundledOrders[i].buyTokenSymbol}`);
+                                        console.log(`Net Profit: ${ethers.utils.formatUnits(
+                                            netProfit,
+                                            bundledOrders[i].buyTokenDecimals
+                                        )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                                    }
 
-                                        report.push({
-                                            transactionHash: receipt.transactionHash,
-                                            tokenPair:
+                                    report.push({
+                                        transactionHash: receipt.transactionHash,
+                                        tokenPair:
                                                 bundledOrders[i].buyTokenSymbol +
                                                 "/" +
                                                 bundledOrders[i].sellTokenSymbol,
-                                            buyToken: bundledOrders[i].buyToken,
-                                            buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
-                                            sellToken: bundledOrders[i].sellToken,
-                                            sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
-                                            clearedAmount: bundledQuoteAmount.toString(),
-                                            clearPrice: txQuote.price,
-                                            clearGuaranteedPrice: txQuote.guaranteedPrice,
-                                            clearActualPrice,
-                                            maxEstimatedProfit,
-                                            gasUsed: receipt.gasUsed,
-                                            gasCost,
-                                            income,
-                                            netProfit,
-                                            clearedOrders: bundledOrders[i].takeOrders,
-                                        });
+                                        buyToken: bundledOrders[i].buyToken,
+                                        buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
+                                        sellToken: bundledOrders[i].sellToken,
+                                        sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
+                                        clearedAmount: bundledQuoteAmount.toString(),
+                                        clearPrice: txQuote.price,
+                                        clearGuaranteedPrice: txQuote.guaranteedPrice,
+                                        clearActualPrice,
+                                        maxEstimatedProfit,
+                                        gasUsed: receipt.gasUsed,
+                                        gasCost,
+                                        income,
+                                        netProfit,
+                                        clearedOrders: bundledOrders[i].takeOrders,
+                                    });
 
-                                        // // filter out upcoming take orders matching current cleared order
-                                        // if (i + 1 < bundledOrders.length) console.log(
-                                        //     ">>> Updating upcoming bundled orders...",
-                                        //     "\n"
-                                        // );
-                                        // for (let j = i + 1; j < bundledOrders.length; j++) {
-                                        //     bundledOrders[j].takeOrders = bundledOrders[j].takeOrders
-                                        //         .filter(v => {
-                                        //             for (const item of bundledOrders[i].takeOrders) {
-                                        //                 if (
-                                        //                     item.id === v.id ||
-                                        //                     (
-                                        //                         bundledOrders[j].sellToken ===
-                                        //                         bundledOrders[i].sellToken &&
+                                    // // filter out upcoming take orders matching current cleared order
+                                    // if (i + 1 < bundledOrders.length) console.log(
+                                    //     ">>> Updating upcoming bundled orders...",
+                                    //     "\n"
+                                    // );
+                                    // for (let j = i + 1; j < bundledOrders.length; j++) {
+                                    //     bundledOrders[j].takeOrders = bundledOrders[j].takeOrders
+                                    //         .filter(v => {
+                                    //             for (const item of bundledOrders[i].takeOrders) {
+                                    //                 if (
+                                    //                     item.id === v.id ||
+                                    //                     (
+                                    //                         bundledOrders[j].sellToken ===
+                                    //                         bundledOrders[i].sellToken &&
 
-                                        //                         v.takeOrder.order.owner ===
-                                        //                             item.takeOrder.order.owner &&
+                                    //                         v.takeOrder.order.owner ===
+                                    //                             item.takeOrder.order.owner &&
 
-                                        //                         v.takeOrder.order.validOutputs[
-                                        //                             v.takeOrder.outputIOIndex
-                                        //                         ].vaultId ===
-                                        //                             item.takeOrder.order.validOutputs[
-                                        //                                 v.takeOrder.outputIOIndex
-                                        //                             ].vaultId
-                                        //                     )
-                                        //                 ) return false;
-                                        //                 return true;
-                                        //             }
-                                        //         });
-                                        // }
-                                    }
-                                    catch (error) {
-                                        console.log(">>> Transaction execution failed due to:");
-                                        console.log(error, "\n");
-                                    }
-                                
+                                    //                         v.takeOrder.order.validOutputs[
+                                    //                             v.takeOrder.outputIOIndex
+                                    //                         ].vaultId ===
+                                    //                             item.takeOrder.order.validOutputs[
+                                    //                                 v.takeOrder.outputIOIndex
+                                    //                             ].vaultId
+                                    //                     )
+                                    //                 ) return false;
+                                    //                 return true;
+                                    //             }
+                                    //         });
+                                    // }
+                                }
+                                catch (error) {
+                                    console.log(">>> Transaction execution failed due to:");
+                                    console.log(error, "\n");
+                                }
+
                             }
                             catch (error) {
                                 console.log(">>> Transaction failed due to:");

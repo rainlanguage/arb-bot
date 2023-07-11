@@ -42,11 +42,11 @@ const DefaultQuery = `{
             }
         }
     }
-}`; 
+}`;
 
-exports.getQuery = (hash) => { 
-    let defaultQuery = DefaultQuery
-    if(hash){  
+exports.getQuery = (hash) => {
+    let defaultQuery = DefaultQuery;
+    if(hash){
         defaultQuery = `{
             orders(
                 where: {orderActive: true, id :"${hash}"}
@@ -88,8 +88,8 @@ exports.getQuery = (hash) => {
                     }
                 }
             }
-        }`
-    } 
-    return defaultQuery 
-         
-}
+        }`;
+    }
+    return defaultQuery;
+
+};

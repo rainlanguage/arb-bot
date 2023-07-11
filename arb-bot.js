@@ -43,7 +43,6 @@ const getOptions = async argv => {
     commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
     commandOptions.subgraphUrl = commandOptions.subgraphUrl || DEFAULT_OPTIONS.subgraphUrl;
     commandOptions.orderHash = commandOptions.orderHash || DEFAULT_OPTIONS.orderHash;
-    
 
     return commandOptions;
 };
