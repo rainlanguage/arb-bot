@@ -157,7 +157,7 @@ exports.zeroExClear = async(
     const arbAddress = config.arbAddress;
     const orderbookAddress = config.orderbookAddress;
     const nativeToken = config.nativeToken;
-    const mode = config.useZeroExArb;
+    const mode = config.useZeroexArb;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;

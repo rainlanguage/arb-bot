@@ -155,7 +155,7 @@ const arb = require("@rainprotocol/arb-bot");
 // options (all properties are optional)
 const configOptions = {
   zeroExApiKey: "123..", // required for '0x' mode
-  useZeroEx: false,   // option to use old zeroex arb contract
+  useZeroexArb: false,   // option to use old zeroex arb contract
   liquidityProviders: ["sushiswapv2", "uniswapv2"],  // optional for specifying liquidity providers
   monthlyRatelimit: false  // option for 0x mode to respect its monthly rate limit
   hideSensitiveData: true  // hides sensitive data such as wallet private key or rpc url from apearing in logs

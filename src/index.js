@@ -20,7 +20,7 @@ const configOptions = {
     /**
      * Use specific 0x Arb contract, old version
      */
-    useZeroExArb: false,
+    useZeroexArb: false,
     /**
      * List of liquidity providers for router contract tomoperate on
      */
@@ -160,7 +160,7 @@ const getConfig = async(
     config.lps = options?.liquidityProviders;
     config.apiKey = options?.zeroExApiKey;
     config.monthlyRatelimit = !!options?.monthlyRatelimit;
-    config.useZeroExArb = !!options?.useZeroExArb;
+    config.useZeroexArb = !!options?.useZeroexArb;
     return config;
 };
 

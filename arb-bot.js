@@ -83,7 +83,7 @@ const main = async argv => {
         options.arbAddress,
         {
             zeroExApiKey: options.apiKey,
-            useZeroExArb: options.useZeroexArb,
+            useZeroexArb: options.useZeroexArb,
             liquidityProviders: options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
