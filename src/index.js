@@ -76,7 +76,7 @@ const prepareBundledOrders = async(quotes, bundledOrders, sort = true) => {
         console.log(">>> Getting initial prices from 0x");
         const promises = [];
         for (let i = 0; i < quotes.length; i++) {
-            if (i > 0 && i % 2 === 0) await sleep(1000);
+            await sleep(1000);
             promises.push(axios.get(quotes[i].quote, HEADERS));
         }
         const responses = await Promise.allSettled(promises);
