@@ -450,13 +450,14 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
         const order = ordersDetails[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
-            const _outputBalance = ethers.utils.parseUnits(
+            const _outputBalance = await orderbook.vaultBalance(
+                order.owner.id,
+                _output.token.id,
+                _output.vault.id.split("-")[0]
+            );
+            const _outputBalanceFixed = ethers.utils.parseUnits(
                 ethers.utils.formatUnits(
-                    await orderbook.vaultBalance(
-                        order.owner.id,
-                        _output.token.id,
-                        _output.vault.id.split("-")[0]
-                    ),
+                    _outputBalance,
                     _output.token.decimals
                 )
             );
@@ -466,15 +467,10 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
             //         _output.token.decimals
             //     )
             // );
-            if (!_outputBalance.isZero()) {
+            if (!_outputBalanceFixed.isZero()) {
                 for (let k = 0; k < order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
-                        const _outputBalance = await orderbook.vaultBalance(
-                            order.owner.id,
-                            _output.token.id,
-                            _output.vault.id.split("-")[0]
-                        );
                         const _inputBalance = await orderbook.vaultBalance(
                             order.owner.id,
                             _input.token.id,
@@ -495,16 +491,15 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                             _outputBalance.toString()
                         );
 
-
                         if (maxOutput && ratio) {
-                            const quoteAmount = _outputBalance.lte(maxOutput)
-                                ? _outputBalance
+                            const quoteAmount = _outputBalanceFixed.lte(maxOutput)
+                                ? _outputBalanceFixed
                                 : maxOutput;
 
                             if (!quoteAmount.isZero()) {
                                 const pair = bundledOrders.find(v =>
                                     v.sellToken === _output.token.id &&
-                                  v.buyToken === _input.token.id
+                                    v.buyToken === _input.token.id
                                 );
                                 if (pair) pair.takeOrders.push({
                                     id: order.id,
