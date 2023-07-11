@@ -95,7 +95,7 @@ const main = async argv => {
     );
 
     // wait to stay within montly ratelimit
-    if (options.monthlyRatelimit) {
+    if (options.monthlyRatelimit && reports.hits) {
         const rateLimitDuration = Number((((reports.hits / RateLimit) * 1000) + 1).toFixed());
         const duration = Date.now() - start;
         console.log(`Executed in ${duration} miliseconds with ${reports.hits} 0x api calls`);
