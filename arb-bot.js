@@ -29,10 +29,7 @@ const DEFAULT_OPTIONS = {
             : true,
     useZeroexArb: process?.env?.USE_ZEROEX_ARB?.toLowerCase() === "true"
         ? true
-        : false ,
-    takeNegProfit : process?.env?.TAKE_NEG_PROFIT?.toLowerCase() === "true"
-        ? true
-        : false 
+        : false
 };
 
 const getOptions = async argv => {
@@ -50,7 +47,6 @@ const getOptions = async argv => {
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--no-monthly-ratelimit", "Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables")
         .option("--use-zeroex-arb", "Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode")
-        .option("--take-neg-profit", "Option to consider profit before a trade is submitted.If this is true then all trade will be submitted, irrespective of negative profit on bot's side, if false, trades having negative profit on bot's side will not be submitted")
 
         .version(version)
         .parse(argv)
@@ -68,7 +64,6 @@ const getOptions = async argv => {
     cmdOptions.gasCoverage      = cmdOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
     cmdOptions.useZeroexArb     = cmdOptions.useZeroexArb || DEFAULT_OPTIONS.useZeroexArb;
-    cmdOptions.takeNegProfit     = cmdOptions.takeNegProfit || DEFAULT_OPTIONS.takeNegProfit;
 
 
     return cmdOptions;
