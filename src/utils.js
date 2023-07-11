@@ -469,7 +469,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
             if (!_outputBalance.isZero()) {
                 for (let k = 0; k < order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
-                        const _input = order.validInputs[k];  
+                        const _input = order.validInputs[k];
                         const _outputBalance = await orderbook.vaultBalance(
                             order.owner.id,
                             _output.token.id,
@@ -493,7 +493,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                             j ,
                             _inputBalance.toString() ,
                             _outputBalance.toString()
-                        ); 
+                        );
 
 
                         if (maxOutput && ratio) {
@@ -786,7 +786,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
         const _outputSymbols = [];
         for (let j = 0; j < orders[i].validInputs.length; j++) {
             const erc20 = new ethers.Contract(orders[i].validInputs[j].token, erc20Abi, signer);
-            const symbol = await erc20.symbol(); 
+            const symbol = await erc20.symbol();
             _inputSymbols.push(symbol);
         }
         for (let j = 0; j < orders[i].validOutputs.length; j++) {
