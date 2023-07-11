@@ -15,7 +15,8 @@ const DEFAULT_OPTIONS = {
     rpc: process?.env?.RPC_URL,
     apiKey: process?.env?.API_KEY,
     slippage: "0.001",    // 0.1%
-    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/slsohysubgraph"
+    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/sidarbbot",
+    orderHash: process?.env?.ORDER_HASH
 };
 
 const getOptions = async argv => {
@@ -31,6 +32,7 @@ const getOptions = async argv => {
         .option("--arb-abi <path>", "Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--orderbook-abi <path>", "Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder")
         .option("--no-monthly-ratelimit", "Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop")
+        .option("--order-hash <hash>", "Pass to lock the bot onto a particular order")
         .version(version)
         .parse(argv)
         .opts();
@@ -40,6 +42,8 @@ const getOptions = async argv => {
     commandOptions.apiKey = commandOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     commandOptions.slippage = commandOptions.slippage || DEFAULT_OPTIONS.slippage;
     commandOptions.subgraphUrl = commandOptions.subgraphUrl || DEFAULT_OPTIONS.subgraphUrl;
+    commandOptions.orderHash = commandOptions.orderHash || DEFAULT_OPTIONS.orderHash;
+    
 
     return commandOptions;
 };
@@ -79,11 +83,15 @@ const main = async argv => {
     if (options.interpreterAbi) config.interpreterAbi = options.interpreterAbi;
     if (options.arbAbi) config.arbAbi = options.arbAbi;
     if (options.orderbookAbi) config.orderbookAbi = options.orderbookAbi;
+    if (options.apiKey) config.apiKey = options.apiKey;
+    if (options.orderHash) config.orderHash = options.orderHash;
+
+
 
     const reports = await clear(
         signer,
         config,
-        await query(options.subgraphUrl),
+        await query(options.subgraphUrl,config.orderHash),
         options.slippage
     );
 

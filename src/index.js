@@ -3,7 +3,7 @@ const path = require("path");
 const axios = require("axios");
 const ethers = require("ethers");
 const CONFIG = require("../config.json");
-const { DefaultQuery } = require("./query");
+const { getQuery } = require("./query");
 let { abi: orderbookAbi } = require("./abis/OrderBook.json");
 const { abi: erc20Abi } = require("./abis/ERC20Upgradeable.json");
 let { abi: interpreterAbi } = require("./abis/IInterpreterV1.json");
@@ -221,11 +221,11 @@ const getActualPrice = (receipt, orderbook, arb, amount, sellDecimals, buyDecima
  * @param {string} subgraphUrl - The subgraph endpoint URL to query for orders' details
  * @returns An array of order details
  */
-exports.query = async(subgraphUrl) => {
+exports.query = async(subgraphUrl,hash) => {  
     try {
         const result = await axios.post(
             subgraphUrl,
-            { query: DefaultQuery },
+            { query: getQuery(hash) },
             { headers: { "Content-Type": "application/json" } }
         );
         return result.data.data.orders;
@@ -640,7 +640,6 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
                                     )
                                 } ${bundledOrders[i].buyTokenSymbol}`, "\n");
 
-                                if (!maxEstimatedProfit.isNegative()) {
                                     console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                     const tx = await arb.arb(
                                         takeOrdersConfigStruct,
@@ -765,8 +764,7 @@ exports.clear = async(signer, config, queryResults, slippage = "0.01", prioritiz
                                         console.log(">>> Transaction execution failed due to:");
                                         console.log(error, "\n");
                                     }
-                                }
-                                else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
+                                
                             }
                             catch (error) {
                                 console.log(">>> Transaction failed due to:");

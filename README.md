@@ -34,6 +34,7 @@ The app requires these 4 arguments:
 
 Other optional arguments are:
 - `-a` or `--api-key` The 0x API key to use for quoting 0x with. Can also be set in env variables as `API_KEY`, see below.
+- `--order-hash` : Optional order hash of the order to lock onto. Will override the `ORDER_HASH` env variable if present. 
 - `-s` or `--slippage` The slippage that can be set for the trades, the default is 0.001 which is 0.1%
 - `--subgraph-url` A custom subgraph endpoint URL, used to read order details from, the default is Rain Orderbook Subgraph. The custom subgraph should follow the Rain Orderbook Subgraph schema.
 - `--interpreter-abi` The path to IInterpreter ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/IInerpreterV1.json`.
