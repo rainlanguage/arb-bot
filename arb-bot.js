@@ -15,7 +15,7 @@ const DEFAULT_OPTIONS = {
     rpc: process?.env?.RPC_URL,
     apiKey: process?.env?.API_KEY,
     slippage: "0.001",    // 0.1%
-    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/sidarbbot",
+    subgraphUrl: "https://api.thegraph.com/subgraphs/name/siddharth2207/nshbot",
     orderHash: process?.env?.ORDER_HASH
 };
 
