@@ -897,3 +897,24 @@ exports.hideSensitiveData = (...data) => {
         };
     });
 };
+
+/**
+ * Method to put a timeout on a promise, throws the exception if promise is not settled within the time
+ *
+ * @param {Promise} promise - The Promise to put timeout on
+ * @param {number} time - The time in milliseconds
+ * @param {any} exception - The exception value to reject with if the promise is not settled within time
+ * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
+ * if the time runs out before the main promise settlement
+ */
+exports.promiseTimeout = async(promise, time, exception) => {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise(
+            (_res, _rej) => timer = setTimeout(_rej, time, exception)
+        )
+    ]).finally(
+        () => clearTimeout(timer)
+    );
+};

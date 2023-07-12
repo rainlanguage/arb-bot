@@ -280,7 +280,9 @@ exports.interpreterEval = async(
     obAddress,
     order,
     inputIndex,
-    outputIndex
+    outputIndex,
+    inputBalance,
+    outputBalance
 ) => {
     try {
         const { stack: [ maxOutput, ratio ] } = await interpreter.eval(
@@ -308,7 +310,7 @@ exports.interpreterEval = async(
                     order.validInputs[inputIndex].token.id,
                     order.validInputs[inputIndex].token.decimals,
                     order.validInputs[inputIndex].vault.id.split("-")[0],
-                    order.validInputs[inputIndex].tokenVault.balance,
+                    inputBalance,
                     "0"
                 ],
                 [
@@ -316,7 +318,7 @@ exports.interpreterEval = async(
                     order.validOutputs[outputIndex].token.id,
                     order.validOutputs[outputIndex].token.decimals,
                     order.validOutputs[outputIndex].vault.id.split("-")[0],
-                    order.validOutputs[outputIndex].tokenVault.balance,
+                    outputBalance,
                     "0"
                 ],
                 [
@@ -476,13 +478,14 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
         const order = ordersDetails[i];
         for (let j = 0; j &lt; order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
-            const _outputBalance = ethers.utils.parseUnits(
+            const _outputBalance = await orderbook.vaultBalance(
+                order.owner.id,
+                _output.token.id,
+                _output.vault.id.split("-")[0]
+            );
+            const _outputBalanceFixed = ethers.utils.parseUnits(
                 ethers.utils.formatUnits(
-                    await orderbook.vaultBalance(
-                        order.owner.id,
-                        _output.token.id,
-                        _output.vault.id.split("-")[0]
-                    ),
+                    _outputBalance,
                     _output.token.decimals
                 )
             );
@@ -492,10 +495,15 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
             //         _output.token.decimals
             //     )
             // );
-            if (!_outputBalance.isZero()) {
+            if (!_outputBalanceFixed.isZero()) {
                 for (let k = 0; k &lt; order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
+                        const _inputBalance = await orderbook.vaultBalance(
+                            order.owner.id,
+                            _input.token.id,
+                            _input.vault.id.split("-")[0]
+                        );
                         const { maxOutput, ratio } = await this.interpreterEval(
                             new ethers.Contract(
                                 order.interpreter,
@@ -506,17 +514,20 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                             orderbook.address,
                             order,
                             k,
-                            j
+                            j ,
+                            _inputBalance.toString() ,
+                            _outputBalance.toString()
                         );
+
                         if (maxOutput &amp;&amp; ratio) {
-                            const quoteAmount = _outputBalance.lte(maxOutput)
-                                ? _outputBalance
+                            const quoteAmount = _outputBalanceFixed.lte(maxOutput)
+                                ? _outputBalanceFixed
                                 : maxOutput;
 
                             if (!quoteAmount.isZero()) {
                                 const pair = bundledOrders.find(v =>
                                     v.sellToken === _output.token.id &amp;&amp;
-                                  v.buyToken === _input.token.id
+                                    v.buyToken === _input.token.id
                                 );
                                 if (pair) pair.takeOrders.push({
                                     id: order.id,
@@ -913,7 +924,29 @@ exports.hideSensitiveData = (...data) => {
             orgConsole.apply(console, scrubbedParams);
         };
     });
-};</code></pre>
+};
+
+/**
+ * Method to put a timeout on a promise, throws the exception if promise is not settled within the time
+ *
+ * @param {Promise} promise - The Promise to put timeout on
+ * @param {number} time - The time in milliseconds
+ * @param {any} exception - The exception value to reject with if the promise is not settled within time
+ * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
+ * if the time runs out before the main promise settlement
+ */
+exports.promiseTimeout = async(promise, time, exception) => {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise(
+            (_res, _rej) => timer = setTimeout(_rej, time, exception)
+        )
+    ]).finally(
+        () => clearTimeout(timer)
+    );
+};
+</code></pre>
         </article>
     </section>
 
@@ -923,13 +956,13 @@ exports.hideSensitiveData = (...data) => {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#hideSensitiveData">hideSensitiveData</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#hideSensitiveData">hideSensitiveData</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Jul 11 2023 16:52:45 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Wed Jul 12 2023 21:59:54 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>
