@@ -69,7 +69,7 @@ const getOptions = async argv => {
     return cmdOptions;
 };
 
-const main = async argv => {
+const arbBot = async argv => {
     const options = await getOptions(argv);
 
     if (!options.key) throw "undefined wallet private key";
@@ -97,7 +97,7 @@ const main = async argv => {
         options.subgraph,
         options.orders,
         config.signer
-    );
+    ); 
     await clear(
         options.mode,
         config,
@@ -108,17 +108,30 @@ const main = async argv => {
     );
 };
 
-main(
-    process.argv
-).then(
-    () => {
-        console.log("\x1b[32m%s\x1b[0m", "Rain orderbook arbitrage clearing process finished successfully!");
-        process.exit(0);
-    }
-).catch(
-    (v) => {
-        console.log("\x1b[31m%s\x1b[0m", "An error occured during execution: ");
-        console.log(v);
-        process.exit(1);
-    }
-);
+// Introduce Delay
+const delay = ms => new Promise(res => setTimeout(res, ms))
+
+// Loop resursively with delay
+async function main(argv){
+    while(true){ 
+        arbBot(
+            argv
+        ).then(
+            () => {
+                console.log("\x1b[32m%s\x1b[0m", "Rain orderbook arbitrage clearing process finished successfully!");
+                // Bot ran successfully, do not exit the proecess.
+            }
+        ).catch(
+            (v) => {
+                console.log("\x1b[31m%s\x1b[0m", "An error occured during execution: ");
+                console.log(v);
+                // Error occured, exit the process
+                process.exit(1);
+            }
+        ); 
+        await delay(10000);
+    } 
+}  
+
+// Run the bot
+main(process.argv)
