@@ -1,7 +1,7 @@
 /**
  * The default query used in the matchmaker bot to fetch the orders from subgraph
  */
-const DefaultQuery = `{
+exports.DefaultQuery = `{
     orders(
         where: {orderActive: true}
     ) {

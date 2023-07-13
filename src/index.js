@@ -60,9 +60,8 @@ const clearOptions = {
  */
 const getOrderDetails = async(sgs, json, signer) => {
     const ordersDetails = [];
-    const isInvalidJson = !json?.endsWith(".json");
+    const isInvalidJson = typeof json !== "string" || !json;
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
-    // const isInvalidSg = !sg?.startsWith("https://api.thegraph.com/subgraphs/name/");
 
     if (isInvalidSg && isInvalidJson) throw "provided sources are invalid";
     else {
@@ -82,7 +81,7 @@ const getOrderDetails = async(sgs, json, signer) => {
             sgs.forEach(v => {
                 if (v?.startsWith("https://api.thegraph.com/subgraphs/name/")) {
                     promises.push(axios.post(
-                        sgs,
+                        v,
                         { query: DefaultQuery },
                         { headers: { "Content-Type": "application/json" } }
                     ));
@@ -92,6 +91,7 @@ const getOrderDetails = async(sgs, json, signer) => {
 
         const responses = await Promise.allSettled(promises);
         if (responses.every(v => v.status === "rejected")) {
+            responses.forEach(v => console.log(v.reason));
             throw "could not read anything from provided sources";
         }
         else {
@@ -101,16 +101,13 @@ const getOrderDetails = async(sgs, json, signer) => {
                         if (type === "json") ordersDetails.push(...responses[0].value);
                         else ordersDetails.push(...responses[0].value.data.data.orders);
                     }
-                    else {
-                        if (type === "json") console.log(responses[0].reason);
-                        else console.log("Cannot get order details from subgraph");
-                    }
+                    else console.log(responses[0].reason);
                 }
                 else {
                     if (responses[i].status === "fulfilled") {
                         ordersDetails.push(...responses[i].value.data.data.orders);
                     }
-                    else console.log("Cannot get order details from subgraph");
+                    else console.log(responses[i].reason);
                 }
             }
         }
