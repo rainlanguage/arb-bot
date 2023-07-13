@@ -24,11 +24,9 @@ const DEFAULT_OPTIONS = {
     lps: process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage: process?.env?.GAS_COVER || "100",
     repetitions: process?.env?.REPETITIONS,
-    monthlyRatelimit: process?.env?.MONTHLY_RATELIMIT === undefined
-        ? true
-        : process?.env?.MONTHLY_RATELIMIT.toLowerCase() === "false"
-            ? false
-            : true,
+    monthlyRatelimit: process?.env?.MONTHLY_RATELIMIT?.toLowerCase() === "false"
+        ? false
+        : true,
     useZeroexArb: process?.env?.USE_ZEROEX_ARB?.toLowerCase() === "true"
         ? true
         : false
@@ -64,9 +62,11 @@ const getOptions = async argv => {
     cmdOptions.apiKey           = cmdOptions.apiKey || DEFAULT_OPTIONS.apiKey;
     cmdOptions.lps              = cmdOptions.lps || DEFAULT_OPTIONS.lps;
     cmdOptions.gasCoverage      = cmdOptions.gasCoverage || DEFAULT_OPTIONS.gasCoverage;
-    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit || DEFAULT_OPTIONS.monthlyRatelimit;
-    cmdOptions.useZeroexArb     = cmdOptions.useZeroexArb || DEFAULT_OPTIONS.useZeroexArb;
     cmdOptions.repetitions      = cmdOptions.repetitions || DEFAULT_OPTIONS.repetitions;
+    cmdOptions.useZeroexArb     = cmdOptions.useZeroexArb || DEFAULT_OPTIONS.useZeroexArb;
+    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit === false
+        ? cmdOptions.monthlyRatelimit
+        : DEFAULT_OPTIONS.monthlyRatelimit;
 
     return cmdOptions;
 };
@@ -134,8 +134,8 @@ const main = async argv => {
     else for (let i = 0; i < repetitions; i++) {
         try {
             await arbRound(options);
-            console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
-            console.log(`Starting round ${i + 1}...`, "\n");
+            console.log("\x1b[32m%s\x1b[0m", `Round ${i + 1} finished successfully!`);
+            console.log(`Starting round ${i + 2}...`, "\n");
         }
         catch (error) {
             console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i + 1}:`);
