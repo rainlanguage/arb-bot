@@ -2,13 +2,122 @@
     {
         "network": "polygon",
         "chainId": 137,
-        "apiUrl": "https://polygon.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://polygonscan.com/",
+        "routeProcessor3Address": "0x0a6e511Fe663827b9cA7e2D2542b20B37fC217A6",
+        "zeroEx": {
+            "apiUrl": "https://polygon.api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "usdZapAddress": "0x5ab5C56B9db92Ba45a0B46a207286cD83C15C939",
+            "pools": [
+                {
+                    "address": "0x445fe580ef8d70ff569ab36e80c647af338db351",
+                    "coins": [
+                        {
+                            "symbol": "amDAI",
+                            "address": "0x27F8D03b3a2196956ED754baDc28D73be8830A6e",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "amUSDC",
+                            "address": "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "amUSDT",
+                            "address": "0x60D55F02A771d515e077c9C2403a1ef324885CeC",
+                            "decimals": 6
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "DAI",
+                            "address": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0x5e5A23b52Cb48F5E70271Be83079cA5bC9c9e9ac",
+                    "coins": [
+                        {
+                            "symbol": "FRAX",
+                            "address": "0x45c32fa6df82ead1e2ef74d17b76547eddfaff89",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "am3CRV",
+                            "address": "0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "FRAX",
+                            "address": "0x45c32fa6df82ead1e2ef74d17b76547eddfaff89",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "amDAI",
+                            "address": "0x27F8D03b3a2196956ED754baDc28D73be8830A6e",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "amUSDC",
+                            "address": "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "amUSDT",
+                            "address": "0x60D55F02A771d515e077c9C2403a1ef324885CeC",
+                            "decimals": 6
+                        }
+                    ],
+                    "underlyingCoinsUnwrapped": [
+                        {
+                            "symbol": "FRAX",
+                            "address": "0x45c32fa6df82ead1e2ef74d17b76547eddfaff89",
+                            "decimals": 18
+                        },
+                        {
+                            "address": "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
+                            "symbol": "DAI",
+                            "decimals": 18
+                        },
+                        {
+                            "address": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
+                            "symbol": "USDC",
+                            "decimals": 6
+                        },
+                        {
+                            "address": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                            "symbol": "USDT",
+                            "decimals": 6
+                        }
+                    ]
+                }
+            ]
+        },
         "nativeToken": {
+            "name": "Matic Token",
             "symbol": "MATIC",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WMATIC",
+            "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
             "decimals": 18
         },
         "stableTokens": [
@@ -92,13 +201,23 @@
     {
         "network": "homestead",
         "chainId": 1,
-        "apiUrl": "https://api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://etherscan.io/",
+        "routeProcessor3Address": "0x827179dD56d07A7eeA32e3873493835da2866976",
+        "zeroEx": {
+            "apiUrl": "https://api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "ETH",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WETH",
+            "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
             "decimals": 18
         },
         "stableTokens": [
@@ -187,26 +306,45 @@
     {
         "network": "goerli",
         "chainId": 5,
-        "apiUrl": "https://goerli.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xf91bb752490473b8342a3e964e855b9f9a2a668e",
+        "explorer": "https://goerli.etherscan.io/",
+        "zeroEx": {
+            "apiUrl": "https://goerli.api.0x.org/",
+            "proxyAddress": "0xf91bb752490473b8342a3e964e855b9f9a2a668e"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "ETH",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WETH",
+            "address": "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
             "decimals": 18
         }
     },
     {
         "network": "avalanche",
         "chainId": 43114,
-        "apiUrl": "https://avalanche.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://snowtrace.io/",
+        "routeProcessor3Address": "0x717b7948AA264DeCf4D780aa6914482e5F46Da3e",
+        "zeroEx": {
+            "apiUrl": "https://avalanche.api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "AVAX",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WAVAX",
+            "address": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
             "decimals": 18
         },
         "stableTokens": [
@@ -275,13 +413,23 @@
     {
         "network": "arbitrum",
         "chainId": 42161,
-        "apiUrl": "https://arbitrum.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://arbiscan.io/",
+        "routeProcessor3Address": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674",
+        "zeroEx": {
+            "apiUrl": "https://arbitrum.api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "ETH",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WETH",
+            "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
             "decimals": 18
         },
         "stableTokens": [
@@ -335,13 +483,23 @@
     {
         "network": "fantom",
         "chainId": 250,
-        "apiUrl": "https://fantom.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef189deaef76e379df891899eb5a00a94cbc250",
+        "explorer": "https://ftmscan.com/",
+        "routeProcessor3Address": "0x2214A42d8e2A1d20635c2cb0664422c528B6A432",
+        "zeroEx": {
+            "apiUrl": "https://fantom.api.0x.org/",
+            "proxyAddress": "0xdef189deaef76e379df891899eb5a00a94cbc250"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "FTM",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WFTM",
+            "address": "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
             "decimals": 18
         },
         "stableTokens": [
@@ -405,13 +563,23 @@
     {
         "network": "bsc",
         "chainId": 56,
-        "apiUrl": "https://bsc.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://bscscan.com/",
+        "routeProcessor3Address": "0x400d75dAb26bBc18D163AEA3e83D9Ea68F6c1804",
+        "zeroEx": {
+            "apiUrl": "https://bsc.api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "BNB",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WBNB",
+            "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
             "decimals": 18
         },
         "stableTokens": [
@@ -475,11 +643,21 @@
     {
         "network": "celo",
         "chainId": 42220,
-        "apiUrl": "https://celo.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff",
+        "explorer": "https://celoscan.io/",
+        "routeProcessor3Address": "0x2f686751b19a9d91cc3d57d90150Bc767f050066",
+        "zeroEx": {
+            "apiUrl": "https://celo.api.0x.org/",
+            "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
+            "symbol": "CELO",
+            "address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
             "symbol": "CELO",
             "address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
             "decimals": 18
@@ -495,13 +673,23 @@
     {
         "network": "optimism",
         "chainId": 10,
-        "apiUrl": "https://optimism.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xdef1abe32c034e558cdd535791643c58a13acc10",
+        "explorer": "https://optimistic.etherscan.io/",
+        "routeProcessor3Address": "0x4C5D5234f232BD2D76B96aA33F5AE4FCF0E4BFAb",
+        "zeroEx": {
+            "apiUrl": "https://optimism.api.0x.org/",
+            "proxyAddress": "0xdef1abe32c034e558cdd535791643c58a13acc10"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "ETH",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WETH",
+            "address": "0x4200000000000000000000000000000000000006",
             "decimals": 18
         },
         "stableTokens": {
@@ -510,14 +698,23 @@
     },
     {
         "network": "mumbai",
-        "chainId": 524289,
-        "apiUrl": "https://mumbai.api.0x.org/",
-        "arbAddress": "",
-        "orderbookAddress": "",
-        "proxyAddress": "0xf471d32cb40837bf24529fcf17418fc1a4807626",
+        "chainId": 80001,
+        "explorer": "https://mumbai.polygonscan.com/",
+        "zeroEx": {
+            "apiUrl": "https://mumbai.api.0x.org/",
+            "proxyAddress": "0xf471d32cb40837bf24529fcf17418fc1a4807626"
+        },
+        "curve": {
+            "pools": []
+        },
         "nativeToken": {
             "symbol": "MATIC",
             "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WMATIC",
+            "address": "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
             "decimals": 18
         }
     }

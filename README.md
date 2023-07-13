@@ -1,9 +1,9 @@
 # Rain Orderbook Arbitrage Bot
-NodeJS app that clears Rain orderbook orders against 0x liquididty by finding 0x trades for token pairs of order details queried from a subgraph, bundling the `takeOrders` and submitting them to [Rain ZeroExOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
+NodeJS app that clears Rain orderbook orders against 0x liquididty by finding 0x trades for token pairs of order details queried from a subgraph, bundling the `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
 Clearing bundled orders should cover the gas cost of the transaction at least so the transactions gets submitted, otherwise they will be skipped.
 The cost of the transaction is calculated in the profit token currency.
 
-This app requires NodeJS to run.
+This app requires NodeJS v18 to run.
 This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## Tutorial
@@ -16,7 +16,7 @@ or
 ```bash
 yarn install
 ```
-If you have Nix installed on your machine you can tun the app on nix environment:
+If you have Nix installed on your machine you can run the app on nix environment:
 ```bash
 nix-shell
 ```
@@ -27,22 +27,50 @@ For starting the app:
 node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
 ```
 The app requires these 4 arguments:
-- `-k` or `--key` A wallet private with eth balance to cover transaction costs, this wallet also receives the profits from submitting the transactions. A wallet private key is 64 length hex string. This can be set as environment variables too, see below.
-- `-r` or `--rpc` An RPC URL, such as from Alchemy or Infura required for interacting with the working network. This can be set as environment variables too, see below.
-- `--orderbook-address` The Rain Orderbook contract address deployed on the working network.
-- `--arb-address` The Arb (ZeroExOrderBookFlashBorrower) contract address deployed on the working network.
+- `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+- `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
+- `-o` or `--orders`, The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
+ - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
+- `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
+- `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 
 Other optional arguments are:
-- `-a` or `--api-key` The 0x API key to use for quoting 0x with. Can also be set in env variables as `API_KEY`, see below.
-- `--order-hash` : Optional order hash of the order to lock onto. Will override the `ORDER_HASH` env variable if present. 
-- `-s` or `--slippage` The slippage that can be set for the trades, the default is 0.001 which is 0.1%
-- `--subgraph-url` A custom subgraph endpoint URL, used to read order details from, the default is Rain Orderbook Subgraph. The custom subgraph should follow the Rain Orderbook Subgraph schema.
-- `--interpreter-abi` The path to IInterpreter ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/IInerpreterV1.json`.
-- `--arb-abi` The path to Arb (ZeroExOrderBookFlashBorrower) ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/ZeroExOrderBookFlashBorrower.json`.
-- `--orderbook-abi` The path to Orderbook ABI json file used for instantiating ethers contract instances, should be absolute path, default is the `./src/abis/OrderBook.json`.
-- `--no-monthly-ratelimit` Used to respect monthly 200k 0x API calls, mainly used when not running this app on a bash loop, e.g. Github Actions
-- `-h` or `--help` To show the CLI command's help
-- `-v` or `--version` To show the app's version
+- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
+- `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
+- `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
+- `--repetitions`, Option to run `number` of times, if not set will run for infinte number of times
+- `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+- `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
+- `-V` or `--version`, output the version number
+- `-h` or `--help`, output usage information
+
+<br>
+
+### List of available liquidity providers (decentralized exchanges)
+- all of the below names are case INSENSITIVE:
+`SushiSwapV2`
+`SushiSwapV3`
+`UniswapV2`
+`UniswapV3`
+`Trident`
+`QuickSwap`
+`ApeSwap`
+`PancakeSwap`
+`TraderJoe`
+`Dfyn`
+`Elk`
+`JetSwap`
+`SpookySwap`
+`NetSwap`
+`NativeWrap`
+`HoneySwap`
+`UbeSwap`
+`Biswap`
+`CurveSwap`
+`DovishV3`
+`LaserSwap`
+
 <br>
 
 CLI options can be viewed by running:
@@ -54,31 +82,65 @@ which will show:
     Usage: node arb-bot [options]
 
     Options:
-      -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in '.env' file
-      -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in '.env' file
-      -s, --slippage <number>        Sets the slippage percentage for the clearing orders, default is 0.001 which is 0.1%
-      -a, --api-key <key>            0x API key, can be set in env variables, Will override the API_KEY env variable if a value passed in CLI
-      --subgraph-url <url>           The subgraph endpoint url used to fetch order details from
-      --orderbook-address <address>  Address of the deployed orderbook contract. Will override 'orderbookAddress' field in './config.json' file
-      --arb-address <address>        Address of the deployed arb contract. Will override 'arbAddress' field in './config.json' file
-      --interpreter-abi <path>       Path to the IInterpreter contract ABI, default is the ABI in the './stc/abis' folder
-      --arb-abi <path>               Path to the Arb (ZeroExOrderBookFlashBorrower) contract ABI, default is the ABI in the './stc/abis' folder
-      --orderbook-abi <path>         Path to the Orderbook contract ABI, should be absolute path, default is the ABI in the './src/abis' folder
-      --no-monthly-ratelimit         Pass to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop
+      -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+      -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
+      -o, --orders <path>            The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
+      -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
+      --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
+      --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
+      -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
+      -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
+      -g, --gas-coverage <integer>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
+      --repetitions <integer>        Option to run `number` of times, if not set will run for infinte number of times
+      --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
       -h, --help                     output usage information
 <br>
 
-Alternatively wallet private key and RPC URL can be set in a `.env` file or set as environment variables with:
+Alternatively all variables can be specified in env variables with below keys:
 ```bash
-## private key of the wallet
-BOT_WALLET_PRIVATEKEY="1234567890..."
+# private key of the matchmaker bot's wallet
+BOT_WALLET_PRIVATEKEY="123..."
 
-## RPC URL of the desired network
-RPC_URL="https://alchemy...."
+# RPC URL of the desired network, personal RPC API endpoints are preferened
+RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}"
+
+# bot running mode, one of "router", "0x", "curve"
+MODE="router"
+
+# arb contract address
+ARB_ADDRESS="0x123..."
+
+# orderbook contract address
+ORDERBOOK_ADDRESS="0x123..."
+
+# one or more subgraph urls to read orders details from, can be used in combination with ORDERS
+# for more than 1 subgraphs, seperate them by comma and a space
+SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
+
+# path to a .json file containing orders details, can be used in combination with SUBGRAPH 
+# OR e.g. the path to the volume mounted by docker compose
+ORDERS="/etc/rainprotocol/arb-bot/orders.json"
 
 # 0x API key
-API_KEY="1234..."
+API_KEY=
+
+# list of liquidity providers names seperated by a comma for each
+LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
+
+# gas coverage percentage for each transaction to be considered profitable to be submitted
+GAS_COVER="100"
+
+# respect 0x monthly rate limit
+MONTHLY_RATELIMIT="true"
+
+# option to use old version of arb contract for 0x mode, i.e dedicated 0x arb contract
+USE_ZEROEX_ARB="false"
+
+# an integer used for specifiying the number repetitions for the app to run, if not set will run for infinite number of times
+REPETITIONS=1
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -93,30 +155,32 @@ The app can be executed through API:
 ```javascript
 // to import
 const arb = require("@rainprotocol/arb-bot");
-const ethers = require("ethers");
-
-
-// to instantiate a valid ethers wallet instance from your wallet private key and rpc url:
-// instantiate the ethers provider with rpc url
-const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-// alternatively the provider can be instantiated with specific ethers API for rpc providers such as Alchemy
-// this is prefered if you know the provider organization
-const provider = new ethers.providers.AlchemyProvider(rpcUrl)
-
-// instantiate the ethers wallet instance with private key
-const wallet = new ethers.Wallet(walletPrivateKey, provider)
-
 
 // to run the app:
-// to get the order details from a subgraph
-const queryResult = await arb.query(subgraphUrl);
+// options (all properties are optional)
+const configOptions = {
+  zeroExApiKey: "123..", // required for '0x' mode
+  useZeroexArb: false,   // option to use old zeroex arb contract
+  liquidityProviders: ["sushiswapv2", "uniswapv2"],  // optional for specifying liquidity providers
+  monthlyRatelimit: false  // option for 0x mode to respect its monthly rate limit
+  hideSensitiveData: true  // hides sensitive data such as wallet private key or rpc url from apearing in logs
+}
+const clearOptions = {
+  gasCoveragePercentage: "100", // how much gas cost to cover on each transaction
+  prioritization: true // clear better deals first
+}
 
 // to get the configuration object
-const config = await arb.getConfig(wallet, orderbookAddress, arbAddress, ...[ arbAbiPath, interpreterAbiPath, orderbookAbiPath ]);
+const config = await arb.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
+
+// to get the order details, one or both of subgraph and json file can be used simultaneously
+const subgraphs = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
+const ordersJson = "/home/orders.json" // path to a local json file 
+const orderDetails = await arb.getOrderDetails(subgraphs, ordersJson, config.signer);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const reports = await arb.clear(wallet, config, queryResult, ...[ slippage, prioritization ])
+const mode = "router" // mode can be one of "router", "0x" or "curve"
+const reports = await arb.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>
 
@@ -158,4 +222,42 @@ lint
 ```
 ```bash
 lint-fix
+```
+
+## Docker
+
+Use docker compose if possible as it handles several things for you:
+
+- Restart policy
+- Rebuild policy
+- Volume management
+- Log rotation/policy
+- Potentially other stuff like networking
+
+### .env
+
+Docker compose natively supports .env so configure it as per example.env and above.
+
+Notably `DOCKER_CHANNEL` MUST be set to the git branch that you're currently on,
+and you should be at the HEAD of said branch when attempting to interact with it.
+
+This ensures that you'll download a docker image compatible with the current code
+in your repository.
+
+### Up & volumes
+
+Run `docker compose up -d` to bring the container up. If this is the first time
+you are doing this for the current channel you will likely see a complaint about
+a missing volume.
+
+You can create the volume however you want using `docker volume` but if you want
+to map a specific path on the host to the volume mounted in the guest you'll need
+to tell Docker to do so. The default behaviour of Docker is that it manages
+volumes opaquely within its own system files, which has pros and cons. Either way
+the default behaviour won't give you a predictable path on the host to work with.
+
+To create a bind mount to a specific absolute path on the host
+
+```
+docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>
 ```

@@ -40,7 +40,7 @@ let
         buildInputs = [
             pkgs.watch
             pkgs.nixpkgs-fmt
-            pkgs.nodejs-16_x
+            pkgs.nodejs-18_x
             local-test
             ci-test
             flush
@@ -52,6 +52,6 @@ let
         shellHook = ''
             export PATH=$( npm bin ):$PATH
             # keep it fresh
-            npm install
+            npm install || npm install --ignore-scripts
         '';
     }

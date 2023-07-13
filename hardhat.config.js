@@ -8,41 +8,15 @@ require("@nomiclabs/hardhat-ethers");
  * import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-    // solidity: {
-    //     compilers: [
-    //         {
-    //             version: "0.8.19",
-    //             settings: {
-    //                 optimizer: {
-    //                     enabled: true,
-    //                     runs: 1000000,
-    //                     details: {
-    //                         peephole: true,
-    //                         inliner: true,
-    //                         jumpdestRemover: true,
-    //                         orderLiterals: true,
-    //                         deduplicate: true,
-    //                         cse: true,
-    //                         constantOptimizer: true,
-    //                     },
-    //                 },
-    //                 evmVersion: "london",
-    //                 // viaIR: true,
-    //                 metadata: {
-    //                     useLiteralContent: true,
-    //                 },
-    //             },
-    //         },
-    //     ],
-    // },
     networks: {
         hardhat: {
             forking: {
                 url: "https://polygon-rpc.com/", // avalanche network to run the test on
                 blockNumber: 42314555
             },
-            // blockGasLimit: 100000000,
-            // allowUnlimitedContractSize: true,
+            gasPrice: "auto",
+            blockGasLimit: 100000000,
+            allowUnlimitedContractSize: true
         },
     },
     mocha: {
@@ -50,6 +24,6 @@ module.exports = {
         asyncOnly: true,
         bail: false,
         parallel: false,
-        timeout: 100000,
+        timeout: 500000,
     },
 };

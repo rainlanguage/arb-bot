@@ -16,11 +16,11 @@
 #       - name: Install NodeJS v16
 #         uses: actions/setup-node@v3
 #         with:
-#           node-version: 16
+#           node-version: 18
 #           cache: 'npm'
 
 #       - name: Install Dependencies
-#         run: npm install
+#         run: npm install --ignore-scripts
 
 #       # pass the required values as github secrets to the bot
 #       - name: Take Orders

@@ -3,39 +3,46 @@ const { strict: assert } = require("assert");
 const { cloneFactoryDeploy } = require("./cloneDeploy");
 const { getEventArgs, basicDeploy } = require("../utils");
 const ZeroExOrderBookFlashBorrowerArtifact = require("../abis/ZeroExOrderBookFlashBorrower.json");
+const GenericPoolOrderBookFlashBorrowerArtifact = require("../abis/GenericPoolOrderBookFlashBorrower.json");
 
 
-exports.zeroExCloneDeploy = async(
+exports.arbDeploy = async(
     expressionDeployer,
     orderbookAddress,
-    proxyAddress,
-    evaluableConfig
+    evaluableConfig,
+    // proxyAddress = "",
 ) => {
+    const artifact = GenericPoolOrderBookFlashBorrowerArtifact;
+    const implementationData = "0x";
+    // if (proxyAddress) {
+    //     implementationData = ethers.utils.defaultAbiCoder.encode(["address"], [proxyAddress]);
+    //     artifact = ZeroExOrderBookFlashBorrowerArtifact;
+    // }
     const encodedConfig = ethers.utils.defaultAbiCoder.encode(
         [
-            "tuple(address orderBook,address zeroExExchangeProxy,tuple(address deployer,bytes[] sources,uint256[] constants) evaluableConfig)",
+            "tuple(address orderBook,tuple(address deployer,bytes[] sources,uint256[] constants) evaluableConfig,bytes implementationData)",
         ],
         [{
-            orderBook : orderbookAddress,
-            zeroExExchangeProxy: proxyAddress,
-            evaluableConfig
+            orderBook: orderbookAddress,
+            evaluableConfig,
+            implementationData,
         }]
     );
 
     const cloneFactory = await cloneFactoryDeploy(expressionDeployer);
-    const arb = await basicDeploy(ZeroExOrderBookFlashBorrowerArtifact);
+    const arbImplementation = await basicDeploy(artifact);
 
-    const zeroExClone = await cloneFactory.clone(
-        arb.address,
+    const arbClone = await cloneFactory.clone(
+        arbImplementation.address,
         encodedConfig
     );
     const cloneEvent = await getEventArgs(
-        zeroExClone,
+        arbClone,
         "NewClone",
         cloneFactory
     );
 
-    const zeroEx = new ethers.Contract(
+    const arb = new ethers.Contract(
         ethers.utils.hexZeroPad(
             ethers.utils.hexStripZeros(cloneEvent.clone),
             20 // address bytes length
@@ -45,5 +52,5 @@ exports.zeroExCloneDeploy = async(
 
     assert(!(cloneEvent.clone === ethers.constants.zeroAddress), "zeroEx clone zero address");
 
-    return zeroEx;
+    return arb;
 };

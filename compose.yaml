@@ -1,9 +1,15 @@
 services:
   arb_bot:
-    image: rain/arb_bot
-    build: .
+    image: rainprotocol/arb-bot:${DOCKER_CHANNEL}
     env_file: .env
     restart: always
     logging:
       driver: local
-    pull_policy: build
+    pull_policy: always
+    volumes:
+      - "rainprotocol-arb-bot:/etc/rainprotocol/arb-bot:Z"
+
+volumes:
+  rainprotocol-arb-bot:
+    external: true
+    name: rainprotocol-arb-bot-${DOCKER_CHANNEL}

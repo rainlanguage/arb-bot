@@ -1,4 +1,6 @@
-FROM node:16
+FROM node:18
 ADD . .
-RUN npm install
-CMD while true; do node arb-bot -k "${BOT_WALLET_PRIVATEKEY}" -r "${RPC_URL}" --orderbook-address "${ORDERBOOK_ADDRESS}" --arb-address "${ARB_ADDRESS}" --api-key "${API_KEY}" --order-hash "${ORDER_HASH}" | tee -a logs.txt && sleep 10; done;
+RUN npm install --ignore-scripts
+# @todo If you want to paramaterise sleep, add support for rate limiting to the
+# arb bot logic itself.
+CMD node arb-bot

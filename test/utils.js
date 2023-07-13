@@ -8,7 +8,8 @@ exports.AddressWithBalance = {
     usdc:   "0xc47919bbF3276a416Ec34ffE097De3C1D0b7F1CD",
     usdt:   "0x555e179d64335945fc6b155b7235a31b0a595542",
     dai:    "0x4aac95EBE2eA6038982566741d1860556e265F8B",
-    frax:   "0x97ee4eD562c7eD22F4Ff7dC3FC4A24B5F0B9627e"
+    frax:   "0x97ee4eD562c7eD22F4Ff7dC3FC4A24B5F0B9627e",
+    busd:   "0x6b5b98d4aac2dafadc94e10f6b5254a683d98294",
 };
 
 /**
