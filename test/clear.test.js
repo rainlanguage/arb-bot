@@ -214,7 +214,7 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "BUSD/USDC");
+        assert.equal(reports[1].tokenPair, "DAI/USDC");
         assert.equal(reports[1].clearedAmount, "100000000");
         assert.equal(reports[1].clearedOrders.length, 1);
 
@@ -230,8 +230,8 @@ describe("Rain Arb Bot Tests", async function () {
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
-                BUSD.address,
-                BUSD_vaultId
+                DAI.address,
+                DAI_vaultId
             )).toString(),
             "150000000000000000000"
         );
@@ -241,7 +241,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
         );
         assert.ok(
-            (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
+            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
         );
 
         // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
@@ -249,7 +249,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDC.connect(bot).balanceOf(bot.address)).isZero()
         );
         assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
         );
     });
 
@@ -333,7 +333,7 @@ describe("Rain Arb Bot Tests", async function () {
         );
 
         // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "FRAX/USDC");
+        assert.equal(reports[1].tokenPair, "DAI/USDC");
         assert.equal(reports[1].clearedAmount, "100000000");
         assert.equal(reports[1].clearedOrders.length, 1);
 
@@ -349,8 +349,8 @@ describe("Rain Arb Bot Tests", async function () {
         assert.equal(
             (await orderbook.vaultBalance(
                 owners[1].address,
-                FRAX.address,
-                FRAX_vaultId
+                DAI.address,
+                DAI_vaultId
             )).toString(),
             "150000000000000000000"
         );
@@ -360,7 +360,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
         );
         assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).gt("0")
+            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
         );
 
         // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
@@ -368,7 +368,7 @@ describe("Rain Arb Bot Tests", async function () {
             (await USDC.connect(bot).balanceOf(bot.address)).isZero()
         );
         assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
     });
 
@@ -454,7 +454,7 @@ describe("Rain Arb Bot Tests", async function () {
     //     );
 
     //     // validate second cleared token pair orders
-    //     assert.equal(reports[1].tokenPair, "BUSD/USDC");
+    //     assert.equal(reports[1].tokenPair, "DAI/USDC");
     //     assert.equal(reports[1].clearedAmount, "100000000");
     //     assert.equal(reports[1].clearedOrders.length, 1);
 
@@ -470,8 +470,8 @@ describe("Rain Arb Bot Tests", async function () {
     //     assert.equal(
     //         (await orderbook.vaultBalance(
     //             owners[1].address,
-    //             BUSD.address,
-    //             BUSD_vaultId
+    //             DAI.address,
+    //             DAI_vaultId
     //         )).toString(),
     //         "150000000000000000000"
     //     );
@@ -481,7 +481,7 @@ describe("Rain Arb Bot Tests", async function () {
     //         (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
     //     );
     //     assert.ok(
-    //         (await BUSD.connect(bot).balanceOf(bot.address)).gt("0")
+    //         (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
     //     );
 
     //     // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
@@ -489,7 +489,7 @@ describe("Rain Arb Bot Tests", async function () {
     //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
     //     );
     //     assert.ok(
-    //         (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+    //         (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
     //     );
     // });
 });
@@ -576,7 +576,7 @@ const prepareOrders = async(
     const owner1_order1 = {
         validInputs: [
             { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
-            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
+            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
         ],
         validOutputs: [
             { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
@@ -593,12 +593,12 @@ const prepareOrders = async(
             orderbook
         ),
         orderbook,
-        [tokens[1], tokens[0], tokens[2], tokens[3]]
+        tokens
     ));
 
     const owner1_order2 = {
         validInputs: [
-            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
+            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
         ],
         validOutputs: [
             { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
@@ -614,12 +614,12 @@ const prepareOrders = async(
             orderbook
         ),
         orderbook,
-        [tokens[1], tokens[0], tokens[2], tokens[3]]
+        tokens
     ));
 
     const owner2_order1 = {
         validInputs: [
-            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
+            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
         ],
         validOutputs: [
             { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
@@ -635,7 +635,7 @@ const prepareOrders = async(
             orderbook
         ),
         orderbook,
-        [tokens[1], tokens[0], tokens[2], tokens[3]]
+        tokens
     ));
 
     const owner3_order1 = {
@@ -656,7 +656,7 @@ const prepareOrders = async(
             orderbook
         ),
         orderbook,
-        [tokens[1], tokens[0], tokens[2], tokens[3]]
+        tokens
     ));
 
     return sgOrders;
