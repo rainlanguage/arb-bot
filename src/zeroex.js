@@ -173,7 +173,7 @@ exports.zeroExClear = async(
         "------------------------- Starting Clearing Process -------------------------",
         "\n"
     );
-    console.log(Date());
+    console.log("\x1b[33m%s\x1b[0m", Date());
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
@@ -451,7 +451,7 @@ exports.zeroExClear = async(
                                         data,
                                         { gasPrice: txQuote.gasPrice, gasLimit }
                                     );
-                                    console.log(config.explorer + "tx/" + tx.hash, "\n");
+                                    console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                     console.log(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"
@@ -482,26 +482,30 @@ exports.zeroExClear = async(
                                         const netProfit = income
                                             ? income.sub(actualGasCostInToken)
                                             : undefined;
-                                        console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully!`);
-                                        console.log(`Clear Quote Price: ${txQuote.price}`);
-                                        console.log(`Clear Actual Price: ${clearActualPrice}`);
-                                        console.log(`Clear Amount: ${
+                                        console.log(
+                                            "\x1b[34m%s\x1b[0m",
+                                            `${bundledOrders[i].takeOrders.length} orders cleared successfully!`,
+                                            "\n"
+                                        );
+                                        console.log("\x1b[36m%s\x1b[0m", `Clear Quote Price: ${txQuote.price}`);
+                                        console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
+                                        console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
                                             ethers.utils.formatUnits(
                                                 bundledQuoteAmount,
                                                 bundledOrders[i].sellTokenDecimals
                                             )
                                         } ${bundledOrders[i].sellTokenSymbol}`);
-                                        console.log(`Consumed Gas: ${
+                                        console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
                                             ethers.utils.formatEther(actualGasCost)
                                         } ${
                                             config.nativeToken.symbol
                                         }`, "\n");
                                         if (income) {
-                                            console.log(`Gross Income: ${ethers.utils.formatUnits(
+                                            console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
                                                 income,
                                                 bundledOrders[i].buyTokenDecimals
                                             )} ${bundledOrders[i].buyTokenSymbol}`);
-                                            console.log(`Net Profit: ${ethers.utils.formatUnits(
+                                            console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
                                                 netProfit,
                                                 bundledOrders[i].buyTokenDecimals
                                             )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
@@ -532,18 +536,18 @@ exports.zeroExClear = async(
                                         });
                                     }
                                     catch (error) {
-                                        console.log(">>> Transaction execution failed due to:");
+                                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                                         console.log(error, "\n");
                                     }
                                 }
                                 else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
                             }
                             catch (error) {
-                                console.log(">>> Transaction failed due to:");
+                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                                 console.log(error, "\n");
                             }
                         }
-                        else console.log("Failed to get quote from 0x", "\n");
+                        else console.log("\x1b[31m%s\x1b[0m", "Failed to get quote from 0x", "\n");
                     }
                     else console.log(
                         "All orders of this token pair have higher ratio than current market price, checking next token pair...",
@@ -553,7 +557,7 @@ exports.zeroExClear = async(
                 else console.log("All orders of this token pair have empty vault balance, skipping...", "\n");
             }
             catch (error) {
-                console.log(">>> Failed to get quote from 0x due to:", "\n");
+                console.log("\x1b[31m%s\x1b[0m", ">>> Failed to get quote from 0x due to:", "\n");
                 console.log(error.message);
                 console.log("data:");
                 console.log(JSON.stringify(error.response.data, null, 2), "\n");

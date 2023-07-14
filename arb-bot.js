@@ -110,6 +110,7 @@ const arbRound = async options => {
 };
 
 const main = async argv => {
+    const roundGap = 10000;
     let repetitions = -1;
     const options = await getOptions(argv);
 
@@ -123,25 +124,25 @@ const main = async argv => {
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
-            console.log("Starting next round...", "\n");
+            console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
         }
         catch (error) {
             console.log("\x1b[31m%s\x1b[0m", "An error occured during the round: ");
             console.log(error);
         }
-        await sleep(10000);
+        await sleep(roundGap);
     }
     else for (let i = 0; i < repetitions; i++) {
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", `Round ${i + 1} finished successfully!`);
-            console.log(`Starting round ${i + 2}...`, "\n");
+            console.log(`Starting round ${i + 2} in ${roundGap / 1000} seconds...`, "\n");
         }
         catch (error) {
             console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i + 1}:`);
             console.log(error);
         }
-        await sleep(10000);
+        await sleep(roundGap);
     }
 };
 

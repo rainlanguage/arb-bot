@@ -136,7 +136,7 @@ exports.routerClear = async(
         "------------------------- Starting Clearing Process -------------------------",
         "\n"
     );
-    console.log(Date());
+    console.log("\x1b[33m%s\x1b[0m", Date());
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
@@ -428,7 +428,7 @@ exports.routerClear = async(
                                     data,
                                     { gasPrice, gasLimit }
                                 );
-                                console.log(config.explorer + "tx/" + tx.hash, "\n");
+                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
@@ -459,26 +459,33 @@ exports.routerClear = async(
                                     const netProfit = income
                                         ? income.sub(actualGasCostInToken)
                                         : undefined;
-                                    console.log(`${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`, "\n");
-                                    console.log(`Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`);
-                                    console.log(`Clear Actual Price: ${clearActualPrice}`);
-                                    console.log(`Clear Amount: ${
+                                    console.log(
+                                        "\x1b[34m%s\x1b[0m",
+                                        `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
+                                        "\n"
+                                    );
+                                    console.log(
+                                        "\x1b[36m%s\x1b[0m",
+                                        `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
+                                    );
+                                    console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
+                                    console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
                                         ethers.utils.formatUnits(
                                             bundledQuoteAmount,
                                             bundledOrders[i].sellTokenDecimals
                                         )
                                     } ${bundledOrders[i].sellTokenSymbol}`);
-                                    console.log(`Consumed Gas: ${
+                                    console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
                                         ethers.utils.formatEther(actualGasCost)
                                     } ${
                                         config.nativeToken.symbol
                                     }`, "\n");
                                     if (income) {
-                                        console.log(`Gross Income: ${ethers.utils.formatUnits(
+                                        console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
                                             income,
                                             bundledOrders[i].buyTokenDecimals
                                         )} ${bundledOrders[i].buyTokenSymbol}`);
-                                        console.log(`Net Profit: ${ethers.utils.formatUnits(
+                                        console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
                                             netProfit,
                                             bundledOrders[i].buyTokenDecimals
                                         )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
@@ -512,21 +519,21 @@ exports.routerClear = async(
                                     });
                                 }
                                 catch (error) {
-                                    console.log(">>> Transaction execution failed due to:");
+                                    console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                                     console.log(error, "\n");
                                 }
                             }
                         }
                     }
                     catch (error) {
-                        console.log(">>> Transaction failed due to:");
+                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                         console.log(error, "\n");
                     }
                 }
             }
         }
         catch (error) {
-            console.log(">>> Something went wrong, reason:", "\n");
+            console.log("\x1b[31m%s\x1b[0m", ">>> Something went wrong, reason:", "\n");
             console.log(error);
         }
     }
