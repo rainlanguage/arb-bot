@@ -63,7 +63,7 @@ const getOrderDetails = async(sgs, json, signer) => {
     const isInvalidJson = typeof json !== "string" || !json;
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
-    if (isInvalidSg && isInvalidJson) throw "provided sources are invalid";
+    if (isInvalidSg && isInvalidJson) throw "type of provided sources are invalid";
     else {
         let type = "sg";
         const promises = [];
@@ -79,7 +79,7 @@ const getOrderDetails = async(sgs, json, signer) => {
         }
         if (!isInvalidSg) {
             sgs.forEach(v => {
-                if (v?.startsWith("https://api.thegraph.com/subgraphs/name/")) {
+                if (v && typeof v === "string") {
                     promises.push(axios.post(
                         v,
                         { query: DefaultQuery },

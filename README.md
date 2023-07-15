@@ -1,10 +1,15 @@
 # Rain Orderbook Arbitrage Bot
-NodeJS app that clears Rain orderbook orders against 0x liquididty by finding 0x trades for token pairs of order details queried from a subgraph, bundling the `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
-Clearing bundled orders should cover the gas cost of the transaction at least so the transactions gets submitted, otherwise they will be skipped.
-The cost of the transaction is calculated in the profit token currency.
+NodeJS app that clears Rain orderbook orders against major DeFi platforms liquidity by finding arbitrage trades for token pairs of orders details queried from a subgraph or from file containing array of `Order Struct`, bundling them as `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
 
 This app requires NodeJS v18 to run.
 This app can also be run in Github Actions with a cron job, please read below for more details.
+
+## The Case for Profitability
+Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as the percentage of the gas cost of the transaction, denominated in receiving ERC20 token, the cost of the transaction is calculated in the receiving ERC20 token unit with current market best price.
+
+- If set to 100, the receiving profit must be at least equal or greater than gas cost.
+- If set above 100, the receiving profit must be more than the amount of gas cost, for example a transaction costs 0.01 USDT (calculated from network's gas token i.e. ETH to receiving ERC20 token i.e. USDT or USDC or ...) and a value of 500 means the profit must be at least 5x the amount of gas used i.e. ≥0.05 USDT for the transaction to be successfull.
+- If set to 0, profitablity becomes irrevelant meaning any match will be submitted irrespective of whether or not the transaction will be profitable.
 
 ## Tutorial
 ### CLI

@@ -836,6 +836,16 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
  * @param {...any} data - The original data to hide
  */
 exports.hideSensitiveData = (...data) => {
+    const _data = data.filter(
+        v => v !== undefined && v !== null && !isNaN(v)
+    ).map(
+        v => {
+            try { return v.toString(); }
+            catch { return undefined; }
+        }
+    ).filter(
+        v => v !== undefined
+    );
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
     consoleMethods.forEach(methodName => {
         const orgConsole = console[methodName];
@@ -852,40 +862,30 @@ exports.hideSensitiveData = (...data) => {
                 }
                 if (typeof params[i] === "string") {
                     let str = params[i];
-                    for (let j = 0; j < data.length; j++) {
-                        if (data[i] && data[i]?.toString()) {
-                            while (str.includes(data[i].toString())) {
-                                str = str.replace(data[i], "***");
-                            }
-                        }
+                    for (let j = 0; j < _data.length; j++) {
+                        while (str.includes(_data[i])) str = str.replace(_data[i], "***");
                     }
                     scrubbedParams.push(str);
                 }
                 else if (typeof params[i] === "object" && params[i] !== null) {
                     if (params[i] instanceof Error) {
-                        for (let j = 0; j < data.length; j++) {
-                            if (data[i] && data[i]?.toString()) {
-                                while (params[i].stack.includes(data[i].toString())) {
-                                    params[i].stack = params[i].stack.replace(data[i], "***");
-                                }
+                        for (let j = 0; j < _data.length; j++) {
+                            while (params[i].stack.includes(_data[i])) {
+                                params[i].stack = params[i].stack.replace(_data[i], "***");
                             }
                         }
-                        for (let j = 0; j < data.length; j++) {
-                            if (data[i] && data[i]?.toString()) {
-                                while (params[i].message.includes(data[i].toString())) {
-                                    params[i].message = params[i].message.replace(data[i], "***");
-                                }
+                        for (let j = 0; j < _data.length; j++) {
+                            while (params[i].message.includes(_data[i])) {
+                                params[i].message = params[i].message.replace(_data[i], "***");
                             }
                         }
                         scrubbedParams.push(params[i]);
                     }
                     else {
                         let strObj = JSON.stringify(params[i]);
-                        for (let j = 0; j < data.length; j++) {
-                            if (data[i] && data[i]?.toString()) {
-                                while (strObj.includes(data[i].toString())) {
-                                    strObj = strObj.replace(data[i], "***");
-                                }
+                        for (let j = 0; j < _data.length; j++) {
+                            while (strObj.includes(_data[i])) {
+                                strObj = strObj.replace(_data[i], "***");
                             }
                         }
                         scrubbedParams.push(JSON.parse(strObj));
