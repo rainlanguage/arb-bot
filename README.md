@@ -34,17 +34,17 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these 4 arguments:
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
 - `-o` or `--orders`, The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
  - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 
 Other optional arguments are:
-- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
+- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
-- `--repetitions`, Option to run `number` of times, if not set will run for infinte number of times
+- `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
 - `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
 - `-V` or `--version`, output the version number
@@ -86,22 +86,24 @@ which will show:
 
     Usage: node arb-bot [options]
 
+    A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers
+
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, default is `router`, Will override the 'MODE' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
       -o, --orders <path>            The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-      -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables
+      -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
-      -g, --gas-coverage <integer>    The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
-      --repetitions <integer>        Option to run `number` of times, if not set will run for infinte number of times
+      -g, --gas-coverage <integer>   The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
+      --repetitions <integer>        Option to run `number` of times, if unset will run for infinte number of times
       --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
       --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
-      -h, --help                     output usage information
+      -h, --help                     display help for command
 <br>
 
 Alternatively all variables can be specified in env variables with below keys:
@@ -159,33 +161,38 @@ arb-bot [arguments]
 The app can be executed through API:
 ```javascript
 // to import
-const arb = require("@rainprotocol/arb-bot");
+const RainArbBot = require("@rainprotocol/arb-bot");
 
 // to run the app:
 // options (all properties are optional)
 const configOptions = {
-  zeroExApiKey: "123..", // required for '0x' mode
-  useZeroexArb: false,   // option to use old zeroex arb contract
-  liquidityProviders: ["sushiswapv2", "uniswapv2"],  // optional for specifying liquidity providers
-  monthlyRatelimit: false  // option for 0x mode to respect its monthly rate limit
-  hideSensitiveData: true  // hides sensitive data such as wallet private key or rpc url from apearing in logs
+  zeroExApiKey          : "...",   // required for '0x' mode
+  useZeroexArb          : false,   // option to use old zeroex arb contract
+  monthlyRatelimit      : false,   // option for "0x" mode to respect 0x platform monthly rate limit of 200k requests
+  hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
+  liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
+    "sushiswapv2",
+    "uniswapv2"
+  ]
 }
 const clearOptions = {
-  gasCoveragePercentage: "100", // how much gas cost to cover on each transaction
-  prioritization: true // clear better deals first
+  prioritization        : true,    // clear better deals first
+  gasCoveragePercentage : "500"    // percentage of the transaction gas cost denominated in receiving ERC20 to be earned from the transaction in order for it to be successfull, as an example a value of 500 means atleast 5x the amount of transaction gas cost needs to be earned for the transaction to be successfull
 }
 
 // to get the configuration object
-const config = await arb.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
+const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
-const subgraphs = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
-const ordersJson = "/home/orders.json" // path to a local json file 
-const orderDetails = await arb.getOrderDetails(subgraphs, ordersJson, config.signer);
+const ordersJson    = "/home/orders.json"                                 // path to a local json file 
+const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
+
+// get the order details from the sources
+const orderDetails  = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
 const mode = "router" // mode can be one of "router", "0x" or "curve"
-const reports = await arb.clear(mode, config, orderDetails, ...[clearOptions])
+const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>
 

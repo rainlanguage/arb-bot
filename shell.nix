@@ -18,7 +18,7 @@ let
 
     ci-test = pkgs.writeShellScriptBin "ci-test" ''
         flush
-        npm install
+        npm install --ignore-scripts
         local-test
     '';
 

@@ -168,7 +168,7 @@ describe("Rain Arb Bot Tests", async function () {
         // run the clearing process
         config.rpc = "test";
         config.signer = bot;
-        config.lps = ["quickswap", "uniswapv2", "uniswapv3", "uniswapv2"];
+        config.lps = ["sushiswapv2"];
         const reports = await clear("router", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders

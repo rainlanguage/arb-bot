@@ -6,7 +6,7 @@ const { curveClear } = require("./curve");
 const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
-const { getOrderDetailsFromJson, hideSensitiveData } = require("./utils");
+const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
 /**
@@ -79,13 +79,11 @@ const getOrderDetails = async(sgs, json, signer) => {
         }
         if (!isInvalidSg) {
             sgs.forEach(v => {
-                if (v && typeof v === "string") {
-                    promises.push(axios.post(
-                        v,
-                        { query: DefaultQuery },
-                        { headers: { "Content-Type": "application/json" } }
-                    ));
-                }
+                if (v && typeof v === "string") promises.push(axios.post(
+                    v,
+                    { query: DefaultQuery },
+                    { headers: { "Content-Type": "application/json" } }
+                ));
             });
         }
 
@@ -132,7 +130,8 @@ const getConfig = async(
     arbAddress,
     options = configOptions
 ) => {
-    if (options.hideSensitiveData) hideSensitiveData(
+    appGlobalLogger(
+        !!options.hideSensitiveData,
         rpcUrl,
         walletPrivateKey,
         options?.zeroExApiKey
@@ -162,7 +161,7 @@ const getConfig = async(
 };
 
 /**
- * Method to clear orders against a liquidity provider
+ * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
  *
  * @param {string} mode - The mode for clearing, either "0x" or "curve" or "router"
  * @param {object} config - The configuration object

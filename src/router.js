@@ -528,6 +528,7 @@ exports.routerClear = async(
                     catch (error) {
                         console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                         console.log(error, "\n");
+                        // reason, code, method, transaction, error, stack, message
                     }
                 }
             }

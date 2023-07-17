@@ -345,6 +345,7 @@ exports.getOrderStruct = (orderDetails) => {
 
 /**
  * Waits for provided miliseconds
+ *
  * @param ms - Miliseconds to wait
  */
 exports.sleep = (ms) => {
@@ -543,6 +544,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
 
 /**
  * Instantiates a DataFetcher
+ *
  * @param {any} config - The network config data
  * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
  */
@@ -668,6 +670,7 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclu
 
 /**
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
+ *
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
 exports.processLps = (liquidityProviders) => {
@@ -688,6 +691,7 @@ exports.processLps = (liquidityProviders) => {
 
 /**
  * Validates content of an array of orders
+ *
  * @param {any[]} orders - Array of order struct
  */
 exports.validateOrders = (orders) => {
@@ -730,6 +734,7 @@ exports.validateOrders = (orders) => {
 
 /**
  * Get the order hash from an order struct
+ *
  * @param {any} order - The order struct
  * @returns The order hash
  */
@@ -770,6 +775,7 @@ exports.getOrderHash = (order) => {
 
 /**
  * Get order details from an array of order struct
+ *
  * @param {string} jsonContent - Content of a JSON file containing orders struct
  */
 exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
@@ -832,68 +838,105 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
 };
 
 /**
- * Hides sensitive data from appearing in logs
- * @param {...any} data - The original data to hide
+ * Method to shorten data fields of items that are logged and optionally hide sensitive data
+ *
+ * @param {boolean} scurb - Option to scrub sensitive data
+ * @param {...any[]} data - The optinnal data to hide
  */
-exports.hideSensitiveData = (...data) => {
+exports.appGlobalLogger = (scurb, ...data) => {
+    const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
+    const consoleMethods = ["log", "warn", "error", "info", "debug"];
+
+    // Stringifies an object
+    const objStringify = (obj) => {
+        const keys = Object.getOwnPropertyNames(obj);
+        for (let i = 0; i < keys.length; i++) {
+            if (
+                typeof obj[keys[i]] === "bigint"
+                || typeof obj[keys[i]] === "number"
+                || typeof obj[keys[i]] === "symbol"
+            ) obj[keys[i]] = obj[keys[i]].toString();
+            else if (typeof obj[keys[i]] === "object" && obj[keys[i]] !== null) {
+                obj[keys[i]] = objStringify(obj[keys[i]]);
+            }
+        }
+        return obj;
+    };
+
+    // Replaces a search value with replace value in an object's properties string content
+    const objStrReplacer = (logObj, searchee, replacer) => {
+        const objKeys = Object.getOwnPropertyNames(logObj);
+        for (let i = 0; i < objKeys.length; i++) {
+            if (typeof logObj[objKeys[i]] === "string" && logObj[objKeys[i]]) {
+                if (typeof searchee === "string") {
+                    while (logObj[objKeys[i]].includes(searchee)) {
+                        logObj[objKeys[i]] = logObj[objKeys[i]].replace(searchee, replacer);
+                    }
+                }
+                else logObj[objKeys[i]] = logObj[objKeys[i]].replace(searchee, replacer);
+            }
+            else if (typeof logObj[objKeys[i]] === "object" && logObj[objKeys[i]] !== null) {
+                logObj[objKeys[i]] = objStrReplacer(logObj[objKeys[i]], searchee, replacer);
+            }
+        }
+        return logObj;
+    };
+
+    // filtering unscrubable data
     const _data = data.filter(
         v => v !== undefined && v !== null && !isNaN(v)
     ).map(
         v => {
-            try { return v.toString(); }
+            try {
+                const str = v.toString();
+                if (str) return str;
+                else return undefined;
+            }
             catch { return undefined; }
         }
     ).filter(
         v => v !== undefined
     );
-    const consoleMethods = ["log", "warn", "error", "info", "debug"];
+
+    // intercepting the console with custom function to scrub and shorten loggings
     consoleMethods.forEach(methodName => {
         const orgConsole = console[methodName];
         console[methodName] = function (...params) {
-            const scrubbedParams = [];
+            const modifiedParams = [];
             for (let i = 0; i < params.length; i++) {
+                let logItem = params[i];
                 if (
-                    typeof params[i] === "number" ||
-                    typeof params[i] === "bigint" ||
-                    typeof params[i] === "boolean" ||
-                    typeof params[i] === "symbol"
-                ) {
-                    params[i] = params[i].toString();
-                }
-                if (typeof params[i] === "string") {
-                    let str = params[i];
-                    for (let j = 0; j < _data.length; j++) {
-                        while (str.includes(_data[i])) str = str.replace(_data[i], "***");
+                    typeof logItem === "number" ||
+                    typeof logItem === "bigint" ||
+                    typeof logItem === "symbol"
+                ) logItem = logItem.toString();
+
+                if (typeof logItem === "string" && logItem) {
+                    if (scurb) for (let j = 0; j < _data.length; j++) {
+                        while (logItem.includes(_data[i])) logItem = logItem.replace(
+                            _data[i],
+                            "**********"
+                        );
                     }
-                    scrubbedParams.push(str);
+                    logItem = logItem.replace(
+                        largeDataPattern,
+                        largeData => largeData.slice(0, 67) + "..."
+                    );
                 }
-                else if (typeof params[i] === "object" && params[i] !== null) {
-                    if (params[i] instanceof Error) {
-                        for (let j = 0; j < _data.length; j++) {
-                            while (params[i].stack.includes(_data[i])) {
-                                params[i].stack = params[i].stack.replace(_data[i], "***");
-                            }
-                        }
-                        for (let j = 0; j < _data.length; j++) {
-                            while (params[i].message.includes(_data[i])) {
-                                params[i].message = params[i].message.replace(_data[i], "***");
-                            }
-                        }
-                        scrubbedParams.push(params[i]);
+                else if (typeof logItem === "object" && logItem !== null) {
+                    logItem = objStringify(logItem);
+                    if (scurb) for (let j = 0; j < _data.length; j++) {
+                        logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
-                    else {
-                        let strObj = JSON.stringify(params[i]);
-                        for (let j = 0; j < _data.length; j++) {
-                            while (strObj.includes(_data[i])) {
-                                strObj = strObj.replace(_data[i], "***");
-                            }
-                        }
-                        scrubbedParams.push(JSON.parse(strObj));
-                    }
+                    logItem = objStrReplacer(
+                        logItem,
+                        largeDataPattern,
+                        largeData => largeData.slice(0, 67) + "..."
+                    );
                 }
-                else scrubbedParams.push(params[i]);
+                modifiedParams.push(logItem);
             }
-            orgConsole.apply(console, scrubbedParams);
+            orgConsole.apply(console, modifiedParams);
         };
     });
 };
@@ -903,7 +946,8 @@ exports.hideSensitiveData = (...data) => {
  *
  * @param {Promise} promise - The Promise to put timeout on
  * @param {number} time - The time in milliseconds
- * @param {any} exception - The exception value to reject with if the promise is not settled within time
+ * @param {string | number | bigint | symbol | boolean} exception - The exception value to reject with if the
+ * promise is not settled within time
  * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
  * if the time runs out before the main promise settlement
  */
