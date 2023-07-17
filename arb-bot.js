@@ -122,7 +122,7 @@ const main = async argv => {
 
     appGlobalLogger(
         true,
-        options.rpcUrl,
+        options.rpc,
         options.key,
         options.zeroExApiKey
     );
