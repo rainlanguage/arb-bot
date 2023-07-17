@@ -345,11 +345,15 @@ const getOrderStruct = (orderDetails) => {
 
 /**
  * Waits for provided miliseconds
- *
- * @param ms - Miliseconds to wait
+ * @param {number} ms - Miliseconds to wait
  */
-const sleep = (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
+const sleep = async(ms) => {
+    let timeoutRef;
+    return new Promise(
+        resolve => timeoutRef = setTimeout(resolve, ms)
+    ).finally(
+        () => clearTimeout(timeoutRef)
+    );
 };
 
 /**
