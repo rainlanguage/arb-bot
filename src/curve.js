@@ -227,7 +227,7 @@ const prepare = async(bundledOrders, availableSwaps, config, signer, sort = true
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.curveClear = async(
+const curveClear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100",
@@ -608,4 +608,8 @@ exports.curveClear = async(
         }
     }
     return report;
+};
+
+module.exports = {
+    curveClear
 };

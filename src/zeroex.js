@@ -137,7 +137,7 @@ const prepare = async(quotes, bundledOrders, config, sort = true) => {
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.zeroExClear = async(
+const zeroExClear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100",
@@ -579,4 +579,8 @@ exports.zeroExClear = async(
         console.log("---------------------------------------------------------------------------", "\n");
     }
     return report;
+};
+
+module.exports = {
+    zeroExClear
 };

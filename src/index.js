@@ -32,7 +32,11 @@ const configOptions = {
     /**
      * Hides sensitive data such as rpc url and wallet private key from apearing in logs
      */
-    hideSensitiveData: true
+    hideSensitiveData: true,
+    /**
+     * Option to shorten large data fields in logs
+     */
+    shortenLargeLogs: true
 };
 
 /**
@@ -130,7 +134,9 @@ const getConfig = async(
     arbAddress,
     options = configOptions
 ) => {
-    appGlobalLogger(
+
+    // applied for API mode
+    if (options.hideSensitiveData || options.shortenLargeLogs) appGlobalLogger(
         !!options.hideSensitiveData,
         rpcUrl,
         walletPrivateKey,

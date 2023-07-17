@@ -98,7 +98,7 @@
 
         
             
-<h4 class="name" id="DefaultQuery"><span class="type-signature"></span>DefaultQuery<span class="type-signature"></span></h4>
+<h4 class="name" id="DefaultQuery"><span class="type-signature">(constant) </span>DefaultQuery<span class="type-signature"></span></h4>
 
 
 
@@ -328,7 +328,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line41">line 41</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line45">line 45</a>
     </li></ul></dd>
     
 
@@ -408,7 +408,7 @@
 
         
             
-<h4 class="name" id="fallbackTransports"><span class="type-signature"></span>fallbackTransports<span class="type-signature"></span></h4>
+<h4 class="name" id="fallbackTransports"><span class="type-signature">(constant) </span>fallbackTransports<span class="type-signature"></span></h4>
 
 
 
@@ -694,6 +694,8 @@
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -719,6 +721,10 @@
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">Any form of number</td>
         </tr>
@@ -741,6 +747,12 @@
 
             
 
+            
+                <td class="default">
+                
+                    18
+                
+                </td>
             
 
             <td class="description last">Decimals point of the number</td>
@@ -830,7 +842,7 @@
     
 
     
-    <h4 class="name" id="bundleTakeOrders"><span class="type-signature"></span>bundleTakeOrders<span class="signature">(ordersDetails, orderbook, arb)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="bundleTakeOrders"><span class="type-signature">(async) </span>bundleTakeOrders<span class="signature">(ordersDetails, orderbook, arb)</span><span class="type-signature"></span></h4>
     
 
     
@@ -1193,7 +1205,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line172">line 172</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line178">line 178</a>
     </li></ul></dd>
     
 
@@ -1239,7 +1251,7 @@
     
 
     
-    <h4 class="name" id="curveClear"><span class="type-signature"></span>curveClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="curveClear"><span class="type-signature">(async) </span>curveClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
     
 
     
@@ -1273,6 +1285,8 @@
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -1298,6 +1312,10 @@
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The configuration object</td>
         </tr>
@@ -1320,6 +1338,10 @@
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">The order details queried from subgraph</td>
@@ -1344,6 +1366,12 @@
             
 
             
+                <td class="default">
+                
+                    100
+                
+                </td>
+            
 
             <td class="description last">(optional) The percentage of the gas cost to cover on each transaction
 for it to be considered profitable and get submitted</td>
@@ -1367,6 +1395,12 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
             
 
             <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
@@ -1490,6 +1524,8 @@ for it to be considered profitable and get submitted</td>
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -1515,6 +1551,10 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The price token pair</td>
         </tr>
@@ -1537,6 +1577,10 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">Price of ETH to buy token</td>
@@ -1561,6 +1605,10 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The bundled order object</td>
         </tr>
@@ -1584,6 +1632,10 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The estimated gas cost in ETH</td>
         </tr>
@@ -1606,6 +1658,12 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                    100
+                
+                </td>
             
 
             <td class="description last">Percentage of gas to cover, default is 100,i.e. full gas coverage</td>
@@ -1695,7 +1753,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="fetchPoolsForTokenWrapper"><span class="type-signature"></span>fetchPoolsForTokenWrapper<span class="signature">(dataFetcher, fromToken, toToken, excludePools)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="fetchPoolsForTokenWrapper"><span class="type-signature">(async) </span>fetchPoolsForTokenWrapper<span class="signature">(dataFetcher, fromToken, toToken, excludePools)</span><span class="type-signature"></span></h4>
     
 
     
@@ -2640,7 +2698,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line126">line 126</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line130">line 130</a>
     </li></ul></dd>
     
 
@@ -2846,7 +2904,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="getEthPrice"><span class="type-signature"></span>getEthPrice<span class="signature">(config, targetTokenAddress, targetTokenDecimals, gasPrice, dataFetcher)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getEthPrice"><span class="type-signature">(async) </span>getEthPrice<span class="signature">(config, targetTokenAddress, targetTokenDecimals, gasPrice, dataFetcher)</span><span class="type-signature"></span></h4>
     
 
     
@@ -3392,7 +3450,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line61">line 61</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line65">line 65</a>
     </li></ul></dd>
     
 
@@ -3438,7 +3496,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="getOrderDetailsFromJson"><span class="type-signature"></span>getOrderDetailsFromJson<span class="signature">(jsonContent)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getOrderDetailsFromJson"><span class="type-signature">(async) </span>getOrderDetailsFromJson<span class="signature">(jsonContent)</span><span class="type-signature"></span></h4>
     
 
     
@@ -4105,7 +4163,7 @@ token pair combinations.
     
 
     
-    <h4 class="name" id="interpreterEval"><span class="type-signature"></span>interpreterEval<span class="signature">(interpreter, arbAddress, obAddress, order, inputIndex, outputIndex)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="interpreterEval"><span class="type-signature">(async) </span>interpreterEval<span class="signature">(interpreter, arbAddress, obAddress, order, inputIndex, outputIndex)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5188,7 +5246,7 @@ bundled orders based on the best deals
     
 
     
-    <h4 class="name" id="promiseTimeout"><span class="type-signature"></span>promiseTimeout<span class="signature">(promise, time, exception)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="promiseTimeout"><span class="type-signature">(async) </span>promiseTimeout<span class="signature">(promise, time, exception)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5395,7 +5453,7 @@ if the time runs out before the main promise settlement
     
 
     
-    <h4 class="name" id="routerClear"><span class="type-signature"></span>routerClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="routerClear"><span class="type-signature">(async) </span>routerClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5429,6 +5487,8 @@ if the time runs out before the main promise settlement
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -5454,6 +5514,10 @@ if the time runs out before the main promise settlement
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The configuration object</td>
         </tr>
@@ -5476,6 +5540,10 @@ if the time runs out before the main promise settlement
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">The order details queried from subgraph</td>
@@ -5500,6 +5568,12 @@ if the time runs out before the main promise settlement
             
 
             
+                <td class="default">
+                
+                    100
+                
+                </td>
+            
 
             <td class="description last">(optional) The percentage of the gas cost to cover on each transaction
 for it to be considered profitable and get submitted</td>
@@ -5523,6 +5597,12 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
             
 
             <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
@@ -6051,7 +6131,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="zeroExClear"><span class="type-signature"></span>zeroExClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="zeroExClear"><span class="type-signature">(async) </span>zeroExClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
     
 
     
@@ -6085,6 +6165,8 @@ for it to be considered profitable and get submitted</td>
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -6110,6 +6192,10 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The configuration object</td>
         </tr>
@@ -6132,6 +6218,10 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">The order details queried from subgraph</td>
@@ -6156,6 +6246,12 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                    100
+                
+                </td>
+            
 
             <td class="description last">(optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted</td>
         </tr>
@@ -6178,6 +6274,12 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
             
 
             <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
@@ -6283,7 +6385,7 @@ for it to be considered profitable and get submitted</td>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Mon Jul 17 2023 15:41:26 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Mon Jul 17 2023 18:02:31 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

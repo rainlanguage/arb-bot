@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 require("dotenv").config();
-const { sleep } = require("./src/utils");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { sleep, appGlobalLogger } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 
 
@@ -91,7 +91,8 @@ const arbRound = async options => {
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
             monthlyRatelimit: options.monthlyRatelimit,
-            hideSensitiveData: true
+            hideSensitiveData: false,
+            shortenLargeLogs: false
         }
     );
     const ordersDetails = await getOrderDetails(
@@ -118,6 +119,13 @@ const main = async argv => {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";
     }
+
+    appGlobalLogger(
+        true,
+        options.rpcUrl,
+        options.key,
+        options.zeroExApiKey
+    );
 
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {

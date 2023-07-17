@@ -107,7 +107,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
  * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
-exports.routerClear = async(
+const routerClear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100",
@@ -539,4 +539,8 @@ exports.routerClear = async(
         }
     }
     return report;
+};
+
+module.exports = {
+    routerClear
 };

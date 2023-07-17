@@ -1,7 +1,7 @@
 /**
  * The default query used in the matchmaker bot to fetch the orders from subgraph
  */
-exports.DefaultQuery = `{
+const DefaultQuery = `{
     orders(
         where: {orderActive: true}
     ) {
@@ -44,7 +44,7 @@ exports.DefaultQuery = `{
     }
 }`;
 
-exports.getQuery = (hash) => {
+const getQuery = (hash) => {
     let defaultQuery = DefaultQuery;
     if(hash){
         defaultQuery = `{
@@ -91,5 +91,9 @@ exports.getQuery = (hash) => {
         }`;
     }
     return defaultQuery;
+};
 
+module.exports = {
+    DefaultQuery,
+    getQuery
 };

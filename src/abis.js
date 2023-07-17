@@ -1,7 +1,7 @@
 /**
  * Minimal ABI for ERC20 contract only including Transfer event
  */
-exports.erc20Abi = [
+const erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
     "function symbol() public view returns (string memory)"
 ];
@@ -9,7 +9,7 @@ exports.erc20Abi = [
 /**
 * Minimal ABI for Orderbook contract only including vaultBalance() function
 */
-exports.orderbookAbi = [
+const orderbookAbi = [
     `function vaultBalance(
         address owner,
         address token,
@@ -20,7 +20,7 @@ exports.orderbookAbi = [
 /**
 * Minimal ABI for IInterpreterV1 contract only including eval() function
 */
-exports.interpreterAbi = [
+const interpreterAbi = [
     `function eval(
       address store,
       uint256 namespace,
@@ -32,7 +32,7 @@ exports.interpreterAbi = [
 /**
 * Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
 */
-exports.routeProcessor3Abi = [
+const routeProcessor3Abi = [
     `function processRoute(
         address tokenIn,
         uint256 amountIn,
@@ -46,7 +46,7 @@ exports.routeProcessor3Abi = [
 /**
 * Minimal ABI for Generic Arb contract only including arb() function
 */
-exports.genericArbAbi = [
+const genericArbAbi = [
     {
         "inputs": [
             {
@@ -224,7 +224,7 @@ exports.genericArbAbi = [
 /**
 * Minimal ABI for 0x Arb contract only including arb() function
 */
-exports.zeroExArbAbi = [
+const zeroExArbAbi = [
     {
         "inputs": [
             {
@@ -403,3 +403,12 @@ exports.zeroExArbAbi = [
         "type": "function"
     }
 ];
+
+module.exports = {
+    erc20Abi,
+    orderbookAbi,
+    interpreterAbi,
+    routeProcessor3Abi,
+    genericArbAbi,
+    zeroExArbAbi
+};

@@ -10,7 +10,7 @@ const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router")
 /**
  * Fallback transports for viem client
  */
-exports.fallbackTransports = {
+const fallbackTransports = {
     [ChainId.ARBITRUM_NOVA]: {
         transport: http("https://nova.arbitrum.io/rpc"),
     },
@@ -178,7 +178,7 @@ exports.fallbackTransports = {
  * @param {number} decimals - Decimals point of the number
  * @returns ethers BigNumber with decimals point
  */
-exports.bnFromFloat = (float, decimals = 18) => {
+const bnFromFloat = (float, decimals = 18) => {
     if (typeof float == "string") {
         if (float.startsWith("0x")) {
             const num = BigInt(float).toString();
@@ -195,7 +195,7 @@ exports.bnFromFloat = (float, decimals = 18) => {
     else {
         try {
             float = float.toString();
-            return this.bnFromFloat(float, decimals);
+            return bnFromFloat(float, decimals);
         }
         catch {
             return undefined;
@@ -211,7 +211,7 @@ exports.bnFromFloat = (float, decimals = 18) => {
  * @param {number} decimals - The decimals point of the given BigNumber
  * @returns A 18 fixed point BigNumber
  */
-exports.toFixed18 = (bn, decimals) => {
+const toFixed18 = (bn, decimals) => {
     const num = bn.toBigInt().toString();
     return BigNumber.from(
         num + "0".repeat(18 - decimals)
@@ -225,7 +225,7 @@ exports.toFixed18 = (bn, decimals) => {
  * @param {number} decimals - The decimals point of convert the given BigNumber
  * @returns A decimals point BigNumber
  */
-exports.fromFixed18 = (bn, decimals) => {
+const fromFixed18 = (bn, decimals) => {
     if (decimals != 18) {
         const num = bn.toBigInt().toString();
         return BigNumber.from(
@@ -246,7 +246,7 @@ exports.fromFixed18 = (bn, decimals) => {
  * @param {number} outputIndex - The ouput token index
  * @returns The ratio and maxOuput as BigNumber
 */
-exports.interpreterEval = async(
+const interpreterEval = async(
     interpreter,
     arbAddress,
     obAddress,
@@ -317,7 +317,7 @@ exports.interpreterEval = async(
  * @param {object} orderDetails - The order details fetched from sg
  * @returns The order struct as js object
  */
-exports.getOrderStruct = (orderDetails) => {
+const getOrderStruct = (orderDetails) => {
     return {
         owner: orderDetails.owner.id,
         handleIO: orderDetails.handleIO,
@@ -348,7 +348,7 @@ exports.getOrderStruct = (orderDetails) => {
  *
  * @param ms - Miliseconds to wait
  */
-exports.sleep = (ms) => {
+const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 };
 
@@ -359,7 +359,7 @@ exports.sleep = (ms) => {
  * @param {any} receipt - The transaction receipt
  * @returns The income value or undefined if cannot find any valid value
  */
-exports.getIncome = (signer, receipt) => {
+const getIncome = (signer, receipt) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
     return receipt.events.filter(
         v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
@@ -383,7 +383,7 @@ exports.getIncome = (signer, receipt) => {
  * @param {number} buyDecimals - The buy token decimals
  * @returns The actual clear price or undefined if necessary info not found in transaction events
  */
-exports.getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
+const getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
     const eventObj = receipt.events.map(v => {
         try{
@@ -414,7 +414,7 @@ exports.getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
  * @param {string} gasCoveragePercentage - Percentage of gas to cover, default is 100,i.e. full gas coverage
  * @returns The estimated profit
  */
-exports.estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePercentage = "100") => {
+const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePercentage = "100") => {
     let income = ethers.constants.Zero;
     const price = ethers.utils.parseUnits(pairPrice);
     const gasCost = ethers.utils.parseEther(ethPrice)
@@ -440,7 +440,7 @@ exports.estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePer
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @returns Array of bundled take orders
  */
-exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
+const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
@@ -477,7 +477,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                             _input.token.id,
                             _input.vault.id.split("-")[0]
                         );
-                        const { maxOutput, ratio } = await this.interpreterEval(
+                        const { maxOutput, ratio } = await interpreterEval(
                             new ethers.Contract(
                                 order.interpreter,
                                 interpreterAbi,
@@ -507,7 +507,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                                     ratio,
                                     quoteAmount,
                                     takeOrder: {
-                                        order: this.getOrderStruct(order),
+                                        order: getOrderStruct(order),
                                         inputIOIndex: k,
                                         outputIOIndex: j,
                                         signedContext: []
@@ -525,7 +525,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                                         ratio,
                                         quoteAmount,
                                         takeOrder: {
-                                            order: this.getOrderStruct(order),
+                                            order: getOrderStruct(order),
                                             inputIOIndex: k,
                                             outputIOIndex: j,
                                             signedContext: []
@@ -548,7 +548,7 @@ exports.bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
  * @param {any} config - The network config data
  * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
  */
-exports.getDataFetcher = (config, liquidityProviders = []) => {
+const getDataFetcher = (config, liquidityProviders = []) => {
     try {
         const dataFetcher = new DataFetcher(
             config.chainId,
@@ -556,7 +556,7 @@ exports.getDataFetcher = (config, liquidityProviders = []) => {
                 chain: viemConfig[config.chainId]?.chain,
                 transport: config.rpc && config.rpc !== "test"
                     ? http(config.rpc)
-                    : this.fallbackTransports[config.chainId].transport,
+                    : fallbackTransports[config.chainId].transport,
                 // batch: {
                 //     multicall: {
                 //         batchSize: 512
@@ -584,7 +584,7 @@ exports.getDataFetcher = (config, liquidityProviders = []) => {
  * @param {BigNumber} gasPrice - The network gas price
  * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
  */
-exports.getEthPrice = async(
+const getEthPrice = async(
     config,
     targetTokenAddress,
     targetTokenDecimals,
@@ -605,8 +605,8 @@ exports.getEthPrice = async(
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
-    if (!dataFetcher) dataFetcher = this.getDataFetcher(config);
-    await this.fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    if (!dataFetcher) dataFetcher = getDataFetcher(config);
+    await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -631,7 +631,7 @@ exports.getEthPrice = async(
  * @param {Token} toToken - The to token
  * @param {string[]} excludePools - Set of pools to exclude
  */
-exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
+const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
     // ensure that we only fetch the native wrap pools if the
     // token is the native currency and wrapped native currency
     if (fromToken.wrapped.equals(toToken.wrapped)) {
@@ -673,7 +673,7 @@ exports.fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclu
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
-exports.processLps = (liquidityProviders) => {
+const processLps = (liquidityProviders) => {
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
@@ -694,7 +694,7 @@ exports.processLps = (liquidityProviders) => {
  *
  * @param {any[]} orders - Array of order struct
  */
-exports.validateOrders = (orders) => {
+const validateOrders = (orders) => {
     const addressPattern = /^0x[a-fA-F0-9]{40}$/;
     const vaultIdPattern = /^0x[a-fA-F0-9]{64}$/;
     return Array.isArray(orders)
@@ -738,7 +738,7 @@ exports.validateOrders = (orders) => {
  * @param {any} order - The order struct
  * @returns The order hash
  */
-exports.getOrderHash = (order) => {
+const getOrderHash = (order) => {
     return ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
             [
@@ -778,9 +778,9 @@ exports.getOrderHash = (order) => {
  *
  * @param {string} jsonContent - Content of a JSON file containing orders struct
  */
-exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
+const getOrderDetailsFromJson = async(jsonContent, signer) => {
     const orders = JSON.parse(jsonContent);
-    if (!this.validateOrders(orders)) throw "invalid orders format";
+    if (!validateOrders(orders)) throw "invalid orders format";
     const orderDetails = [];
     for (let i = 0; i < orders.length; i++) {
         const _inputSymbols = [];
@@ -796,7 +796,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
             _outputSymbols.push(symbol);
         }
         orderDetails.push({
-            id: this.getOrderHash(orders[i]).toLowerCase(),
+            id: getOrderHash(orders[i]).toLowerCase(),
             handleIO: orders[i].handleIO,
             expression: orders[i].evaluable.expression.toLowerCase(),
             interpreter: orders[i].evaluable.interpreter.toLowerCase(),
@@ -843,7 +843,7 @@ exports.getOrderDetailsFromJson = async(jsonContent, signer) => {
  * @param {boolean} scurb - Option to scrub sensitive data
  * @param {...any[]} data - The optinnal data to hide
  */
-exports.appGlobalLogger = (scurb, ...data) => {
+const appGlobalLogger = (scurb, ...data) => {
     const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
@@ -951,7 +951,7 @@ exports.appGlobalLogger = (scurb, ...data) => {
  * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
  * if the time runs out before the main promise settlement
  */
-exports.promiseTimeout = async(promise, time, exception) => {
+const promiseTimeout = async(promise, time, exception) => {
     let timer;
     return Promise.race([
         promise,
@@ -961,4 +961,27 @@ exports.promiseTimeout = async(promise, time, exception) => {
     ]).finally(
         () => clearTimeout(timer)
     );
+};
+
+module.exports = {
+    fallbackTransports,
+    bnFromFloat,
+    toFixed18,
+    fromFixed18,
+    interpreterEval,
+    getOrderStruct,
+    sleep,
+    getIncome,
+    getActualPrice,
+    estimateProfit,
+    bundleTakeOrders,
+    getDataFetcher,
+    getEthPrice,
+    fetchPoolsForTokenWrapper,
+    processLps,
+    validateOrders,
+    getOrderHash,
+    getOrderDetailsFromJson,
+    appGlobalLogger,
+    promiseTimeout
 };
