@@ -1,9 +1,11 @@
 const fs = require("fs");
+const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
+const { getQuery } = require("./query");
+const { versions } = require("process");
 const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
-const { DefaultQuery } = require("./query");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
@@ -60,22 +62,23 @@ const clearOptions = {
  * @param {string[]} sgs - The subgraph endpoint URL(s) to query for orders' details
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
+ * @param {any} sgFilters - The filters for subgraph query
  * @returns An array of order details
  */
-const getOrderDetails = async(sgs, json, signer) => {
+const getOrderDetails = async(sgs, json, signer, sgFilters) => {
     const ordersDetails = [];
     const isInvalidJson = typeof json !== "string" || !json;
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
     if (isInvalidSg && isInvalidJson) throw "type of provided sources are invalid";
     else {
-        let type = "sg";
+        let hasJson = false;
         const promises = [];
         if (!isInvalidJson) {
             try {
-                const content = fs.readFileSync(json).toString();
+                const content = fs.readFileSync(path.resolve(json)).toString();
                 promises.push(getOrderDetailsFromJson(content, signer));
-                type = "json";
+                hasJson = true;
             }
             catch (error) {
                 console.log(error);
@@ -85,7 +88,13 @@ const getOrderDetails = async(sgs, json, signer) => {
             sgs.forEach(v => {
                 if (v && typeof v === "string") promises.push(axios.post(
                     v,
-                    { query: DefaultQuery },
+                    {
+                        query: getQuery(
+                            sgFilters?.orderHash,
+                            sgFilters?.orderOwner,
+                            sgFilters?.orderInterpreter
+                        )
+                    },
                     { headers: { "Content-Type": "application/json" } }
                 ));
             });
@@ -100,15 +109,15 @@ const getOrderDetails = async(sgs, json, signer) => {
             for (let i = 0; i < responses.length; i++) {
                 if (i === 0) {
                     if (responses[0].status === "fulfilled") {
-                        if (type === "json") ordersDetails.push(...responses[0].value);
+                        if (hasJson) ordersDetails.push(...responses[0].value);
                         else ordersDetails.push(...responses[0].value.data.data.orders);
                     }
                     else console.log(responses[0].reason);
                 }
                 else {
-                    if (responses[i].status === "fulfilled") {
-                        ordersDetails.push(...responses[i].value.data.data.orders);
-                    }
+                    if (responses[i].status === "fulfilled") ordersDetails.push(
+                        ...responses[i].value.data.data.orders
+                    );
                     else console.log(responses[i].reason);
                 }
             }
@@ -136,7 +145,7 @@ const getConfig = async(
 ) => {
 
     // applied for API mode
-    if (options.hideSensitiveData || options.shortenLargeLogs) appGlobalLogger(
+    if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
         !!options.hideSensitiveData,
         rpcUrl,
         walletPrivateKey,
@@ -181,6 +190,8 @@ const clear = async(
     ordersDetails,
     options = clearOptions
 ) => {
+    const version = versions.node;
+    const majorVersion = Number(version.slice(0, version.indexOf(".")));
     const prioritization = options.prioritization !== undefined
         ? options.prioritization
         : clearOptions.prioritization;
@@ -193,18 +204,24 @@ const clear = async(
         gasCoveragePercentage,
         prioritization
     );
-    else if (mode.toLowerCase() === "curve") return await curveClear(
-        config,
-        ordersDetails,
-        gasCoveragePercentage,
-        prioritization
-    );
-    else if (mode.toLowerCase() === "router") return await routerClear(
-        config,
-        ordersDetails,
-        gasCoveragePercentage,
-        prioritization
-    );
+    else if (mode.toLowerCase() === "curve") {
+        if (majorVersion >= 18) return await curveClear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
+    }
+    else if (mode.toLowerCase() === "router") {
+        if (majorVersion >= 18) return await routerClear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
+    }
     else throw "unknown mode, must be '0x' or 'curve' or 'router'";
 };
 

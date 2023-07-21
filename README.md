@@ -1,7 +1,7 @@
 # Rain Orderbook Arbitrage Bot
 NodeJS app that clears Rain orderbook orders against major DeFi platforms liquidity by finding arbitrage trades for token pairs of orders details queried from a subgraph or from file containing array of `Order Struct`, bundling them as `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
 
-This app requires NodeJS v18 to run.
+This app requires NodeJS v18 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## The Case for Profitability
@@ -31,20 +31,26 @@ For starting the app:
 ```bash
 node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
 ```
-The app requires these 4 arguments:
+The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
 - `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
-- `-o` or `--orders`, The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
- - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
+
+as well as at least one or both of below arguments:
+
+- `-o` or `--orders`, The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
+ - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 
 Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
+- `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
+- `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
+- `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
 - `-V` or `--version`, output the version number
@@ -84,15 +90,17 @@ node arb-bot -h
 ```
 which will show:
 
-    Usage: node arb-bot [options]
+    Usage: node arb-bot|arb-bot [options]
 
-    A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers
+    A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.
+    - Use "node arb-bot [options]" command alias for running the app from its repository workspace
+    - Use "arb-bot [options]" command alias when this app is installed as a dependency in another project
 
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
       -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
-      -o, --orders <path>            The ABSOLUTE path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
+      -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
@@ -100,6 +108,9 @@ which will show:
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
       -g, --gas-coverage <integer>   The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
       --repetitions <integer>        Option to run `number` of times, if unset will run for infinte number of times
+      --order-hash <hash>            Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
+      --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
+      --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
       --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
@@ -148,6 +159,15 @@ USE_ZEROEX_ARB="false"
 
 # an integer used for specifiying the number repetitions for the app to run, if not set will run for infinite number of times
 REPETITIONS=1
+
+# Option to filter the subgraph query results with a specific order hash
+ORDER_HASH=""
+
+# Option to filter the subgraph query results with a specific order owner address
+ORDER_OWNER=""
+
+# Option to filter the subgraph query results with a specific order interpreter address
+ORDER_INTERPRETER=""
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -186,9 +206,14 @@ const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAdd
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 
 const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
+const sgFilters       = {                                                 // filters for subgraph query (each filter is optional)
+  orderHash: "0x1234...",
+  orderOwner: "0x1234...",
+  orderInterpreter: "0x1234..."
+}
 
 // get the order details from the sources
-const orderDetails  = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer);
+const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
 const mode = "router" // mode can be one of "router", "0x" or "curve"

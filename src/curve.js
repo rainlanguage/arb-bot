@@ -607,6 +607,7 @@ const curveClear = async(
             console.log(error);
         }
     }
+    dataFetcher.stopDataFetching();
     return report;
 };
 

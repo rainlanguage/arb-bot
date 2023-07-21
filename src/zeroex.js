@@ -66,13 +66,13 @@ const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => 
  * @param {any[]} bundledOrders - The bundled orders array
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepare = async(quotes, bundledOrders, config, sort = true) => {
+const prepare = async(quotes, bundledOrders, sort = true) => {
     try {
         console.log(">>> Getting initial prices from 0x");
         const promises = [];
         for (let i = 0; i < quotes.length; i++) {
             if (i > 0 && i % 2 === 0) await sleep(1000);
-            promises.push(await axios.get(quotes[i].quote, HEADERS));
+            promises.push(axios.get(quotes[i].quote, HEADERS));
         }
         const responses = await Promise.allSettled(promises);
 
@@ -124,7 +124,7 @@ const prepare = async(quotes, bundledOrders, config, sort = true) => {
     catch (error) {
         console.log("something went wrong during the process of getting initial prices!");
         console.log(error);
-        return undefined;
+        return [];
     }
 };
 
@@ -234,9 +234,8 @@ const zeroExClear = async(
     bundledOrders = await prepare(
         initQuotes,
         bundledOrders,
-        config,
         prioritization
-    ) ?? bundledOrders;
+    );
 
     if (bundledOrders.length) console.log(
         "------------------------- Trying To Clear Bundled Orders -------------------------",

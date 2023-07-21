@@ -13,6 +13,10 @@
         "url": "https://github.com/rainprotocol/arb-bot/issues"
     },
     "homepage": "https://github.com/rainprotocol/arb-bot/",
+    "engines": {
+        "node": ">=18"
+    },
+    "engineStrict": true,
     "main": "./src/index.js",
     "files": [
         "src",
@@ -35,8 +39,7 @@
         "axios": "^1.3.4",
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
-        "ethers": "5.7.0",
-        "node-fetch": "^3.3.1"
+        "ethers": "5.7.0"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

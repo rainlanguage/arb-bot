@@ -538,6 +538,7 @@ const routerClear = async(
             console.log(error);
         }
     }
+    dataFetcher.stopDataFetching();
     return report;
 };
 
