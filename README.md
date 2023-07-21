@@ -9,7 +9,7 @@ Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as th
 
 - If set to 100, the receiving profit must be at least equal or greater than gas cost.
 - If set above 100, the receiving profit must be more than the amount of gas cost, for example a transaction costs 0.01 USDT (calculated from network's gas token i.e. ETH to receiving ERC20 token i.e. USDT or USDC or ...) and a value of 500 means the profit must be at least 5x the amount of gas used i.e. ≥0.05 USDT for the transaction to be successfull.
-- If set to 0, profitablity becomes irrevelant meaning any match will be submitted irrespective of whether or not the transaction will be profitable.
+- If set to 0, profitablity becomes irrevelant meaning any match will be submitted irrespective of whether or not the transaction will be profitable. 
 
 ## Tutorial
 ### CLI
