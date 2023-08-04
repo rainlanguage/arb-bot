@@ -51,7 +51,7 @@ Other optional arguments are:
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-- `--no-monthly-ratelimit`, Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+- `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -111,7 +111,7 @@ which will show:
       --order-hash <hash>            Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-      --no-monthly-ratelimit         Option to make the app respect 200k 0x API calls per month rate limit, mainly used when not running this app on a bash loop, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --monthly-ratelimit            0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
       --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
       -h, --help                     display help for command
@@ -151,8 +151,8 @@ LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
 # gas coverage percentage for each transaction to be considered profitable to be submitted
 GAS_COVER="100"
 
-# respect 0x monthly rate limit
-MONTHLY_RATELIMIT="true"
+# 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
+MONTHLY_RATELIMIT=200000
 
 # option to use old version of arb contract for 0x mode, i.e dedicated 0x arb contract
 USE_ZEROEX_ARB="false"
@@ -188,7 +188,7 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 const configOptions = {
   zeroExApiKey          : "...",   // required for '0x' mode
   useZeroexArb          : false,   // option to use old zeroex arb contract
-  monthlyRatelimit      : false,   // option for "0x" mode to respect 0x platform monthly rate limit of 200k requests
+  monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
@@ -206,10 +206,10 @@ const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAdd
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 
 const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
-const sgFilters       = {                                                 // filters for subgraph query (each filter is optional)
-  orderHash: "0x1234...",
-  orderOwner: "0x1234...",
-  orderInterpreter: "0x1234..."
+const sgFilters     = {                                                   // filters for subgraph query (each filter is optional)
+  orderHash         : "0x1234...",
+  orderOwner        : "0x1234...",
+  orderInterpreter  : "0x1234..."
 }
 
 // get the order details from the sources

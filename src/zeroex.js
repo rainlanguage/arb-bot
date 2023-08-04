@@ -5,7 +5,6 @@ const { genericArbAbi, orderbookAbi, zeroExArbAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice, estimateProfit } = require("./utils");
 
 
-const RateLimit = 0.075;    // rate limit per second per month
 const HEADERS = { headers: { "accept-encoding": "null" } };
 
 /**
@@ -71,8 +70,8 @@ const prepare = async(quotes, bundledOrders, sort = true) => {
         console.log(">>> Getting initial prices from 0x");
         const promises = [];
         for (let i = 0; i < quotes.length; i++) {
-            if (i > 0 && i % 2 === 0) await sleep(1000);
             promises.push(axios.get(quotes[i].quote, HEADERS));
+            await sleep(1000);
         }
         const responses = await Promise.allSettled(promises);
 
@@ -149,15 +148,22 @@ const zeroExClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
-    const start = Date.now();
+    let rateLimit;
+    if (config.monthlyRatelimit !== undefined) {
+        const _val = Number(config.monthlyRatelimit);
+        if (Number.isInteger(_val) && _val > 0) rateLimit = _val;
+        else throw new Error("specified monthly ratelimit must be an integer greater than 0");
+    }
+
     let hits = 0;
-    const signer = config.signer;
-    const api = config.zeroEx.apiUrl;
-    const proxyAddress = config.zeroEx.proxyAddress;
-    const arbAddress = config.arbAddress;
-    const orderbookAddress = config.orderbookAddress;
-    const nativeToken = config.nativeToken;
-    const mode = config.useZeroexArb;
+    const start = Date.now();
+    const signer            = config.signer;
+    const api               = config.zeroEx.apiUrl;
+    const proxyAddress      = config.zeroEx.proxyAddress;
+    const arbAddress        = config.arbAddress;
+    const orderbookAddress  = config.orderbookAddress;
+    const nativeToken       = config.nativeToken;
+    const mode              = config.useZeroexArb;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
@@ -324,6 +330,7 @@ const zeroExClear = async(
                         HEADERS
                     ))?.data?.price;
                     hits++;
+                    await sleep(1000);
                     const currentPrice = ethers.utils.parseUnits(price);
 
                     console.log(`Quote amount: ${ethers.utils.formatUnits(
@@ -566,8 +573,8 @@ const zeroExClear = async(
     console.log("---------------------------------------------------------------------------", "\n");
 
     // wait to stay within montly ratelimit
-    if (config.monthlyRatelimit) {
-        const rateLimitDuration = Number((((hits / RateLimit) * 1000) + 1).toFixed());
+    if (rateLimit) {
+        const rateLimitDuration = Number((((hits / rateLimit) * 1000) + 1).toFixed());
         const duration = Date.now() - start;
         console.log(`Executed in ${duration} miliseconds with ${hits} 0x api calls`);
         const msToWait = rateLimitDuration - duration;

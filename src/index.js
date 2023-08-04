@@ -28,9 +28,9 @@ const configOptions = {
      */
     liquidityProviders: undefined,
     /**
-     * Option to make the app respect 200k 0x API calls per month rate limit
+     * 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
      */
-    monthlyRatelimit: true,
+    monthlyRatelimit: undefined,
     /**
      * Hides sensitive data such as rpc url and wallet private key from apearing in logs
      */
@@ -155,23 +155,23 @@ const getConfig = async(
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
 
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const signer = new ethers.Wallet(walletPrivateKey, provider);
-    const chainId = await signer.getChainId();
-    const config = CONFIG.find(v => v.chainId === chainId);
+    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer    = new ethers.Wallet(walletPrivateKey, provider);
+    const chainId   = await signer.getChainId();
+    const config    = CONFIG.find(v => v.chainId === chainId);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
 
-    config.rpc = rpcUrl;
-    config.signer = signer;
+    config.rpc              = rpcUrl;
+    config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
-    config.arbAddress = arbAddress;
-    config.lps = options?.liquidityProviders;
-    config.apiKey = options?.zeroExApiKey;
-    config.monthlyRatelimit = !!options?.monthlyRatelimit;
-    config.useZeroexArb = !!options?.useZeroexArb;
+    config.arbAddress       = arbAddress;
+    config.lps              = options?.liquidityProviders;
+    config.apiKey           = options?.zeroExApiKey;
+    config.monthlyRatelimit = options?.monthlyRatelimit;
+    config.useZeroexArb     = !!options?.useZeroexArb;
     return config;
 };
 
@@ -195,7 +195,7 @@ const clear = async(
     const prioritization = options.prioritization !== undefined
         ? options.prioritization
         : clearOptions.prioritization;
-    const gasCoveragePercentage = options.gasCoveragePercentage
+    const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
     if (mode.toLowerCase() === "0x") return await zeroExClear(
