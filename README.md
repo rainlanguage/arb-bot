@@ -111,7 +111,7 @@ which will show:
       --order-hash <hash>            Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-      --monthly-ratelimit            0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
       --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
       -h, --help                     display help for command

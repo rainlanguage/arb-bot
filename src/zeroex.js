@@ -149,9 +149,9 @@ const zeroExClear = async(
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     let rateLimit;
-    if (config.monthlyRatelimit !== undefined) {
-        const _val = Number(config.monthlyRatelimit);
-        if (Number.isInteger(_val) && _val > 0) rateLimit = _val;
+    if (config.ratelimit !== undefined) {
+        const _val = Number(config.ratelimit);
+        if (Number.isInteger(_val) && _val > 0) rateLimit = Number((_val / 2592).toFixed()) / 1000;
         else throw new Error("specified monthly ratelimit must be an integer greater than 0");
     }
 
