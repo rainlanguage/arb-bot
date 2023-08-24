@@ -880,7 +880,7 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
  * @param {...any} data - The optinnal data to hide
  */
 const appGlobalLogger = (scrub, ...data) => {
-    // const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
+    const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
     // Stringifies an object
