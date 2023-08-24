@@ -876,10 +876,10 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
 /**
  * Method to shorten data fields of items that are logged and optionally hide sensitive data
  *
- * @param {boolean} scurb - Option to scrub sensitive data
+ * @param {boolean} scrub - Option to scrub sensitive data
  * @param {...any} data - The optinnal data to hide
  */
-const appGlobalLogger = (scurb, ...data) => {
+const appGlobalLogger = (scrub, ...data) => {
     // const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
@@ -971,7 +971,7 @@ const appGlobalLogger = (scurb, ...data) => {
                 }
                 else if (typeof logItem === "object" && logItem !== null) {
                     logItem = objStringify(logItem);
-                    if (scurb) for (let j = 0; j < _data.length; j++) {
+                    if (scrub) for (let j = 0; j < _data.length; j++) {
                         logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
                     // let _skipFirst = true;
