@@ -941,6 +941,7 @@ const appGlobalLogger = (scrub, ...data) => {
         const orgConsole = console[methodName];
         console[methodName] = function (...params) {
             const modifiedParams = [];
+            const shortenedLogs = [];
             for (let i = 0; i < params.length; i++) {
                 let logItem = params[i];
                 if (
@@ -957,35 +958,33 @@ const appGlobalLogger = (scrub, ...data) => {
                             "**********"
                         );
                     }
-                    // let _skipFirst = true;
-                    // logItem = logItem.replace(
-                    //     largeDataPattern,
-                    //     largeData => {
-                    //         if (_skipFirst) {
-                    //             _skipFirst = false;
-                    //             return largeData;
-                    //         }
-                    //         else return largeData.slice(0, 67) + "...";
-                    //     }
-                    // );
+                    logItem = logItem.replace(
+                        largeDataPattern,
+                        largeData => {
+                            if (!shortenedLogs.includes(largeData)) {
+                                shortenedLogs.push(largeData);
+                                return largeData;
+                            }
+                            else return largeData.slice(0, 67) + "...";
+                        }
+                    );
                 }
                 else if (typeof logItem === "object" && logItem !== null) {
                     logItem = objStringify(logItem);
                     if (scrub) for (let j = 0; j < _data.length; j++) {
                         logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
-                    // let _skipFirst = true;
-                    // logItem = objStrReplacer(
-                    //     logItem,
-                    //     largeDataPattern,
-                    //     largeData => {
-                    //         if (_skipFirst) {
-                    //             _skipFirst = false;
-                    //             return largeData;
-                    //         }
-                    //         else return largeData.slice(0, 67) + "...";
-                    //     }
-                    // );
+                    logItem = objStrReplacer(
+                        logItem,
+                        largeDataPattern,
+                        largeData => {
+                            if (!shortenedLogs.includes(largeData)) {
+                                shortenedLogs.push(largeData);
+                                return largeData;
+                            }
+                            else return largeData.slice(0, 67) + "...";
+                        }
+                    );
                 }
                 modifiedParams.push(logItem);
             }

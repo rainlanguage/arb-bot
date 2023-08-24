@@ -402,6 +402,7 @@ const zeroExClear = async(
                                 );
                                 console.log(">>> Estimating the profit for this token pair...", "\n");
                                 let gasLimit;
+                                console.log("Block Number: " + await signer.provider.getBlockNumber());
                                 if (mode) gasLimit = await arb.estimateGas.arb(
                                     takeOrdersConfigStruct,
                                     0,
@@ -443,6 +444,7 @@ const zeroExClear = async(
                                         )
                                     );
                                     let tx;
+                                    console.log("Block Number: " + await signer.provider.getBlockNumber());
                                     if (mode) tx = await arb.arb(
                                         takeOrdersConfigStruct,
                                         gasCostInToken.mul(gasCoveragePercentage).div(100),

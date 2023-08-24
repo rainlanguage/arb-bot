@@ -382,6 +382,7 @@ const routerClear = async(
                         );
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
+                            console.log("Block Number: " + await signer.provider.getBlockNumber());
                             const gasLimit = await arb.estimateGas.arb(
                                 takeOrdersConfigStruct,
                                 // set to zero because only profitable transactions are submitted
@@ -421,6 +422,7 @@ const routerClear = async(
                                         36 - bundledOrders[i].buyTokenDecimals
                                     )
                                 );
+                                console.log("Block Number: " + await signer.provider.getBlockNumber());
                                 const tx = await arb.arb(
                                     takeOrdersConfigStruct,
                                     // set to zero because only profitable transactions are submitted
