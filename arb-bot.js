@@ -139,7 +139,7 @@ const main = async argv => {
         true,
         options.rpc,
         options.key,
-        options.zeroExApiKey
+        options.apiKey
     );
 
     // eslint-disable-next-line no-constant-condition

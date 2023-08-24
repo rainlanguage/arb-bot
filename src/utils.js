@@ -238,7 +238,7 @@ const fromFixed18 = (bn, decimals) => {
 /**
  * Calls eval for a specific order to get its max output and ratio
  *
- * @param {ethers.Contract} interpreter - The interpreter ethersjs contract instance
+ * @param {ethers.Contract} interpreter - The interpreter ethersjs contract instance with signer
  * @param {string} arbAddress - Arb contract address
  * @param {string} obAddress - OrderBook contract address
  * @param {object} order - The order details fetched from sg
@@ -451,15 +451,31 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
         orderbook.signer.provider
     );
 
+    const vaultsCache = [];
     for (let i = 0; i < ordersDetails.length; i++) {
         const order = ordersDetails[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
-            const _outputBalance = await orderbook.vaultBalance(
-                order.owner.id,
-                _output.token.id,
-                _output.vault.id.split("-")[0]
+            let ov = vaultsCache.find(e =>
+                e.owner === order.owner.id &&
+                e.token === _output.token.id &&
+                e.vaultId === _output.vault.id.split("-")[0]
             );
+            if (!ov) {
+                const balance = await orderbook.vaultBalance(
+                    order.owner.id,
+                    _output.token.id,
+                    _output.vault.id.split("-")[0]
+                );
+                ov = {
+                    owner: order.owner.id,
+                    token: _output.token.id,
+                    vaultId: _output.vault.id.split("-")[0],
+                    balance
+                };
+                vaultsCache.push(ov);
+            }
+            const _outputBalance = ov.balance;
             const _outputBalanceFixed = ethers.utils.parseUnits(
                 ethers.utils.formatUnits(
                     _outputBalance,
@@ -476,11 +492,27 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                 for (let k = 0; k < order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
-                        const _inputBalance = await orderbook.vaultBalance(
-                            order.owner.id,
-                            _input.token.id,
-                            _input.vault.id.split("-")[0]
+                        let iv = vaultsCache.find(e =>
+                            e.owner === order.owner.id &&
+                            e.token === _input.token.id &&
+                            e.vaultId === _input.vault.id.split("-")[0]
                         );
+                        if (!iv) {
+                            const balance = await orderbook.vaultBalance(
+                                order.owner.id,
+                                _input.token.id,
+                                _input.vault.id.split("-")[0]
+                            );
+                            iv = {
+                                owner: order.owner.id,
+                                token: _input.token.id,
+                                vaultId: _input.vault.id.split("-")[0],
+                                balance
+                            };
+                            vaultsCache.push(iv);
+                        }
+                        const _inputBalance = iv.balance;
+
                         const { maxOutput, ratio } = await interpreterEval(
                             new ethers.Contract(
                                 order.interpreter,
@@ -845,7 +877,7 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
  * Method to shorten data fields of items that are logged and optionally hide sensitive data
  *
  * @param {boolean} scurb - Option to scrub sensitive data
- * @param {...any[]} data - The optinnal data to hide
+ * @param {...any} data - The optinnal data to hide
  */
 const appGlobalLogger = (scurb, ...data) => {
     const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
@@ -873,9 +905,9 @@ const appGlobalLogger = (scurb, ...data) => {
         for (let i = 0; i < objKeys.length; i++) {
             if (typeof logObj[objKeys[i]] === "string" && logObj[objKeys[i]]) {
                 if (typeof searchee === "string") {
-                    while (logObj[objKeys[i]].includes(searchee)) {
-                        logObj[objKeys[i]] = logObj[objKeys[i]].replace(searchee, replacer);
-                    }
+                    // while (logObj[objKeys[i]].includes(searchee)) {
+                    logObj[objKeys[i]] = logObj[objKeys[i]].replaceAll(searchee, replacer);
+                    // }
                 }
                 else logObj[objKeys[i]] = logObj[objKeys[i]].replace(searchee, replacer);
             }
@@ -888,11 +920,13 @@ const appGlobalLogger = (scurb, ...data) => {
 
     // filtering unscrubable data
     const _data = data.filter(
-        v => v !== undefined && v !== null && !isNaN(v)
+        v => v !== undefined && v !== null
     ).map(
         v => {
             try {
-                const str = v.toString();
+                let str;
+                if (typeof v !== "string") str = v.toString();
+                else str = v;
                 if (str) return str;
                 else return undefined;
             }
@@ -915,16 +949,24 @@ const appGlobalLogger = (scurb, ...data) => {
                     typeof logItem === "symbol"
                 ) logItem = logItem.toString();
 
-                if (typeof logItem === "string" && logItem) {
-                    if (scurb) for (let j = 0; j < _data.length; j++) {
-                        while (logItem.includes(_data[i])) logItem = logItem.replace(
+                if (typeof logItem === "string") {
+                    for (let j = 0; j < _data.length; j++) {
+                        // while (logItem.includes(_data[i]))
+                        logItem = logItem.replaceAll(
                             _data[i],
                             "**********"
                         );
                     }
+                    let _skipFirst = true;
                     logItem = logItem.replace(
                         largeDataPattern,
-                        largeData => largeData.slice(0, 67) + "..."
+                        largeData => {
+                            if (_skipFirst) {
+                                _skipFirst = false;
+                                return largeData;
+                            }
+                            else return largeData.slice(0, 67) + "...";
+                        }
                     );
                 }
                 else if (typeof logItem === "object" && logItem !== null) {
@@ -932,10 +974,18 @@ const appGlobalLogger = (scurb, ...data) => {
                     if (scurb) for (let j = 0; j < _data.length; j++) {
                         logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
+                    let _skipFirst = true;
                     logItem = objStrReplacer(
                         logItem,
                         largeDataPattern,
-                        largeData => largeData.slice(0, 67) + "..."
+                        largeData => {
+                            if (_skipFirst) {
+                                _skipFirst = false;
+                                return largeData;
+                            }
+                            else return largeData.slice(0, 67) + "...";
+                        },
+                        true
                     );
                 }
                 modifiedParams.push(logItem);
