@@ -880,7 +880,7 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
  * @param {...any} data - The optinnal data to hide
  */
 const appGlobalLogger = (scurb, ...data) => {
-    const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
+    // const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
     // Stringifies an object
@@ -950,43 +950,42 @@ const appGlobalLogger = (scurb, ...data) => {
                 ) logItem = logItem.toString();
 
                 if (typeof logItem === "string") {
-                    for (let j = 0; j < _data.length; j++) {
+                    if (scrub) for (let j = 0; j < _data.length; j++) {
                         // while (logItem.includes(_data[i]))
                         logItem = logItem.replaceAll(
                             _data[i],
                             "**********"
                         );
                     }
-                    let _skipFirst = true;
-                    logItem = logItem.replace(
-                        largeDataPattern,
-                        largeData => {
-                            if (_skipFirst) {
-                                _skipFirst = false;
-                                return largeData;
-                            }
-                            else return largeData.slice(0, 67) + "...";
-                        }
-                    );
+                    // let _skipFirst = true;
+                    // logItem = logItem.replace(
+                    //     largeDataPattern,
+                    //     largeData => {
+                    //         if (_skipFirst) {
+                    //             _skipFirst = false;
+                    //             return largeData;
+                    //         }
+                    //         else return largeData.slice(0, 67) + "...";
+                    //     }
+                    // );
                 }
                 else if (typeof logItem === "object" && logItem !== null) {
                     logItem = objStringify(logItem);
                     if (scurb) for (let j = 0; j < _data.length; j++) {
                         logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
-                    let _skipFirst = true;
-                    logItem = objStrReplacer(
-                        logItem,
-                        largeDataPattern,
-                        largeData => {
-                            if (_skipFirst) {
-                                _skipFirst = false;
-                                return largeData;
-                            }
-                            else return largeData.slice(0, 67) + "...";
-                        },
-                        true
-                    );
+                    // let _skipFirst = true;
+                    // logItem = objStrReplacer(
+                    //     logItem,
+                    //     largeDataPattern,
+                    //     largeData => {
+                    //         if (_skipFirst) {
+                    //             _skipFirst = false;
+                    //             return largeData;
+                    //         }
+                    //         else return largeData.slice(0, 67) + "...";
+                    //     }
+                    // );
                 }
                 modifiedParams.push(logItem);
             }
