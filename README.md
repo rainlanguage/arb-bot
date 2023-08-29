@@ -52,6 +52,7 @@ Other optional arguments are:
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
+- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -112,6 +113,7 @@ which will show:
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
       --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
       -V, --version                  output the version number
       -h, --help                     display help for command
@@ -168,6 +170,9 @@ ORDER_OWNER=""
 
 # Option to filter the subgraph query results with a specific order interpreter address
 ORDER_INTERPRETER=""
+
+# Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+SLEEP=10
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
