@@ -12,7 +12,6 @@ const { getOrderDetails, clear, getConfig } = require("./src");
  */
 const DEFAULT_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
-    rpc                 : process?.env?.RPC_URL,
     mode                : process?.env?.MODE,
     arbAddress          : process?.env?.ARB_ADDRESS,
     arbType             : process?.env?.ARB_TYPE,
@@ -28,6 +27,9 @@ const DEFAULT_OPTIONS = {
     monthlyRatelimit    : process?.env?.MONTHLY_RATELIMIT,
     sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
+    rpc                 : process?.env?.RPC_URL
+        ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
+        : undefined,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined
@@ -36,7 +38,7 @@ const DEFAULT_OPTIONS = {
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
-        .option("-r, --rpc <url>", "RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables")
+        .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
         .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
@@ -133,7 +135,10 @@ const arbRound = async options => {
 const main = async argv => {
     let repetitions = -1;
     const options = await getOptions(argv);
+    if (!options.rpc) throw "undefined RPC URL";
+    const rpcs = [...options.rpc];
     let roundGap = 10000;
+    let rpcTurn = 0;
 
     if (options.repetitions) {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
@@ -146,13 +151,14 @@ const main = async argv => {
 
     appGlobalLogger(
         true,
-        options.rpc,
+        ...options.rpc,
         options.key,
         options.apiKey
     );
 
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
+        options.rpc = rpcs[rpcTurn];
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
@@ -162,9 +168,12 @@ const main = async argv => {
             console.log("\x1b[31m%s\x1b[0m", "An error occured during the round: ");
             console.log(error);
         }
+        if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
+        else rpcTurn++;
         await sleep(roundGap);
     }
     else for (let i = 1; i <= repetitions; i++) {
+        options.rpc = rpcs[rpcTurn];
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", `Round ${i} finished successfully!`);
@@ -176,6 +185,8 @@ const main = async argv => {
             console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i}:`);
             console.log(error);
         }
+        if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
+        else rpcTurn++;
         await sleep(roundGap);
     }
 };

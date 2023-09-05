@@ -33,7 +33,7 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 ```
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-- `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
+- `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
@@ -100,7 +100,7 @@ which will show:
 
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-      -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
+      -r, --rpc <url...>                RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
       -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
@@ -126,8 +126,9 @@ Alternatively all variables can be specified in env variables with below keys:
 # private key of the matchmaker bot's wallet
 BOT_WALLET_PRIVATEKEY="123..."
 
-# RPC URL of the desired network, personal RPC API endpoints are preferened
-RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}"
+# RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
+# for specifying more than 1 RPC in the env, separate them by a comma and a space
+RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
 
 # bot running mode, one of "router", "0x", "curve", "srouter"
 MODE="router"
