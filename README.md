@@ -54,7 +54,7 @@ Other optional arguments are:
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
-- `--srouter-max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
+- `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -129,7 +129,7 @@ BOT_WALLET_PRIVATEKEY="123..."
 # RPC URL of the desired network, personal RPC API endpoints are preferened
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}"
 
-# bot running mode, one of "router", "0x", "curve", "univ2"
+# bot running mode, one of "router", "0x", "curve", "srouter"
 MODE="router"
 
 # arb contract address
@@ -199,7 +199,7 @@ const configOptions = {
   zeroExApiKey          : "...",   // required for '0x' mode
   monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
-  maxProfit             : true,
+  maxProfit             : true,    // option to maximize profit for 'srouter' mode
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"

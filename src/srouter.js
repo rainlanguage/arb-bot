@@ -92,7 +92,7 @@ const prepare = async(bundledOrders, lps, config, gasPrice, sort = true) => {
 };
 
 /**
- * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with router contract
+ * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with specialized router contract
  *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
