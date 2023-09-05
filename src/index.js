@@ -8,6 +8,7 @@ const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
+const { srouterClear } = require("./srouter");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
@@ -19,10 +20,6 @@ const configOptions = {
      * The 0x API key
      */
     zeroExApiKey: undefined,
-    /**
-     * Use specific 0x Arb contract, old version
-     */
-    useZeroexArb: false,
     /**
      * List of liquidity providers for router contract tomoperate on
      */
@@ -38,7 +35,11 @@ const configOptions = {
     /**
      * Option to shorten large data fields in logs
      */
-    shortenLargeLogs: true
+    shortenLargeLogs: true,
+    /**
+     * Maximize profit for "srouter" mode, comes at the cost of RPC calls
+     */
+    maxProfit: false
 };
 
 /**
@@ -133,6 +134,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters) => {
  * @param {string} walletPrivateKey - The wallet private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
+ * @param {string} arbType - The type of the Arb contract
  * @param {configOptions} options - (optional) Optional parameters, 0x API key, liquidity providers and monthly ratelimit
  * @returns The configuration object
  */
@@ -141,6 +143,7 @@ const getConfig = async(
     walletPrivateKey,
     orderbookAddress,
     arbAddress,
+    arbType,
     options = configOptions
 ) => {
 
@@ -168,10 +171,11 @@ const getConfig = async(
     config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
     config.arbAddress       = arbAddress;
+    config.arbType          = arbType?.toLowerCase();
     config.lps              = options?.liquidityProviders;
     config.apiKey           = options?.zeroExApiKey;
     config.monthlyRatelimit = options?.monthlyRatelimit;
-    config.useZeroexArb     = !!options?.useZeroexArb;
+    config.maxProfit        = !!options?.maxProfit;
     return config;
 };
 
@@ -190,6 +194,7 @@ const clear = async(
     ordersDetails,
     options = clearOptions
 ) => {
+    const _mode = mode.toLowerCase();
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
     const prioritization = options.prioritization !== undefined
@@ -198,13 +203,21 @@ const clear = async(
     const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
-    if (mode.toLowerCase() === "0x") return await zeroExClear(
+
+    if (_mode !== "srouter") {
+        if (!config.arbType) throw "undefined arb contract type";
+        if (!/^flash-loan-v[23]$|^order-taker$/.test(config.arbType)) {
+            throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
+        }
+    }
+
+    if (_mode === "0x") return await zeroExClear(
         config,
         ordersDetails,
         gasCoveragePercentage,
         prioritization
     );
-    else if (mode.toLowerCase() === "curve") {
+    else if (_mode === "curve") {
         if (majorVersion >= 18) return await curveClear(
             config,
             ordersDetails,
@@ -213,7 +226,7 @@ const clear = async(
         );
         else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
     }
-    else if (mode.toLowerCase() === "router") {
+    else if (_mode === "router") {
         if (majorVersion >= 18) return await routerClear(
             config,
             ordersDetails,
@@ -222,7 +235,16 @@ const clear = async(
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
-    else throw "unknown mode, must be '0x' or 'curve' or 'router'";
+    else if (_mode === "srouter") {
+        if (majorVersion >= 18) return await srouterClear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
+    }
+    else throw "unknown mode, must be either of '0x' or 'curve' or 'router' or 'srouter'";
 };
 
 module.exports = {

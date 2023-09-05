@@ -1,14 +1,14 @@
 const ethers = require("ethers");
 const { Router } = require("@sushiswap/router");
 const { Token } = require("@sushiswap/currency");
-const { genericArbAbi, orderbookAbi, routeProcessor3Abi } = require("./abis");
+const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("./abis");
 const {
     getIncome,
     processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
-    estimateProfit,
+    // estimateProfit,
     bundleTakeOrders,
     fetchPoolsForTokenWrapper
 } = require("./utils");
@@ -19,23 +19,16 @@ const {
  * bundled orders based on the best deals
  *
  * @param {any[]} bundledOrders - The bundled orders array
- * @param {any} dataFetcher - The DataFetcher instance
+ * @param {string[]} lps - The list of liquidity providers
  * @param {any} config - The network config data
  * @param {ethers.BigNumber} gasPrice - The network gas price
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true) => {
+const prepare = async(bundledOrders, lps, config, gasPrice, sort = true) => {
     for (let i = 0; i < bundledOrders.length; i++) {
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
         try {
-            // let cumulativeAmountFixed = ethers.constants.Zero;
-            // bOrder.takeOrders.forEach(v => {
-            //     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
-            // });
-            // const cumulativeAmount = cumulativeAmountFixed.div(
-            //     "1" + "0".repeat(18 - bOrder.sellTokenDecimals)
-            // );
             const fromToken = new Token({
                 chainId: config.chainId,
                 decimals: bOrder.sellTokenDecimals,
@@ -48,6 +41,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
                 address: bOrder.buyToken,
                 symbol: bOrder.buyTokenSymbol
             });
+            const dataFetcher = getDataFetcher(config, lps);
             await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
             const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
             const route = Router.findBestRoute(
@@ -67,6 +61,7 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
             // const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
             const price = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
             bOrder.initPrice = price;
+            bOrder.dataFetcher = dataFetcher;
 
             console.log(`Current market price for ${pair} for: ${ethers.utils.formatEther(price)}`);
             console.log("Current ratio of the orders in this token pair:");
@@ -119,13 +114,15 @@ const routerClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
-    const dataFetcher = getDataFetcher(config, processLps(config.lps));
-    const signer = config.signer;
-    const arbAddress = config.arbAddress;
-    const orderbookAddress = config.orderbookAddress;
+    const lps               = processLps(config.lps);
+    const dataFetcher       = getDataFetcher(config, lps);
+    const signer            = config.signer;
+    const arbAddress        = config.arbAddress;
+    const orderbookAddress  = config.orderbookAddress;
+    const arbType           = config.arbType;
 
     // instantiating arb contract
-    const arb = new ethers.Contract(arbAddress, genericArbAbi, signer);
+    const arb = new ethers.Contract(arbAddress, arbAbis[arbType], signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
@@ -150,7 +147,7 @@ const routerClear = async(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
-        bundledOrders = await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
+        bundledOrders = await prepare(bundledOrders, lps, config, gasPrice, prioritization);
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -222,7 +219,6 @@ const routerClear = async(
                 v => !v.quoteAmount.isZero()
             );
 
-
             if (!bundledOrders[i].takeOrders.length) console.log(
                 "All orders of this token pair have empty vault balance, skipping...",
                 "\n"
@@ -251,8 +247,8 @@ const routerClear = async(
                     symbol: bundledOrders[i].buyTokenSymbol
                 });
 
-                await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
-                const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+                // await fetchPoolsForTokenWrapper(bundledOrders[i].dataFetcher, fromToken, toToken);
+                const pcMap = bundledOrders[i].dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
@@ -301,7 +297,7 @@ const routerClear = async(
                     //     // providers,
                     //     // poolFilter
                     // );
-                    if (route.status == "NoWay") throw "could not find any route for this token pair";
+                    // if (route.status == "NoWay") throw "could not find any route for this token pair";
                     let routeText = "";
                     route.legs.forEach((v, i) => {
                         if (i === 0) routeText =
@@ -322,7 +318,7 @@ const routerClear = async(
                             v.poolName +
                             ")";
                     });
-                    console.log(">>> Route portions: ", routeText);
+                    console.log(">>> Route portions: ", routeText, "\n");
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,
                         route,
@@ -333,22 +329,26 @@ const routerClear = async(
                         // permits
                         // "0.005"
                     );
+
                     const takeOrdersConfigStruct = {
                         output: bundledOrders[i].buyToken,
                         input: bundledOrders[i].sellToken,
-                        // max and min input should be exactly the same as quoted sell amount
-                        // this makes sure the cleared order amount will exactly match the 0x quote
+                        // for flash loan mode max and min input should be exactly the same as quoted sell
+                        // amount this makes sure the cleared order amount will exactly match the 0x quote
                         minimumInput: bundledQuoteAmount,
                         maximumInput: bundledQuoteAmount,
                         maximumIORatio: ethers.constants.MaxUint256,
                         orders: bundledOrders[i].takeOrders.map(v => v.takeOrder),
                     };
+                    if (/^flash-loan-v3$|^order-taker$/.test(arbType)) {
+                        takeOrdersConfigStruct.data = "0x00";
+                        delete takeOrdersConfigStruct.output;
+                        delete takeOrdersConfigStruct.input;
+                        if (arbType === "flash-loan-v3") takeOrdersConfigStruct.data = "0x";
+                    }
 
-                    // submit the transaction
+                    // building and submit the transaction
                     try {
-                        // const guaranteedAmount = bundledQuoteAmount
-                        //     .mul(ethers.utils.parseUnits(("1" - slippage).toString(), 2))
-                        //     .div("100");
                         const iface = new ethers.utils.Interface(routeProcessor3Abi);
                         const fnData = iface.encodeFunctionData(
                             "processRoute",
@@ -364,7 +364,7 @@ const routerClear = async(
                                 rpParams.routeCode
                             ]
                         );
-                        const data = ethers.utils.defaultAbiCoder.encode(
+                        const exchangeData = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
                                 config.routeProcessor3Address,
@@ -372,7 +372,9 @@ const routerClear = async(
                                 fnData
                             ]
                         );
-                        console.log(">>> Estimating the profit for this token pair...", "\n");
+                        if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
+
+                        // console.log(">>> Estimating the profit for this token pair...", "\n");
                         const ethPrice = await getEthPrice(
                             config,
                             bundledOrders[i].buyToken,
@@ -382,149 +384,169 @@ const routerClear = async(
                         );
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
-                            console.log("Block Number: " + await signer.provider.getBlockNumber());
-                            const gasLimit = await arb.estimateGas.arb(
-                                takeOrdersConfigStruct,
-                                // set to zero because only profitable transactions are submitted
-                                0,
-                                data,
-                                { gasPrice }
-                            );
+                            const rawtx = {
+                                data: arb.interface.encodeFunctionData(
+                                    "arb",
+                                    arbType === "order-taker"
+                                        ? [
+                                            takeOrdersConfigStruct,
+                                            "0"
+                                        ]
+                                        : [
+                                            takeOrdersConfigStruct,
+                                            "0",
+                                            exchangeData
+                                        ]
+                                ),
+                                to: arb.address,
+                                gasPrice
+                            };
+                            console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                            let gasLimit = await signer.estimateGas(rawtx);
+                            gasLimit = gasLimit.mul("11").div("10");
+                            rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
-                            const maxEstimatedProfit = estimateProfit(
-                                ethers.utils.formatEther(bundledOrders[i].initPrice),
-                                ethPrice,
-                                bundledOrders[i],
-                                gasCost,
-                                gasCoveragePercentage
-                            ).div(
-                                "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
-                            );
-                            console.log(`Max Estimated Profit: ${
-                                ethers.utils.formatUnits(
-                                    maxEstimatedProfit,
-                                    bundledOrders[i].buyTokenDecimals
-                                )
-                            } ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                            // const maxEstimatedProfit = estimateProfit(
+                            //     ethers.utils.formatEther(bundledOrders[i].initPrice),
+                            //     ethPrice,
+                            //     bundledOrders[i],
+                            //     gasCost,
+                            //     gasCoveragePercentage
+                            // ).div(
+                            //     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
+                            // );
+                            // console.log(`Max Estimated Profit: ${
+                            //     ethers.utils.formatUnits(
+                            //         maxEstimatedProfit,
+                            //         bundledOrders[i].buyTokenDecimals
+                            //     )
+                            // } ${bundledOrders[i].buyTokenSymbol}`, "\n");
 
-                            if (maxEstimatedProfit.isNegative()) console.log(
-                                ">>> Skipping because estimated negative profit for this token pair",
+                            // if (maxEstimatedProfit.isNegative()) console.log(
+                            //     ">>> Skipping because estimated negative profit for this token pair",
+                            //     "\n"
+                            // );
+                            // else {
+                            console.log(">>> Trying to submit the transaction for this token pair...", "\n");
+                            const gasCostInToken = ethers.utils.parseUnits(
+                                ethPrice
+                            ).mul(
+                                gasCost
+                            ).div(
+                                "1" + "0".repeat(
+                                    36 - bundledOrders[i].buyTokenDecimals
+                                )
+                            );
+                            rawtx.data = arb.interface.encodeFunctionData(
+                                "arb",
+                                arbType === "order-taker"
+                                    ? [
+                                        takeOrdersConfigStruct,
+                                        gasCostInToken.mul(gasCoveragePercentage).div(100)
+                                    ]
+                                    : [
+                                        takeOrdersConfigStruct,
+                                        gasCostInToken.mul(gasCoveragePercentage).div(100),
+                                        exchangeData
+                                    ]
+                            );
+                            console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                            const tx = await signer.sendTransaction(rawtx);
+                            console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+                            console.log(
+                                ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                 "\n"
                             );
-                            else {
-                                console.log(">>> Trying to submit the transaction for this token pair...", "\n");
-                                const gasCostInToken = ethers.utils.parseUnits(
+
+                            try {
+                                const receipt = await tx.wait();
+                                const income = getIncome(signer, receipt);
+                                const clearActualPrice = getActualPrice(
+                                    receipt,
+                                    orderbookAddress,
+                                    arbAddress,
+                                    cumulativeAmountFixed,
+                                    bundledOrders[i].buyTokenDecimals
+                                );
+                                const actualGasCost = ethers.BigNumber.from(
+                                    receipt.effectiveGasPrice
+                                ).mul(receipt.gasUsed);
+                                const actualGasCostInToken = ethers.utils.parseUnits(
                                     ethPrice
                                 ).mul(
-                                    gasCost
+                                    actualGasCost
                                 ).div(
                                     "1" + "0".repeat(
                                         36 - bundledOrders[i].buyTokenDecimals
                                     )
                                 );
-                                console.log("Block Number: " + await signer.provider.getBlockNumber());
-                                const tx = await arb.arb(
-                                    takeOrdersConfigStruct,
-                                    // set to zero because only profitable transactions are submitted
-                                    gasCostInToken.mul(gasCoveragePercentage).div(100),
-                                    data,
-                                    { gasPrice, gasLimit }
-                                );
-                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+                                const netProfit = income
+                                    ? income.sub(actualGasCostInToken)
+                                    : undefined;
                                 console.log(
-                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
+                                    "\x1b[34m%s\x1b[0m",
+                                    `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
                                     "\n"
                                 );
-
-                                try {
-                                    const receipt = await tx.wait();
-                                    const income = getIncome(signer, receipt);
-                                    const clearActualPrice = getActualPrice(
-                                        receipt,
-                                        orderbookAddress,
-                                        arbAddress,
-                                        cumulativeAmountFixed,
-                                        bundledOrders[i].buyTokenDecimals
-                                    );
-                                    const actualGasCost = ethers.BigNumber.from(
-                                        receipt.effectiveGasPrice
-                                    ).mul(receipt.gasUsed);
-                                    const actualGasCostInToken = ethers.utils.parseUnits(
-                                        ethPrice
-                                    ).mul(
-                                        actualGasCost
-                                    ).div(
-                                        "1" + "0".repeat(
-                                            36 - bundledOrders[i].buyTokenDecimals
-                                        )
-                                    );
-                                    const netProfit = income
-                                        ? income.sub(actualGasCostInToken)
-                                        : undefined;
-                                    console.log(
-                                        "\x1b[34m%s\x1b[0m",
-                                        `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
-                                        "\n"
-                                    );
-                                    console.log(
-                                        "\x1b[36m%s\x1b[0m",
-                                        `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
-                                    );
-                                    console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
-                                    console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
-                                        ethers.utils.formatUnits(
-                                            bundledQuoteAmount,
-                                            bundledOrders[i].sellTokenDecimals
-                                        )
-                                    } ${bundledOrders[i].sellTokenSymbol}`);
-                                    console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
-                                        ethers.utils.formatEther(actualGasCost)
-                                    } ${
-                                        config.nativeToken.symbol
-                                    }`, "\n");
-                                    if (income) {
-                                        console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
-                                            income,
-                                            bundledOrders[i].buyTokenDecimals
-                                        )} ${bundledOrders[i].buyTokenSymbol}`);
-                                        console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
-                                            netProfit,
-                                            bundledOrders[i].buyTokenDecimals
-                                        )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
-                                    }
-
-                                    report.push({
-                                        transactionHash: receipt.transactionHash,
-                                        tokenPair:
-                                            bundledOrders[i].buyTokenSymbol +
-                                            "/" +
-                                            bundledOrders[i].sellTokenSymbol,
-                                        buyToken: bundledOrders[i].buyToken,
-                                        buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
-                                        sellToken: bundledOrders[i].sellToken,
-                                        sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
-                                        clearedAmount: bundledQuoteAmount.toString(),
-                                        clearPrice: ethers.utils.formatEther(
-                                            bundledOrders[i].initPrice
-                                        ),
-                                        // clearGuaranteedPrice: ethers.utils.formatUnits(
-                                        //     guaranteedAmount,
-                                        //     bundledOrders[i].buyTokenDecimals
-                                        // ),
-                                        clearActualPrice,
-                                        maxEstimatedProfit,
-                                        gasUsed: receipt.gasUsed,
-                                        gasCost: actualGasCost,
+                                console.log(
+                                    "\x1b[36m%s\x1b[0m",
+                                    `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
+                                );
+                                console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
+                                console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
+                                    ethers.utils.formatUnits(
+                                        bundledQuoteAmount,
+                                        bundledOrders[i].sellTokenDecimals
+                                    )
+                                } ${bundledOrders[i].sellTokenSymbol}`);
+                                console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
+                                    ethers.utils.formatEther(actualGasCost)
+                                } ${
+                                    config.nativeToken.symbol
+                                }`, "\n");
+                                if (income) {
+                                    console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
                                         income,
+                                        bundledOrders[i].buyTokenDecimals
+                                    )} ${bundledOrders[i].buyTokenSymbol}`);
+                                    console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
                                         netProfit,
-                                        clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),
-                                    });
+                                        bundledOrders[i].buyTokenDecimals
+                                    )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
                                 }
-                                catch (error) {
-                                    console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
-                                    console.log(error, "\n");
-                                }
+
+                                report.push({
+                                    transactionHash: receipt.transactionHash,
+                                    tokenPair:
+                                        bundledOrders[i].buyTokenSymbol +
+                                        "/" +
+                                        bundledOrders[i].sellTokenSymbol,
+                                    buyToken: bundledOrders[i].buyToken,
+                                    buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
+                                    sellToken: bundledOrders[i].sellToken,
+                                    sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
+                                    clearedAmount: bundledQuoteAmount.toString(),
+                                    clearPrice: ethers.utils.formatEther(
+                                        bundledOrders[i].initPrice
+                                    ),
+                                    // clearGuaranteedPrice: ethers.utils.formatUnits(
+                                    //     guaranteedAmount,
+                                    //     bundledOrders[i].buyTokenDecimals
+                                    // ),
+                                    clearActualPrice,
+                                    // maxEstimatedProfit,
+                                    gasUsed: receipt.gasUsed,
+                                    gasCost: actualGasCost,
+                                    income,
+                                    netProfit,
+                                    clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),
+                                });
                             }
+                            catch (error) {
+                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
+                                console.log(error, "\n");
+                            }
+                        // }
                         }
                     }
                     catch (error) {

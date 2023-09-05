@@ -7,8 +7,8 @@ const erc20Abi = [
 ];
 
 /**
-* Minimal ABI for Orderbook contract only including vaultBalance() function
-*/
+ * Minimal ABI for Orderbook contract only including vaultBalance() function
+ */
 const orderbookAbi = [
     `function vaultBalance(
         address owner,
@@ -18,8 +18,8 @@ const orderbookAbi = [
 ];
 
 /**
-* Minimal ABI for IInterpreterV1 contract only including eval() function
-*/
+ * Minimal ABI for IInterpreterV1 contract only including eval() function
+ */
 const interpreterAbi = [
     `function eval(
       address store,
@@ -30,8 +30,8 @@ const interpreterAbi = [
 ];
 
 /**
-* Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
-*/
+ * Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
+ */
 const routeProcessor3Abi = [
     `function processRoute(
         address tokenIn,
@@ -44,371 +44,199 @@ const routeProcessor3Abi = [
 ];
 
 /**
-* Minimal ABI for Generic Arb contract only including arb() function
-*/
-const genericArbAbi = [
-    {
-        "inputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "address",
-                        "name": "output",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "input",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "minimumInput",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "maximumInput",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "maximumIORatio",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "address",
-                                        "name": "owner",
-                                        "type": "address"
-                                    },
-                                    {
-                                        "internalType": "bool",
-                                        "name": "handleIO",
-                                        "type": "bool"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "contract IInterpreterV1",
-                                                "name": "interpreter",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "contract IInterpreterStoreV1",
-                                                "name": "store",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "address",
-                                                "name": "expression",
-                                                "type": "address"
-                                            }
-                                        ],
-                                        "internalType": "struct Evaluable",
-                                        "name": "evaluable",
-                                        "type": "tuple"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "address",
-                                                "name": "token",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "uint8",
-                                                "name": "decimals",
-                                                "type": "uint8"
-                                            },
-                                            {
-                                                "internalType": "uint256",
-                                                "name": "vaultId",
-                                                "type": "uint256"
-                                            }
-                                        ],
-                                        "internalType": "struct IO[]",
-                                        "name": "validInputs",
-                                        "type": "tuple[]"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "address",
-                                                "name": "token",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "uint8",
-                                                "name": "decimals",
-                                                "type": "uint8"
-                                            },
-                                            {
-                                                "internalType": "uint256",
-                                                "name": "vaultId",
-                                                "type": "uint256"
-                                            }
-                                        ],
-                                        "internalType": "struct IO[]",
-                                        "name": "validOutputs",
-                                        "type": "tuple[]"
-                                    }
-                                ],
-                                "internalType": "struct Order",
-                                "name": "order",
-                                "type": "tuple"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "inputIOIndex",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "outputIOIndex",
-                                "type": "uint256"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "address",
-                                        "name": "signer",
-                                        "type": "address"
-                                    },
-                                    {
-                                        "internalType": "uint256[]",
-                                        "name": "context",
-                                        "type": "uint256[]"
-                                    },
-                                    {
-                                        "internalType": "bytes",
-                                        "name": "signature",
-                                        "type": "bytes"
-                                    }
-                                ],
-                                "internalType": "struct SignedContextV1[]",
-                                "name": "signedContext",
-                                "type": "tuple[]"
-                            }
-                        ],
-                        "internalType": "struct TakeOrderConfig[]",
-                        "name": "orders",
-                        "type": "tuple[]"
-                    }
-                ],
-                "internalType": "struct TakeOrdersConfig",
-                "name": "takeOrders_",
-                "type": "tuple"
-            },
-            {
-                "internalType": "uint256",
-                "name": "minimumSenderOutput_",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bytes",
-                "name": "exchangeData_",
-                "type": "bytes"
-            }
-        ],
-        "name": "arb",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    }
+ * Minimal ABI for UniswapV2Route02 contract only including getAmountsOut() and get AmountsIn() functions
+ */
+const uniswapV2Route02Abi = [
+    `function getAmountsOut(
+        uint amountIn, 
+        address[] calldata path
+    ) external view returns (uint[] memory amounts)`,
+    `function getAmountsIn(
+        uint amountOut, 
+        address[] calldata path
+    ) external view returns (uint[] memory amounts)`
 ];
 
 /**
-* Minimal ABI for 0x Arb contract only including arb() function
-*/
-const zeroExArbAbi = [
-    {
-        "inputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "address",
-                        "name": "output",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "input",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "minimumInput",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "maximumInput",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "maximumIORatio",
-                        "type": "uint256"
-                    },
-                    {
-                        "components": [
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "address",
-                                        "name": "owner",
-                                        "type": "address"
-                                    },
-                                    {
-                                        "internalType": "bool",
-                                        "name": "handleIO",
-                                        "type": "bool"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "contract IInterpreterV1",
-                                                "name": "interpreter",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "contract IInterpreterStoreV1",
-                                                "name": "store",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "address",
-                                                "name": "expression",
-                                                "type": "address"
-                                            }
-                                        ],
-                                        "internalType": "struct Evaluable",
-                                        "name": "evaluable",
-                                        "type": "tuple"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "address",
-                                                "name": "token",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "uint8",
-                                                "name": "decimals",
-                                                "type": "uint8"
-                                            },
-                                            {
-                                                "internalType": "uint256",
-                                                "name": "vaultId",
-                                                "type": "uint256"
-                                            }
-                                        ],
-                                        "internalType": "struct IO[]",
-                                        "name": "validInputs",
-                                        "type": "tuple[]"
-                                    },
-                                    {
-                                        "components": [
-                                            {
-                                                "internalType": "address",
-                                                "name": "token",
-                                                "type": "address"
-                                            },
-                                            {
-                                                "internalType": "uint8",
-                                                "name": "decimals",
-                                                "type": "uint8"
-                                            },
-                                            {
-                                                "internalType": "uint256",
-                                                "name": "vaultId",
-                                                "type": "uint256"
-                                            }
-                                        ],
-                                        "internalType": "struct IO[]",
-                                        "name": "validOutputs",
-                                        "type": "tuple[]"
-                                    }
-                                ],
-                                "internalType": "struct Order",
-                                "name": "order",
-                                "type": "tuple"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "inputIOIndex",
-                                "type": "uint256"
-                            },
-                            {
-                                "internalType": "uint256",
-                                "name": "outputIOIndex",
-                                "type": "uint256"
-                            },
-                            {
-                                "components": [
-                                    {
-                                        "internalType": "address",
-                                        "name": "signer",
-                                        "type": "address"
-                                    },
-                                    {
-                                        "internalType": "uint256[]",
-                                        "name": "context",
-                                        "type": "uint256[]"
-                                    },
-                                    {
-                                        "internalType": "bytes",
-                                        "name": "signature",
-                                        "type": "bytes"
-                                    }
-                                ],
-                                "internalType": "struct SignedContextV1[]",
-                                "name": "signedContext",
-                                "type": "tuple[]"
-                            }
-                        ],
-                        "internalType": "struct TakeOrderConfig[]",
-                        "name": "orders",
-                        "type": "tuple[]"
-                    }
-                ],
-                "internalType": "struct TakeOrdersConfig",
-                "name": "takeOrders_",
-                "type": "tuple"
-            },
-            {
-                "internalType": "uint256",
-                "name": "minimumSenderOutput_",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "zeroExSpender_",
-                "type": "address"
-            },
-            {
-                "internalType": "bytes",
-                "name": "zeroExData_",
-                "type": "bytes"
-            }
-        ],
-        "name": "arb",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    }
-];
+ * Minimal ABI for Arb contracts paired with "types" keys only including arb() function
+ */
+const arbAbis = {
+    // old generic flash borrower, obv2
+    "flash-loan-v2": [
+        `function arb(
+            (
+                address output, 
+                address input, 
+                uint256 minimumInput, 
+                uint256 maximumInput, 
+                uint256 maximumIORatio, 
+                (
+                    (
+                        address owner, 
+                        bool handleIO, 
+                        (
+                            address interpreter, 
+                            address store, 
+                            address expression
+                        ) evaluable, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validInputs, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validOutputs
+                    ) order, 
+                    uint256 inputIOIndex, 
+                    uint256 outputIOIndex, 
+                    (
+                        address signer, 
+                        uint256[] context, 
+                        bytes signature
+                    )[] signedContext
+                )[] orders
+            ) takeOrders, 
+            uint256 minimumSenderOutput, 
+            bytes exchangeData
+        ) external payable`
+    ],
+
+    // new flash borrower, obv3
+    "flash-loan-v3": [
+        `function arb(
+            (
+                uint256 minimumInput, 
+                uint256 maximumInput, 
+                uint256 maximumIORatio, 
+                (
+                    (
+                        address owner, 
+                        bool handleIO, 
+                        (
+                            address interpreter, 
+                            address store, 
+                            address expression
+                        ) evaluable, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validInputs, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validOutputs
+                    ) order, 
+                    uint256 inputIOIndex, 
+                    uint256 outputIOIndex, 
+                    (
+                        address signer, 
+                        uint256[] context, 
+                        bytes signature
+                    )[] signedContext
+                )[] orders,
+                bytes data
+            ) takeOrders, 
+            uint256 minimumSenderOutput, 
+            bytes exchangeData
+        ) external payable`
+    ],
+
+    // arb order taker, obv3
+    "order-taker": [
+        `function arb(
+            (
+                uint256 minimumInput, 
+                uint256 maximumInput, 
+                uint256 maximumIORatio, 
+                (
+                    (
+                        address owner, 
+                        bool handleIO, 
+                        (
+                            address interpreter, 
+                            address store, 
+                            address expression
+                        ) evaluable, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validInputs, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validOutputs
+                    ) order, 
+                    uint256 inputIOIndex, 
+                    uint256 outputIOIndex, 
+                    (
+                        address signer, 
+                        uint256[] context, 
+                        bytes signature
+                    )[] signedContext
+                )[] orders,
+                bytes data
+            ) takeOrders, 
+            uint256 minimumSenderOutput
+        ) external payable`
+    ],
+
+    // router arb tpye
+    "srouter": [
+        `function arb(
+            (
+                uint256 minimumInput, 
+                uint256 maximumInput, 
+                uint256 maximumIORatio, 
+                (
+                    (
+                        address owner, 
+                        bool handleIO, 
+                        (
+                            address interpreter, 
+                            address store, 
+                            address expression
+                        ) evaluable, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validInputs, 
+                        (
+                            address token, 
+                            uint8 decimals, 
+                            uint256 vaultId
+                        )[] validOutputs
+                    ) order, 
+                    uint256 inputIOIndex, 
+                    uint256 outputIOIndex, 
+                    (
+                        address signer, 
+                        uint256[] context, 
+                        bytes signature
+                    )[] signedContext
+                )[] orders,
+                bytes data
+            ) takeOrders, 
+            uint256 minimumSenderOutput
+        ) external payable`
+    ]
+};
 
 module.exports = {
+    arbAbis,
     erc20Abi,
     orderbookAbi,
     interpreterAbi,
     routeProcessor3Abi,
-    genericArbAbi,
-    zeroExArbAbi
+    uniswapV2Route02Abi
+    // genericArbAbi,
+    // zeroExArbAbi,
+    // arbTakerAbi
 };
