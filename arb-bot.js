@@ -26,6 +26,7 @@ const DEFAULT_OPTIONS = {
     orderOwner          : process?.env?.ORDER_OWNER,
     orderInterpreter    : process?.env?.ORDER_INTERPRETER,
     monthlyRatelimit    : process?.env?.MONTHLY_RATELIMIT,
+    sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -50,6 +51,7 @@ const getOptions = async argv => {
         .option("--order-owner <address>", "Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables")
         .option("--order-interpreter <address>", "Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables")
         .option("--monthly-ratelimit <integer>", "0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables")
+        .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -75,6 +77,7 @@ const getOptions = async argv => {
     cmdOptions.repetitions      = cmdOptions.repetitions        || DEFAULT_OPTIONS.repetitions;
     cmdOptions.orderHash        = cmdOptions.orderHash          || DEFAULT_OPTIONS.orderHash;
     cmdOptions.orderOwner       = cmdOptions.orderOwner         || DEFAULT_OPTIONS.orderOwner;
+    cmdOptions.sleep            = cmdOptions.sleep              || DEFAULT_OPTIONS.sleep;
     cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || DEFAULT_OPTIONS.orderInterpreter;
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || DEFAULT_OPTIONS.monthlyRatelimit;
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
@@ -129,12 +132,16 @@ const arbRound = async options => {
 
 const main = async argv => {
     let repetitions = -1;
-    const roundGap = 10000;
     const options = await getOptions(argv);
+    let roundGap = 10000;
 
     if (options.repetitions) {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";
+    }
+    if (options.sleep) {
+        if (/^\d+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
+        else throw "invalid sleep value, must be an integer greater than equal 0";
     }
 
     appGlobalLogger(

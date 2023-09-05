@@ -53,6 +53,7 @@ Other optional arguments are:
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
+- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--srouter-max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -114,6 +115,7 @@ which will show:
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
+      --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
       --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
@@ -173,6 +175,9 @@ ARB_TYPE="flash-loan-v2"
 
 # Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls
 MAX_PROFIT="true"
+
+# Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+SLEEP=10
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -194,6 +199,7 @@ const configOptions = {
   zeroExApiKey          : "...",   // required for '0x' mode
   monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
+  maxProfit             : true,
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
