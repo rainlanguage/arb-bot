@@ -1,13 +1,19 @@
-const { OpMeta } = require("./meta");
+const { OpMeta, NPOpMeta } = require("./meta");
 const { basicDeploy } = require("../utils");
 const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./rainterpreterDeploy");
 const ExpressionDeployerArtifact = require("../abis/RainterpreterExpressionDeployer.json");
+const ExpressionDeployerNPArtifact = require("../abis/RainterpreterExpressionDeployerNP.json");
 
 
-exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store) => {
+exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store, np = false) => {
     return await basicDeploy(
-        ExpressionDeployerArtifact,
-        {
+        np ? ExpressionDeployerNPArtifact : ExpressionDeployerArtifact,
+        np ? {
+            interpreter: interpreter.address,
+            store: store.address,
+            authoringMeta: NPOpMeta,
+        }
+        : {
             interpreter: interpreter.address,
             store: store.address,
             meta: OpMeta,

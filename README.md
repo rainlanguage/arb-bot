@@ -34,9 +34,10 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
+- `--arb-contract-type`, Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
 
 as well as at least one or both of below arguments:
 
@@ -52,7 +53,7 @@ Other optional arguments are:
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
-- `--use-zeroex-arb`, Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
+- `--srouter-max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -99,11 +100,12 @@ which will show:
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url>                RPC URL that will be provider for interacting with evm. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router`, Will override the 'MODE' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
+      --arb-contract-type <string>   Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
       -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
       -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
       -g, --gas-coverage <integer>   The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
@@ -112,7 +114,7 @@ which will show:
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
-      --use-zeroex-arb               Option to use old version of Arb contract for `0x` mode, i.e dedicated 0x Arb contract, ONLY available for `0x` mode
+      --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -125,7 +127,7 @@ BOT_WALLET_PRIVATEKEY="123..."
 # RPC URL of the desired network, personal RPC API endpoints are preferened
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}"
 
-# bot running mode, one of "router", "0x", "curve"
+# bot running mode, one of "router", "0x", "curve", "univ2"
 MODE="router"
 
 # arb contract address
@@ -154,9 +156,6 @@ GAS_COVER="100"
 # 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
 MONTHLY_RATELIMIT=200000
 
-# option to use old version of arb contract for 0x mode, i.e dedicated 0x arb contract
-USE_ZEROEX_ARB="false"
-
 # an integer used for specifiying the number repetitions for the app to run, if not set will run for infinite number of times
 REPETITIONS=1
 
@@ -168,6 +167,12 @@ ORDER_OWNER=""
 
 # Option to filter the subgraph query results with a specific order interpreter address
 ORDER_INTERPRETER=""
+
+# Type of the Arb contract, can be either of 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker', not availabe for 'srouter' mode since it is a specialized mode
+ARB_TYPE="flash-loan-v2"
+
+# Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls
+MAX_PROFIT="true"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -187,7 +192,6 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 // options (all properties are optional)
 const configOptions = {
   zeroExApiKey          : "...",   // required for '0x' mode
-  useZeroexArb          : false,   // option to use old zeroex arb contract
   monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
@@ -201,7 +205,7 @@ const clearOptions = {
 }
 
 // to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
+const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, arbType, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 
@@ -216,7 +220,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const mode = "router" // mode can be one of "router", "0x" or "curve"
+const mode = "srouter" // mode can be one of "router", "0x" or "curve" or "srouter"
 const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>

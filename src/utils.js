@@ -365,7 +365,7 @@ const sleep = async(ms) => {
  */
 const getIncome = (signer, receipt) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    return receipt.events.filter(
+    if (receipt.events) return receipt.events.filter(
         v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
     ).map(v => {
         try{
@@ -375,6 +375,53 @@ const getIncome = (signer, receipt) => {
             return undefined;
         }
     })[0]?.value;
+    else if (receipt.logs) return receipt.logs.filter(
+        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
+    ).map(v => {
+        try{
+            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+        }
+        catch {
+            return undefined;
+        }
+    })[0]?.value;
+    else return undefined;
+};
+
+/**
+ * Extracts the actual clear amount (received token value) from transaction receipt
+ *
+ * @param {string} arbAddress - The arb contract address
+ * @param {any} receipt - The transaction receipt
+ * @returns The actual clear amount
+ */
+const getActualClearAmount = (arbAddress, obAddress, receipt) => {
+    const erc20Interface = new ethers.utils.Interface(erc20Abi);
+    if (receipt.logs) return receipt.logs.map(v => {
+        try{
+            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+        }
+        catch {
+            return undefined;
+        }
+    }).filter(v =>
+        v !== undefined &&
+        BigNumber.from(v.to).eq(arbAddress) &&
+        BigNumber.from(v.from).eq(obAddress)
+    )[0]?.value;
+    else if (receipt.events) receipt.events.map(v => {
+        try{
+            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+        }
+        catch {
+            return undefined;
+        }
+    }).filter(v =>
+        v !== undefined &&
+        BigNumber.from(v.to).eq(arbAddress) &&
+        BigNumber.from(v.from).eq(obAddress)
+    )[0]?.value;
+    else return undefined;
 };
 
 /**
@@ -389,17 +436,29 @@ const getIncome = (signer, receipt) => {
  */
 const getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    const eventObj = receipt.events.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    }).filter(v => v &&
-        !ethers.BigNumber.from(v.from).eq(orderbook) &&
-        ethers.BigNumber.from(v.to).eq(arb)
-    );
+    const eventObj = receipt.events
+        ? receipt.events.map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        }).filter(v => v &&
+            !ethers.BigNumber.from(v.from).eq(orderbook) &&
+            ethers.BigNumber.from(v.to).eq(arb)
+        )
+        : receipt.logs?.map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        }).filter(v => v &&
+            !ethers.BigNumber.from(v.from).eq(orderbook) &&
+            ethers.BigNumber.from(v.to).eq(arb)
+        );
     if (eventObj[0] && eventObj[0]?.value) return ethers.utils.formatUnits(
         eventObj[0].value
             .mul("1" + "0".repeat(36 - buyDecimals))
@@ -444,7 +503,7 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @returns Array of bundled take orders
  */
-const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
+const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
@@ -456,89 +515,149 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
         const order = ordersDetails[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
-            let ov = vaultsCache.find(e =>
-                e.owner === order.owner.id &&
-                e.token === _output.token.id &&
-                e.vaultId === _output.vault.id.split("-")[0]
-            );
-            if (!ov) {
-                const balance = await orderbook.vaultBalance(
-                    order.owner.id,
-                    _output.token.id,
-                    _output.vault.id.split("-")[0]
+            let _outputBalance, _outputBalanceFixed;
+            let _hasVaultBalances = false;
+            if (_output?.tokenVault?.balance) {
+                _hasVaultBalances = true;
+            }
+            if (_hasVaultBalances) {
+                _outputBalance = _output.tokenVault.balance;
+                _outputBalanceFixed = ethers.utils.parseUnits(
+                    ethers.utils.formatUnits(
+                        _output.tokenVault.balance,
+                        _output.token.decimals
+                    )
                 );
-                ov = {
+                if (!vaultsCache.find(e =>
+                    e.owner === order.owner.id &&
+                    e.token === _output.token.id &&
+                    e.vaultId === _output.vault.id.split("-")[0]
+                )) vaultsCache.push({
                     owner: order.owner.id,
                     token: _output.token.id,
                     vaultId: _output.vault.id.split("-")[0],
-                    balance
-                };
-                vaultsCache.push(ov);
+                    balance: _output.tokenVault.balance
+                });
             }
-            const _outputBalance = ov.balance;
-            const _outputBalanceFixed = ethers.utils.parseUnits(
-                ethers.utils.formatUnits(
-                    _outputBalance,
-                    _output.token.decimals
-                )
-            );
-            // const _outputBalance = ethers.utils.parseUnits(
-            //     ethers.utils.formatUnits(
-            //         _output.tokenVault.balance,
-            //         _output.token.decimals
-            //     )
-            // );
+            else {
+                let _ov = vaultsCache.find(e =>
+                    e.owner === order.owner.id &&
+                    e.token === _output.token.id &&
+                    e.vaultId === _output.vault.id.split("-")[0]
+                );
+                if (!_ov) {
+                    const balance = await orderbook.vaultBalance(
+                        order.owner.id,
+                        _output.token.id,
+                        _output.vault.id.split("-")[0]
+                    );
+                    _ov = {
+                        owner: order.owner.id,
+                        token: _output.token.id,
+                        vaultId: _output.vault.id.split("-")[0],
+                        balance
+                    };
+                    vaultsCache.push(_ov);
+                }
+                _outputBalance = _ov.balance;
+                _outputBalanceFixed = ethers.utils.parseUnits(
+                    ethers.utils.formatUnits(
+                        _outputBalance,
+                        _output.token.decimals
+                    )
+                );
+            }
+
             if (!_outputBalanceFixed.isZero()) {
                 for (let k = 0; k < order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
-                        let iv = vaultsCache.find(e =>
-                            e.owner === order.owner.id &&
-                            e.token === _input.token.id &&
-                            e.vaultId === _input.vault.id.split("-")[0]
-                        );
-                        if (!iv) {
-                            const balance = await orderbook.vaultBalance(
-                                order.owner.id,
-                                _input.token.id,
-                                _input.vault.id.split("-")[0]
-                            );
-                            iv = {
-                                owner: order.owner.id,
-                                token: _input.token.id,
-                                vaultId: _input.vault.id.split("-")[0],
-                                balance
-                            };
-                            vaultsCache.push(iv);
-                        }
-                        const _inputBalance = iv.balance;
+                        let quoteAmount = _outputBalanceFixed;
+                        let ratio, maxOutput;
 
-                        const { maxOutput, ratio } = await interpreterEval(
-                            new ethers.Contract(
-                                order.interpreter,
-                                interpreterAbi,
-                                obAsSigner
-                            ),
-                            arb.address,
-                            orderbook.address,
-                            order,
-                            k,
-                            j ,
-                            _inputBalance.toString() ,
-                            _outputBalance.toString()
-                        );
-
-                        if (maxOutput && ratio) {
-                            const quoteAmount = _outputBalanceFixed.lte(maxOutput)
-                                ? _outputBalanceFixed
-                                : maxOutput;
-
-                            if (!quoteAmount.isZero()) {
-                                const pair = bundledOrders.find(v =>
-                                    v.sellToken === _output.token.id &&
-                                    v.buyToken === _input.token.id
+                        if (_eval) {
+                            let _inputBalance;
+                            if (_hasVaultBalances) {
+                                _inputBalance = _input.tokenVault.balance;
+                                if (!vaultsCache.find(e =>
+                                    e.owner === order.owner.id &&
+                                    e.token === _input.token.id &&
+                                    e.vaultId === _input.vault.id.split("-")[0]
+                                )) vaultsCache.push({
+                                    owner: order.owner.id,
+                                    token: _input.token.id,
+                                    vaultId: _input.vault.id.split("-")[0],
+                                    balance: _input.tokenVault.balance
+                                });
+                            }
+                            else {
+                                let _iv = vaultsCache.find(e =>
+                                    e.owner === order.owner.id &&
+                                    e.token === _input.token.id &&
+                                    e.vaultId === _input.vault.id.split("-")[0]
                                 );
-                                if (pair) pair.takeOrders.push({
+                                if (!_iv) {
+                                    const balance = await orderbook.vaultBalance(
+                                        order.owner.id,
+                                        _input.token.id,
+                                        _input.vault.id.split("-")[0]
+                                    );
+                                    _iv = {
+                                        owner: order.owner.id,
+                                        token: _input.token.id,
+                                        vaultId: _input.vault.id.split("-")[0],
+                                        balance
+                                    };
+                                    vaultsCache.push(_iv);
+                                }
+                                _inputBalance = _iv.balance;
+                            }
+                            ({ maxOutput, ratio } = await interpreterEval(
+                                new ethers.Contract(
+                                    order.interpreter,
+                                    interpreterAbi,
+                                    obAsSigner
+                                ),
+                                arb.address,
+                                orderbook.address,
+                                order,
+                                k,
+                                j ,
+                                _inputBalance.toString() ,
+                                _outputBalance.toString()
+                            ));
+
+                            if (maxOutput && ratio) {
+                                quoteAmount = _outputBalanceFixed.lte(maxOutput)
+                                    ? _outputBalanceFixed
+                                    : maxOutput;
+                            }
+                        }
+
+                        if (!quoteAmount.isZero()) {
+                            const pair = bundledOrders.find(v =>
+                                v.sellToken === _output.token.id &&
+                                v.buyToken === _input.token.id
+                            );
+                            if (pair) pair.takeOrders.push({
+                                id: order.id,
+                                ratio,
+                                quoteAmount,
+                                takeOrder: {
+                                    order: getOrderStruct(order),
+                                    inputIOIndex: k,
+                                    outputIOIndex: j,
+                                    signedContext: []
+                                }
+                            });
+                            else bundledOrders.push({
+                                buyToken: _input.token.id,
+                                buyTokenSymbol: _input.token.symbol,
+                                buyTokenDecimals: _input.token.decimals,
+                                sellToken: _output.token.id,
+                                sellTokenSymbol: _output.token.symbol,
+                                sellTokenDecimals: _output.token.decimals,
+                                takeOrders: [{
                                     id: order.id,
                                     ratio,
                                     quoteAmount,
@@ -548,33 +667,18 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb) => {
                                         outputIOIndex: j,
                                         signedContext: []
                                     }
-                                });
-                                else bundledOrders.push({
-                                    buyToken: _input.token.id,
-                                    buyTokenSymbol: _input.token.symbol,
-                                    buyTokenDecimals: _input.token.decimals,
-                                    sellToken: _output.token.id,
-                                    sellTokenSymbol: _output.token.symbol,
-                                    sellTokenDecimals: _output.token.decimals,
-                                    takeOrders: [{
-                                        id: order.id,
-                                        ratio,
-                                        quoteAmount,
-                                        takeOrder: {
-                                            order: getOrderStruct(order),
-                                            inputIOIndex: k,
-                                            outputIOIndex: j,
-                                            signedContext: []
-                                        }
-                                    }]
-                                });
-                            }
+                                }]
+                            });
                         }
                     }
                 }
             }
         }
     }
+    // sort ascending based on ratio if orders are evaled
+    if (_eval) bundledOrders.forEach(v => v.takeOrders.sort(
+        (a, b) => a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
+    ));
     return bundledOrders;
 };
 
@@ -1035,5 +1139,6 @@ module.exports = {
     getOrderHash,
     getOrderDetailsFromJson,
     appGlobalLogger,
-    promiseTimeout
+    promiseTimeout,
+    getActualClearAmount
 };

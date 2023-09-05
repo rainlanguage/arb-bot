@@ -9,18 +9,12 @@ const { deployOrderBook } = require("./deploy/orderbookDeploy");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { rainterpreterExpressionDeployerDeploy } = require("./deploy/expressionDeployer");
 const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./deploy/rainterpreterDeploy");
-const {
-    encodeMeta,
-    getEventArgs,
-    randomUint256,
-    mockSgFromEvent,
-    AddressWithBalance,
-    generateEvaluableConfig
-} = require("./utils");
+const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfig } = require("./utils");
 
 
 // This test runs on hardhat forked network of polygon
-describe("Rain Arb Bot Tests", async function () {
+describe("Rain Arb Bot 'curve' Mode Tests", async function () {
+    let turn = 0;
     let interpreter,
         store,
         expressionDeployer,
@@ -42,29 +36,39 @@ describe("Rain Arb Bot Tests", async function () {
 
     beforeEach(async() => {
         // reset network before each test
-        await helpers.reset("https://polygon-rpc.com/", 42314555);
+        await helpers.reset("https://polygon-rpc.com/", 47102059);
 
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
 
         // deploy contracts
-        interpreter = await rainterpreterDeploy();
-        store = await rainterpreterStoreDeploy();
+        interpreter = await rainterpreterDeploy(turn !== 0);
+        store = await rainterpreterStoreDeploy(turn !== 0);
         expressionDeployer = await rainterpreterExpressionDeployerDeploy(
             interpreter,
-            store
+            store,
+            turn !== 0
         );
-        orderbook = await deployOrderBook(expressionDeployer);
+        orderbook = await deployOrderBook(expressionDeployer, turn !== 0);
         arb = await arbDeploy(
             expressionDeployer,
             orderbook.address,
-            generateEvaluableConfig(
-                expressionDeployer,
-                {
-                    constants: [bot.address],
-                    sources: ["0x000c0001000c0000000400000027000000170001"]
-                }
-            )
+            turn === 0
+                ? generateEvaluableConfig(
+                    expressionDeployer,
+                    {
+                        constants: [bot.address],
+                        sources: ["0x000c0001000c0000000400000027000000170001"]
+                    }
+                )
+                : generateEvaluableConfig(
+                    expressionDeployer,
+                    {
+                        constants: [],
+                        bytecode: "0x01000000000000"
+                    }
+                ),
+            turn === 0 ? undefined : turn === 1 ? "flash-loan-v3" : "order-taker"
         );
 
         // update config with new addresses
@@ -125,6 +129,7 @@ describe("Rain Arb Bot Tests", async function () {
             value: ethers.utils.parseEther("5.0"),
             to: FRAXHolder.address
         });
+
         for (let i = 0; i < 3; i++) {
             await USDT.connect(USDTHolder).transfer(owners[i].address, "1000" + "0".repeat(USDTDecimals));
             await USDC.connect(USDCHolder).transfer(owners[i].address, "1000" + "0".repeat(USDCDecimals));
@@ -132,129 +137,10 @@ describe("Rain Arb Bot Tests", async function () {
             await BUSD.connect(BUSDHolder).transfer(owners[i].address, "1000" + "0".repeat(BUSDDecimals));
             await FRAX.connect(FRAXHolder).transfer(owners[i].address, "1000" + "0".repeat(FRAXDecimals));
         }
+        turn++;
     });
 
-    it("should clear orders using RouteProcessor3 contract", async function () {
-
-        // set up vault ids
-        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
-        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
-        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-        const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
-
-        const sgOrders = await prepareOrders(
-            owners,
-            [USDC, USDT, DAI, BUSD],
-            [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
-            [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
-            orderbook,
-            expressionDeployer
-        );
-
-        // check that bot's balance is zero for all tokens
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
-        );
-
-        // run the clearing process
-        config.rpc = "test";
-        config.signer = bot;
-        config.lps = ["sushiswapv2"];
-        const reports = await clear("router", config, sgOrders, {prioritization: false});
-
-        // should have cleared 2 toke pairs bundled orders
-        assert.ok(reports.length == 2);
-
-        // validate first cleared token pair orders
-        assert.equal(reports[0].tokenPair, "USDT/USDC");
-        assert.equal(reports[0].clearedAmount, "200000000");
-        assert.equal(reports[0].clearedOrders.length, 2);
-
-        // check vault balances for orders in cleared token pair USDT/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
-
-        // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "DAI/USDC");
-        assert.equal(reports[1].clearedAmount, "100000000");
-        assert.equal(reports[1].clearedOrders.length, 1);
-
-        // check vault balances for orders in cleared token pair BUSD/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                DAI.address,
-                DAI_vaultId
-            )).toString(),
-            "150000000000000000000"
-        );
-
-        // bot should have received the bounty for cleared orders input token
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
-        );
-
-        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
-        );
-    });
-
-    it("should clear orders using Curve.fi platform liquidity", async function () {
-
+    it("should clear orders in 'flash-loan-v2' mode", async function () {
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -288,6 +174,7 @@ describe("Rain Arb Bot Tests", async function () {
         config.rpc = "test";
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
+        config.arbType = "flash-loan-v2";
         const reports = await clear("curve", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders
@@ -372,292 +259,244 @@ describe("Rain Arb Bot Tests", async function () {
         );
     });
 
-    // uses 0x live quotes from polygon mainnet and requires 0x api key set in .env
-    // uncomment for testing
-    // it("should clear orders using 0x platform", async function () {
+    it("should clear orders in 'flash-loan-v3' mode", async function () {
 
-    //     // set up vault ids
-    //     const USDC_vaultId = ethers.BigNumber.from(randomUint256());
-    //     const USDT_vaultId = ethers.BigNumber.from(randomUint256());
-    //     const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-    //     const BUSD_vaultId = ethers.BigNumber.from(randomUint256());
+        // set up vault ids
+        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
 
-    //     const sgOrders = await prepareOrders(
-    //         owners,
-    //         [USDC, USDT, DAI, BUSD],
-    //         [USDCDecimals, USDTDecimals, DAIDecimals, BUSDDecimals],
-    //         [USDC_vaultId, USDT_vaultId, DAI_vaultId, BUSD_vaultId],
-    //         orderbook,
-    //         expressionDeployer
-    //     );
+        const sgOrders = await prepareOrders(
+            owners,
+            [USDC, USDT, DAI, FRAX],
+            [USDCDecimals, USDTDecimals, DAIDecimals, FRAXDecimals],
+            [USDC_vaultId, USDT_vaultId, DAI_vaultId, FRAX_vaultId],
+            orderbook,
+            expressionDeployer,
+            true
+        );
 
-    //     // check that bot's balance is zero for all tokens
-    //     assert.ok(
-    //         (await USDT.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
-    //     assert.ok(
-    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
-    //     assert.ok(
-    //         (await DAI.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
-    //     assert.ok(
-    //         (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
+        // check that bot's balance is zero for all tokens
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
 
-    //     // run the clearing process
-    //     config.apiKey = process?.env?.API_KEY;
-    //     config.signer = bot;
-    //     require("../src/utils").hideSensitiveData(config.apiKey);
-    //     const reports = await clear("0x", config, sgOrders, {prioritization: false});
+        // run the clearing process
+        config.rpc = "test";
+        config.signer = bot;
+        config.lps = ["SushiSwapV2"];
+        config.arbType = "flash-loan-v3";
+        const reports = await clear("curve", config, sgOrders, {prioritization: false});
 
-    //     // should have cleared 2 toke pairs bundled orders
-    //     assert.ok(reports.length == 2);
+        // should have cleared 2 toke pairs bundled orders
+        assert.ok(reports.length == 2);
 
-    //     // validate first cleared token pair orders
-    //     assert.equal(reports[0].tokenPair, "USDT/USDC");
-    //     assert.equal(reports[0].clearedAmount, "200000000");
-    //     assert.equal(reports[0].clearedOrders.length, 2);
+        // validate first cleared token pair orders
+        assert.equal(reports[0].tokenPair, "USDT/USDC");
+        assert.equal(reports[0].clearedAmount, "200000000");
+        assert.equal(reports[0].clearedOrders.length, 2);
 
-    //     // check vault balances for orders in cleared token pair USDT/USDC
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[0].address,
-    //             USDC.address,
-    //             USDC_vaultId
-    //         )).toString(),
-    //         "0"
-    //     );
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[0].address,
-    //             USDT.address,
-    //             USDT_vaultId
-    //         )).toString(),
-    //         "150000000"
-    //     );
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[2].address,
-    //             USDC.address,
-    //             USDC_vaultId
-    //         )).toString(),
-    //         "0"
-    //     );
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[2].address,
-    //             USDT.address,
-    //             USDT_vaultId
-    //         )).toString(),
-    //         "150000000"
-    //     );
+        // check vault balances for orders in cleared token pair USDT/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
 
-    //     // validate second cleared token pair orders
-    //     assert.equal(reports[1].tokenPair, "DAI/USDC");
-    //     assert.equal(reports[1].clearedAmount, "100000000");
-    //     assert.equal(reports[1].clearedOrders.length, 1);
+        // validate second cleared token pair orders
+        assert.equal(reports[1].tokenPair, "DAI/USDC");
+        assert.equal(reports[1].clearedAmount, "100000000");
+        assert.equal(reports[1].clearedOrders.length, 1);
 
-    //     // check vault balances for orders in cleared token pair BUSD/USDC
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[1].address,
-    //             USDC.address,
-    //             USDC_vaultId
-    //         )).toString(),
-    //         "0"
-    //     );
-    //     assert.equal(
-    //         (await orderbook.vaultBalance(
-    //             owners[1].address,
-    //             DAI.address,
-    //             DAI_vaultId
-    //         )).toString(),
-    //         "150000000000000000000"
-    //     );
+        // check vault balances for orders in cleared token pair FRAX/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                DAI.address,
+                DAI_vaultId
+            )).toString(),
+            "150000000000000000000"
+        );
 
-    //     // bot should have received the bounty for cleared orders input token
-    //     assert.ok(
-    //         (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
-    //     );
-    //     assert.ok(
-    //         (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
-    //     );
+        // bot should have received the bounty for cleared orders input token
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
+        );
 
-    //     // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
-    //     assert.ok(
-    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
-    //     assert.ok(
-    //         (await BUSD.connect(bot).balanceOf(bot.address)).isZero()
-    //     );
-    // });
+        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
+    });
+
+    it("should clear orders in 'order-taker' mode", async function () {
+        // set up vault ids
+        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
+
+        const sgOrders = await prepareOrders(
+            owners,
+            [USDC, USDT, DAI, FRAX],
+            [USDCDecimals, USDTDecimals, DAIDecimals, FRAXDecimals],
+            [USDC_vaultId, USDT_vaultId, DAI_vaultId, FRAX_vaultId],
+            orderbook,
+            expressionDeployer,
+            true
+        );
+
+        // check that bot's balance is zero for all tokens
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
+
+        // run the clearing process
+        config.rpc = "test";
+        config.signer = bot;
+        config.lps = ["SushiSwapV2"];
+        config.arbType = "order-taker";
+        const reports = await clear("curve", config, sgOrders, {prioritization: false});
+
+        // should have cleared 2 toke pairs bundled orders
+        assert.ok(reports.length == 2);
+
+        // validate first cleared token pair orders
+        assert.equal(reports[0].tokenPair, "USDT/USDC");
+        assert.equal(reports[0].clearedAmount, "200000000");
+        assert.equal(reports[0].clearedOrders.length, 2);
+
+        // check vault balances for orders in cleared token pair USDT/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[2].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "150000000"
+        );
+
+        // validate second cleared token pair orders
+        assert.equal(reports[1].tokenPair, "DAI/USDC");
+        assert.equal(reports[1].clearedAmount, "100000000");
+        assert.equal(reports[1].clearedOrders.length, 1);
+
+        // check vault balances for orders in cleared token pair FRAX/USDC
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                USDC.address,
+                USDC_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[1].address,
+                DAI.address,
+                DAI_vaultId
+            )).toString(),
+            "150000000000000000000"
+        );
+
+        // bot should have received the bounty for cleared orders input token
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+        assert.ok(
+            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+
+        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+        assert.ok(
+            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+        );
+    });
 });
-
-// prepare orders by adding orders and topping up the vault balances and return mocked sg results
-const prepareOrders = async(
-    owners,
-    tokens,
-    tokensDecimals,
-    vaultIds,
-    orderbook,
-    expressionDeployer
-) => {
-    // topping up owners 1 2 3 vaults with 100 of each token
-    for (let i = 0; i < 3; i++) {
-        const depositConfigStruct = {
-            token: tokens[0].address,
-            vaultId: vaultIds[0],
-            amount: "100" + "0".repeat(tokensDecimals[0]),
-        };
-        await tokens[0]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
-        await orderbook
-            .connect(owners[i])
-            .deposit(depositConfigStruct);
-    }
-    for (let i = 0; i < 3; i++) {
-        const depositConfigStruct = {
-            token: tokens[1].address,
-            vaultId: vaultIds[1],
-            amount: "100" + "0".repeat(tokensDecimals[1]),
-        };
-        await tokens[1]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
-        await orderbook
-            .connect(owners[i])
-            .deposit(depositConfigStruct);
-    }
-    for (let i = 0; i < 3; i++) {
-        const depositConfigStruct = {
-            token: tokens[2].address,
-            vaultId: vaultIds[2],
-            amount: "100" + "0".repeat(tokensDecimals[2]),
-        };
-        await tokens[2]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
-        await orderbook
-            .connect(owners[i])
-            .deposit(depositConfigStruct);
-    }
-    for (let i = 0; i < 3; i++) {
-        const depositConfigStruct = {
-            token: tokens[3].address,
-            vaultId: vaultIds[3],
-            amount: "100" + "0".repeat(tokensDecimals[3]),
-        };
-        await tokens[3]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
-        await orderbook
-            .connect(owners[i])
-            .deposit(depositConfigStruct);
-    }
-
-    const sgOrders = [];
-    // order expression config
-    const expConfig = {
-        constants: [
-            ethers.constants.MaxUint256.toHexString(),  // max output
-            "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-        ],
-        sources: ["0x000c0001000c0003", "0x"]
-    };
-
-    const EvaluableConfig = generateEvaluableConfig(
-        expressionDeployer,
-        expConfig
-    );
-
-    // add orders
-    const owner1_order1 = {
-        validInputs: [
-            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
-            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
-        ],
-        validOutputs: [
-            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
-        ],
-        evaluableConfig: EvaluableConfig,
-        meta: encodeMeta("owner1_order1"),
-    };
-    const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
-    // get sg-like order details from tx event
-    sgOrders.push(await mockSgFromEvent(
-        await getEventArgs(
-            tx_owner1_order1,
-            "AddOrder",
-            orderbook
-        ),
-        orderbook,
-        tokens
-    ));
-
-    const owner1_order2 = {
-        validInputs: [
-            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
-        ],
-        validOutputs: [
-            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
-        ],
-        evaluableConfig: EvaluableConfig,
-        meta: encodeMeta("owner1_order2"),
-    };
-    const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
-    sgOrders.push(await mockSgFromEvent(
-        await getEventArgs(
-            tx_owner1_order2,
-            "AddOrder",
-            orderbook
-        ),
-        orderbook,
-        tokens
-    ));
-
-    const owner2_order1 = {
-        validInputs: [
-            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
-        ],
-        validOutputs: [
-            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
-        ],
-        evaluableConfig: EvaluableConfig,
-        meta: encodeMeta("owner2_order1"),
-    };
-    const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
-    sgOrders.push(await mockSgFromEvent(
-        await getEventArgs(
-            tx_owner2_order1,
-            "AddOrder",
-            orderbook
-        ),
-        orderbook,
-        tokens
-    ));
-
-    const owner3_order1 = {
-        validInputs: [
-            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
-        ],
-        validOutputs: [
-            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
-        ],
-        evaluableConfig: EvaluableConfig,
-        meta: encodeMeta("owner3_order1"),
-    };
-    const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
-    sgOrders.push(await mockSgFromEvent(
-        await getEventArgs(
-            tx_owner3_order1,
-            "AddOrder",
-            orderbook
-        ),
-        orderbook,
-        tokens
-    ));
-
-    return sgOrders;
-};

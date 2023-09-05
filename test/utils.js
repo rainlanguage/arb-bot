@@ -163,7 +163,9 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
     }
 
     return {
-        id: eventArgs.orderHash.toHexString().toLowerCase(),
+        id: typeof eventArgs.orderHash === "string"
+            ? eventArgs.orderHash.toLowerCase()
+            : eventArgs.orderHash.toHexString().toLowerCase(),
         handleIO: eventArgs.order.handleIO,
         expression: eventArgs.order.evaluable.expression.toLowerCase(),
         interpreter: eventArgs.order.evaluable.interpreter.toLowerCase(),
@@ -204,4 +206,216 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
             };
         })
     };
+};
+
+/**
+ * Prepares orders to be in usable format for arb
+ */
+exports.prepareOrders = async(
+    owners,
+    tokens,
+    tokensDecimals,
+    vaultIds,
+    orderbook,
+    expressionDeployer,
+    np = false
+) => {
+    // topping up owners 1 2 3 vaults with 100 of each token
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[0].address,
+            vaultId: vaultIds[0],
+            amount: "100" + "0".repeat(tokensDecimals[0]),
+        };
+        await tokens[0]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        np
+            ? await orderbook
+                .connect(owners[i])
+                .deposit(
+                    depositConfigStruct.token,
+                    depositConfigStruct.vaultId,
+                    depositConfigStruct.amount
+                )
+            : await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[1].address,
+            vaultId: vaultIds[1],
+            amount: "100" + "0".repeat(tokensDecimals[1]),
+        };
+        await tokens[1]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        np
+            ? await orderbook
+                .connect(owners[i])
+                .deposit(
+                    depositConfigStruct.token,
+                    depositConfigStruct.vaultId,
+                    depositConfigStruct.amount
+                )
+            : await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[2].address,
+            vaultId: vaultIds[2],
+            amount: "100" + "0".repeat(tokensDecimals[2]),
+        };
+        await tokens[2]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        np
+            ? await orderbook
+                .connect(owners[i])
+                .deposit(
+                    depositConfigStruct.token,
+                    depositConfigStruct.vaultId,
+                    depositConfigStruct.amount
+                )
+            : await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+    }
+    for (let i = 0; i < 3; i++) {
+        const depositConfigStruct = {
+            token: tokens[3].address,
+            vaultId: vaultIds[3],
+            amount: "100" + "0".repeat(tokensDecimals[3]),
+        };
+        await tokens[3]
+            .connect(owners[i])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        np
+            ? await orderbook
+                .connect(owners[i])
+                .deposit(
+                    depositConfigStruct.token,
+                    depositConfigStruct.vaultId,
+                    depositConfigStruct.amount
+                )
+            : await orderbook
+                .connect(owners[i])
+                .deposit(depositConfigStruct);
+    }
+
+    const sgOrders = [];
+    // order expression config
+    const expConfig = np
+        ? {
+            constants: [
+                ethers.constants.MaxUint256.toHexString(),  // max output
+                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+            ],
+            bytecode: "0x020000000c02020002010000000100000100000000"
+        }
+        : {
+            constants: [
+                ethers.constants.MaxUint256.toHexString(),  // max output
+                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+            ],
+            sources: ["0x000c0001000c0003", "0x"]
+        };
+
+    const EvaluableConfig = this.generateEvaluableConfig(
+        expressionDeployer,
+        expConfig
+    );
+
+    // add orders
+    const owner1_order1 = {
+        validInputs: [
+            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
+            { token: tokens[3].address, decimals: tokensDecimals[3], vaultId: vaultIds[3] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: this.encodeMeta("owner1_order1"),
+    };
+    const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
+
+    // get sg-like order details from tx event
+    sgOrders.push(await this.mockSgFromEvent(
+        await this.getEventArgs(
+            tx_owner1_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        tokens
+    ));
+
+    const owner1_order2 = {
+        validInputs: [
+            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: this.encodeMeta("owner1_order2"),
+    };
+    const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
+    sgOrders.push(await this.mockSgFromEvent(
+        await this.getEventArgs(
+            tx_owner1_order2,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        tokens
+    ));
+
+    const owner2_order1 = {
+        validInputs: [
+            { token: tokens[2].address, decimals: tokensDecimals[2], vaultId: vaultIds[2] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: this.encodeMeta("owner2_order1"),
+    };
+    const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
+    sgOrders.push(await this.mockSgFromEvent(
+        await this.getEventArgs(
+            tx_owner2_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        tokens
+    ));
+
+    const owner3_order1 = {
+        validInputs: [
+            { token: tokens[1].address, decimals: tokensDecimals[1], vaultId: vaultIds[1] },
+        ],
+        validOutputs: [
+            { token: tokens[0].address, decimals: tokensDecimals[0], vaultId: vaultIds[0] },
+        ],
+        evaluableConfig: EvaluableConfig,
+        meta: this.encodeMeta("owner3_order1"),
+    };
+    const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
+    sgOrders.push(await this.mockSgFromEvent(
+        await this.getEventArgs(
+            tx_owner3_order1,
+            "AddOrder",
+            orderbook
+        ),
+        orderbook,
+        tokens
+    ));
+
+    return sgOrders;
 };
