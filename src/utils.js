@@ -1058,7 +1058,7 @@ const appGlobalLogger = (scrub, ...data) => {
                     if (scrub) for (let j = 0; j < _data.length; j++) {
                         // while (logItem.includes(_data[i]))
                         logItem = logItem.replaceAll(
-                            _data[i],
+                            _data[j],
                             "**********"
                         );
                     }

@@ -151,7 +151,7 @@ const main = async argv => {
 
     appGlobalLogger(
         true,
-        ...options.rpc,
+        ...rpcs,
         options.key,
         options.apiKey
     );
