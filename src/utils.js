@@ -1119,6 +1119,96 @@ const promiseTimeout = async(promise, time, exception) => {
     );
 };
 
+
+/**
+ * Gets the route for tokens
+ *
+ * @param {number} chainId - The network chain id
+ * @param {ethers.BigNumber} sellAmount - The sell amount, should be in onchain token value
+ * @param {string} fromTokenAddress - The from token address
+ * @param {number} fromTokenDecimals - The from token decimals
+ * @param {string} toTokenAddress - The to token address
+ * @param {number} toTokenDecimals - The to token decimals
+ * @param {string} receiverAddress - The address of the receiver
+ * @param {string} routeProcessorAddress - The address of the RouteProcessor contract
+ * @param {boolean} abiencoded - If the result should be abi encoded or not
+ */
+const getRouteForTokens = async(
+    chainId,
+    sellAmount,
+    fromTokenAddress,
+    fromTokenDecimals,
+    toTokenAddress,
+    toTokenDecimals,
+    receiverAddress,
+    routeProcessorAddress,
+    abiEncoded
+) => {
+    const amountIn = sellAmount;
+    const fromToken = new Token({
+        chainId: chainId,
+        decimals: fromTokenDecimals,
+        address: fromTokenAddress
+    });
+    const toToken = new Token({
+        chainId: chainId,
+        decimals: toTokenDecimals,
+        address: toTokenAddress
+    });
+    const dataFetcher = getDataFetcher({chainId});
+    await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    const route = Router.findBestRoute(
+        pcMap,
+        chainId,
+        fromToken,
+        amountIn,
+        toToken,
+        30e9,
+        // providers,
+        // poolFilter
+    );
+    if (route.status == "NoWay") throw "NoWay";
+    else {
+        let routeText = "";
+        route.legs.forEach((v, i) => {
+            if (i === 0) routeText =
+                routeText +
+                v.tokenTo.symbol +
+                "/" +
+                v.tokenFrom.symbol +
+                "(" +
+                v.poolName +
+                ")";
+            else routeText =
+                routeText +
+                " + " +
+                v.tokenTo.symbol +
+                "/" +
+                v.tokenFrom.symbol +
+                "(" +
+                v.poolName +
+                ")";
+        });
+        console.log("Route portions: ", routeText, "\n");
+        const rpParams = Router.routeProcessor2Params(
+            pcMap,
+            route,
+            fromToken,
+            toToken,
+            receiverAddress,
+            routeProcessorAddress,
+            // permits
+            // "0.005"
+        );
+        if (abiEncoded) return ethers.utils.defaultAbiCoder.encode(
+            ["bytes"],
+            [rpParams.routeCode]
+        );
+        else return rpParams.routeCode;
+    }
+};
+
 module.exports = {
     fallbackTransports,
     bnFromFloat,
@@ -1140,5 +1230,6 @@ module.exports = {
     getOrderDetailsFromJson,
     appGlobalLogger,
     promiseTimeout,
-    getActualClearAmount
+    getActualClearAmount,
+    getRouteForTokens
 };
