@@ -326,7 +326,13 @@ const srouterClear = async(
                                     gasPrice
                                 };
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                let gasLimit = await signer.estimateGas(rawtx);
+                                let gasLimit;
+                                try {
+                                    gasLimit = await signer.estimateGas(rawtx);
+                                }
+                                catch {
+                                    throw "nomatch";
+                                }
                                 gasLimit = gasLimit.mul("11").div("10");
                                 rawtx.gasLimit = gasLimit;
                                 const gasCost = gasLimit.mul(gasPrice);
@@ -482,24 +488,28 @@ const srouterClear = async(
                                             maximumInputFixed
                                         )} ${
                                             bundledOrders[i].sellTokenSymbol
-                                        } as max input, trying with lower amount...`
+                                        } as max input, trying with lower amount...`, "\n"
                                     );
-                                    else console.log("could not arb this pair");
+                                    else console.log("could not arb this pair", "\n");
                                 }
                             }
                         }
                         catch (error) {
-                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                            console.log(error, "\n");
-                            if (j > 1) console.log(
-                                `could not clear with ${ethers.utils.formatEther(
-                                    maximumInputFixed
-                                )} ${
-                                    bundledOrders[i].sellTokenSymbol
-                                } as max input, trying with lower amount...`
-                            );
-                            else console.log("could not arb this pair");
-                            // reason, code, method, transaction, error, stack, message
+                            if (error !== "nomatch") {
+                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
+                                console.log(error, "\n");
+                                // reason, code, method, transaction, error, stack, message
+                            }
+                            else {
+                                if (j > 1) console.log(
+                                    `could not clear with ${ethers.utils.formatEther(
+                                        maximumInputFixed
+                                    )} ${
+                                        bundledOrders[i].sellTokenSymbol
+                                    } as max input, trying with lower amount...`, "\n"
+                                );
+                                else console.log("could not arb this pair", "\n");
+                            }
                         }
                     }
                 }
@@ -526,13 +536,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Sep 05 2023 20:40:30 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Sep 07 2023 15:53:18 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

@@ -515,65 +515,67 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
         const order = ordersDetails[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
+            let quoteAmount, ratio, maxOutput;
             let _outputBalance, _outputBalanceFixed;
             let _hasVaultBalances = false;
-            if (_output?.tokenVault?.balance) {
-                _hasVaultBalances = true;
-            }
-            if (_hasVaultBalances) {
-                _outputBalance = _output.tokenVault.balance;
-                _outputBalanceFixed = ethers.utils.parseUnits(
-                    ethers.utils.formatUnits(
-                        _output.tokenVault.balance,
-                        _output.token.decimals
-                    )
-                );
-                if (!vaultsCache.find(e =>
-                    e.owner === order.owner.id &&
-                    e.token === _output.token.id &&
-                    e.vaultId === _output.vault.id.split("-")[0]
-                )) vaultsCache.push({
-                    owner: order.owner.id,
-                    token: _output.token.id,
-                    vaultId: _output.vault.id.split("-")[0],
-                    balance: _output.tokenVault.balance
-                });
-            }
-            else {
-                let _ov = vaultsCache.find(e =>
-                    e.owner === order.owner.id &&
-                    e.token === _output.token.id &&
-                    e.vaultId === _output.vault.id.split("-")[0]
-                );
-                if (!_ov) {
-                    const balance = await orderbook.vaultBalance(
-                        order.owner.id,
-                        _output.token.id,
-                        _output.vault.id.split("-")[0]
+            if (_eval) {
+                if (_output?.tokenVault?.balance) {
+                    _hasVaultBalances = true;
+                }
+                if (_hasVaultBalances) {
+                    _outputBalance = _output.tokenVault.balance;
+                    _outputBalanceFixed = ethers.utils.parseUnits(
+                        ethers.utils.formatUnits(
+                            _output.tokenVault.balance,
+                            _output.token.decimals
+                        )
                     );
-                    _ov = {
+                    if (!vaultsCache.find(e =>
+                        e.owner === order.owner.id &&
+                        e.token === _output.token.id &&
+                        e.vaultId === _output.vault.id.split("-")[0]
+                    )) vaultsCache.push({
                         owner: order.owner.id,
                         token: _output.token.id,
                         vaultId: _output.vault.id.split("-")[0],
-                        balance
-                    };
-                    vaultsCache.push(_ov);
+                        balance: _output.tokenVault.balance
+                    });
                 }
-                _outputBalance = _ov.balance;
-                _outputBalanceFixed = ethers.utils.parseUnits(
-                    ethers.utils.formatUnits(
-                        _outputBalance,
-                        _output.token.decimals
-                    )
-                );
+                else {
+                    let _ov = vaultsCache.find(e =>
+                        e.owner === order.owner.id &&
+                        e.token === _output.token.id &&
+                        e.vaultId === _output.vault.id.split("-")[0]
+                    );
+                    if (!_ov) {
+                        const balance = await orderbook.vaultBalance(
+                            order.owner.id,
+                            _output.token.id,
+                            _output.vault.id.split("-")[0]
+                        );
+                        _ov = {
+                            owner: order.owner.id,
+                            token: _output.token.id,
+                            vaultId: _output.vault.id.split("-")[0],
+                            balance
+                        };
+                        vaultsCache.push(_ov);
+                    }
+                    _outputBalance = _ov.balance;
+                    _outputBalanceFixed = ethers.utils.parseUnits(
+                        ethers.utils.formatUnits(
+                            _outputBalance,
+                            _output.token.decimals
+                        )
+                    );
+                }
+                quoteAmount = _outputBalanceFixed;
             }
 
-            if (!_outputBalanceFixed.isZero()) {
+            if (quoteAmount === undefined || !quoteAmount.isZero()) {
                 for (let k = 0; k < order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
-                        let quoteAmount = _outputBalanceFixed;
-                        let ratio, maxOutput;
 
                         if (_eval) {
                             let _inputBalance;
@@ -627,14 +629,12 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
                                 _outputBalance.toString()
                             ));
 
-                            if (maxOutput && ratio) {
-                                quoteAmount = _outputBalanceFixed.lte(maxOutput)
-                                    ? _outputBalanceFixed
-                                    : maxOutput;
+                            if (maxOutput && ratio && maxOutput.lt(quoteAmount)) {
+                                quoteAmount = maxOutput;
                             }
                         }
 
-                        if (!quoteAmount.isZero()) {
+                        if (!_eval || !quoteAmount.isZero()) {
                             const pair = bundledOrders.find(v =>
                                 v.sellToken === _output.token.id &&
                                 v.buyToken === _input.token.id
@@ -677,7 +677,9 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
     }
     // sort ascending based on ratio if orders are evaled
     if (_eval) bundledOrders.forEach(v => v.takeOrders.sort(
-        (a, b) => a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
+        (a, b) => a.ratio && b.ratio
+            ? a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
+            : 0
     ));
     return bundledOrders;
 };

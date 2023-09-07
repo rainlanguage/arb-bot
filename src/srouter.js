@@ -298,7 +298,13 @@ const srouterClear = async(
                                     gasPrice
                                 };
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                let gasLimit = await signer.estimateGas(rawtx);
+                                let gasLimit;
+                                try {
+                                    gasLimit = await signer.estimateGas(rawtx);
+                                }
+                                catch {
+                                    throw "nomatch";
+                                }
                                 gasLimit = gasLimit.mul("11").div("10");
                                 rawtx.gasLimit = gasLimit;
                                 const gasCost = gasLimit.mul(gasPrice);
@@ -454,24 +460,28 @@ const srouterClear = async(
                                             maximumInputFixed
                                         )} ${
                                             bundledOrders[i].sellTokenSymbol
-                                        } as max input, trying with lower amount...`
+                                        } as max input, trying with lower amount...`, "\n"
                                     );
-                                    else console.log("could not arb this pair");
+                                    else console.log("could not arb this pair", "\n");
                                 }
                             }
                         }
                         catch (error) {
-                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                            console.log(error, "\n");
-                            if (j > 1) console.log(
-                                `could not clear with ${ethers.utils.formatEther(
-                                    maximumInputFixed
-                                )} ${
-                                    bundledOrders[i].sellTokenSymbol
-                                } as max input, trying with lower amount...`
-                            );
-                            else console.log("could not arb this pair");
-                            // reason, code, method, transaction, error, stack, message
+                            if (error !== "nomatch") {
+                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
+                                console.log(error, "\n");
+                                // reason, code, method, transaction, error, stack, message
+                            }
+                            else {
+                                if (j > 1) console.log(
+                                    `could not clear with ${ethers.utils.formatEther(
+                                        maximumInputFixed
+                                    )} ${
+                                        bundledOrders[i].sellTokenSymbol
+                                    } as max input, trying with lower amount...`, "\n"
+                                );
+                                else console.log("could not arb this pair", "\n");
+                            }
                         }
                     }
                 }

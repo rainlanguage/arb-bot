@@ -543,65 +543,67 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
         const order = ordersDetails[i];
         for (let j = 0; j &lt; order.validOutputs.length; j++) {
             const _output = order.validOutputs[j];
+            let quoteAmount, ratio, maxOutput;
             let _outputBalance, _outputBalanceFixed;
             let _hasVaultBalances = false;
-            if (_output?.tokenVault?.balance) {
-                _hasVaultBalances = true;
-            }
-            if (_hasVaultBalances) {
-                _outputBalance = _output.tokenVault.balance;
-                _outputBalanceFixed = ethers.utils.parseUnits(
-                    ethers.utils.formatUnits(
-                        _output.tokenVault.balance,
-                        _output.token.decimals
-                    )
-                );
-                if (!vaultsCache.find(e =>
-                    e.owner === order.owner.id &amp;&amp;
-                    e.token === _output.token.id &amp;&amp;
-                    e.vaultId === _output.vault.id.split("-")[0]
-                )) vaultsCache.push({
-                    owner: order.owner.id,
-                    token: _output.token.id,
-                    vaultId: _output.vault.id.split("-")[0],
-                    balance: _output.tokenVault.balance
-                });
-            }
-            else {
-                let _ov = vaultsCache.find(e =>
-                    e.owner === order.owner.id &amp;&amp;
-                    e.token === _output.token.id &amp;&amp;
-                    e.vaultId === _output.vault.id.split("-")[0]
-                );
-                if (!_ov) {
-                    const balance = await orderbook.vaultBalance(
-                        order.owner.id,
-                        _output.token.id,
-                        _output.vault.id.split("-")[0]
+            if (_eval) {
+                if (_output?.tokenVault?.balance) {
+                    _hasVaultBalances = true;
+                }
+                if (_hasVaultBalances) {
+                    _outputBalance = _output.tokenVault.balance;
+                    _outputBalanceFixed = ethers.utils.parseUnits(
+                        ethers.utils.formatUnits(
+                            _output.tokenVault.balance,
+                            _output.token.decimals
+                        )
                     );
-                    _ov = {
+                    if (!vaultsCache.find(e =>
+                        e.owner === order.owner.id &amp;&amp;
+                        e.token === _output.token.id &amp;&amp;
+                        e.vaultId === _output.vault.id.split("-")[0]
+                    )) vaultsCache.push({
                         owner: order.owner.id,
                         token: _output.token.id,
                         vaultId: _output.vault.id.split("-")[0],
-                        balance
-                    };
-                    vaultsCache.push(_ov);
+                        balance: _output.tokenVault.balance
+                    });
                 }
-                _outputBalance = _ov.balance;
-                _outputBalanceFixed = ethers.utils.parseUnits(
-                    ethers.utils.formatUnits(
-                        _outputBalance,
-                        _output.token.decimals
-                    )
-                );
+                else {
+                    let _ov = vaultsCache.find(e =>
+                        e.owner === order.owner.id &amp;&amp;
+                        e.token === _output.token.id &amp;&amp;
+                        e.vaultId === _output.vault.id.split("-")[0]
+                    );
+                    if (!_ov) {
+                        const balance = await orderbook.vaultBalance(
+                            order.owner.id,
+                            _output.token.id,
+                            _output.vault.id.split("-")[0]
+                        );
+                        _ov = {
+                            owner: order.owner.id,
+                            token: _output.token.id,
+                            vaultId: _output.vault.id.split("-")[0],
+                            balance
+                        };
+                        vaultsCache.push(_ov);
+                    }
+                    _outputBalance = _ov.balance;
+                    _outputBalanceFixed = ethers.utils.parseUnits(
+                        ethers.utils.formatUnits(
+                            _outputBalance,
+                            _output.token.decimals
+                        )
+                    );
+                }
+                quoteAmount = _outputBalanceFixed;
             }
 
-            if (!_outputBalanceFixed.isZero()) {
+            if (quoteAmount === undefined || !quoteAmount.isZero()) {
                 for (let k = 0; k &lt; order.validInputs.length; k ++) {
                     if (_output.token.id !== order.validInputs[k].token.id) {
                         const _input = order.validInputs[k];
-                        let quoteAmount = _outputBalanceFixed;
-                        let ratio, maxOutput;
 
                         if (_eval) {
                             let _inputBalance;
@@ -655,14 +657,12 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
                                 _outputBalance.toString()
                             ));
 
-                            if (maxOutput &amp;&amp; ratio) {
-                                quoteAmount = _outputBalanceFixed.lte(maxOutput)
-                                    ? _outputBalanceFixed
-                                    : maxOutput;
+                            if (maxOutput &amp;&amp; ratio &amp;&amp; maxOutput.lt(quoteAmount)) {
+                                quoteAmount = maxOutput;
                             }
                         }
 
-                        if (!quoteAmount.isZero()) {
+                        if (!_eval || !quoteAmount.isZero()) {
                             const pair = bundledOrders.find(v =>
                                 v.sellToken === _output.token.id &amp;&amp;
                                 v.buyToken === _input.token.id
@@ -705,7 +705,9 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
     }
     // sort ascending based on ratio if orders are evaled
     if (_eval) bundledOrders.forEach(v => v.takeOrders.sort(
-        (a, b) => a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
+        (a, b) => a.ratio &amp;&amp; b.ratio
+            ? a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
+            : 0
     ));
     return bundledOrders;
 };
@@ -1147,6 +1149,96 @@ const promiseTimeout = async(promise, time, exception) => {
     );
 };
 
+
+/**
+ * Gets the route for tokens
+ *
+ * @param {number} chainId - The network chain id
+ * @param {ethers.BigNumber} sellAmount - The sell amount, should be in onchain token value
+ * @param {string} fromTokenAddress - The from token address
+ * @param {number} fromTokenDecimals - The from token decimals
+ * @param {string} toTokenAddress - The to token address
+ * @param {number} toTokenDecimals - The to token decimals
+ * @param {string} receiverAddress - The address of the receiver
+ * @param {string} routeProcessorAddress - The address of the RouteProcessor contract
+ * @param {boolean} abiencoded - If the result should be abi encoded or not
+ */
+const getRouteForTokens = async(
+    chainId,
+    sellAmount,
+    fromTokenAddress,
+    fromTokenDecimals,
+    toTokenAddress,
+    toTokenDecimals,
+    receiverAddress,
+    routeProcessorAddress,
+    abiEncoded
+) => {
+    const amountIn = sellAmount;
+    const fromToken = new Token({
+        chainId: chainId,
+        decimals: fromTokenDecimals,
+        address: fromTokenAddress
+    });
+    const toToken = new Token({
+        chainId: chainId,
+        decimals: toTokenDecimals,
+        address: toTokenAddress
+    });
+    const dataFetcher = getDataFetcher({chainId});
+    await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    const route = Router.findBestRoute(
+        pcMap,
+        chainId,
+        fromToken,
+        amountIn,
+        toToken,
+        30e9,
+        // providers,
+        // poolFilter
+    );
+    if (route.status == "NoWay") throw "NoWay";
+    else {
+        let routeText = "";
+        route.legs.forEach((v, i) => {
+            if (i === 0) routeText =
+                routeText +
+                v.tokenTo.symbol +
+                "/" +
+                v.tokenFrom.symbol +
+                "(" +
+                v.poolName +
+                ")";
+            else routeText =
+                routeText +
+                " + " +
+                v.tokenTo.symbol +
+                "/" +
+                v.tokenFrom.symbol +
+                "(" +
+                v.poolName +
+                ")";
+        });
+        console.log("Route portions: ", routeText, "\n");
+        const rpParams = Router.routeProcessor2Params(
+            pcMap,
+            route,
+            fromToken,
+            toToken,
+            receiverAddress,
+            routeProcessorAddress,
+            // permits
+            // "0.005"
+        );
+        if (abiEncoded) return ethers.utils.defaultAbiCoder.encode(
+            ["bytes"],
+            [rpParams.routeCode]
+        );
+        else return rpParams.routeCode;
+    }
+};
+
 module.exports = {
     fallbackTransports,
     bnFromFloat,
@@ -1168,7 +1260,8 @@ module.exports = {
     getOrderDetailsFromJson,
     appGlobalLogger,
     promiseTimeout,
-    getActualClearAmount
+    getActualClearAmount,
+    getRouteForTokens
 };
 </code></pre>
         </article>
@@ -1180,13 +1273,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Tue Sep 05 2023 20:40:30 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Sep 07 2023 15:53:18 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>
