@@ -456,13 +456,14 @@ const srouterClear = async(
                                     console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                                     console.log(error, "\n");
                                     if (j > 1) console.log(
+                                        "\x1b[34m%s\x1b[0m",
                                         `could not clear with ${ethers.utils.formatEther(
                                             maximumInputFixed
                                         )} ${
                                             bundledOrders[i].sellTokenSymbol
                                         } as max input, trying with lower amount...`, "\n"
                                     );
-                                    else console.log("could not arb this pair", "\n");
+                                    else console.log("\x1b[34m%s\x1b[0m", "could not arb this pair", "\n");
                                 }
                             }
                         }
@@ -474,13 +475,14 @@ const srouterClear = async(
                             }
                             else {
                                 if (j > 1) console.log(
+                                    "\x1b[34m%s\x1b[0m",
                                     `could not clear with ${ethers.utils.formatEther(
                                         maximumInputFixed
                                     )} ${
                                         bundledOrders[i].sellTokenSymbol
                                     } as max input, trying with lower amount...`, "\n"
                                 );
-                                else console.log("could not arb this pair", "\n");
+                                else console.log("\x1b[34m%s\x1b[0m", "could not arb this pair", "\n");
                             }
                         }
                     }
