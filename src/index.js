@@ -41,7 +41,7 @@ const configOptions = {
      */
     maxProfit: false,
     /**
-     * Maximize maxIORatio for "srouter" mode, comes at the cost of RPC calls
+     * Maximize maxIORatio for "srouter" mode
      */
     maxRatio: false
 };
