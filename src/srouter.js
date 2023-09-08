@@ -8,10 +8,10 @@ const {
     getEthPrice,
     getDataFetcher,
     getActualPrice,
-    // estimateProfit,
+    visualizeRoute,
     bundleTakeOrders,
-    fetchPoolsForTokenWrapper,
-    getActualClearAmount
+    getActualClearAmount,
+    fetchPoolsForTokenWrapper
 } = require("./utils");
 
 
@@ -119,6 +119,7 @@ const srouterClear = async(
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
     const maxProfit         = config.maxProfit;
+    const maxRatio          = config.maxRatio;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbis["srouter"], signer);
@@ -239,27 +240,13 @@ const srouterClear = async(
                         );
                         const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
                         console.log(`Current best route price for this token pair: ${ethers.utils.formatEther(price)}`, "\n");
-                        let routeText = "";
-                        route.legs.forEach((v, i) => {
-                            if (i === 0) routeText =
-                                routeText +
-                                v.tokenTo.symbol +
-                                "/" +
-                                v.tokenFrom.symbol +
-                                "(" +
-                                v.poolName +
-                                ")";
-                            else routeText =
-                                routeText +
-                                " + " +
-                                v.tokenTo.symbol +
-                                "/" +
-                                v.tokenFrom.symbol +
-                                "(" +
-                                v.poolName +
-                                ")";
-                        });
-                        console.log(">>> Route portions: ", routeText, "\n");
+                        console.log(">>> Route portions: ", "\n");
+                        console.log(
+                            "\x1b[36m%s\x1b[0m",
+                            visualizeRoute(fromToken.address, toToken.address, route.legs),
+                            "\n"
+                        );
+
                         const rpParams = Router.routeProcessor2Params(
                             pcMap,
                             route,
@@ -273,7 +260,7 @@ const srouterClear = async(
                         const takeOrdersConfigStruct = {
                             minimumInput: ethers.constants.One,
                             maximumInput,
-                            maximumIORatio: price,
+                            maximumIORatio: maxRatio ? ethers.constants.MaxUint256 : price,
                             orders: bundledOrders[i].takeOrders.map(v => v.takeOrder),
                             data: ethers.utils.defaultAbiCoder.encode(
                                 ["bytes"],

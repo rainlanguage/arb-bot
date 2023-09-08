@@ -1211,6 +1211,43 @@ const getRouteForTokens = async(
     }
 };
 
+const visualizeRoute = (fromToken, toToken, legs) => {
+    return [
+        ...legs.filter(
+            v => v.tokenTo.address.toLowerCase() === toToken.toLowerCase() &&
+            v.tokenFrom.address.toLowerCase() === fromToken.toLowerCase()
+        ).map(v => [v]),
+
+        ...legs.filter(
+            v => v.tokenFrom.address.toLowerCase() === fromToken.toLowerCase() &&
+            v.tokenTo.address.toLowerCase() !== toToken.toLowerCase()
+        ).map(v => {
+            const portoin = [v];
+            while(portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.toLowerCase()) {
+                portoin.push(
+                    legs.find(e =>
+                        e.tokenFrom.address.toLowerCase() ===
+                        portoin.at(-1).tokenTo.address.toLowerCase()
+                    )
+                );
+            }
+            return portoin;
+        })
+
+    ].sort(
+        (a, b) => b[0].absolutePortion - a[0].absolutePortion
+    ).map(
+        v => (v[0].absolutePortion * 100).toFixed(2).padStart(5, "0") + "%   --->   " +
+        v.map(
+            e => e.tokenTo.symbol + "/" + e.tokenFrom.symbol + " (" + e.poolName + ")"
+        ).join(
+            " >> "
+        )
+    ).join(
+        "\n"
+    );
+};
+
 module.exports = {
     fallbackTransports,
     bnFromFloat,
@@ -1233,5 +1270,6 @@ module.exports = {
     appGlobalLogger,
     promiseTimeout,
     getActualClearAmount,
-    getRouteForTokens
+    getRouteForTokens,
+    visualizeRoute
 };

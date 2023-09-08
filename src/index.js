@@ -39,7 +39,11 @@ const configOptions = {
     /**
      * Maximize profit for "srouter" mode, comes at the cost of RPC calls
      */
-    maxProfit: false
+    maxProfit: false,
+    /**
+     * Maximize maxIORatio for "srouter" mode, comes at the cost of RPC calls
+     */
+    maxRatio: false
 };
 
 /**
@@ -176,6 +180,7 @@ const getConfig = async(
     config.apiKey           = options?.zeroExApiKey;
     config.monthlyRatelimit = options?.monthlyRatelimit;
     config.maxProfit        = !!options?.maxProfit;
+    config.maxRatio         = !!options?.maxRatio;
     return config;
 };
 

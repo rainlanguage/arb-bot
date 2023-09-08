@@ -8,7 +8,7 @@ const {
     getEthPrice,
     getDataFetcher,
     getActualPrice,
-    // estimateProfit,
+    visualizeRoute,
     bundleTakeOrders,
     fetchPoolsForTokenWrapper
 } = require("./utils");
@@ -298,27 +298,13 @@ const routerClear = async(
                     //     // poolFilter
                     // );
                     // if (route.status == "NoWay") throw "could not find any route for this token pair";
-                    let routeText = "";
-                    route.legs.forEach((v, i) => {
-                        if (i === 0) routeText =
-                            routeText +
-                            v.tokenTo.symbol +
-                            "/" +
-                            v.tokenFrom.symbol +
-                            "(" +
-                            v.poolName +
-                            ")";
-                        else routeText =
-                            routeText +
-                            " + " +
-                            v.tokenTo.symbol +
-                            "/" +
-                            v.tokenFrom.symbol +
-                            "(" +
-                            v.poolName +
-                            ")";
-                    });
-                    console.log(">>> Route portions: ", routeText, "\n");
+                    console.log(">>> Route portions: ", "\n");
+                    console.log(
+                        "\x1b[36m%s\x1b[0m",
+                        visualizeRoute(fromToken.address, toToken.address, route.legs),
+                        "\n"
+                    );
+
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,
                         route,
