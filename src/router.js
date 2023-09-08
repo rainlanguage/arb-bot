@@ -299,11 +299,15 @@ const routerClear = async(
                     // );
                     // if (route.status == "NoWay") throw "could not find any route for this token pair";
                     console.log(">>> Route portions: ", "\n");
-                    console.log(
-                        "\x1b[36m%s\x1b[0m",
-                        visualizeRoute(fromToken.address, toToken.address, route.legs),
-                        "\n"
+                    visualizeRoute(fromToken.address, toToken.address, route.legs).forEach(
+                        v => console.log("\x1b[36m%s\x1b[0m", v)
                     );
+                    console.log("\n");
+                    // console.log(
+                    //     "\x1b[36m%s\x1b[0m",
+                    //     visualizeRoute(fromToken.address, toToken.address, route.legs),
+                    //     "\n"
+                    // );
 
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,

@@ -241,11 +241,14 @@ const srouterClear = async(
                         const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
                         console.log(`Current best route price for this token pair: ${ethers.utils.formatEther(price)}`, "\n");
                         console.log(">>> Route portions: ", "\n");
-                        console.log(
-                            "\x1b[36m%s\x1b[0m",
-                            visualizeRoute(fromToken.address, toToken.address, route.legs),
-                            "\n"
+                        visualizeRoute(fromToken.address, toToken.address, route.legs).forEach(
+                            v => console.log("\x1b[36m%s\x1b[0m", v)
                         );
+                        console.log("\n");
+                        // console.log(
+                        //     "\x1b[36m%s\x1b[0m",
+                        //     "\n"
+                        // );
 
                         const rpParams = Router.routeProcessor2Params(
                             pcMap,

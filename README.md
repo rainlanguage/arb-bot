@@ -117,8 +117,7 @@ which will show:
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
       --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
-      --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' 
-      in env variables
+      --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command

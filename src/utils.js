@@ -1211,6 +1211,13 @@ const getRouteForTokens = async(
     }
 };
 
+/**
+ * Method to visualize the routes, returns array of route strings sorted from highest to lowest percentage
+ *
+ * @param {string} fromToken - The from token address
+ * @param {string} toToken - The to token address
+ * @param {any[]} legs - The legs of the route
+ */
 const visualizeRoute = (fromToken, toToken, legs) => {
     return [
         ...legs.filter(
@@ -1243,8 +1250,6 @@ const visualizeRoute = (fromToken, toToken, legs) => {
         ).join(
             " >> "
         )
-    ).join(
-        "\n"
     );
 };
 
