@@ -130,7 +130,6 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
             await BUSD.connect(BUSDHolder).transfer(owners[i].address, "1000" + "0".repeat(BUSDDecimals));
             await FRAX.connect(FRAXHolder).transfer(owners[i].address, "1000" + "0".repeat(FRAXDecimals));
         }
-        console.log("hey");
     });
 
     it("should clear orders in 'srouter' mode", async function () {
@@ -176,7 +175,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         // validate first cleared token pair orders
         assert.equal(reports[0].tokenPair, "USDT/USDC");
         assert.equal(reports[0].clearedAmount, "200000000");
-        // assert.equal(reports[0].clearedOrders.length, 2);
+        assert.equal(reports[0].clearedOrders.length, 2);
 
         // check vault balances for orders in cleared token pair USDT/USDC
         assert.equal(

@@ -19,12 +19,12 @@ const {
  * bundled orders based on the best deals
  *
  * @param {any[]} bundledOrders - The bundled orders array
- * @param {string[]} lps - The list of liquidity providers
+ * @param {any} dataFetcher - The DataFetcher instance
  * @param {any} config - The network config data
  * @param {ethers.BigNumber} gasPrice - The network gas price
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepare = async(bundledOrders, lps, config, gasPrice, sort = true) => {
+const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true) => {
     for (let i = 0; i < bundledOrders.length; i++) {
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
@@ -41,7 +41,6 @@ const prepare = async(bundledOrders, lps, config, gasPrice, sort = true) => {
                 address: bOrder.buyToken,
                 symbol: bOrder.buyTokenSymbol
             });
-            const dataFetcher = getDataFetcher(config, lps);
             await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
             const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
             const route = Router.findBestRoute(
@@ -61,7 +60,6 @@ const prepare = async(bundledOrders, lps, config, gasPrice, sort = true) => {
             // const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
             const price = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
             bOrder.initPrice = price;
-            bOrder.dataFetcher = dataFetcher;
 
             console.log(`Current market price for ${pair} for: ${ethers.utils.formatEther(price)}`);
             console.log("Current ratio of the orders in this token pair:");
@@ -115,7 +113,7 @@ const routerClear = async(
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const lps               = processLps(config.lps);
-    const dataFetcher       = getDataFetcher(config, lps);
+    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -147,7 +145,7 @@ const routerClear = async(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
-        bundledOrders = await prepare(bundledOrders, lps, config, gasPrice, prioritization);
+        bundledOrders = await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -247,8 +245,8 @@ const routerClear = async(
                     symbol: bundledOrders[i].buyTokenSymbol
                 });
 
-                // await fetchPoolsForTokenWrapper(bundledOrders[i].dataFetcher, fromToken, toToken);
-                const pcMap = bundledOrders[i].dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
+                await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+                const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
@@ -299,10 +297,10 @@ const routerClear = async(
                     // );
                     // if (route.status == "NoWay") throw "could not find any route for this token pair";
                     console.log(">>> Route portions: ", "\n");
-                    visualizeRoute(fromToken.address, toToken.address, route.legs).forEach(
+                    visualizeRoute(fromToken, toToken, route.legs).forEach(
                         v => console.log("\x1b[36m%s\x1b[0m", v)
                     );
-                    console.log("\n");
+                    console.log("");
                     // console.log(
                     //     "\x1b[36m%s\x1b[0m",
                     //     visualizeRoute(fromToken.address, toToken.address, route.legs),
@@ -552,7 +550,6 @@ const routerClear = async(
             console.log(error);
         }
     }
-    dataFetcher.stopDataFetching();
     return report;
 };
 

@@ -43,52 +43,49 @@ const fallbackTransports = {
         transport: http("https://nova.arbitrum.io/rpc"),
     },
     [ChainId.ARBITRUM]: {
-        transport: fallback(
-            [
-                http("https://lb.drpc.org/ogrpc?network=arbitrum&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
-                http("https://rpc.ankr.com/arbitrum"),
-                http("https://arbitrum-one.public.blastapi.io"),
-                http("https://endpoints.omniatech.io/v1/arbitrum/one/public"),
-                http("https://arb1.croswap.com/rpc"),
-                http("https://1rpc.io/arb"),
-                http("https://arbitrum.blockpi.network/v1/rpc/public"),
-                http("https://arb-mainnet-public.unifra.io"),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://lb.drpc.org/ogrpc?network=arbitrum&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+            http("https://rpc.ankr.com/arbitrum"),
+            http("https://arbitrum-one.public.blastapi.io"),
+            http("https://endpoints.omniatech.io/v1/arbitrum/one/public"),
+            http("https://arb1.croswap.com/rpc"),
+            http("https://1rpc.io/arb"),
+            http("https://arbitrum.blockpi.network/v1/rpc/public"),
+            http("https://arb-mainnet-public.unifra.io"),
+        ],
     },
     [ChainId.AVALANCHE]: {
-        transport: fallback([
+        transport: [
             http("https://api.avax.network/ext/bc/C/rpc"),
             http("https://rpc.ankr.com/avalanche")
-        ]),
+        ],
     },
     [ChainId.BOBA]: {
-        transport: fallback([
+        transport: [
             http("https://mainnet.boba.network"),
             http("https://lightning-replica.boba.network")
-        ]),
+        ],
     },
     [ChainId.BOBA_AVAX]: {
-        transport: fallback([
+        transport: [
             http("https://avax.boba.network"),
             http("https://replica.avax.boba.network")
-        ]),
+        ],
     },
     [ChainId.BOBA_BNB]: {
-        transport: fallback([
+        transport: [
             http("https://bnb.boba.network"),
             http("https://replica.bnb.boba.network")
-        ]),
+        ],
     },
     [ChainId.BSC]: {
-        transport: fallback([
+        transport: [
             http("https://rpc.ankr.com/bsc"),
             http("https://lb.drpc.org/ogrpc?network=bsc&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
             http("https://bsc-dataseed.binance.org"),
             http("https://bsc-dataseed1.binance.org"),
             http("https://bsc-dataseed2.binance.org"),
-        ]),
+        ],
     },
     [ChainId.BTTC]: {
         transport: http("https://rpc.bittorrentchain.io"),
@@ -97,27 +94,24 @@ const fallbackTransports = {
         transport: http("https://forno.celo.org")
     },
     [ChainId.ETHEREUM]: {
-        transport: fallback(
-            [
-                http("https://lb.drpc.org/ogrpc?network=ethereum&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
-                http("https://eth.llamarpc.com"),
-                // http('https://eth.rpc.blxrbdn.com'),
-                // http('https://virginia.rpc.blxrbdn.com'),
-                // http('https://singapore.rpc.blxrbdn.com'),
-                // http('https://uk.rpc.blxrbdn.com'),
-                http("https://1rpc.io/eth"),
-                http("https://ethereum.publicnode.com"),
-                http("https://cloudflare-eth.com"),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://lb.drpc.org/ogrpc?network=ethereum&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+            http("https://eth.llamarpc.com"),
+            // http('https://eth.rpc.blxrbdn.com'),
+            // http('https://virginia.rpc.blxrbdn.com'),
+            // http('https://singapore.rpc.blxrbdn.com'),
+            // http('https://uk.rpc.blxrbdn.com'),
+            http("https://1rpc.io/eth"),
+            http("https://ethereum.publicnode.com"),
+            http("https://cloudflare-eth.com"),
+        ]
     },
     [ChainId.FANTOM]: {
-        transport: fallback([
+        transport: [
             http("https://rpc.ankr.com/fantom"),
             http("https://rpc.fantom.network"),
             http("https://rpc2.fantom.network"),
-        ]),
+        ],
     },
     [ChainId.FUSE]: {
         transport: http("https://rpc.fuse.io"),
@@ -126,76 +120,64 @@ const fallbackTransports = {
         transport: http("https://rpc.ankr.com/gnosis"),
     },
     [ChainId.HARMONY]: {
-        transport: fallback([
+        transport: [
             http("https://api.harmony.one"),
             http("https://rpc.ankr.com/harmony")
-        ]),
+        ],
     },
     [ChainId.KAVA]: {
-        transport: fallback([
+        transport: [
             http("https://evm.kava.io"),
             http("https://evm2.kava.io")
-        ]),
+        ],
     },
     [ChainId.MOONBEAM]: {
-        transport: fallback([
+        transport: [
             http("https://rpc.api.moonbeam.network"),
             http("https://rpc.ankr.com/moonbeam")
-        ]),
+        ],
     },
     [ChainId.MOONRIVER]: {
         transport: http("https://rpc.api.moonriver.moonbeam.network"),
     },
     [ChainId.OPTIMISM]: {
-        transport: fallback(
-            [
-                http("https://lb.drpc.org/ogrpc?network=optimism&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
-                http("https://rpc.ankr.com/optimism"),
-                http("https://optimism-mainnet.public.blastapi.io"),
-                http("https://1rpc.io/op"),
-                http("https://optimism.blockpi.network/v1/rpc/public"),
-                http("https://mainnet.optimism.io"),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://lb.drpc.org/ogrpc?network=optimism&amp;dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
+            http("https://rpc.ankr.com/optimism"),
+            http("https://optimism-mainnet.public.blastapi.io"),
+            http("https://1rpc.io/op"),
+            http("https://optimism.blockpi.network/v1/rpc/public"),
+            http("https://mainnet.optimism.io"),
+        ],
     },
     [ChainId.POLYGON]: {
-        transport: fallback(
-            [
-                http("https://polygon.llamarpc.com"),
-                // http('https://polygon.rpc.blxrbdn.com'),
-                http("https://polygon-mainnet.public.blastapi.io"),
-                http("https://polygon.blockpi.network/v1/rpc/public"),
-                http("https://polygon-rpc.com"),
-                http("https://rpc.ankr.com/polygon"),
-                http("https://matic-mainnet.chainstacklabs.com"),
-                http("https://polygon-bor.publicnode.com"),
-                http("https://rpc-mainnet.matic.quiknode.pro"),
-                http("https://rpc-mainnet.maticvigil.com"),
-                // ...polygon.rpcUrls.default.http.map((url) => http(url)),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://polygon.llamarpc.com"),
+            // http('https://polygon.rpc.blxrbdn.com'),
+            http("https://polygon-mainnet.public.blastapi.io"),
+            http("https://polygon.blockpi.network/v1/rpc/public"),
+            http("https://polygon-rpc.com"),
+            http("https://rpc.ankr.com/polygon"),
+            http("https://matic-mainnet.chainstacklabs.com"),
+            http("https://polygon-bor.publicnode.com"),
+            http("https://rpc-mainnet.matic.quiknode.pro"),
+            http("https://rpc-mainnet.maticvigil.com"),
+            // ...polygon.rpcUrls.default.http.map((url) => http(url)),
+        ],
     },
     [ChainId.POLYGON_ZKEVM]: {
-        transport: fallback(
-            [
-                http("https://zkevm-rpc.com"),
-                http("https://rpc.ankr.com/polygon_zkevm"),
-                http("https://rpc.polygon-zkevm.gateway.fm"),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://zkevm-rpc.com"),
+            http("https://rpc.ankr.com/polygon_zkevm"),
+            http("https://rpc.polygon-zkevm.gateway.fm"),
+        ],
     },
     [ChainId.THUNDERCORE]: {
-        transport: fallback(
-            [
-                http("https://mainnet-rpc.thundercore.com"),
-                http("https://mainnet-rpc.thundercore.io"),
-                http("https://mainnet-rpc.thundertoken.net"),
-            ],
-            { rank: true }
-        ),
+        transport: [
+            http("https://mainnet-rpc.thundercore.com"),
+            http("https://mainnet-rpc.thundercore.io"),
+            http("https://mainnet-rpc.thundertoken.net"),
+        ],
     },
 };
 
@@ -718,15 +700,20 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
  * @param {any} config - The network config data
  * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
  */
-const getDataFetcher = (config, liquidityProviders = []) => {
+const getDataFetcher = (config, liquidityProviders = [], useFallbacks = false) => {
     try {
         const dataFetcher = new DataFetcher(
             config.chainId,
             createPublicClient({
                 chain: viemConfig[config.chainId]?.chain,
                 transport: config.rpc &amp;&amp; config.rpc !== "test"
-                    ? http(config.rpc)
-                    : fallbackTransports[config.chainId].transport,
+                    ? useFallbacks
+                        ? fallback(
+                            [config.rpc, ...fallbackTransports[config.chainId].transport],
+                            {rank: true}
+                        )
+                        : http(config.rpc)
+                    : fallback(fallbackTransports[config.chainId].transport, {rank: true}),
                 // batch: {
                 //     multicall: {
                 //         batchSize: 512
@@ -735,9 +722,12 @@ const getDataFetcher = (config, liquidityProviders = []) => {
                 // pollingInterval: 8_000,
             })
         );
+
+        // start and immediately stop data fetching as we only want data fetching on demand
         dataFetcher.startDataFetching(
             !liquidityProviders.length ? undefined : liquidityProviders
         );
+        dataFetcher.stopDataFetching();
         return dataFetcher;
     }
     catch(error) {
@@ -1249,20 +1239,31 @@ const getRouteForTokens = async(
 const visualizeRoute = (fromToken, toToken, legs) => {
     return [
         ...legs.filter(
-            v => v.tokenTo.address.toLowerCase() === toToken.toLowerCase() &amp;&amp;
-            v.tokenFrom.address.toLowerCase() === fromToken.toLowerCase()
+            v => v.tokenTo.address.toLowerCase() === toToken.address.toLowerCase() &amp;&amp;
+            v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &amp;&amp;
+            v.tokenTo.symbol.toLowerCase() === toToken.symbol.toLowerCase() &amp;&amp;
+            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase()
         ).map(v => [v]),
 
         ...legs.filter(
-            v => v.tokenFrom.address.toLowerCase() === fromToken.toLowerCase() &amp;&amp;
-            v.tokenTo.address.toLowerCase() !== toToken.toLowerCase()
+            v => v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &amp;&amp;
+            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase() &amp;&amp;
+            (
+                v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
+                v.tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+            )
         ).map(v => {
             const portoin = [v];
-            while(portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.toLowerCase()) {
+            while(
+                portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
+                portoin.at(-1).tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+            ) {
                 portoin.push(
                     legs.find(e =>
                         e.tokenFrom.address.toLowerCase() ===
-                        portoin.at(-1).tokenTo.address.toLowerCase()
+                        portoin.at(-1).tokenTo.address.toLowerCase() &amp;&amp;
+                        e.tokenFrom.symbol.toLowerCase() ===
+                        portoin.at(-1).tokenTo.symbol.toLowerCase()
                     )
                 );
             }
@@ -1322,7 +1323,7 @@ module.exports = {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 08 2023 16:43:44 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Sep 14 2023 13:47:17 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

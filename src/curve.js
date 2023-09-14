@@ -295,7 +295,7 @@ const curveClear = async(
     );
 
     const report = [];
-    const dataFetcher = getDataFetcher(config, processLps(config.lps));
+    const dataFetcher = getDataFetcher(config, processLps(config.lps), !!config.usePublicRpc);
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
             gasPrice = await signer.provider.getGasPrice();
@@ -665,7 +665,6 @@ const curveClear = async(
             console.log(error);
         }
     }
-    dataFetcher.stopDataFetching();
     return report;
 };
 

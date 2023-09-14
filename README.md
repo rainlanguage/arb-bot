@@ -56,6 +56,7 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `--max-ratio`, Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
+- `--use-public-rpcs`, Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -119,6 +120,7 @@ which will show:
       --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
       --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
+      --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -184,6 +186,9 @@ SLEEP=10
 
 # Option to maximize maxIORatio for 'srouter' mode
 MAX_RATIO="true"
+
+# Option to use public rpcs as fallback option for 'srouter' and 'router' mode
+USE_PUBLIC_RPCS="true"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -207,6 +212,7 @@ const configOptions = {
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
   maxRatio              : true     // option to maximize the maxIORatio in "srouter" mode
+  usePublicRpcs         : false    // option to fallback to public rpcs
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
