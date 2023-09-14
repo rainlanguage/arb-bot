@@ -28,6 +28,7 @@ const DEFAULT_OPTIONS = {
     sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
+    usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -57,6 +58,7 @@ const getOptions = async argv => {
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
+        .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -86,6 +88,7 @@ const getOptions = async argv => {
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || DEFAULT_OPTIONS.monthlyRatelimit;
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
+    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
 
     return cmdOptions;
 };
@@ -109,6 +112,7 @@ const arbRound = async options => {
             monthlyRatelimit    : options.monthlyRatelimit,
             maxProfit           : options.maxProfit,
             maxRatio            : options.maxRatio,
+            usePublicRpcs       : options.usePublicRpcs,
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
             liquidityProviders  : options.lps

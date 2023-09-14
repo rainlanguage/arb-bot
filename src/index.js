@@ -43,7 +43,11 @@ const configOptions = {
     /**
      * Maximize maxIORatio for "srouter" mode
      */
-    maxRatio: false
+    maxRatio: false,
+    /**
+     * Option to fallback to public rpcs
+    */
+    usePublicRpcs: false
 };
 
 /**
@@ -181,6 +185,7 @@ const getConfig = async(
     config.monthlyRatelimit = options?.monthlyRatelimit;
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
+    config.usePublicRpcs    = !!options?.usePublicRpcs;
     return config;
 };
 
