@@ -26,7 +26,7 @@ const {
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
 const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true) => {
-    for (let i = 0; i < bundledOrders.length; i++) {
+    for (let i = 0; i < bundledOrders.length; i++) if (bundledOrders[i].initPrice === undefined) {
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
         try {
@@ -69,6 +69,47 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
                 v => v.ratio !== undefined ? price.gte(v.ratio) : true
             );
             console.log("\n");
+
+            const inverseBOrder = bundledOrders.find(
+                v => fromToken.address.toLowerCase() === v.buyToken.toLowerCase() &&
+                toToken.address.toLowerCase() === v.sellToken.toLowerCase()
+            );
+            if (inverseBOrder) {
+                const inversePair = inverseBOrder.buyTokenSymbol + "/" + inverseBOrder.sellTokenSymbol;
+                try {
+                    inverseBOrder.initPrice = null;
+                    const inversePcMap = dataFetcher.getCurrentPoolCodeMap(toToken, fromToken);
+                    const inverseRoute = Router.findBestRoute(
+                        inversePcMap,
+                        config.chainId,
+                        toToken,
+                        // cumulativeAmount,
+                        "1" + "0".repeat(inverseBOrder.buyTokenDecimals),
+                        fromToken,
+                        gasPrice.toNumber(),
+                        // providers,
+                        // poolFilter
+                    );
+                    if (inverseRoute.status == "NoWay") throw "could not find any route for this token pair";
+
+                    const inversePrice = inverseRoute.amountOutBN.mul("1" + "0".repeat(18 - inverseBOrder.buyTokenDecimals));
+                    inverseBOrder.initPrice = inversePrice;
+
+                    console.log(`Current market price for ${inversePair} for: ${ethers.utils.formatEther(inversePrice)}`);
+                    console.log("Current ratio of the orders in this token pair:");
+                    inverseBOrder.takeOrders.forEach(v => {
+                        console.log(ethers.utils.formatEther(v.ratio));
+                    });
+                    inverseBOrder.takeOrders = inverseBOrder.takeOrders.filter(
+                        v => inversePrice.gte(v.ratio)
+                    );
+                    console.log("\n");
+                }
+                catch(error) {
+                    console.log(`>>> could not get price for this ${inversePair} due to:`);
+                    console.log(error, "\n");
+                }
+            }
         }
         catch(error) {
             console.log(`>>> could not get price for this ${pair} due to:`);
@@ -111,7 +152,7 @@ const srouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
     if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
-    const lps               = processLps(config.lps);
+    const lps               = processLps(config.lps, config.chainId);
     const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -165,7 +206,6 @@ const srouterClear = async(
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
-            gasPrice = await signer.provider.getGasPrice();
             console.log(
                 `------------------------- Trying To Clear ${
                     bundledOrders[i].buyTokenSymbol
@@ -219,6 +259,7 @@ const srouterClear = async(
                         fromToken,
                         toToken
                     );
+                    gasPrice = await signer.provider.getGasPrice();
                     const route = Router.findBestRoute(
                         pcMap,
                         config.chainId,
@@ -291,7 +332,7 @@ const srouterClear = async(
                                     // console.log(err);
                                     throw "nomatch";
                                 }
-                                gasLimit = gasLimit.mul("11").div("10");
+                                gasLimit = gasLimit.mul("112").div("100");
                                 rawtx.gasLimit = gasLimit;
                                 const gasCost = gasLimit.mul(gasPrice);
                                 // const maxEstimatedProfit = estimateProfit(
@@ -325,7 +366,25 @@ const srouterClear = async(
                                         36 - bundledOrders[i].buyTokenDecimals
                                     )
                                 );
-                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                                if (gasCoveragePercentage !== "0") {
+                                    const headroom = (
+                                        Number(gasCoveragePercentage) * 1.2
+                                    ).toFixed();
+                                    rawtx.data = arb.interface.encodeFunctionData(
+                                        "arb",
+                                        [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(headroom).div(100)
+                                        ]
+                                    );
+                                    try {
+                                        await signer.estimateGas(rawtx);
+                                    }
+                                    catch {
+                                        // console.log(err);
+                                        throw "dryrun";
+                                    }
+                                }
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     [
@@ -333,6 +392,7 @@ const srouterClear = async(
                                         gasCostInToken.mul(gasCoveragePercentage).div(100)
                                     ]
                                 );
+                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                                 const tx = await signer.sendTransaction(rawtx);
 
                                 console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
@@ -454,7 +514,7 @@ const srouterClear = async(
                             }
                         }
                         catch (error) {
-                            if (error !== "nomatch") {
+                            if (error !== "nomatch" && error !== "dryrun") {
                                 console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                                 console.log(error, "\n");
                                 // reason, code, method, transaction, error, stack, message

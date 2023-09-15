@@ -36,11 +36,15 @@ const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router")
 
 
 /**
- * Fallback transports for viem client
+ * Chain specific fallback data
  */
-const fallbackTransports = {
+const fallbacks = {
     [ChainId.ARBITRUM_NOVA]: {
         transport: http("https://nova.arbitrum.io/rpc"),
+        liquidityProviders: [
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.ARBITRUM]: {
         transport: [
@@ -53,30 +57,53 @@ const fallbackTransports = {
             http("https://arbitrum.blockpi.network/v1/rpc/public"),
             http("https://arb-mainnet-public.unifra.io"),
         ],
+        liquidityProviders: [
+            "dfyn",
+            "elk",
+            "sushiswapv3",
+            "uniswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.AVALANCHE]: {
         transport: [
             http("https://api.avax.network/ext/bc/C/rpc"),
             http("https://rpc.ankr.com/avalanche")
         ],
+        liquidityProviders: [
+            "elk",
+            "traderjoe",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA]: {
         transport: [
             http("https://mainnet.boba.network"),
             http("https://lightning-replica.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA_AVAX]: {
         transport: [
             http("https://avax.boba.network"),
             http("https://replica.avax.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA_BNB]: {
         transport: [
             http("https://bnb.boba.network"),
             http("https://replica.bnb.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.BSC]: {
         transport: [
@@ -86,12 +113,26 @@ const fallbackTransports = {
             http("https://bsc-dataseed1.binance.org"),
             http("https://bsc-dataseed2.binance.org"),
         ],
+        liquidityProviders: [
+            "apeswap",
+            "biswap",
+            "elk",
+            "jetswap",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ]
     },
     [ChainId.BTTC]: {
         transport: http("https://rpc.bittorrentchain.io"),
     },
     [ChainId.CELO]: {
-        transport: http("https://forno.celo.org")
+        transport: http("https://forno.celo.org"),
+        liquidityProviders: [
+            "ubeswap",
+            "sushiswapv2"
+        ]
     },
     [ChainId.ETHEREUM]: {
         transport: [
@@ -104,6 +145,16 @@ const fallbackTransports = {
             http("https://1rpc.io/eth"),
             http("https://ethereum.publicnode.com"),
             http("https://cloudflare-eth.com"),
+        ],
+        liquidityProviders: [
+            "apeswap",
+            "curveswap",
+            "elk",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv2",
+            "uniswapv3"
         ]
     },
     [ChainId.FANTOM]: {
@@ -112,33 +163,66 @@ const fallbackTransports = {
             http("https://rpc.fantom.network"),
             http("https://rpc2.fantom.network"),
         ],
+        liquidityProviders: [
+            "dfyn",
+            "elk",
+            "jetswap",
+            "spookyswap",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.FUSE]: {
         transport: http("https://rpc.fuse.io"),
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.GNOSIS]: {
         transport: http("https://rpc.ankr.com/gnosis"),
+        liquidityProviders: [
+            "elk",
+            "honeyswap",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.HARMONY]: {
         transport: [
             http("https://api.harmony.one"),
             http("https://rpc.ankr.com/harmony")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.KAVA]: {
         transport: [
             http("https://evm.kava.io"),
-            http("https://evm2.kava.io")
+            http("https://evm2.kava.io"),
         ],
+        liquidityProviders: [
+            "elk"
+        ]
     },
     [ChainId.MOONBEAM]: {
         transport: [
             http("https://rpc.api.moonbeam.network"),
             http("https://rpc.ankr.com/moonbeam")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.MOONRIVER]: {
         transport: http("https://rpc.api.moonriver.moonbeam.network"),
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.OPTIMISM]: {
         transport: [
@@ -149,6 +233,11 @@ const fallbackTransports = {
             http("https://optimism.blockpi.network/v1/rpc/public"),
             http("https://mainnet.optimism.io"),
         ],
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "uniswapv3"
+        ]
     },
     [ChainId.POLYGON]: {
         transport: [
@@ -164,6 +253,16 @@ const fallbackTransports = {
             http("https://rpc-mainnet.maticvigil.com"),
             // ...polygon.rpcUrls.default.http.map((url) => http(url)),
         ],
+        liquidityProviders: [
+            "apeswap",
+            "dfyn",
+            "elk",
+            "jetswap",
+            "quickswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ]
     },
     [ChainId.POLYGON_ZKEVM]: {
         transport: [
@@ -171,6 +270,10 @@ const fallbackTransports = {
             http("https://rpc.ankr.com/polygon_zkevm"),
             http("https://rpc.polygon-zkevm.gateway.fm"),
         ],
+        liquidityProviders: [
+            "dovishv3",
+            "sushiswapv3"
+        ]
     },
     [ChainId.THUNDERCORE]: {
         transport: [
@@ -178,6 +281,10 @@ const fallbackTransports = {
             http("https://mainnet-rpc.thundercore.io"),
             http("https://mainnet-rpc.thundertoken.net"),
         ],
+        liquidityProviders: [
+            "laserswap",
+            "sushiswapv3"
+        ]
     },
 };
 
@@ -709,11 +816,11 @@ const getDataFetcher = (config, liquidityProviders = [], useFallbacks = false) =
                 transport: config.rpc &amp;&amp; config.rpc !== "test"
                     ? useFallbacks
                         ? fallback(
-                            [config.rpc, ...fallbackTransports[config.chainId].transport],
+                            [config.rpc, ...fallbacks[config.chainId].transport],
                             {rank: true}
                         )
                         : http(config.rpc)
-                    : fallback(fallbackTransports[config.chainId].transport, {rank: true}),
+                    : fallback(fallbacks[config.chainId].transport, {rank: true}),
                 // batch: {
                 //     multicall: {
                 //         batchSize: 512
@@ -832,8 +939,9 @@ const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclude
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
+ * @param {number} chainId - The chain id
  */
-const processLps = (liquidityProviders) => {
+const processLps = (liquidityProviders, chainId) => {
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
@@ -843,7 +951,12 @@ const processLps = (liquidityProviders) => {
     const _lps = [];
     const LP = Object.values(LiquidityProviders);
     for (let i = 0; i &lt; liquidityProviders.length; i++) {
-        const index = LP.findIndex(v => v.toLowerCase() === liquidityProviders[i].toLowerCase());
+        const index = LP.findIndex(
+            v => v.toLowerCase() === liquidityProviders[i].toLowerCase()
+                &amp;&amp; !!fallbacks[chainId]?.liquidityProviders.includes(
+                    liquidityProviders[i].toLowerCase()
+                )
+        );
         if (index > -1 &amp;&amp; !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
     return _lps.length ? _lps : undefined;
@@ -1283,7 +1396,7 @@ const visualizeRoute = (fromToken, toToken, legs) => {
 };
 
 module.exports = {
-    fallbackTransports,
+    fallbacks,
     bnFromFloat,
     toFixed18,
     fromFixed18,
@@ -1317,13 +1430,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbackTransports">fallbackTransports</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Sep 14 2023 13:47:17 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 00:27:18 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

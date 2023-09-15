@@ -121,6 +121,16 @@
             "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "apeswap",
+            "dfyn",
+            "elk",
+            "jetswap",
+            "quickswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ],
         "stableTokens": [
             {
                 "symbol": "USDT",
@@ -222,6 +232,16 @@
             "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "apeswap",
+            "curveswap",
+            "elk",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv2",
+            "uniswapv3"
+        ],
         "stableTokens": [
             {
                 "symbol": "USDT",
@@ -306,28 +326,6 @@
         ]
     },
     {
-        "network": "goerli",
-        "chainId": 5,
-        "explorer": "https://goerli.etherscan.io/",
-        "zeroEx": {
-            "apiUrl": "https://goerli.api.0x.org/",
-            "proxyAddress": "0xf91bb752490473b8342a3e964e855b9f9a2a668e"
-        },
-        "curve": {
-            "pools": []
-        },
-        "nativeToken": {
-            "symbol": "ETH",
-            "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            "decimals": 18
-        },
-        "nativeWrappedToken": {
-            "symbol": "WETH",
-            "address": "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
-            "decimals": 18
-        }
-    },
-    {
         "network": "avalanche",
         "chainId": 43114,
         "explorer": "https://snowtrace.io/",
@@ -350,6 +348,12 @@
             "address": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "elk",
+            "traderjoe",
+            "sushiswapv3",
+            "sushiswapv2"
+        ],
         "stableTokens": [
             {
                 "symbol": "USDT.e",
@@ -436,6 +440,13 @@
             "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "dfyn",
+            "elk",
+            "sushiswapv3",
+            "uniswapv3",
+            "sushiswapv2"
+        ],
         "stableTokens": [
             {
                 "symbol": "USDT",
@@ -507,6 +518,14 @@
             "address": "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "dfyn",
+            "elk",
+            "jetswap",
+            "spookyswap",
+            "sushiswapv3",
+            "sushiswapv2"
+        ],
         "stableTokens": [
             {
                 "symbol": "fUSDT",
@@ -588,6 +607,16 @@
             "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "apeswap",
+            "biswap",
+            "elk",
+            "jetswap",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ],
         "stableTokens": [
             {
                 "symbol": "USDT",
@@ -669,6 +698,10 @@
             "address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "ubeswap",
+            "sushiswapv2"
+        ],
         "stableTokens": [
             {
                 "symbol": "MAI",
@@ -700,6 +733,11 @@
             "address": "0x4200000000000000000000000000000000000006",
             "decimals": 18
         },
+        "liquidityProviders": [
+            "elk",
+            "sushiswapv3",
+            "uniswapv3"
+        ],
         "stableTokens": {
 
         }
@@ -724,6 +762,28 @@
         "nativeWrappedToken": {
             "symbol": "WMATIC",
             "address": "0x5B67676a984807a212b1c59eBFc9B3568a474F0a",
+            "decimals": 18
+        }
+    },
+    {
+        "network": "goerli",
+        "chainId": 5,
+        "explorer": "https://goerli.etherscan.io/",
+        "zeroEx": {
+            "apiUrl": "https://goerli.api.0x.org/",
+            "proxyAddress": "0xf91bb752490473b8342a3e964e855b9f9a2a668e"
+        },
+        "curve": {
+            "pools": []
+        },
+        "nativeToken": {
+            "symbol": "ETH",
+            "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WETH",
+            "address": "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
             "decimals": 18
         }
     }

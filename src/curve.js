@@ -6,7 +6,6 @@ const {
     getEthPrice,
     getDataFetcher,
     getActualPrice,
-    // estimateProfit,
     bundleTakeOrders
 } = require("./utils");
 
@@ -295,10 +294,13 @@ const curveClear = async(
     );
 
     const report = [];
-    const dataFetcher = getDataFetcher(config, processLps(config.lps), !!config.usePublicRpc);
+    const dataFetcher = getDataFetcher(
+        config,
+        processLps(config.lps, config.chainId),
+        !!config.usePublicRpc
+    );
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
-            gasPrice = await signer.provider.getGasPrice();
             console.log(
                 `------------------------- Trying To Clear ${
                     bundledOrders[i].buyTokenSymbol
@@ -449,6 +451,7 @@ const curveClear = async(
                     if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
                     // console.log(">>> Estimating the profit for this token pair...", "\n");
+                    gasPrice = await signer.provider.getGasPrice();
                     const ethPrice = await getEthPrice(
                         config,
                         bundledOrders[i].buyToken,
@@ -477,7 +480,7 @@ const curveClear = async(
                         };
                         console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                         let gasLimit = await signer.estimateGas(rawtx);
-                        gasLimit = gasLimit.mul("11").div("10");
+                        gasLimit = gasLimit.mul("112").div("100");
                         rawtx.gasLimit = gasLimit;
                         const gasCost = gasLimit.mul(gasPrice);
                         // let gasLimit;
@@ -528,6 +531,25 @@ const curveClear = async(
                                 36 - bundledOrders[i].buyTokenDecimals
                             )
                         );
+                        if (gasCoveragePercentage !== "0") {
+                            const headroom = (
+                                Number(gasCoveragePercentage) * 1.15
+                            ).toFixed();
+                            rawtx.data = arb.interface.encodeFunctionData(
+                                "arb",
+                                arbType === "order-taker"
+                                    ? [
+                                        takeOrdersConfigStruct,
+                                        gasCostInToken.mul(headroom).div(100)
+                                    ]
+                                    : [
+                                        takeOrdersConfigStruct,
+                                        gasCostInToken.mul(headroom).div(100),
+                                        exchangeData
+                                    ]
+                            );
+                            await signer.estimateGas(rawtx);
+                        }
                         rawtx.data = arb.interface.encodeFunctionData(
                             "arb",
                             arbType === "order-taker"
@@ -655,8 +677,13 @@ const curveClear = async(
                     }
                 }
                 catch (error) {
-                    console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                    console.log(error, "\n");
+                    if (error === "dryrun" || error === "nomatch") {
+                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
+                    }
+                    else {
+                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
+                        console.log(error, "\n");
+                    }
                 }
             }
         }

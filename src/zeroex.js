@@ -428,9 +428,9 @@ const zeroExClear = async(
                                 };
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                                 let gasLimit = await signer.estimateGas(rawtx);
-                                gasLimit = gasLimit.mul("11").div("10");
+                                gasLimit = gasLimit.mul("112").div("1000");
                                 rawtx.gasLimit = gasLimit;
-                                const gasCost = gasLimit.mul(gasPrice);
+                                const gasCost = gasLimit.mul(txQuote.gasPrice);
 
                                 // let gasLimit;
                                 // console.log("Block Number: " + await signer.provider.getBlockNumber());
@@ -474,6 +474,25 @@ const zeroExClear = async(
                                         36 - bundledOrders[i].buyTokenDecimals
                                     )
                                 );
+                                if (gasCoveragePercentage !== "0") {
+                                    const headroom = (
+                                        Number(gasCoveragePercentage) * 1.2
+                                    ).toFixed();
+                                    rawtx.data = arb.interface.encodeFunctionData(
+                                        "arb",
+                                        arbType === "order-taker"
+                                            ? [
+                                                takeOrdersConfigStruct,
+                                                gasCostInToken.mul(headroom).div(100)
+                                            ]
+                                            : [
+                                                takeOrdersConfigStruct,
+                                                gasCostInToken.mul(headroom).div(100),
+                                                exchangeData
+                                            ]
+                                    );
+                                    await signer.estimateGas(rawtx);
+                                }
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"
@@ -583,8 +602,13 @@ const zeroExClear = async(
                                 // else console.log(">>> Skipping because estimated negative profit for this token pair", "\n");
                             }
                             catch (error) {
-                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                                console.log(error, "\n");
+                                if (error === "dryrun" || error === "nomatch") {
+                                    console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
+                                }
+                                else {
+                                    console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
+                                    console.log(error, "\n");
+                                }
                             }
                         }
                         else console.log("\x1b[31m%s\x1b[0m", "Failed to get quote from 0x", "\n");
