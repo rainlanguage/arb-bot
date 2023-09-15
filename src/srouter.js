@@ -98,10 +98,10 @@ const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true)
                     console.log(`Current market price for ${inversePair} for: ${ethers.utils.formatEther(inversePrice)}`);
                     console.log("Current ratio of the orders in this token pair:");
                     inverseBOrder.takeOrders.forEach(v => {
-                        console.log(ethers.utils.formatEther(v.ratio));
+                        if (v.ratio) console.log(ethers.utils.formatEther(v.ratio));
                     });
                     inverseBOrder.takeOrders = inverseBOrder.takeOrders.filter(
-                        v => inversePrice.gte(v.ratio)
+                        v => v.ratio !== undefined ? inversePrice.gte(v.ratio) : true
                     );
                     console.log("\n");
                 }
