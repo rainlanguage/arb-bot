@@ -3,132 +3,250 @@ const { Router } = require("@sushiswap/router");
 const { Token } = require("@sushiswap/currency");
 const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("./abis");
 const {
+    sleep,
     getIncome,
     processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
     visualizeRoute,
+    build0xQueries,
     bundleTakeOrders,
     fetchPoolsForTokenWrapper
 } = require("./utils");
 
+
+const HEADERS = { headers: { "accept-encoding": "null" } };
 
 /**
  * Prepares the bundled orders by getting the best deals from Router and sorting the
  * bundled orders based on the best deals
  *
  * @param {any[]} bundledOrders - The bundled orders array
+ * @param {string[]} zeroexQueries - The 0x request queries
  * @param {any} dataFetcher - The DataFetcher instance
  * @param {any} config - The network config data
  * @param {ethers.BigNumber} gasPrice - The network gas price
  * @param {boolean} sort - (optional) Sort based on best deals or not
  */
-const prepare = async(bundledOrders, dataFetcher, config, gasPrice, sort = true) => {
-    for (let i = 0; i < bundledOrders.length; i++) if (bundledOrders[i].initPrice === undefined) {
-        const bOrder = bundledOrders[i];
-        const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
-        try {
-            const fromToken = new Token({
-                chainId: config.chainId,
-                decimals: bOrder.sellTokenDecimals,
-                address: bOrder.sellToken,
-                symbol: bOrder.sellTokenSymbol
-            });
-            const toToken = new Token({
-                chainId: config.chainId,
-                decimals: bOrder.buyTokenDecimals,
-                address: bOrder.buyToken,
-                symbol: bOrder.buyTokenSymbol
-            });
-            await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
-            const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
-            const route = Router.findBestRoute(
-                pcMap,
-                config.chainId,
-                fromToken,
-                // cumulativeAmount,
-                "1" + "0".repeat(bOrder.sellTokenDecimals),
-                toToken,
-                gasPrice.toNumber(),
-                // providers,
-                // poolFilter
-            );
-            if (route.status == "NoWay") throw "could not find any route for this token pair";
+const prepare = async(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort = true) => {
+    try {
+        let prices = [];
+        if (config.apiKey) {
+            console.log(">>> Getting initial prices from 0x");
+            const zeroexPromises = [];
+            for (let i = 0; i < zeroexQueries.length; i++) {
+                zeroexPromises.push(axios.get(zeroexQueries[i].quote, HEADERS));
+                await sleep(1000);
+            }
+            const zeroexResponses = await Promise.allSettled(zeroexPromises);
 
-            // const rateFixed = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
-            // const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
-            const price = route.amountOutBN.mul("1" + "0".repeat(18 - bOrder.buyTokenDecimals));
-            bOrder.initPrice = price;
-
-            console.log(`Current market price for ${pair} for: ${ethers.utils.formatEther(price)}`);
-            console.log("Current ratio of the orders in this token pair:");
-            bOrder.takeOrders.forEach(v => {
-                console.log(ethers.utils.formatEther(v.ratio));
-            });
-            bOrder.takeOrders = bOrder.takeOrders.filter(
-                v => price.gte(v.ratio)
-            );
-            console.log("\n");
-
-            const inverseBOrder = bundledOrders.find(
-                v => fromToken.address.toLowerCase() === v.buyToken.toLowerCase() &&
-                toToken.address.toLowerCase() === v.sellToken.toLowerCase()
-            );
-            if (inverseBOrder) {
-                const inversePair = inverseBOrder.buyTokenSymbol + "/" + inverseBOrder.sellTokenSymbol;
-                try {
-                    inverseBOrder.initPrice = null;
-                    const inversePcMap = dataFetcher.getCurrentPoolCodeMap(toToken, fromToken);
-                    const inverseRoute = Router.findBestRoute(
-                        inversePcMap,
-                        config.chainId,
-                        toToken,
-                        // cumulativeAmount,
-                        "1" + "0".repeat(inverseBOrder.sellTokenDecimals),
-                        fromToken,
-                        gasPrice.toNumber(),
-                        // providers,
-                        // poolFilter
+            for (let i = 0; i < zeroexResponses.length; i++) {
+                if (zeroexResponses[i].status == "fulfilled") prices.push([
+                    {
+                        token: zeroexResponses[i].value.data.buyTokenAddress,
+                        rate: zeroexResponses[i].value.data.buyTokenToEthRate
+                    },
+                    {
+                        token: zeroexResponses[i].value.data.sellTokenAddress,
+                        rate: zeroexResponses[i].value.data.sellTokenToEthRate
+                    }
+                ]);
+                else {
+                    console.log("");
+                    console.log(
+                        "\x1b[31m%s\x1b[0m",
+                        `Could not get prices from 0x for ${
+                            zeroexQueries[i].tokens[0]
+                        } and ${
+                            zeroexQueries[i].tokens[1]
+                        }`
                     );
-                    if (inverseRoute.status == "NoWay") throw "could not find any route for this token pair";
-
-                    const inversePrice = inverseRoute.amountOutBN.mul("1" + "0".repeat(18 - inverseBOrder.buyTokenDecimals));
-                    inverseBOrder.initPrice = inversePrice;
-
-                    console.log(`Current market price for ${inversePair} for: ${ethers.utils.formatEther(inversePrice)}`);
-                    console.log("Current ratio of the orders in this token pair:");
-                    inverseBOrder.takeOrders.forEach(v => {
-                        console.log(ethers.utils.formatEther(v.ratio));
-                    });
-                    inverseBOrder.takeOrders = inverseBOrder.takeOrders.filter(
-                        v => inversePrice.gte(v.ratio)
-                    );
-                    console.log("\n");
-                }
-                catch(error) {
-                    console.log(`>>> could not get price for this ${inversePair} due to:`);
-                    console.log(error, "\n");
+                    console.log(">>> Trying to get prices from Router...");
+                    try {
+                        if (
+                            zeroexQueries[i].tokens[2].toLowerCase() !==
+                            config.nativeWrappedToken.address.toLowerCase()
+                        ) {
+                            const token0ToEthRate = await getEthPrice(
+                                config,
+                                zeroexQueries[i].tokens[2],
+                                zeroexQueries[i].tokens[4],
+                                gasPrice,
+                                dataFetcher
+                            );
+                            if (token0ToEthRate !== undefined) prices.push([{
+                                token: zeroexQueries[i].tokens[2],
+                                rate: token0ToEthRate
+                            }]);
+                            else throw "noway";
+                        }
+                        else prices.push([{
+                            token: config.nativeWrappedToken.address.toLowerCase(),
+                            rate: "1"
+                        }]);
+                    }
+                    catch (e0) {
+                        if (e0 === "noway") console.log(
+                            "\x1b[31m%s\x1b[0m",
+                            `could not find any route for ${zeroexQueries[i].tokens[0]}`
+                        );
+                        else console.log(
+                            "\x1b[31m%s\x1b[0m",
+                            `could not get price for ${zeroexQueries[i].tokens[0]} from Router`
+                        );
+                    }
+                    try {
+                        if (
+                            zeroexQueries[i].tokens[3].toLowerCase() !==
+                            config.nativeWrappedToken.address.toLowerCase()
+                        ) {
+                            const token1ToEthRate = await getEthPrice(
+                                config,
+                                zeroexQueries[i].tokens[3],
+                                zeroexQueries[i].tokens[5],
+                                gasPrice,
+                                dataFetcher
+                            );
+                            if (token1ToEthRate !== undefined) prices.push([{
+                                token: zeroexQueries[i].tokens[3],
+                                rate: token1ToEthRate
+                            }]);
+                            else throw "noway";
+                        }
+                        else prices.push([{
+                            token: config.nativeWrappedToken.address.toLowerCase(),
+                            rate: "1"
+                        }]);
+                    }
+                    catch (e1) {
+                        if (e1 === "noway") console.log(
+                            "\x1b[31m%s\x1b[0m",
+                            `could not find any route for ${zeroexQueries[i].tokens[1]}`
+                        );
+                        else console.log(
+                            "\x1b[31m%s\x1b[0m",
+                            `could not get price for ${zeroexQueries[i].tokens[1]} from Router`
+                        );
+                    }
                 }
             }
         }
-        catch(error) {
-            console.log(`>>> could not get price for this ${pair} due to:`);
-            console.log(error, "\n");
+        else {
+            console.log(">>> Getting initial prices from Router");
+            for (let i = 0; i < zeroexQueries.length; i++) {
+                try {
+                    if (
+                        zeroexQueries[i].tokens[2].toLowerCase() !==
+                        config.nativeWrappedToken.address.toLowerCase()
+                    ) {
+                        const token0ToEthRate = await getEthPrice(
+                            config,
+                            zeroexQueries[i].tokens[2],
+                            zeroexQueries[i].tokens[4],
+                            gasPrice,
+                            dataFetcher
+                        );
+                        if (token0ToEthRate !== undefined) prices.push([{
+                            token: zeroexQueries[i].tokens[2],
+                            rate: token0ToEthRate
+                        }]);
+                        else throw "noway";
+                    }
+                    else prices.push([{
+                        token: config.nativeWrappedToken.address.toLowerCase(),
+                        rate: "1"
+                    }]);
+                }
+                catch (e0) {
+                    if (e0 === "noway") console.log(
+                        "\x1b[31m%s\x1b[0m",
+                        `could not find any route for ${zeroexQueries[i].tokens[0]}`
+                    );
+                    else console.log(
+                        "\x1b[31m%s\x1b[0m",
+                        `could not get price for ${zeroexQueries[i].tokens[0]} from Router`
+                    );
+                }
+                try {
+                    if (
+                        zeroexQueries[i].tokens[3].toLowerCase() !==
+                        config.nativeWrappedToken.address.toLowerCase()
+                    ) {
+                        const token1ToEthRate = await getEthPrice(
+                            config,
+                            zeroexQueries[i].tokens[3],
+                            zeroexQueries[i].tokens[5],
+                            gasPrice,
+                            dataFetcher
+                        );
+                        if (token1ToEthRate !== undefined) prices.push([{
+                            token: zeroexQueries[i].tokens[3],
+                            rate: token1ToEthRate
+                        }]);
+                        else throw "noway";
+                    }
+                    else prices.push([{
+                        token: config.nativeWrappedToken.address.toLowerCase(),
+                        rate: "1"
+                    }]);
+                }
+                catch (e1) {
+                    if (e1 === "noway") console.log(
+                        "\x1b[31m%s\x1b[0m",
+                        `could not find any route for ${zeroexQueries[i].tokens[1]}`
+                    );
+                    else console.log(
+                        "\x1b[31m%s\x1b[0m",
+                        `could not get price for ${zeroexQueries[i].tokens[1]} from Router`
+                    );
+                }
+            }
+
         }
+        prices = prices.flat();
+        console.log("");
+
+        bundledOrders.forEach(v => {
+            console.log(`Current market price for ${v.buyTokenSymbol}/${v.sellTokenSymbol}:`);
+            const sellTokenToEthRate = prices.find(
+                e => e.token.toLowerCase() === v.sellToken.toLowerCase()
+            )?.rate;
+            const buyTokenToEthRate = prices.find(
+                e => e.token.toLowerCase() === v.buyToken.toLowerCase()
+            )?.rate;
+            if (sellTokenToEthRate && buyTokenToEthRate) {
+                v.initPrice = ethers.utils.parseUnits(buyTokenToEthRate)
+                    .mul(ethers.utils.parseUnits("1"))
+                    .div(ethers.utils.parseUnits(sellTokenToEthRate));
+                console.log("\x1b[36m%s\x1b[0m", `${ethers.utils.formatEther(v.initPrice)}`);
+            }
+            else console.log(
+                "\x1b[31m%s\x1b[0m",
+                "Could not calculate market price for this token pair due to lack of required data!"
+            );
+            console.log("");
+        });
+        bundledOrders = bundledOrders.filter(v => v.initPrice !== undefined);
+        // bundledOrders.forEach(v => {
+        //     v.takeOrders = v.takeOrders.filter(
+        //         e => e.ratio !== undefined ? v.initPrice.gte(e.ratio) : true
+        //     );
+        // });
+
+        if (sort) {
+            console.log("\n", ">>> Sorting the pairs based on ...");
+            bundledOrders.sort(
+                (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
+            );
+        }
+        return [bundledOrders, prices];
     }
-    console.log(
-        ">>> Filtering bundled orders with lower ratio than current market price...",
-        "\n"
-    );
-    bundledOrders = bundledOrders.filter(v => v.initPrice && v.takeOrders.length > 0);
-    if (sort) {
-        console.log("\n", ">>> Sorting the bundled orders based on initial prices...");
-        bundledOrders.sort(
-            (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
-        );
+    catch (error) {
+        console.log("something went wrong during the process of getting initial prices!");
+        console.log(error);
+        return [[], []];
     }
-    return bundledOrders;
 };
 
 /**
@@ -159,6 +277,10 @@ const routerClear = async(
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
     const arbType           = config.arbType;
+    const api               = config.zeroEx.apiUrl;
+    const nativeToken       = config.nativeWrappedToken;
+
+    if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbis[arbType], signer);
@@ -176,17 +298,63 @@ const routerClear = async(
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
+    const initPriceQueries = [];
     let bundledOrders = [];
+    let ethPrices = [];
     if (ordersDetails.length) {
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        for (let i = 0; i < bundledOrders.length; i++) {
+            build0xQueries(
+                api,
+                initPriceQueries,
+                bundledOrders[i].sellToken,
+                bundledOrders[i].sellTokenDecimals,
+                bundledOrders[i].sellTokenSymbol
+            );
+            build0xQueries(
+                api,
+                initPriceQueries,
+                bundledOrders[i].buyToken,
+                bundledOrders[i].buyTokenDecimals,
+                bundledOrders[i].buyTokenSymbol
+            );
+        }
+        if (Array.isArray(initPriceQueries[initPriceQueries.length - 1])) {
+            initPriceQueries[initPriceQueries.length - 1] = {
+                quote: `${
+                    api
+                }swap/v1/price?buyToken=${
+                    nativeToken.address.toLowerCase()
+                }&sellToken=${
+                    initPriceQueries[initPriceQueries.length - 1][0]
+                }&sellAmount=${
+                    "1" + "0".repeat(initPriceQueries[initPriceQueries.length - 1][1])
+                }`,
+                tokens: [
+                    nativeToken.symbol,
+                    initPriceQueries[initPriceQueries.length - 1][2],
+                    nativeToken.address.toLowerCase(),
+                    initPriceQueries[initPriceQueries.length - 1][0],
+                    nativeToken.decimals,
+                    initPriceQueries[initPriceQueries.length - 1][1],
+                ]
+            };
+        }
         console.log(
             "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
             "\n"
         );
-        bundledOrders = await prepare(bundledOrders, dataFetcher, config, gasPrice, prioritization);
+        [ bundledOrders, ethPrices ] = await prepare(
+            bundledOrders,
+            initPriceQueries,
+            dataFetcher,
+            config,
+            gasPrice,
+            prioritization
+        );
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -404,13 +572,9 @@ const routerClear = async(
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
                         // console.log(">>> Estimating the profit for this token pair...", "\n");
-                        const ethPrice = await getEthPrice(
-                            config,
-                            bundledOrders[i].buyToken,
-                            bundledOrders[i].buyTokenDecimals,
-                            gasPrice,
-                            dataFetcher
-                        );
+                        const ethPrice = ethPrices.find(v =>
+                            v.token.toLowerCase() === bundledOrders[i].buyToken.toLowerCase()
+                        )?.rate;
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
                             const rawtx = {

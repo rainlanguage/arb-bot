@@ -175,6 +175,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v2";
+        config.apiKey = process?.env?.API_KEY;
         const reports = await clear("router", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders
@@ -296,6 +297,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v3";
+        config.apiKey = process?.env?.API_KEY;
         const reports = await clear("router", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders
@@ -416,6 +418,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
+        config.apiKey = process?.env?.API_KEY;
         const reports = await clear("router", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders

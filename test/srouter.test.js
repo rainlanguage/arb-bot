@@ -167,6 +167,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.rpc = "test";
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
+        config.apiKey = process?.env?.API_KEY;
         const reports = await clear("srouter", config, sgOrders, {prioritization: false});
 
         // should have cleared 2 toke pairs bundled orders

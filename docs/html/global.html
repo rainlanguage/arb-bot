@@ -842,6 +842,242 @@
     
 
     
+    <h4 class="name" id="build0xQueries"><span class="type-signature"></span>build0xQueries<span class="signature">(api, queries, tokenAddress, tokenDecimals, tokenSymbol)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Builds initial 0x requests bodies from token addresses that is required
+for getting token prices with least amount of hits possible and that is
+to pair up tokens in a way that each show up only once in a request body
+so that the number of requests will be: "number-of-tokens / 2" at best or
+"(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
+This way the responses will include the "rate" for sell/buy tokens to native
+network token which will be used to estimate the initial price of all possible
+token pair combinations.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>api</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The 0x API endpoint URL</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>queries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;any></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The array that keeps the 0x query text</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tokenAddress</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The token address</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tokenDecimals</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The token decimals</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>tokenSymbol</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The token symbol</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line1386">line 1386</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
     <h4 class="name" id="bundleTakeOrders"><span class="type-signature">(async) </span>bundleTakeOrders<span class="signature">(ordersDetails, orderbook, arb)</span><span class="type-signature"></span></h4>
     
 
@@ -4657,242 +4893,6 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="initRequests"><span class="type-signature"></span>initRequests<span class="signature">(api, quotes, tokenAddress, tokenDecimals, tokenSymbol)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Builds initial 0x requests bodies from token addresses that is required
-for getting token prices with least amount of hits possible and that is
-to pair up tokens in a way that each show up only once in a request body
-so that the number of requests will be: "number-of-tokens / 2" at best or
-"(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
-This way the responses will include the "rate" for sell/buy tokens to native
-network token which will be used to estimate the initial price of all possible
-token pair combinations.
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>api</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The 0x API endpoint URL</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>quotes</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;any></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The array that keeps the quotes</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>tokenAddress</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The token address</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>tokenDecimals</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The token decimals</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>tokenSymbol</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The token symbol</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line26">line 26</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
     <h4 class="name" id="interpreterEval"><span class="type-signature">(async) </span>interpreterEval<span class="signature">(interpreter, arbAddress, obAddress, order, inputIndex, outputIndex)</span><span class="type-signature"></span></h4>
     
 
@@ -5385,7 +5385,7 @@ bundled orders based on the best deals
     
 
     
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5453,6 +5453,33 @@ bundled orders based on the best deals
             
 
             <td class="description last">The bundled orders array</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>zeroexQueries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">The 0x request queries</td>
         </tr>
 
     
@@ -5603,7 +5630,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line27">line 27</a>
+        <a href="router.js.html">router.js</a>, <a href="router.js.html#line32">line 32</a>
     </li></ul></dd>
     
 
@@ -5639,7 +5666,7 @@ bundled orders based on the best deals
     
 
     
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5707,6 +5734,33 @@ bundled orders based on the best deals
             
 
             <td class="description last">The bundled orders array</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>zeroexQueries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">The 0x request queries</td>
         </tr>
 
     
@@ -5857,7 +5911,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line28">line 28</a>
+        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line34">line 34</a>
     </li></ul></dd>
     
 
@@ -6057,7 +6111,7 @@ bundled orders based on the best deals
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line68">line 68</a>
+        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line18">line 18</a>
     </li></ul></dd>
     
 
@@ -6653,7 +6707,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line144">line 144</a>
+        <a href="router.js.html">router.js</a>, <a href="router.js.html#line262">line 262</a>
     </li></ul></dd>
     
 
@@ -7029,7 +7083,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line143">line 143</a>
+        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line264">line 264</a>
     </li></ul></dd>
     
 
@@ -7757,7 +7811,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line139">line 139</a>
+        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line89">line 89</a>
     </li></ul></dd>
     
 
@@ -7813,13 +7867,13 @@ for it to be considered profitable and get submitted</td>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#build0xQueries">build0xQueries</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 00:36:24 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 20:08:13 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

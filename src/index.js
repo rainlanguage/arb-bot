@@ -208,7 +208,7 @@ const clear = async(
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
     const prioritization = options.prioritization !== undefined
-        ? options.prioritization
+        ? !!options.prioritization
         : clearOptions.prioritization;
     const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage

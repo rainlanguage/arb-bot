@@ -28,62 +28,12 @@
         <article>
             <pre class="prettyprint source linenums"><code>const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders } = require("./utils");
+const { bundleTakeOrders, build0xQueries } = require("./utils");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice } = require("./utils");
 
 
 const HEADERS = { headers: { "accept-encoding": "null" } };
-
-/**
- * Builds initial 0x requests bodies from token addresses that is required
- * for getting token prices with least amount of hits possible and that is
- * to pair up tokens in a way that each show up only once in a request body
- * so that the number of requests will be: "number-of-tokens / 2" at best or
- * "(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
- * This way the responses will include the "rate" for sell/buy tokens to native
- * network token which will be used to estimate the initial price of all possible
- * token pair combinations.
- *
- * @param {string} api - The 0x API endpoint URL
- * @param {any[]} quotes - The array that keeps the quotes
- * @param {string} tokenAddress - The token address
- * @param {number} tokenDecimals - The token decimals
- * @param {string} tokenSymbol - The token symbol
- */
-const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => {
-    if (quotes.length === 0) quotes.push([
-        tokenAddress,
-        tokenDecimals,
-        tokenSymbol
-    ]);
-    else if (!Array.isArray(quotes[quotes.length - 1])) {
-        if(!quotes.find(v => v.quote.includes(tokenAddress))) quotes.push([
-            tokenAddress,
-            tokenDecimals,
-            tokenSymbol
-        ]);
-    }
-    else {
-        if(
-            quotes[quotes.length - 1][0] !== tokenAddress &amp;&amp;
-            !quotes.slice(0, -1).find(v => v.quote.includes(tokenAddress))
-        ) {
-            quotes[quotes.length - 1] = {
-                quote: `${
-                    api
-                }swap/v1/price?buyToken=${
-                    quotes[quotes.length - 1][0]
-                }&amp;sellToken=${
-                    tokenAddress
-                }&amp;sellAmount=${
-                    "1" + "0".repeat(tokenDecimals)
-                }`,
-                tokens: [quotes[quotes.length - 1][2], tokenSymbol]
-            };
-        }
-    }
-};
 
 /**
  * Prepares the bundled orders by getting the best deals from 0x and sorting the
@@ -190,7 +140,7 @@ const zeroExClear = async(
     const proxyAddress      = config.zeroEx.proxyAddress;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
-    const nativeToken       = config.nativeToken;
+    const nativeToken       = config.nativeWrappedToken;
     const arbType           = config.arbType;
 
     // set the api key in headers
@@ -211,7 +161,7 @@ const zeroExClear = async(
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
-    const initQuotes = [];
+    const initPriceQueries = [];
     let bundledOrders = [];
 
     if (ordersDetails.length) {
@@ -220,16 +170,16 @@ const zeroExClear = async(
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         for (let i = 0; i &lt; bundledOrders.length; i++) {
-            initRequests(
+            build0xQueries(
                 api,
-                initQuotes,
+                initPriceQueries,
                 bundledOrders[i].sellToken,
                 bundledOrders[i].sellTokenDecimals,
                 bundledOrders[i].sellTokenSymbol
             );
-            initRequests(
+            build0xQueries(
                 api,
-                initQuotes,
+                initPriceQueries,
                 bundledOrders[i].buyToken,
                 bundledOrders[i].buyTokenDecimals,
                 bundledOrders[i].buyTokenSymbol
@@ -250,23 +200,30 @@ const zeroExClear = async(
         "------------------------- Getting Best Deals From 0x -------------------------",
         "\n"
     );
-    if (Array.isArray(initQuotes[initQuotes.length - 1])) {
-        initQuotes[initQuotes.length - 1] = {
+    if (Array.isArray(initPriceQueries[initPriceQueries.length - 1])) {
+        initPriceQueries[initPriceQueries.length - 1] = {
             quote: `${
                 api
             }swap/v1/price?buyToken=${
                 nativeToken.address.toLowerCase()
             }&amp;sellToken=${
-                initQuotes[initQuotes.length - 1][0]
+                initPriceQueries[initPriceQueries.length - 1][0]
             }&amp;sellAmount=${
-                "1" + "0".repeat(initQuotes[initQuotes.length - 1][1])
+                "1" + "0".repeat(initPriceQueries[initPriceQueries.length - 1][1])
             }`,
-            tokens: ["ETH", initQuotes[initQuotes.length - 1][2]]
+            tokens: [
+                nativeToken.symbol,
+                initPriceQueries[initPriceQueries.length - 1][2],
+                nativeToken.address.toLowerCase(),
+                initPriceQueries[initPriceQueries.length - 1][0],
+                nativeToken.decimals,
+                initPriceQueries[initPriceQueries.length - 1][1],
+            ]
         };
     }
-    hits += initQuotes.length;
+    hits += initPriceQueries.length;
     bundledOrders = await prepare(
-        initQuotes,
+        initPriceQueries,
         bundledOrders,
         prioritization
     );
@@ -685,13 +642,13 @@ module.exports = {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#initRequests">initRequests</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#POOLS_FNS">POOLS_FNS</a></li><li><a href="global.html#ZAP_FNS">ZAP_FNS</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#build0xQueries">build0xQueries</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fetchPoolsForTokenWrapper">fetchPoolsForTokenWrapper</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 00:36:24 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 20:08:13 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

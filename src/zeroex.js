@@ -1,61 +1,11 @@
 const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders } = require("./utils");
+const { bundleTakeOrders, build0xQueries } = require("./utils");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice } = require("./utils");
 
 
 const HEADERS = { headers: { "accept-encoding": "null" } };
-
-/**
- * Builds initial 0x requests bodies from token addresses that is required
- * for getting token prices with least amount of hits possible and that is
- * to pair up tokens in a way that each show up only once in a request body
- * so that the number of requests will be: "number-of-tokens / 2" at best or
- * "(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
- * This way the responses will include the "rate" for sell/buy tokens to native
- * network token which will be used to estimate the initial price of all possible
- * token pair combinations.
- *
- * @param {string} api - The 0x API endpoint URL
- * @param {any[]} quotes - The array that keeps the quotes
- * @param {string} tokenAddress - The token address
- * @param {number} tokenDecimals - The token decimals
- * @param {string} tokenSymbol - The token symbol
- */
-const initRequests = (api, quotes, tokenAddress, tokenDecimals, tokenSymbol) => {
-    if (quotes.length === 0) quotes.push([
-        tokenAddress,
-        tokenDecimals,
-        tokenSymbol
-    ]);
-    else if (!Array.isArray(quotes[quotes.length - 1])) {
-        if(!quotes.find(v => v.quote.includes(tokenAddress))) quotes.push([
-            tokenAddress,
-            tokenDecimals,
-            tokenSymbol
-        ]);
-    }
-    else {
-        if(
-            quotes[quotes.length - 1][0] !== tokenAddress &&
-            !quotes.slice(0, -1).find(v => v.quote.includes(tokenAddress))
-        ) {
-            quotes[quotes.length - 1] = {
-                quote: `${
-                    api
-                }swap/v1/price?buyToken=${
-                    quotes[quotes.length - 1][0]
-                }&sellToken=${
-                    tokenAddress
-                }&sellAmount=${
-                    "1" + "0".repeat(tokenDecimals)
-                }`,
-                tokens: [quotes[quotes.length - 1][2], tokenSymbol]
-            };
-        }
-    }
-};
 
 /**
  * Prepares the bundled orders by getting the best deals from 0x and sorting the
@@ -162,7 +112,7 @@ const zeroExClear = async(
     const proxyAddress      = config.zeroEx.proxyAddress;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
-    const nativeToken       = config.nativeToken;
+    const nativeToken       = config.nativeWrappedToken;
     const arbType           = config.arbType;
 
     // set the api key in headers
@@ -183,7 +133,7 @@ const zeroExClear = async(
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
-    const initQuotes = [];
+    const initPriceQueries = [];
     let bundledOrders = [];
 
     if (ordersDetails.length) {
@@ -192,16 +142,16 @@ const zeroExClear = async(
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
         for (let i = 0; i < bundledOrders.length; i++) {
-            initRequests(
+            build0xQueries(
                 api,
-                initQuotes,
+                initPriceQueries,
                 bundledOrders[i].sellToken,
                 bundledOrders[i].sellTokenDecimals,
                 bundledOrders[i].sellTokenSymbol
             );
-            initRequests(
+            build0xQueries(
                 api,
-                initQuotes,
+                initPriceQueries,
                 bundledOrders[i].buyToken,
                 bundledOrders[i].buyTokenDecimals,
                 bundledOrders[i].buyTokenSymbol
@@ -222,23 +172,30 @@ const zeroExClear = async(
         "------------------------- Getting Best Deals From 0x -------------------------",
         "\n"
     );
-    if (Array.isArray(initQuotes[initQuotes.length - 1])) {
-        initQuotes[initQuotes.length - 1] = {
+    if (Array.isArray(initPriceQueries[initPriceQueries.length - 1])) {
+        initPriceQueries[initPriceQueries.length - 1] = {
             quote: `${
                 api
             }swap/v1/price?buyToken=${
                 nativeToken.address.toLowerCase()
             }&sellToken=${
-                initQuotes[initQuotes.length - 1][0]
+                initPriceQueries[initPriceQueries.length - 1][0]
             }&sellAmount=${
-                "1" + "0".repeat(initQuotes[initQuotes.length - 1][1])
+                "1" + "0".repeat(initPriceQueries[initPriceQueries.length - 1][1])
             }`,
-            tokens: ["ETH", initQuotes[initQuotes.length - 1][2]]
+            tokens: [
+                nativeToken.symbol,
+                initPriceQueries[initPriceQueries.length - 1][2],
+                nativeToken.address.toLowerCase(),
+                initPriceQueries[initPriceQueries.length - 1][0],
+                nativeToken.decimals,
+                initPriceQueries[initPriceQueries.length - 1][1],
+            ]
         };
     }
-    hits += initQuotes.length;
+    hits += initPriceQueries.length;
     bundledOrders = await prepare(
-        initQuotes,
+        initPriceQueries,
         bundledOrders,
         prioritization
     );
