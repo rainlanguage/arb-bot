@@ -439,7 +439,7 @@ const curveClear = async(
                     if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
                     const gasPrice = await signer.provider.getGasPrice();
-                    const ethPrice = gasCoveragePercentage !== "0"
+                    const ethPrice = gasCoveragePercentage === "0"
                         ? "0"
                         : await getEthPrice(
                             config,

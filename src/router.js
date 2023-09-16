@@ -271,7 +271,7 @@ const routerClear = async(
                         );
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
-                        const ethPrice = gasCoveragePercentage !== "0"
+                        const ethPrice = gasCoveragePercentage === "0"
                             ? "0"
                             : await getEthPrice(
                                 config,
