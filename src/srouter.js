@@ -366,24 +366,26 @@ const srouterClear = async(
                         catch (error) {
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                             console.log(error, "\n");
-                            if (j > 1) console.log(
-                                "\x1b[34m%s\x1b[0m",
-                                `could not clear with ${ethers.utils.formatEther(
-                                    maximumInputFixed
-                                )} ${
-                                    bundledOrders[i].sellTokenSymbol
-                                } as max input, trying with lower amount...`, "\n"
-                            );
-                            else console.log("\x1b[34m%s\x1b[0m", "could not arb this pair", "\n");
+                            throw "failed-exec";
+                            // if (j > 1) console.log(
+                            //     "\x1b[34m%s\x1b[0m",
+                            //     `could not clear with ${ethers.utils.formatEther(
+                            //         maximumInputFixed
+                            //     )} ${
+                            //         bundledOrders[i].sellTokenSymbol
+                            //     } as max input, trying with lower amount...`, "\n"
+                            // );
+                            // else console.log("\x1b[34m%s\x1b[0m", "could not arb this pair", "\n");
                         }
 
                     }
                     catch (error) {
-                        if (error !== "nomatch" && error !== "dryrun") {
+                        if (error !== "nomatch" && error !== "dryrun" && error !== "failed-exec") {
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                             console.log(error, "\n");
                             // reason, code, method, transaction, error, stack, message
                         }
+                        if (error === "failed-exec") throw "Transaction execution failed, skipping this pair...";
                         if (j > 1) console.log(
                             "\x1b[34m%s\x1b[0m",
                             `could not clear with ${ethers.utils.formatEther(
