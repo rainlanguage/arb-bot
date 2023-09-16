@@ -59,10 +59,10 @@ const clearOptions = {
      * for it to be considered profitable and get submitted
      */
     gasCoveragePercentage: "100",
-    /**
-     * Prioritize better deals to get cleared first, default is true
-     */
-    prioritization: true
+    // /**
+    //  * Prioritize better deals to get cleared first, default is true
+    //  */
+    // prioritization: true
 };
 
 /**
@@ -101,7 +101,8 @@ const getOrderDetails = async(sgs, json, signer, sgFilters) => {
                         query: getQuery(
                             sgFilters?.orderHash,
                             sgFilters?.orderOwner,
-                            sgFilters?.orderInterpreter
+                            sgFilters?.orderInterpreter,
+                            sgFilters?.shuffle
                         )
                     },
                     { headers: { "Content-Type": "application/json" } }
@@ -195,7 +196,7 @@ const getConfig = async(
  * @param {string} mode - The mode for clearing, either "0x" or "curve" or "router"
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {clearOptions} options - The options for clear, 'slippage',' gasCoveragePercentage' and 'prioritization'
+ * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
  * @returns The report of details of cleared orders
  */
 const clear = async(
@@ -207,9 +208,9 @@ const clear = async(
     const _mode = mode.toLowerCase();
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
-    const prioritization = options.prioritization !== undefined
-        ? options.prioritization
-        : clearOptions.prioritization;
+    // const prioritization = options.prioritization !== undefined
+    //     ? !!options.prioritization
+    //     : clearOptions.prioritization;
     const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
@@ -225,14 +226,14 @@ const clear = async(
         config,
         ordersDetails,
         gasCoveragePercentage,
-        prioritization
+        // prioritization
     );
     else if (_mode === "curve") {
         if (majorVersion >= 18) return await curveClear(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            prioritization
+            // prioritization
         );
         else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
     }
@@ -241,7 +242,7 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            prioritization
+            // prioritization
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
@@ -250,7 +251,7 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            prioritization
+            // prioritization
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }

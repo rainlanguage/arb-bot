@@ -127,7 +127,8 @@ const arbRound = async options => {
         {
             orderHash       : options.orderHash,
             orderOwner      : options.orderOwner,
-            orderInterpreter: options.orderInterpreter
+            orderInterpreter: options.orderInterpreter,
+            shuffle         : options.shuffle
         }
     );
     await clear(
@@ -147,6 +148,7 @@ const main = async argv => {
     const rpcs = [...options.rpc];
     let roundGap = 10000;
     let rpcTurn = 0;
+    let shuffle = 0;
 
     if (options.repetitions) {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
@@ -167,6 +169,7 @@ const main = async argv => {
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         options.rpc = rpcs[rpcTurn];
+        options.shuffle = shuffle;
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
@@ -178,10 +181,13 @@ const main = async argv => {
         }
         if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
         else rpcTurn++;
+        if (shuffle === 3) shuffle = 0;
+        else shuffle++;
         await sleep(roundGap);
     }
     else for (let i = 1; i <= repetitions; i++) {
         options.rpc = rpcs[rpcTurn];
+        options.shuffle = shuffle;
         try {
             await arbRound(options);
             console.log("\x1b[32m%s\x1b[0m", `Round ${i} finished successfully!`);
@@ -195,6 +201,8 @@ const main = async argv => {
         }
         if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
         else rpcTurn++;
+        if (shuffle === 3) shuffle = 0;
+        else shuffle++;
         await sleep(roundGap);
     }
 };

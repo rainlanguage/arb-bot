@@ -8,11 +8,15 @@ const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router")
 
 
 /**
- * Fallback transports for viem client
+ * Chain specific fallback data
  */
-const fallbackTransports = {
+const fallbacks = {
     [ChainId.ARBITRUM_NOVA]: {
         transport: http("https://nova.arbitrum.io/rpc"),
+        liquidityProviders: [
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.ARBITRUM]: {
         transport: [
@@ -25,30 +29,53 @@ const fallbackTransports = {
             http("https://arbitrum.blockpi.network/v1/rpc/public"),
             http("https://arb-mainnet-public.unifra.io"),
         ],
+        liquidityProviders: [
+            "dfyn",
+            "elk",
+            "sushiswapv3",
+            "uniswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.AVALANCHE]: {
         transport: [
             http("https://api.avax.network/ext/bc/C/rpc"),
             http("https://rpc.ankr.com/avalanche")
         ],
+        liquidityProviders: [
+            "elk",
+            "traderjoe",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA]: {
         transport: [
             http("https://mainnet.boba.network"),
             http("https://lightning-replica.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA_AVAX]: {
         transport: [
             http("https://avax.boba.network"),
             http("https://replica.avax.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.BOBA_BNB]: {
         transport: [
             http("https://bnb.boba.network"),
             http("https://replica.bnb.boba.network")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.BSC]: {
         transport: [
@@ -58,12 +85,26 @@ const fallbackTransports = {
             http("https://bsc-dataseed1.binance.org"),
             http("https://bsc-dataseed2.binance.org"),
         ],
+        liquidityProviders: [
+            "apeswap",
+            "biswap",
+            "elk",
+            "jetswap",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ]
     },
     [ChainId.BTTC]: {
         transport: http("https://rpc.bittorrentchain.io"),
     },
     [ChainId.CELO]: {
-        transport: http("https://forno.celo.org")
+        transport: http("https://forno.celo.org"),
+        liquidityProviders: [
+            "ubeswap",
+            "sushiswapv2"
+        ]
     },
     [ChainId.ETHEREUM]: {
         transport: [
@@ -76,6 +117,16 @@ const fallbackTransports = {
             http("https://1rpc.io/eth"),
             http("https://ethereum.publicnode.com"),
             http("https://cloudflare-eth.com"),
+        ],
+        liquidityProviders: [
+            "apeswap",
+            "curveswap",
+            "elk",
+            "pancakeswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv2",
+            "uniswapv3"
         ]
     },
     [ChainId.FANTOM]: {
@@ -84,33 +135,66 @@ const fallbackTransports = {
             http("https://rpc.fantom.network"),
             http("https://rpc2.fantom.network"),
         ],
+        liquidityProviders: [
+            "dfyn",
+            "elk",
+            "jetswap",
+            "spookyswap",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.FUSE]: {
         transport: http("https://rpc.fuse.io"),
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.GNOSIS]: {
         transport: http("https://rpc.ankr.com/gnosis"),
+        liquidityProviders: [
+            "elk",
+            "honeyswap",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.HARMONY]: {
         transport: [
             http("https://api.harmony.one"),
             http("https://rpc.ankr.com/harmony")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.KAVA]: {
         transport: [
             http("https://evm.kava.io"),
-            http("https://evm2.kava.io")
+            http("https://evm2.kava.io"),
         ],
+        liquidityProviders: [
+            "elk"
+        ]
     },
     [ChainId.MOONBEAM]: {
         transport: [
             http("https://rpc.api.moonbeam.network"),
             http("https://rpc.ankr.com/moonbeam")
         ],
+        liquidityProviders: [
+            "sushiswapv2"
+        ]
     },
     [ChainId.MOONRIVER]: {
         transport: http("https://rpc.api.moonriver.moonbeam.network"),
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
     },
     [ChainId.OPTIMISM]: {
         transport: [
@@ -121,6 +205,11 @@ const fallbackTransports = {
             http("https://optimism.blockpi.network/v1/rpc/public"),
             http("https://mainnet.optimism.io"),
         ],
+        liquidityProviders: [
+            "elk",
+            "sushiswapv3",
+            "uniswapv3"
+        ]
     },
     [ChainId.POLYGON]: {
         transport: [
@@ -136,6 +225,16 @@ const fallbackTransports = {
             http("https://rpc-mainnet.maticvigil.com"),
             // ...polygon.rpcUrls.default.http.map((url) => http(url)),
         ],
+        liquidityProviders: [
+            "apeswap",
+            "dfyn",
+            "elk",
+            "jetswap",
+            "quickswap",
+            "sushiswapv3",
+            "sushiswapv2",
+            "uniswapv3"
+        ]
     },
     [ChainId.POLYGON_ZKEVM]: {
         transport: [
@@ -143,6 +242,10 @@ const fallbackTransports = {
             http("https://rpc.ankr.com/polygon_zkevm"),
             http("https://rpc.polygon-zkevm.gateway.fm"),
         ],
+        liquidityProviders: [
+            "dovishv3",
+            "sushiswapv3"
+        ]
     },
     [ChainId.THUNDERCORE]: {
         transport: [
@@ -150,6 +253,10 @@ const fallbackTransports = {
             http("https://mainnet-rpc.thundercore.io"),
             http("https://mainnet-rpc.thundertoken.net"),
         ],
+        liquidityProviders: [
+            "laserswap",
+            "sushiswapv3"
+        ]
     },
 };
 
@@ -681,11 +788,11 @@ const getDataFetcher = (config, liquidityProviders = [], useFallbacks = false) =
                 transport: config.rpc && config.rpc !== "test"
                     ? useFallbacks
                         ? fallback(
-                            [config.rpc, ...fallbackTransports[config.chainId].transport],
+                            [config.rpc, ...fallbacks[config.chainId].transport],
                             {rank: true}
                         )
                         : http(config.rpc)
-                    : fallback(fallbackTransports[config.chainId].transport, {rank: true}),
+                    : fallback(fallbacks[config.chainId].transport, {rank: true}),
                 // batch: {
                 //     multicall: {
                 //         batchSize: 512
@@ -804,8 +911,9 @@ const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, exclude
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
+ * @param {number} chainId - The chain id
  */
-const processLps = (liquidityProviders) => {
+const processLps = (liquidityProviders, chainId) => {
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
@@ -815,7 +923,12 @@ const processLps = (liquidityProviders) => {
     const _lps = [];
     const LP = Object.values(LiquidityProviders);
     for (let i = 0; i < liquidityProviders.length; i++) {
-        const index = LP.findIndex(v => v.toLowerCase() === liquidityProviders[i].toLowerCase());
+        const index = LP.findIndex(
+            v => v.toLowerCase() === liquidityProviders[i].toLowerCase()
+                && !!fallbacks[chainId]?.liquidityProviders.includes(
+                    liquidityProviders[i].toLowerCase()
+                )
+        );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
     return _lps.length ? _lps : undefined;
@@ -1254,8 +1367,66 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     );
 };
 
+/**
+ * Builds initial 0x requests bodies from token addresses that is required
+ * for getting token prices with least amount of hits possible and that is
+ * to pair up tokens in a way that each show up only once in a request body
+ * so that the number of requests will be: "number-of-tokens / 2" at best or
+ * "(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
+ * This way the responses will include the "rate" for sell/buy tokens to native
+ * network token which will be used to estimate the initial price of all possible
+ * token pair combinations.
+ *
+ * @param {string} api - The 0x API endpoint URL
+ * @param {any[]} queries - The array that keeps the 0x query text
+ * @param {string} tokenAddress - The token address
+ * @param {number} tokenDecimals - The token decimals
+ * @param {string} tokenSymbol - The token symbol
+ */
+const build0xQueries = (api, queries, tokenAddress, tokenDecimals, tokenSymbol) => {
+    tokenAddress = tokenAddress.toLowerCase();
+    if (queries.length === 0) queries.push([
+        tokenAddress,
+        tokenDecimals,
+        tokenSymbol
+    ]);
+    else if (!Array.isArray(queries[queries.length - 1])) {
+        if(!queries.find(v => v.quote.includes(tokenAddress))) queries.push([
+            tokenAddress,
+            tokenDecimals,
+            tokenSymbol
+        ]);
+    }
+    else {
+        if(
+            queries[queries.length - 1][0] !== tokenAddress &&
+            !queries.slice(0, -1).find(v => v.quote.includes(tokenAddress))
+        ) {
+            queries[queries.length - 1] = {
+                quote: `${
+                    api
+                }swap/v1/price?buyToken=${
+                    queries[queries.length - 1][0]
+                }&sellToken=${
+                    tokenAddress
+                }&sellAmount=${
+                    "1" + "0".repeat(tokenDecimals)
+                }`,
+                tokens: [
+                    queries[queries.length - 1][2],
+                    tokenSymbol,
+                    queries[queries.length - 1][0],
+                    tokenAddress,
+                    queries[queries.length - 1][1],
+                    tokenDecimals
+                ]
+            };
+        }
+    }
+};
+
 module.exports = {
-    fallbackTransports,
+    fallbacks,
     bnFromFloat,
     toFixed18,
     fromFixed18,
@@ -1277,5 +1448,6 @@ module.exports = {
     promiseTimeout,
     getActualClearAmount,
     getRouteForTokens,
-    visualizeRoute
+    visualizeRoute,
+    build0xQueries
 };
