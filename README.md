@@ -1,5 +1,5 @@
 # Rain Orderbook Arbitrage Bot
-NodeJS app that clears Rain orderbook orders against major DeFi platforms liquidity by finding arbitrage trades for token pairs of orders details queried from a subgraph or from file containing array of `Order Struct`, bundling them as `takeOrders` and submitting them to [Rain GenericPoolOrderBookFlashBorrower contract](https://github.com/rainprotocol/rain.orderbook.flashborrower.zeroex).
+NodeJS app that clears Rain orderbook orders against major DeFi platforms liquidity by finding arbitrage trades for token pairs of orders details queried from a subgraph or from file containing array of `Order Struct`, bundling them as `takeOrders` and submitting them to one of [Rain Arb Contracts](https://github.com/rainprotocol/rain.orderbook/tree/main/src/concrete).
 
 This app requires NodeJS v18 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
@@ -211,15 +211,14 @@ const configOptions = {
   monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
-  maxRatio              : true     // option to maximize the maxIORatio in "srouter" mode
-  usePublicRpcs         : false    // option to fallback to public rpcs
+  maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
+  usePublicRpcs         : false,   // option to fallback to public rpcs
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
   ]
 }
-const clearOptions = {
-  prioritization        : true,    // clear better deals first
+const clearOptions = {s
   gasCoveragePercentage : "500"    // percentage of the transaction gas cost denominated in receiving ERC20 to be earned from the transaction in order for it to be successfull, as an example a value of 500 means atleast 5x the amount of transaction gas cost needs to be earned for the transaction to be successfull
 }
 

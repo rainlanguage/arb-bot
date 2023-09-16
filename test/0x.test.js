@@ -178,7 +178,7 @@
 //         config.apiKey = process?.env?.API_KEY;
 //         config.signer = bot;
 //         config.arbType = "flash-loan-v2";
-//         const reports = await clear("0x", config, sgOrders, {prioritization: false});
+//         const reports = await clear("0x", config, sgOrders);
 
 //         // should have cleared 2 toke pairs bundled orders
 //         assert.ok(reports.length == 2);
@@ -298,7 +298,7 @@
 //         config.apiKey = process?.env?.API_KEY;
 //         config.signer = bot;
 //         config.arbType = "flash-loan-v3";
-//         const reports = await clear("0x", config, sgOrders, {prioritization: false});
+//         const reports = await clear("0x", config, sgOrders);
 
 //         // should have cleared 2 toke pairs bundled orders
 //         assert.ok(reports.length == 2);
@@ -418,7 +418,7 @@
 //         config.apiKey = process?.env?.API_KEY;
 //         config.signer = bot;
 //         config.arbType = "order-taker";
-//         const reports = await clear("0x", config, sgOrders, {prioritization: false});
+//         const reports = await clear("0x", config, sgOrders);
 
 //         // should have cleared 2 toke pairs bundled orders
 //         assert.ok(reports.length == 2);

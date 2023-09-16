@@ -31,251 +31,16 @@ const { Router } = require("@sushiswap/router");
 const { Token } = require("@sushiswap/currency");
 const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("./abis");
 const {
-    sleep,
     getIncome,
     processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
     visualizeRoute,
-    build0xQueries,
     bundleTakeOrders,
     fetchPoolsForTokenWrapper
 } = require("./utils");
 
-
-const HEADERS = { headers: { "accept-encoding": "null" } };
-
-/**
- * Prepares the bundled orders by getting the best deals from Router and sorting the
- * bundled orders based on the best deals
- *
- * @param {any[]} bundledOrders - The bundled orders array
- * @param {string[]} zeroexQueries - The 0x request queries
- * @param {any} dataFetcher - The DataFetcher instance
- * @param {any} config - The network config data
- * @param {ethers.BigNumber} gasPrice - The network gas price
- * @param {boolean} sort - (optional) Sort based on best deals or not
- */
-const prepare = async(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort = true) => {
-    try {
-        let prices = [];
-        if (config.apiKey) {
-            console.log(">>> Getting initial prices from 0x");
-            const zeroexPromises = [];
-            for (let i = 0; i &lt; zeroexQueries.length; i++) {
-                zeroexPromises.push(axios.get(zeroexQueries[i].quote, HEADERS));
-                await sleep(1000);
-            }
-            const zeroexResponses = await Promise.allSettled(zeroexPromises);
-
-            for (let i = 0; i &lt; zeroexResponses.length; i++) {
-                if (zeroexResponses[i].status == "fulfilled") prices.push([
-                    {
-                        token: zeroexResponses[i].value.data.buyTokenAddress,
-                        rate: zeroexResponses[i].value.data.buyTokenToEthRate
-                    },
-                    {
-                        token: zeroexResponses[i].value.data.sellTokenAddress,
-                        rate: zeroexResponses[i].value.data.sellTokenToEthRate
-                    }
-                ]);
-                else {
-                    console.log("");
-                    console.log(
-                        "\x1b[31m%s\x1b[0m",
-                        `Could not get prices from 0x for ${
-                            zeroexQueries[i].tokens[0]
-                        } and ${
-                            zeroexQueries[i].tokens[1]
-                        }`
-                    );
-                    console.log(">>> Trying to get prices from Router...");
-                    try {
-                        if (
-                            zeroexQueries[i].tokens[2].toLowerCase() !==
-                            config.nativeWrappedToken.address.toLowerCase()
-                        ) {
-                            const token0ToEthRate = await getEthPrice(
-                                config,
-                                zeroexQueries[i].tokens[2],
-                                zeroexQueries[i].tokens[4],
-                                gasPrice,
-                                dataFetcher
-                            );
-                            if (token0ToEthRate !== undefined) prices.push([{
-                                token: zeroexQueries[i].tokens[2],
-                                rate: token0ToEthRate
-                            }]);
-                            else throw "noway";
-                        }
-                        else prices.push([{
-                            token: config.nativeWrappedToken.address.toLowerCase(),
-                            rate: "1"
-                        }]);
-                    }
-                    catch (e0) {
-                        if (e0 === "noway") console.log(
-                            "\x1b[31m%s\x1b[0m",
-                            `could not find any route for ${zeroexQueries[i].tokens[0]}`
-                        );
-                        else console.log(
-                            "\x1b[31m%s\x1b[0m",
-                            `could not get price for ${zeroexQueries[i].tokens[0]} from Router`
-                        );
-                    }
-                    try {
-                        if (
-                            zeroexQueries[i].tokens[3].toLowerCase() !==
-                            config.nativeWrappedToken.address.toLowerCase()
-                        ) {
-                            const token1ToEthRate = await getEthPrice(
-                                config,
-                                zeroexQueries[i].tokens[3],
-                                zeroexQueries[i].tokens[5],
-                                gasPrice,
-                                dataFetcher
-                            );
-                            if (token1ToEthRate !== undefined) prices.push([{
-                                token: zeroexQueries[i].tokens[3],
-                                rate: token1ToEthRate
-                            }]);
-                            else throw "noway";
-                        }
-                        else prices.push([{
-                            token: config.nativeWrappedToken.address.toLowerCase(),
-                            rate: "1"
-                        }]);
-                    }
-                    catch (e1) {
-                        if (e1 === "noway") console.log(
-                            "\x1b[31m%s\x1b[0m",
-                            `could not find any route for ${zeroexQueries[i].tokens[1]}`
-                        );
-                        else console.log(
-                            "\x1b[31m%s\x1b[0m",
-                            `could not get price for ${zeroexQueries[i].tokens[1]} from Router`
-                        );
-                    }
-                }
-            }
-        }
-        else {
-            console.log(">>> Getting initial prices from Router");
-            for (let i = 0; i &lt; zeroexQueries.length; i++) {
-                try {
-                    if (
-                        zeroexQueries[i].tokens[2].toLowerCase() !==
-                        config.nativeWrappedToken.address.toLowerCase()
-                    ) {
-                        const token0ToEthRate = await getEthPrice(
-                            config,
-                            zeroexQueries[i].tokens[2],
-                            zeroexQueries[i].tokens[4],
-                            gasPrice,
-                            dataFetcher
-                        );
-                        if (token0ToEthRate !== undefined) prices.push([{
-                            token: zeroexQueries[i].tokens[2],
-                            rate: token0ToEthRate
-                        }]);
-                        else throw "noway";
-                    }
-                    else prices.push([{
-                        token: config.nativeWrappedToken.address.toLowerCase(),
-                        rate: "1"
-                    }]);
-                }
-                catch (e0) {
-                    if (e0 === "noway") console.log(
-                        "\x1b[31m%s\x1b[0m",
-                        `could not find any route for ${zeroexQueries[i].tokens[0]}`
-                    );
-                    else console.log(
-                        "\x1b[31m%s\x1b[0m",
-                        `could not get price for ${zeroexQueries[i].tokens[0]} from Router`
-                    );
-                }
-                try {
-                    if (
-                        zeroexQueries[i].tokens[3].toLowerCase() !==
-                        config.nativeWrappedToken.address.toLowerCase()
-                    ) {
-                        const token1ToEthRate = await getEthPrice(
-                            config,
-                            zeroexQueries[i].tokens[3],
-                            zeroexQueries[i].tokens[5],
-                            gasPrice,
-                            dataFetcher
-                        );
-                        if (token1ToEthRate !== undefined) prices.push([{
-                            token: zeroexQueries[i].tokens[3],
-                            rate: token1ToEthRate
-                        }]);
-                        else throw "noway";
-                    }
-                    else prices.push([{
-                        token: config.nativeWrappedToken.address.toLowerCase(),
-                        rate: "1"
-                    }]);
-                }
-                catch (e1) {
-                    if (e1 === "noway") console.log(
-                        "\x1b[31m%s\x1b[0m",
-                        `could not find any route for ${zeroexQueries[i].tokens[1]}`
-                    );
-                    else console.log(
-                        "\x1b[31m%s\x1b[0m",
-                        `could not get price for ${zeroexQueries[i].tokens[1]} from Router`
-                    );
-                }
-            }
-
-        }
-        prices = prices.flat();
-        console.log("");
-
-        bundledOrders.forEach(v => {
-            console.log(`Current market price for ${v.buyTokenSymbol}/${v.sellTokenSymbol}:`);
-            const sellTokenToEthRate = prices.find(
-                e => e.token.toLowerCase() === v.sellToken.toLowerCase()
-            )?.rate;
-            const buyTokenToEthRate = prices.find(
-                e => e.token.toLowerCase() === v.buyToken.toLowerCase()
-            )?.rate;
-            if (sellTokenToEthRate &amp;&amp; buyTokenToEthRate) {
-                v.initPrice = ethers.utils.parseUnits(buyTokenToEthRate)
-                    .mul(ethers.utils.parseUnits("1"))
-                    .div(ethers.utils.parseUnits(sellTokenToEthRate));
-                console.log("\x1b[36m%s\x1b[0m", `${ethers.utils.formatEther(v.initPrice)}`);
-            }
-            else console.log(
-                "\x1b[31m%s\x1b[0m",
-                "Could not calculate market price for this token pair due to lack of required data!"
-            );
-            console.log("");
-        });
-        bundledOrders = bundledOrders.filter(v => v.initPrice !== undefined);
-        // bundledOrders.forEach(v => {
-        //     v.takeOrders = v.takeOrders.filter(
-        //         e => e.ratio !== undefined ? v.initPrice.gte(e.ratio) : true
-        //     );
-        // });
-
-        if (sort) {
-            console.log("\n", ">>> Sorting the pairs based on ...");
-            bundledOrders.sort(
-                (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
-            );
-        }
-        return [bundledOrders, prices];
-    }
-    catch (error) {
-        console.log("something went wrong during the process of getting initial prices!");
-        console.log(error);
-        return [[], []];
-    }
-};
 
 /**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with router contract
@@ -284,20 +49,17 @@ const prepare = async(bundledOrders, zeroexQueries, dataFetcher, config, gasPric
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction
  * for it to be considered profitable and get submitted
- * @param {boolean} prioritization - (optional) Prioritize better deals to get cleared first, default is true
  * @returns The report of details of cleared orders
  */
 const routerClear = async(
     config,
     ordersDetails,
-    gasCoveragePercentage = "100",
-    prioritization = true
+    gasCoveragePercentage = "100"
 ) => {
     if (
         gasCoveragePercentage &lt; 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
-    if (typeof prioritization !== "boolean") throw "invalid value for 'prioritization'";
 
     const lps               = processLps(config.lps, config.chainId);
     const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
@@ -305,10 +67,6 @@ const routerClear = async(
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
     const arbType           = config.arbType;
-    const api               = config.zeroEx.apiUrl;
-    const nativeToken       = config.nativeWrappedToken;
-
-    if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbis[arbType], signer);
@@ -316,73 +74,22 @@ const routerClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    let gasPrice = await signer.provider.getGasPrice();
-
     console.log(
-        "------------------------- Starting Clearing Process -------------------------",
+        "------------------------- Starting The",
+        "\x1b[32mROUTER\x1b[0m",
+        "Mode -------------------------",
         "\n"
     );
     console.log("\x1b[33m%s\x1b[0m", Date());
     console.log("Arb Contract Address: " , arbAddress);
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
-    const initPriceQueries = [];
     let bundledOrders = [];
-    let ethPrices = [];
     if (ordersDetails.length) {
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
-        for (let i = 0; i &lt; bundledOrders.length; i++) {
-            build0xQueries(
-                api,
-                initPriceQueries,
-                bundledOrders[i].sellToken,
-                bundledOrders[i].sellTokenDecimals,
-                bundledOrders[i].sellTokenSymbol
-            );
-            build0xQueries(
-                api,
-                initPriceQueries,
-                bundledOrders[i].buyToken,
-                bundledOrders[i].buyTokenDecimals,
-                bundledOrders[i].buyTokenSymbol
-            );
-        }
-        if (Array.isArray(initPriceQueries[initPriceQueries.length - 1])) {
-            initPriceQueries[initPriceQueries.length - 1] = {
-                quote: `${
-                    api
-                }swap/v1/price?buyToken=${
-                    nativeToken.address.toLowerCase()
-                }&amp;sellToken=${
-                    initPriceQueries[initPriceQueries.length - 1][0]
-                }&amp;sellAmount=${
-                    "1" + "0".repeat(initPriceQueries[initPriceQueries.length - 1][1])
-                }`,
-                tokens: [
-                    nativeToken.symbol,
-                    initPriceQueries[initPriceQueries.length - 1][2],
-                    nativeToken.address.toLowerCase(),
-                    initPriceQueries[initPriceQueries.length - 1][0],
-                    nativeToken.decimals,
-                    initPriceQueries[initPriceQueries.length - 1][1],
-                ]
-            };
-        }
-        console.log(
-            "------------------------- Getting Best Deals From RouteProcessor3 -------------------------",
-            "\n"
-        );
-        [ bundledOrders, ethPrices ] = await prepare(
-            bundledOrders,
-            initPriceQueries,
-            dataFetcher,
-            config,
-            gasPrice,
-            prioritization
-        );
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -393,11 +100,6 @@ const routerClear = async(
         console.log("Could not find any order to clear for current market price, exiting...", "\n");
         return;
     }
-
-    console.log(
-        "------------------------- Trying To Clear Bundled Orders -------------------------",
-        "\n"
-    );
 
     const report = [];
     for (let i = 0; i &lt; bundledOrders.length; i++) {
@@ -483,7 +185,7 @@ const routerClear = async(
 
                 await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
                 const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
-                gasPrice = await signer.provider.getGasPrice();
+                const gasPrice = await signer.provider.getGasPrice();
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
@@ -501,7 +203,11 @@ const routerClear = async(
                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                 );
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
-                console.log(`Current best route price for this token pair: ${ethers.utils.formatEther(price)}`, "\n");
+                console.log(
+                    "Current best route price for this token pair:",
+                    `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
+                    "\n"
+                );
 
                 // filter take orders based on curent price and calculate final bundle quote amount
                 bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
@@ -538,11 +244,6 @@ const routerClear = async(
                         v => console.log("\x1b[36m%s\x1b[0m", v)
                     );
                     console.log("");
-                    // console.log(
-                    //     "\x1b[36m%s\x1b[0m",
-                    //     visualizeRoute(fromToken.address, toToken.address, route.legs),
-                    //     "\n"
-                    // );
 
                     const rpParams = Router.routeProcessor2Params(
                         pcMap,
@@ -554,7 +255,6 @@ const routerClear = async(
                         // permits
                         // "0.005"
                     );
-
                     const takeOrdersConfigStruct = {
                         output: bundledOrders[i].buyToken,
                         input: bundledOrders[i].sellToken,
@@ -599,10 +299,15 @@ const routerClear = async(
                         );
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
-                        // console.log(">>> Estimating the profit for this token pair...", "\n");
-                        const ethPrice = ethPrices.find(v =>
-                            v.token.toLowerCase() === bundledOrders[i].buyToken.toLowerCase()
-                        )?.rate;
+                        const ethPrice = gasCoveragePercentage !== "0"
+                            ? "0"
+                            : await getEthPrice(
+                                config,
+                                bundledOrders[i].buyToken,
+                                bundledOrders[i].buyTokenDecimals,
+                                gasPrice,
+                                dataFetcher
+                            );
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
                             const rawtx = {
@@ -627,28 +332,6 @@ const routerClear = async(
                             gasLimit = gasLimit.mul("112").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
-                            // const maxEstimatedProfit = estimateProfit(
-                            //     ethers.utils.formatEther(bundledOrders[i].initPrice),
-                            //     ethPrice,
-                            //     bundledOrders[i],
-                            //     gasCost,
-                            //     gasCoveragePercentage
-                            // ).div(
-                            //     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
-                            // );
-                            // console.log(`Max Estimated Profit: ${
-                            //     ethers.utils.formatUnits(
-                            //         maxEstimatedProfit,
-                            //         bundledOrders[i].buyTokenDecimals
-                            //     )
-                            // } ${bundledOrders[i].buyTokenSymbol}`, "\n");
-
-                            // if (maxEstimatedProfit.isNegative()) console.log(
-                            //     ">>> Skipping because estimated negative profit for this token pair",
-                            //     "\n"
-                            // );
-                            // else {
-                            console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                             const gasCostInToken = ethers.utils.parseUnits(
                                 ethPrice
                             ).mul(
@@ -667,45 +350,39 @@ const routerClear = async(
                                     arbType === "order-taker"
                                         ? [
                                             takeOrdersConfigStruct,
-                                            gasCostInToken.mul(headroom).div(100)
+                                            gasCostInToken.mul(headroom).div("100")
                                         ]
                                         : [
                                             takeOrdersConfigStruct,
-                                            gasCostInToken.mul(headroom).div(100),
+                                            gasCostInToken.mul(headroom).div("100"),
                                             exchangeData
                                         ]
                                 );
                                 await signer.estimateGas(rawtx);
-                                // try {
-                                //     await signer.estimateGas(rawtx);
-                                // }
-                                // catch {
-                                //     // console.log(err);
-                                //     throw "dryrun";
-                                // }
                             }
-                            rawtx.data = arb.interface.encodeFunctionData(
-                                "arb",
-                                arbType === "order-taker"
-                                    ? [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(gasCoveragePercentage).div(100)
-                                    ]
-                                    : [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(gasCoveragePercentage).div(100),
-                                        exchangeData
-                                    ]
-                            );
-                            console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            const tx = await signer.sendTransaction(rawtx);
-                            console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
-                            console.log(
-                                ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
-                                "\n"
-                            );
 
                             try {
+                                console.log(">>> Trying to submit the transaction for this token pair...", "\n");
+                                rawtx.data = arb.interface.encodeFunctionData(
+                                    "arb",
+                                    arbType === "order-taker"
+                                        ? [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(gasCoveragePercentage).div("100")
+                                        ]
+                                        : [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(gasCoveragePercentage).div("100"),
+                                            exchangeData
+                                        ]
+                                );
+                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                                const tx = await signer.sendTransaction(rawtx);
+                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+                                console.log(
+                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
+                                    "\n"
+                                );
                                 const receipt = await tx.wait();
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
@@ -737,7 +414,7 @@ const routerClear = async(
                                 );
                                 console.log(
                                     "\x1b[36m%s\x1b[0m",
-                                    `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
+                                    `Clear Initial Price: ${ethers.utils.formatEther(price)}`
                                 );
                                 console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
                                 console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
@@ -774,14 +451,9 @@ const routerClear = async(
                                     sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
                                     clearedAmount: bundledQuoteAmount.toString(),
                                     clearPrice: ethers.utils.formatEther(
-                                        bundledOrders[i].initPrice
+                                        price
                                     ),
-                                    // clearGuaranteedPrice: ethers.utils.formatUnits(
-                                    //     guaranteedAmount,
-                                    //     bundledOrders[i].buyTokenDecimals
-                                    // ),
                                     clearActualPrice,
-                                    // maxEstimatedProfit,
                                     gasUsed: receipt.gasUsed,
                                     gasCost: actualGasCost,
                                     income,
@@ -793,7 +465,6 @@ const routerClear = async(
                                 console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                                 console.log(error, "\n");
                             }
-                        // }
                         }
                     }
                     catch (error) {
@@ -835,7 +506,7 @@ module.exports = {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 20:08:13 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Sep 16 2023 00:20:51 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>

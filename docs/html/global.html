@@ -1400,7 +1400,7 @@ token pair combinations.
 
             
 
-            <td class="description last">The options for clear, 'slippage',' gasCoveragePercentage' and 'prioritization'</td>
+            <td class="description last">The options for clear, such as 'gasCoveragePercentage''</td>
         </tr>
 
     
@@ -1441,7 +1441,7 @@ token pair combinations.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line201">line 201</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line202">line 202</a>
     </li></ul></dd>
     
 
@@ -1487,7 +1487,7 @@ token pair combinations.
     
 
     
-    <h4 class="name" id="curveClear"><span class="type-signature">(async) </span>curveClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="curveClear"><span class="type-signature">(async) </span>curveClear<span class="signature">(config, ordersDetails, gasCoveragePercentage)</span><span class="type-signature"></span></h4>
     
 
     
@@ -1611,35 +1611,6 @@ token pair combinations.
 
             <td class="description last">(optional) The percentage of the gas cost to cover on each transaction
 for it to be considered profitable and get submitted</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>prioritization</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
         </tr>
 
     
@@ -3127,7 +3098,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#line149">line 149</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line150">line 150</a>
     </li></ul></dd>
     
 
@@ -4379,7 +4350,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="getQuery"><span class="type-signature"></span>getQuery<span class="signature">(orderHash, owner, interpreter)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getQuery"><span class="type-signature"></span>getQuery<span class="signature">(orderHash, owner, interpreter, shuffle)</span><span class="type-signature"></span></h4>
     
 
     
@@ -4413,6 +4384,8 @@ for it to be considered profitable and get submitted</td>
         
 
         
+        <th>Default</th>
+        
 
         <th class="last">Description</th>
     </tr>
@@ -4438,6 +4411,10 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The order hash to apply as filter</td>
         </tr>
@@ -4460,6 +4437,10 @@ for it to be considered profitable and get submitted</td>
 
             
 
+            
+                <td class="default">
+                
+                </td>
             
 
             <td class="description last">The order owner to apply as filter</td>
@@ -4484,8 +4465,43 @@ for it to be considered profitable and get submitted</td>
             
 
             
+                <td class="default">
+                
+                </td>
+            
 
             <td class="description last">The interpreter to apply as filter</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>shuffle</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    0
+                
+                </td>
+            
+
+            <td class="description last">(optional) A number in range of 0 - 3 that
+will change the order of getting order details from subgraph, mostly
+used for continuous bot running</td>
         </tr>
 
     
@@ -4526,7 +4542,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="query.js.html">query.js</a>, <a href="query.js.html#line54">line 54</a>
+        <a href="query.js.html">query.js</a>, <a href="query.js.html#line57">line 57</a>
     </li></ul></dd>
     
 
@@ -5155,7 +5171,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, availableSwaps, config, sort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="prepare"><span class="type-signature"></span>prepare<span class="signature">(bundledOrders, availableSwaps, config, sort)</span><span class="type-signature"></span></h4>
     
 
     
@@ -5350,768 +5366,6 @@ bundled orders based on the best deals
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
         <a href="curve.js.html">curve.js</a>, <a href="curve.js.html#line129">line 129</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Prepares the bundled orders by getting the best deals from Router and sorting the
-bundled orders based on the best deals
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>bundledOrders</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;any></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The bundled orders array</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>zeroexQueries</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;string></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The 0x request queries</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>dataFetcher</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">any</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The DataFetcher instance</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>config</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">any</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The network config data</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>gasPrice</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">ethers.BigNumber</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The network gas price</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>sort</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Sort based on best deals or not</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line32">line 32</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(bundledOrders, zeroexQueries, dataFetcher, config, gasPrice, sort)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Prepares the bundled orders by getting the best deals from Router and sorting the
-bundled orders based on the best deals
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>bundledOrders</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;any></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The bundled orders array</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>zeroexQueries</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;string></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The 0x request queries</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>dataFetcher</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">any</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The DataFetcher instance</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>config</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">any</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The network config data</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>gasPrice</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">ethers.BigNumber</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The network gas price</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>sort</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Sort based on best deals or not</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line34">line 34</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="prepare"><span class="type-signature">(async) </span>prepare<span class="signature">(quotes, bundledOrders, sort)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Prepares the bundled orders by getting the best deals from 0x and sorting the
-bundled orders based on the best deals
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>quotes</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;string></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The 0x request quote bodies</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>bundledOrders</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;any></span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The bundled orders array</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>sort</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Sort based on best deals or not</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line18">line 18</a>
     </li></ul></dd>
     
 
@@ -6514,7 +5768,7 @@ if the time runs out before the main promise settlement
     
 
     
-    <h4 class="name" id="routerClear"><span class="type-signature">(async) </span>routerClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="routerClear"><span class="type-signature">(async) </span>routerClear<span class="signature">(config, ordersDetails, gasCoveragePercentage)</span><span class="type-signature"></span></h4>
     
 
     
@@ -6641,35 +5895,6 @@ for it to be considered profitable and get submitted</td>
         </tr>
 
     
-
-        <tr>
-            
-                <td class="name"><code>prioritization</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
-        </tr>
-
-    
     </tbody>
 </table>
 
@@ -6707,7 +5932,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="router.js.html">router.js</a>, <a href="router.js.html#line262">line 262</a>
+        <a href="router.js.html">router.js</a>, <a href="router.js.html#line26">line 26</a>
     </li></ul></dd>
     
 
@@ -6890,7 +6115,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="srouterClear"><span class="type-signature">(async) </span>srouterClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="srouterClear"><span class="type-signature">(async) </span>srouterClear<span class="signature">(config, ordersDetails, gasCoveragePercentage)</span><span class="type-signature"></span></h4>
     
 
     
@@ -7017,35 +6242,6 @@ for it to be considered profitable and get submitted</td>
         </tr>
 
     
-
-        <tr>
-            
-                <td class="name"><code>prioritization</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
-        </tr>
-
-    
     </tbody>
 </table>
 
@@ -7083,7 +6279,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line264">line 264</a>
+        <a href="srouter.js.html">srouter.js</a>, <a href="srouter.js.html#line27">line 27</a>
     </li></ul></dd>
     
 
@@ -7619,7 +6815,7 @@ for it to be considered profitable and get submitted</td>
     
 
     
-    <h4 class="name" id="zeroExClear"><span class="type-signature">(async) </span>zeroExClear<span class="signature">(config, ordersDetails, gasCoveragePercentage, prioritization)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="zeroExClear"><span class="type-signature">(async) </span>zeroExClear<span class="signature">(config, ordersDetails, gasCoveragePercentage)</span><span class="type-signature"></span></h4>
     
 
     
@@ -7745,35 +6941,6 @@ for it to be considered profitable and get submitted</td>
         </tr>
 
     
-
-        <tr>
-            
-                <td class="name"><code>prioritization</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">(optional) Prioritize better deals to get cleared first, default is true</td>
-        </tr>
-
-    
     </tbody>
 </table>
 
@@ -7811,7 +6978,7 @@ for it to be considered profitable and get submitted</td>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line89">line 89</a>
+        <a href="zeroex.js.html">zeroex.js</a>, <a href="zeroex.js.html#line18">line 18</a>
     </li></ul></dd>
     
 
@@ -7873,7 +7040,7 @@ for it to be considered profitable and get submitted</td>
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Sep 15 2023 20:08:13 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Sep 16 2023 00:20:51 GMT+0000 (Coordinated Universal Time)
 </footer>
 
 <script> prettyPrint(); </script>
