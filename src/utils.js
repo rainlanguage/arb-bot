@@ -590,9 +590,11 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {ethers.Contract} orderbook - The Orderbook EthersJS contract instance with signer
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
+ * @param {boolean} _eval - To eval() the orders and filter them based on the eval result
+ * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @returns Array of bundled take orders
  */
-const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
+const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true, _shuffle = true) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
@@ -770,6 +772,7 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true) => {
             ? a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
             : 0
     ));
+    if (_shuffle) shuffleArray(bundledOrders);
     return bundledOrders;
 };
 
@@ -1425,6 +1428,30 @@ const build0xQueries = (api, queries, tokenAddress, tokenDecimals, tokenSymbol) 
     }
 };
 
+const shuffleArray = (array) => {
+    let currentIndex = array.length;
+    let randomIndex = 0;
+
+    // While there remain elements to shuffle.
+    while (currentIndex > 0) {
+
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [
+            array[currentIndex],
+            array[randomIndex]
+        ] = [
+            array[randomIndex],
+            array[currentIndex]
+        ];
+    }
+
+    return array;
+};
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1449,5 +1476,6 @@ module.exports = {
     getActualClearAmount,
     getRouteForTokens,
     visualizeRoute,
-    build0xQueries
+    build0xQueries,
+    shuffleArray
 };

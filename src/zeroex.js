@@ -69,7 +69,7 @@ const zeroExClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test");
         // for (let i = 0; i < bundledOrders.length; i++) {
         //     build0xQueries(
         //         api,

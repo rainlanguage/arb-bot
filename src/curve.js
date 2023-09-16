@@ -262,7 +262,7 @@ const curveClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb);
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test");
         const availableSwaps = getAvailableSwaps(config);
         bundledOrders = prepare(
             bundledOrders,

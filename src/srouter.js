@@ -63,7 +63,7 @@ const srouterClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, maxProfit);
+        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, maxProfit, config.rpc !== "test");
     }
     else {
         console.log("No orders found, exiting...", "\n");
