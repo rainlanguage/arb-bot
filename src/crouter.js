@@ -355,14 +355,18 @@ const crouterClear = async(
                     );
                     console.log(
                         "best rate from specified curve pools: " +
-                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)
+                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)+
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
                     );
                     console.log(
                         "best rate from router: " +
                         ethers.utils.formatUnits(
                             route.amountOutBN,
                             bundledOrders[i].buyTokenDecimals
-                        )
+                        ) +
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
                     );
                     if (route.amountOutBN.lt(_res[1].value[topCurveDealPoolIndex].result)) {
                         useCurve = true;
@@ -379,7 +383,9 @@ const crouterClear = async(
                         ethers.utils.formatUnits(
                             route.amountOutBN,
                             bundledOrders[i].buyTokenDecimals
-                        )
+                        ) +
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
                     );
                     rate = route.amountOutBN;
                 }
@@ -387,7 +393,9 @@ const crouterClear = async(
                     console.log("found no route from router");
                     console.log(
                         "best rate from specified curve pools: " +
-                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)
+                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)+
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
                     );
                     rate = ethers.BigNumber.from(_res[1].value[topCurveDealPoolIndex].result);
                     useCurve = true;
@@ -395,6 +403,7 @@ const crouterClear = async(
 
                 const rateFixed = rate.mul("1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals));
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+                console.log("");
                 console.log(
                     "Current best price for this token pair:",
                     `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,

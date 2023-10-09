@@ -13,7 +13,7 @@ const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfi
 
 
 // This test runs on hardhat forked network of polygon
-describe.only("Rain Arb Bot 'crouter' Mode Tests", async function () {
+describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     let turn = 0;
     let interpreter,
         store,
@@ -140,7 +140,7 @@ describe.only("Rain Arb Bot 'crouter' Mode Tests", async function () {
         turn++;
     });
 
-    it.only("should clear orders in 'flash-loan-v2' mode", async function () {
+    it("should clear orders in 'flash-loan-v2' mode", async function () {
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());

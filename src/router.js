@@ -132,6 +132,13 @@ const routerClear = async(
             else {
                 console.log(">>> Getting best route for this token pair", "\n");
 
+                console.log(
+                    ">>> getting market rate for " +
+                    ethers.utils.formatUnits(cumulativeAmountFixed) +
+                    " " +
+                    bundledOrders[i].sellTokenSymbol
+                );
+
                 let cumulativeAmountFixed = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
@@ -170,10 +177,21 @@ const routerClear = async(
                 );
                 if (route.status == "NoWay") throw "could not find any route for this token pair";
 
+                console.log(
+                    "best rate from router: " +
+                    ethers.utils.formatUnits(
+                        route.amountOutBN,
+                        bundledOrders[i].buyTokenDecimals
+                    ) +
+                    " " +
+                    bundledOrders[i].buyTokenSymbol
+                );
+
                 const rateFixed = route.amountOutBN.mul(
                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                 );
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+                console.log("");
                 console.log(
                     "Current best route price for this token pair:",
                     `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
