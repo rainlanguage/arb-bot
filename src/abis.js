@@ -44,6 +44,48 @@ const routeProcessor3Abi = [
 ];
 
 /**
+ * Curve pools function signatures
+ */
+const CURVE_POOLS_FNS = [
+    "function get_dy(int128 i, int128 j, uint256 dx) view returns (uint256)",
+    "function get_dy_underlying(int128 i, int128 j, uint256 dx) view returns (uint256)",
+    "function exchange(int128 i, int128 j, uint256 dx, uint256 min_dy) returns (uint256)",
+    "function exchange_underlying(int128 i, int128 j, uint256 dx, uint256 min_dy) returns (uint256)"
+];
+
+/**
+ * Curve Zap contract function signatures
+ */
+const CURVE_ZAP_FNS = [
+    [`function exchange_underlying(
+        address _pool,
+        int128 _i,
+        int128 _j,
+        uint256 _dx,
+        uint256 _min_dy
+    ) returns (uint256)`],
+
+    [`function exchange_underlying(
+        address _pool,
+        int128 _i,
+        int128 _j,
+        uint256 _dx,
+        uint256 _min_dy,
+        address _receiver
+    ) returns (uint256)`],
+
+    [`function exchange_underlying(
+        address _pool,
+        int128 _i,
+        int128 _j,
+        uint256 _dx,
+        uint256 _min_dy,
+        address _receiver,
+        bool _use_underlying
+    ) returns (uint256)`]
+];
+
+/**
  * Minimal ABI for UniswapV2Route02 contract only including getAmountsOut() and get AmountsIn() functions
  */
 const uniswapV2Route02Abi = [
@@ -235,7 +277,9 @@ module.exports = {
     orderbookAbi,
     interpreterAbi,
     routeProcessor3Abi,
-    uniswapV2Route02Abi
+    uniswapV2Route02Abi,
+    CURVE_POOLS_FNS,
+    CURVE_ZAP_FNS
     // genericArbAbi,
     // zeroExArbAbi,
     // arbTakerAbi

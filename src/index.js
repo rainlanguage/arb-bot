@@ -8,6 +8,7 @@ const CONFIG = require("../config.json");
 const { curveClear } = require("./curve");
 const { zeroExClear } = require("./zeroex");
 const { routerClear } = require("./router");
+const { crouterClear } = require("./crouter");
 const { srouterClear } = require("./srouter");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
@@ -238,6 +239,15 @@ const clear = async(
     }
     else if (_mode === "router") {
         if (majorVersion >= 18) return await routerClear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            // prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
+    }
+    else if (_mode === "crouter") {
+        if (majorVersion >= 18) return await crouterClear(
             config,
             ordersDetails,
             gasCoveragePercentage,

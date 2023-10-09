@@ -1,10 +1,10 @@
 const { ethers, BigNumber } = require("ethers");
-const { ChainId } = require("@sushiswap/chain");
-const { Token } = require("@sushiswap/currency");
+// const { ChainId } = require("@sushiswap/chain");
+// const { Token } = require("@sushiswap/currency");
 const { erc20Abi, interpreterAbi } = require("./abis");
 const { createPublicClient, http, fallback } = require("viem");
-const { config: viemConfig } = require("@sushiswap/viem-config");
-const { DataFetcher, Router, LiquidityProviders } = require("@sushiswap/router");
+// const { config: viemConfig } = require("@sushiswap/viem-config");
+const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = require("sushiswap-router");
 
 
 /**
@@ -777,32 +777,52 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true, _shu
 };
 
 /**
+ * Creates a viem client
+ * @param {number} chainId - The chain id
+ * @param {string[]} rpcs - The RPC urls
+ * @param {boolean} useFallbacs - If fallback RPCs should be used as well or not
+ */
+const createViemClient = (chainId, rpcs, useFallbacs = false) => {
+    const transport = rpcs.includes("test") || rpcs.length === 0
+        ? fallback(fallbacks[chainId].transport, {rank: true})
+        : useFallbacs
+            ? fallback(
+                [...rpcs.map(v => http(v)), ...fallbacks[chainId].transport],
+                { rank: true }
+            )
+            : rpcs.map(v => http(v));
+    return createPublicClient({
+        chain: viemConfig[chainId]?.chain,
+        transport
+        // batch: {
+        //     multicall: {
+        //         batchSize: 512
+        //     },
+        // },
+        // pollingInterval: 8_000,
+    });
+};
+
+/**
  * Instantiates a DataFetcher
- *
- * @param {any} config - The network config data
+ * @param {any} configOrViemClient - The network config data or a viem public client
  * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
  */
-const getDataFetcher = (config, liquidityProviders = [], useFallbacks = false) => {
+const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallbacks = false) => {
     try {
         const dataFetcher = new DataFetcher(
-            config.chainId,
-            createPublicClient({
-                chain: viemConfig[config.chainId]?.chain,
-                transport: config.rpc && config.rpc !== "test"
-                    ? useFallbacks
-                        ? fallback(
-                            [config.rpc, ...fallbacks[config.chainId].transport],
-                            {rank: true}
-                        )
-                        : http(config.rpc)
-                    : fallback(fallbacks[config.chainId].transport, {rank: true}),
-                // batch: {
-                //     multicall: {
-                //         batchSize: 512
-                //     },
-                // },
-                // pollingInterval: 8_000,
-            })
+            ("transport" in configOrViemClient
+                ? configOrViemClient.chain.id
+                : configOrViemClient.chainId
+            ),
+            ("transport" in configOrViemClient
+                ? configOrViemClient
+                : createViemClient(
+                    configOrViemClient.chainId,
+                    [configOrViemClient.rpc],
+                    useFallbacks
+                )
+            )
         );
 
         // start and immediately stop data fetching as we only want data fetching on demand
@@ -848,7 +868,7 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -865,50 +885,50 @@ const getEthPrice = async(
     else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
 };
 
-/**
- * A wrapper for DataFetcher fetchPoolsForToken() to avoid any errors for liquidity providers that are not available for target chain
- *
- * @param {DataFetcher} dataFetcher - DataFetcher instance
- * @param {Token} fromToken - The from token
- * @param {Token} toToken - The to token
- * @param {string[]} excludePools - Set of pools to exclude
- */
-const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
-    // ensure that we only fetch the native wrap pools if the
-    // token is the native currency and wrapped native currency
-    if (fromToken.wrapped.equals(toToken.wrapped)) {
-        const provider = dataFetcher.providers.find(
-            (p) => p.getType() === LiquidityProviders.NativeWrap
-        );
-        if (provider) {
-            try {
-                await provider.fetchPoolsForToken(
-                    fromToken.wrapped,
-                    toToken.wrapped,
-                    excludePools
-                );
-            }
-            catch {}
-        }
-    }
-    else {
-        const [token0, token1] =
-            fromToken.wrapped.equals(toToken.wrapped) ||
-            fromToken.wrapped.sortsBefore(toToken.wrapped)
-                ? [fromToken.wrapped, toToken.wrapped]
-                : [toToken.wrapped, fromToken.wrapped];
-        await Promise.allSettled(
-            dataFetcher.providers.map((p) => {
-                try {
-                    return p.fetchPoolsForToken(token0, token1, excludePools);
-                }
-                catch {
-                    return;
-                }
-            })
-        );
-    }
-};
+// /**
+//  * A wrapper for DataFetcher fetchPoolsForToken() to avoid any errors for liquidity providers that are not available for target chain
+//  *
+//  * @param {DataFetcher} dataFetcher - DataFetcher instance
+//  * @param {Token} fromToken - The from token
+//  * @param {Token} toToken - The to token
+//  * @param {string[]} excludePools - Set of pools to exclude
+//  */
+// const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
+//     // ensure that we only fetch the native wrap pools if the
+//     // token is the native currency and wrapped native currency
+//     if (fromToken.wrapped.equals(toToken.wrapped)) {
+//         const provider = dataFetcher.providers.find(
+//             (p) => p.getType() === LiquidityProviders.NativeWrap
+//         );
+//         if (provider) {
+//             try {
+//                 await provider.fetchPoolsForToken(
+//                     fromToken.wrapped,
+//                     toToken.wrapped,
+//                     excludePools
+//                 );
+//             }
+//             catch {}
+//         }
+//     }
+//     else {
+//         const [token0, token1] =
+//             fromToken.wrapped.equals(toToken.wrapped) ||
+//             fromToken.wrapped.sortsBefore(toToken.wrapped)
+//                 ? [fromToken.wrapped, toToken.wrapped]
+//                 : [toToken.wrapped, fromToken.wrapped];
+//         await Promise.allSettled(
+//             dataFetcher.providers.map((p) => {
+//                 try {
+//                     return p.fetchPoolsForToken(token0, token1, excludePools);
+//                 }
+//                 catch {
+//                     return;
+//                 }
+//             })
+//         );
+//     }
+// };
 
 /**
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
@@ -1264,7 +1284,7 @@ const getRouteForTokens = async(
         address: toTokenAddress
     });
     const dataFetcher = getDataFetcher({chainId});
-    await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -1466,7 +1486,6 @@ module.exports = {
     bundleTakeOrders,
     getDataFetcher,
     getEthPrice,
-    fetchPoolsForTokenWrapper,
     processLps,
     validateOrders,
     getOrderHash,
@@ -1477,5 +1496,6 @@ module.exports = {
     getRouteForTokens,
     visualizeRoute,
     build0xQueries,
-    shuffleArray
+    shuffleArray,
+    createViemClient
 };

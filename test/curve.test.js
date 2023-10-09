@@ -36,7 +36,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
     beforeEach(async() => {
         // reset network before each test
-        await helpers.reset("https://polygon-rpc.com/", 47102059);
+        await helpers.reset("https://polygon.llamarpc.com", 47102059);
 
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());

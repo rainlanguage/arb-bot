@@ -1,7 +1,6 @@
 const ethers = require("ethers");
-const { Router } = require("@sushiswap/router");
-const { Token } = require("@sushiswap/currency");
 const { arbAbis, orderbookAbi } = require("./abis");
+const { Router, Token } = require("sushiswap-router");
 const {
     getIncome,
     processLps,
@@ -10,8 +9,7 @@ const {
     getActualPrice,
     visualizeRoute,
     bundleTakeOrders,
-    getActualClearAmount,
-    fetchPoolsForTokenWrapper
+    getActualClearAmount
 } = require("./utils");
 
 
@@ -143,7 +141,8 @@ const srouterClear = async(
                 } as maximum input`);
                 console.log(">>> Getting best route", "\n");
 
-                await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+                // await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
+                await dataFetcher.fetchPoolsForToken(fromToken, toToken);
                 const pcMap = dataFetcher.getCurrentPoolCodeMap(
                     fromToken,
                     toToken
