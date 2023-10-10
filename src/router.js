@@ -135,7 +135,7 @@ const routerClear = async(
                 let cumulativeAmountFixed = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
-                });  
+                });
 
                 console.log(
                     ">>> getting market rate for " +
