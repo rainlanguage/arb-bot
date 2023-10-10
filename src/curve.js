@@ -1,56 +1,15 @@
 const ethers = require("ethers");
-const { arbAbis, orderbookAbi } = require("./abis");
+const { parseAbi } = require("viem");
+const { arbAbis, orderbookAbi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("./abis");
 const {
     getIncome,
     processLps,
     getEthPrice,
     getDataFetcher,
     getActualPrice,
-    bundleTakeOrders
+    bundleTakeOrders,
+    createViemClient
 } = require("./utils");
-
-
-/**
- * Curve pools function signatures
- */
-const POOLS_FNS = [
-    "function get_dy(int128 i, int128 j, uint256 dx) view returns (uint256)",
-    "function get_dy_underlying(int128 i, int128 j, uint256 dx) view returns (uint256)",
-    "function exchange(int128 i, int128 j, uint256 dx, uint256 min_dy) returns (uint256)",
-    "function exchange_underlying(int128 i, int128 j, uint256 dx, uint256 min_dy) returns (uint256)"
-];
-
-/**
- * Curve Zap contract function signatures
- */
-const ZAP_FNS = [
-    [`function exchange_underlying(
-        address _pool,
-        int128 _i,
-        int128 _j,
-        uint256 _dx,
-        uint256 _min_dy
-    ) returns (uint256)`],
-
-    [`function exchange_underlying(
-        address _pool,
-        int128 _i,
-        int128 _j,
-        uint256 _dx,
-        uint256 _min_dy,
-        address _receiver
-    ) returns (uint256)`],
-
-    [`function exchange_underlying(
-        address _pool,
-        int128 _i,
-        int128 _j,
-        uint256 _dx,
-        uint256 _min_dy,
-        address _receiver,
-        bool _use_underlying
-    ) returns (uint256)`]
-];
 
 /**
  * Returns array of available swaps pairs from specified curve pools in config file
@@ -60,7 +19,7 @@ const getAvailableSwaps = (config) => {
     const swaps = [];
     for (let i = 0; i < config.curve.pools.length; i++) {
         const pool = config.curve.pools[i];
-        swaps.push({});
+        swaps.push({ address: pool.address, index: i });
         if (pool.coins) {
             swaps[swaps.length - 1].coins = [];
             for (let j = 0; j < pool.coins.length; j++) {
@@ -128,36 +87,50 @@ const getAvailableSwaps = (config) => {
  */
 const prepare = (bundledOrders, availableSwaps, config, signer) => {
     for (let i = 0; i < bundledOrders.length; i++) {
-        let pairFormat;
+        const pairFormat = [];
         const bOrder = bundledOrders[i];
         const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
-        const poolIndex = availableSwaps.findIndex(v => {
-            if (v.coins?.includes(pair)) pairFormat = "c";
-            if (v.underlyingCoins?.includes(pair)) pairFormat = "uc";
-            if (v.underlyingCoinsUnwrapped?.includes(pair)) pairFormat = "ucu";
-            return v.coins?.includes(pair) ||
-            v.underlyingCoins?.includes(pair) ||
-            v.underlyingCoinsUnwrapped?.includes(pair);
+        const pools = availableSwaps.filter(v => {
+            const _l = pairFormat.length;
+            if (v.coins?.includes(pair)) pairFormat.push("c");
+            else if (v.underlyingCoins?.includes(pair)) pairFormat.push("uc");
+            else if (v.underlyingCoinsUnwrapped?.includes(pair)) pairFormat.push("ucu");
+            return pairFormat.length > _l;
+            // v.coins?.includes(pair) ||
+            // v.underlyingCoins?.includes(pair) ||
+            // v.underlyingCoinsUnwrapped?.includes(pair);
         });
-        if (poolIndex > -1) {
-            const pool = config.curve.pools[poolIndex];
-            bOrder.poolIndex = poolIndex;
-            bOrder.poolContract = new ethers.Contract(pool.address, POOLS_FNS, signer);
-            bOrder.pairFormat = pairFormat;
-            bOrder.buyTokenIndex = pairFormat === "c"
-                ? pool.coins.findIndex(v => v.symbol === bOrder.buyTokenSymbol)
-                : pairFormat === "uc"
-                    ? pool.underlyingCoins.findIndex(v => v.symbol === bOrder.buyTokenSymbol)
-                    : pool.underlyingCoinsUnwrapped.findIndex(
-                        v => v.symbol === bOrder.buyTokenSymbol
-                    );
-            bOrder.sellTokenIndex = pairFormat === "c"
-                ? pool.coins.findIndex(v => v.symbol === bOrder.sellTokenSymbol)
-                : pairFormat === "uc"
-                    ? pool.underlyingCoins.findIndex(v => v.symbol === bOrder.sellTokenSymbol)
-                    : pool.underlyingCoinsUnwrapped.findIndex(
-                        v => v.symbol === bOrder.sellTokenSymbol
-                    );
+        if (pools.length > 0) {
+            bOrder.curve = [];
+            pools.forEach((_pool, i) => {
+                const _curvePoolDetailsForPair = {};
+                const poolConfig = config.curve.pools[_pool.index];
+                _curvePoolDetailsForPair.poolContract = new ethers.Contract(
+                    _pool.address,
+                    CURVE_POOLS_FNS,
+                    signer
+                );
+                _curvePoolDetailsForPair.pairFormat = pairFormat[i];
+                _curvePoolDetailsForPair.buyTokenIndex = pairFormat[i] === "c"
+                    ? poolConfig.coins.findIndex(v => v.symbol === bOrder.buyTokenSymbol)
+                    : pairFormat[i] === "uc"
+                        ? poolConfig.underlyingCoins.findIndex(
+                            v => v.symbol === bOrder.buyTokenSymbol
+                        )
+                        : poolConfig.underlyingCoinsUnwrapped.findIndex(
+                            v => v.symbol === bOrder.buyTokenSymbol
+                        );
+                _curvePoolDetailsForPair.sellTokenIndex = pairFormat[i] === "c"
+                    ? poolConfig.coins.findIndex(v => v.symbol === bOrder.sellTokenSymbol)
+                    : pairFormat[i] === "uc"
+                        ? poolConfig.underlyingCoins.findIndex(
+                            v => v.symbol === bOrder.sellTokenSymbol
+                        )
+                        : poolConfig.underlyingCoinsUnwrapped.findIndex(
+                            v => v.symbol === bOrder.sellTokenSymbol
+                        );
+                bOrder.curve.push(_curvePoolDetailsForPair);
+            });
             // try {
             //     let rate;
             //     // let cumulativeAmountFixed = ethers.constants.Zero;
@@ -213,7 +186,7 @@ const prepare = (bundledOrders, availableSwaps, config, signer) => {
     //         (a, b) => a.initPrice.gt(b.initPrice) ? -1 : a.initPrice.lt(b.initPrice) ? 1 : 0
     //     );
     // }
-    bundledOrders = bundledOrders.filter(v => v.poolIndex !== undefined);
+    bundledOrders = bundledOrders.filter(v => v.curve !== undefined);
     return bundledOrders;
 };
 
@@ -282,11 +255,8 @@ const curveClear = async(
     }
 
     const report = [];
-    const dataFetcher = getDataFetcher(
-        config,
-        processLps(config.lps, config.chainId),
-        !!config.usePublicRpc
-    );
+    const viemClient = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const dataFetcher = getDataFetcher(viemClient, processLps(config.lps, config.chainId));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
@@ -371,250 +341,300 @@ const curveClear = async(
                     delete takeOrdersConfigStruct.input;
                 }
 
-                // submit the transaction
-                try {
-                    let fnData;
-                    let exchangeData;
-                    let iface;
-                    if (bundledOrders[i].pairFormat === "ucu") {
-                        if (config.curve.usdZapAddress) {
-                            iface = new ethers.utils.Interface(ZAP_FNS[0]);
-                            fnData = iface.encodeFunctionData(
-                                "exchange_underlying",
-                                [
-                                    bundledOrders[i].poolContract.address,
-                                    bundledOrders[i].sellTokenIndex.toString(),
-                                    bundledOrders[i].buyTokenIndex.toString(),
-                                    bundledQuoteAmount.toString(),
-                                    // guaranteedAmount.toString()
-                                    "0"
-                                ]
-                            );
+                const _amountOuts = await viemClient.multicall({
+                    multicallAddress: viemClient.chain?.contracts?.multicall3?.address,
+                    allowFailure: true,
+                    contracts: bundledOrders[i].curve.map((curvePool) => {
+                        if (curvePool.pairFormat === "c") return {
+                            address: curvePool.poolContract.address,
+                            chainId: config.chainId,
+                            args: [
+                                curvePool.sellTokenIndex,
+                                curvePool.buyTokenIndex,
+                                bundledQuoteAmount.toBigInt()
+                            ],
+                            abi: parseAbi(CURVE_POOLS_FNS),
+                            functionName: "get_dy"
+                        };
+                        else return {
+                            address: curvePool.poolContract.address,
+                            chainId: config.chainId,
+                            args: [
+                                curvePool.sellTokenIndex,
+                                curvePool.buyTokenIndex,
+                                bundledQuoteAmount.toBigInt()
+                            ],
+                            abi: parseAbi(CURVE_POOLS_FNS),
+                            functionName: "get_dy_underlying"
+                        };
+                    })
+                });
+                const topDealPoolIndex = _amountOuts.indexOf(
+                    (_amountOuts.filter(v => v.status === "success").sort(
+                        (a, b) => b.result > a.result ? 1 : b.result < a.result ? -1 : 0
+                    ))[0]
+                );
+                if (topDealPoolIndex === -1) console.log("could not get deal from curve pools");
+                else {
+                    // submit the transaction
+                    try {
+                        let fnData;
+                        let exchangeData;
+                        let iface;
+                        if (bundledOrders[i].curve[topDealPoolIndex].pairFormat === "ucu") {
+                            if (config.curve.usdZapAddress) {
+                                iface = new ethers.utils.Interface(CURVE_ZAP_FNS[0]);
+                                fnData = iface.encodeFunctionData(
+                                    "exchange_underlying",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].poolContract.address,
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                                exchangeData = ethers.utils.defaultAbiCoder.encode(
+                                    ["address", "address", "bytes"],
+                                    [
+                                        config.curve.usdZapAddress,
+                                        config.curve.usdZapAddress,
+                                        fnData
+                                    ]
+                                );
+                            }
+                            else console.log(">>> cannot find Zap contract address for this network, skipping...");
+                        }
+                        else {
+                            iface = new ethers.utils.Interface(CURVE_POOLS_FNS);
+                            if (bundledOrders[i].curve[topDealPoolIndex].pairFormat === "c") {
+                                fnData = iface.encodeFunctionData(
+                                    "exchange",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                            }
+                            else {
+                                fnData = iface.encodeFunctionData(
+                                    "exchange_underlying",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                            }
                             exchangeData = ethers.utils.defaultAbiCoder.encode(
                                 ["address", "address", "bytes"],
                                 [
-                                    config.curve.usdZapAddress,
-                                    config.curve.usdZapAddress,
+                                    bundledOrders[i].curve[topDealPoolIndex].poolContract.address,
+                                    bundledOrders[i].curve[topDealPoolIndex].poolContract.address,
                                     fnData
                                 ]
                             );
                         }
-                        else console.log(">>> cannot find Zap contract address for this network, skipping...");
-                    }
-                    else {
-                        iface = new ethers.utils.Interface(POOLS_FNS);
-                        if (bundledOrders[i].pairFormat === "c") {
-                            fnData = iface.encodeFunctionData(
-                                "exchange",
-                                [
-                                    bundledOrders[i].sellTokenIndex.toString(),
-                                    bundledOrders[i].buyTokenIndex.toString(),
-                                    bundledQuoteAmount.toString(),
-                                    // guaranteedAmount.toString()
-                                    "0"
-                                ]
+                        if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
+
+                        const gasPrice = await signer.provider.getGasPrice();
+                        const ethPrice = gasCoveragePercentage === "0"
+                            ? "0"
+                            : await getEthPrice(
+                                config,
+                                bundledOrders[i].buyToken,
+                                bundledOrders[i].buyTokenDecimals,
+                                gasPrice,
+                                dataFetcher
                             );
-                        }
+                        if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
-                            fnData = iface.encodeFunctionData(
-                                "exchange_underlying",
-                                [
-                                    bundledOrders[i].sellTokenIndex.toString(),
-                                    bundledOrders[i].buyTokenIndex.toString(),
-                                    bundledQuoteAmount.toString(),
-                                    // guaranteedAmount.toString()
-                                    "0"
-                                ]
-                            );
-                        }
-                        exchangeData = ethers.utils.defaultAbiCoder.encode(
-                            ["address", "address", "bytes"],
-                            [
-                                bundledOrders[i].poolContract.address,
-                                bundledOrders[i].poolContract.address,
-                                fnData
-                            ]
-                        );
-                    }
-                    if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
-
-                    const gasPrice = await signer.provider.getGasPrice();
-                    const ethPrice = gasCoveragePercentage === "0"
-                        ? "0"
-                        : await getEthPrice(
-                            config,
-                            bundledOrders[i].buyToken,
-                            bundledOrders[i].buyTokenDecimals,
-                            gasPrice,
-                            dataFetcher
-                        );
-                    if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
-                    else {
-                        const rawtx = {
-                            data: arb.interface.encodeFunctionData(
-                                "arb",
-                                arbType === "order-taker"
-                                    ? [
-                                        takeOrdersConfigStruct,
-                                        "0"
-                                    ]
-                                    : [
-                                        takeOrdersConfigStruct,
-                                        "0",
-                                        exchangeData
-                                    ]
-                            ),
-                            to: arb.address,
-                            gasPrice
-                        };
-                        console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                        let gasLimit = await signer.estimateGas(rawtx);
-                        gasLimit = gasLimit.mul("112").div("100");
-                        rawtx.gasLimit = gasLimit;
-                        const gasCost = gasLimit.mul(gasPrice);
-                        const gasCostInToken = ethers.utils.parseUnits(
-                            ethPrice
-                        ).mul(
-                            gasCost
-                        ).div(
-                            "1" + "0".repeat(
-                                36 - bundledOrders[i].buyTokenDecimals
-                            )
-                        );
-                        if (gasCoveragePercentage !== "0") {
-                            const headroom = (
-                                Number(gasCoveragePercentage) * 1.15
-                            ).toFixed();
-                            rawtx.data = arb.interface.encodeFunctionData(
-                                "arb",
-                                arbType === "order-taker"
-                                    ? [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(headroom).div("100")
-                                    ]
-                                    : [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(headroom).div("100"),
-                                        exchangeData
-                                    ]
-                            );
-                            await signer.estimateGas(rawtx);
-                        }
-
-                        try {
-                            console.log(">>> Trying to submit the transaction for this token pair...", "\n");
-                            rawtx.data = arb.interface.encodeFunctionData(
-                                "arb",
-                                arbType === "order-taker"
-                                    ? [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(gasCoveragePercentage).div("100")
-                                    ]
-                                    : [
-                                        takeOrdersConfigStruct,
-                                        gasCostInToken.mul(gasCoveragePercentage).div("100"),
-                                        exchangeData
-                                    ]
-                            );
+                            const rawtx = {
+                                data: arb.interface.encodeFunctionData(
+                                    "arb",
+                                    arbType === "order-taker"
+                                        ? [
+                                            takeOrdersConfigStruct,
+                                            "0"
+                                        ]
+                                        : [
+                                            takeOrdersConfigStruct,
+                                            "0",
+                                            exchangeData
+                                        ]
+                                ),
+                                to: arb.address,
+                                gasPrice
+                            };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            const tx = await signer.sendTransaction(rawtx);
-                            console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
-                            console.log(
-                                ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
-                                "\n"
-                            );
-
-                            const receipt = await tx.wait();
-                            const income = getIncome(signer, receipt);
-                            const clearActualPrice = getActualPrice(
-                                receipt,
-                                orderbookAddress,
-                                arbAddress,
-                                cumulativeAmount,
-                                bundledOrders[i].buyTokenDecimals
-                            );
-                            const actualGasCost = ethers.BigNumber.from(
-                                receipt.effectiveGasPrice
-                            ).mul(receipt.gasUsed);
-                            const actualGasCostInToken = ethers.utils.parseUnits(
+                            let gasLimit = await signer.estimateGas(rawtx);
+                            gasLimit = gasLimit.mul("112").div("100");
+                            rawtx.gasLimit = gasLimit;
+                            const gasCost = gasLimit.mul(gasPrice);
+                            const gasCostInToken = ethers.utils.parseUnits(
                                 ethPrice
                             ).mul(
-                                actualGasCost
+                                gasCost
                             ).div(
                                 "1" + "0".repeat(
                                     36 - bundledOrders[i].buyTokenDecimals
                                 )
                             );
-                            const netProfit = income
-                                ? income.sub(actualGasCostInToken)
-                                : undefined;
-                            console.log(
-                                "\x1b[34m%s\x1b[0m",
-                                `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
-                                "\n"
-                            );
-                            // console.log(
-                            //     "\x1b[36m%s\x1b[0m",
-                            //     `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
-                            // );
-                            console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
-                            console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
-                                ethers.utils.formatUnits(
-                                    bundledQuoteAmount,
-                                    bundledOrders[i].sellTokenDecimals
-                                )
-                            } ${bundledOrders[i].sellTokenSymbol}`);
-                            console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
-                                ethers.utils.formatEther(actualGasCost)
-                            } ${
-                                config.nativeToken.symbol
-                            }`, "\n");
-                            if (income) {
-                                console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
-                                    income,
-                                    bundledOrders[i].buyTokenDecimals
-                                )} ${bundledOrders[i].buyTokenSymbol}`);
-                                console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
-                                    netProfit,
-                                    bundledOrders[i].buyTokenDecimals
-                                )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                            if (gasCoveragePercentage !== "0") {
+                                const headroom = (
+                                    Number(gasCoveragePercentage) * 1.15
+                                ).toFixed();
+                                rawtx.data = arb.interface.encodeFunctionData(
+                                    "arb",
+                                    arbType === "order-taker"
+                                        ? [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(headroom).div("100")
+                                        ]
+                                        : [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(headroom).div("100"),
+                                            exchangeData
+                                        ]
+                                );
+                                await signer.estimateGas(rawtx);
                             }
 
-                            report.push({
-                                transactionHash: receipt.transactionHash,
-                                tokenPair:
-                                    bundledOrders[i].buyTokenSymbol +
-                                    "/" +
-                                    bundledOrders[i].sellTokenSymbol,
-                                buyToken: bundledOrders[i].buyToken,
-                                buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
-                                sellToken: bundledOrders[i].sellToken,
-                                sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
-                                clearedAmount: bundledQuoteAmount.toString(),
-                                // clearPrice: ethers.utils.formatEther(
-                                //     bundledOrders[i].initPrice
-                                // ),
-                                clearActualPrice,
-                                gasUsed: receipt.gasUsed,
-                                gasCost: actualGasCost,
-                                income,
-                                netProfit,
-                                clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),
-                            });
+                            try {
+                                console.log(">>> Trying to submit the transaction for this token pair...", "\n");
+                                rawtx.data = arb.interface.encodeFunctionData(
+                                    "arb",
+                                    arbType === "order-taker"
+                                        ? [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(gasCoveragePercentage).div("100")
+                                        ]
+                                        : [
+                                            takeOrdersConfigStruct,
+                                            gasCostInToken.mul(gasCoveragePercentage).div("100"),
+                                            exchangeData
+                                        ]
+                                );
+                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                                const tx = await signer.sendTransaction(rawtx);
+                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+                                console.log(
+                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
+                                    "\n"
+                                );
+
+                                const receipt = await tx.wait();
+                                const income = getIncome(signer, receipt);
+                                const clearActualPrice = getActualPrice(
+                                    receipt,
+                                    orderbookAddress,
+                                    arbAddress,
+                                    cumulativeAmount,
+                                    bundledOrders[i].buyTokenDecimals
+                                );
+                                const actualGasCost = ethers.BigNumber.from(
+                                    receipt.effectiveGasPrice
+                                ).mul(receipt.gasUsed);
+                                const actualGasCostInToken = ethers.utils.parseUnits(
+                                    ethPrice
+                                ).mul(
+                                    actualGasCost
+                                ).div(
+                                    "1" + "0".repeat(
+                                        36 - bundledOrders[i].buyTokenDecimals
+                                    )
+                                );
+                                const netProfit = income
+                                    ? income.sub(actualGasCostInToken)
+                                    : undefined;
+                                console.log(
+                                    "\x1b[34m%s\x1b[0m",
+                                    `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
+                                    "\n"
+                                );
+                                // console.log(
+                                //     "\x1b[36m%s\x1b[0m",
+                                //     `Clear Initial Price: ${ethers.utils.formatEther(bundledOrders[i].initPrice)}`
+                                // );
+                                console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
+                                console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
+                                    ethers.utils.formatUnits(
+                                        bundledQuoteAmount,
+                                        bundledOrders[i].sellTokenDecimals
+                                    )
+                                } ${bundledOrders[i].sellTokenSymbol}`);
+                                console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
+                                    ethers.utils.formatEther(actualGasCost)
+                                } ${
+                                    config.nativeToken.symbol
+                                }`, "\n");
+                                if (income) {
+                                    console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
+                                        income,
+                                        bundledOrders[i].buyTokenDecimals
+                                    )} ${bundledOrders[i].buyTokenSymbol}`);
+                                    console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
+                                        netProfit,
+                                        bundledOrders[i].buyTokenDecimals
+                                    )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                                }
+
+                                report.push({
+                                    transactionHash: receipt.transactionHash,
+                                    tokenPair:
+                                        bundledOrders[i].buyTokenSymbol +
+                                        "/" +
+                                        bundledOrders[i].sellTokenSymbol,
+                                    buyToken: bundledOrders[i].buyToken,
+                                    buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
+                                    sellToken: bundledOrders[i].sellToken,
+                                    sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
+                                    clearedAmount: bundledQuoteAmount.toString(),
+                                    // clearPrice: ethers.utils.formatEther(
+                                    //     bundledOrders[i].initPrice
+                                    // ),
+                                    clearActualPrice,
+                                    gasUsed: receipt.gasUsed,
+                                    gasCost: actualGasCost,
+                                    income,
+                                    netProfit,
+                                    clearedOrders: bundledOrders[i].takeOrders.map(v => v.id),
+                                });
+                            }
+                            catch (error) {
+                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
+                                console.log(error, "\n");
+                            }
                         }
-                        catch (error) {
-                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
+                    }
+                    catch (error) {
+                        if (error === "dryrun" || error === "nomatch") {
+                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
+                        }
+                        else {
+                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                             console.log(error, "\n");
                         }
-                    }
-                }
-                catch (error) {
-                    if (error === "dryrun" || error === "nomatch") {
-                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
-                    }
-                    else {
-                        console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                        console.log(error, "\n");
                     }
                 }
             }

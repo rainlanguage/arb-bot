@@ -13,7 +13,7 @@ const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfi
 
 
 // This test runs on hardhat forked network of polygon
-describe("Rain Arb Bot 'router' Mode Tests", async function () {
+describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     let turn = 0;
     let interpreter,
         store,
@@ -176,7 +176,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v2";
         config.apiKey = process?.env?.API_KEY;
-        const reports = await clear("router", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -298,7 +298,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v3";
         config.apiKey = process?.env?.API_KEY;
-        const reports = await clear("router", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -419,7 +419,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
         config.apiKey = process?.env?.API_KEY;
-        const reports = await clear("router", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);

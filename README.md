@@ -34,7 +34,7 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--arb-contract-type`, Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
@@ -103,7 +103,7 @@ which will show:
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url...>                RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `srouter`, Will override the 'MODE' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
@@ -134,7 +134,7 @@ BOT_WALLET_PRIVATEKEY="123..."
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
 
-# bot running mode, one of "router", "0x", "curve", "srouter"
+# bot running mode, one of "router", "0x", "curve", "crouter", "srouter"
 MODE="router"
 
 # arb contract address
@@ -238,7 +238,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const mode = "srouter" // mode can be one of "router", "0x" or "curve" or "srouter"
+const mode = "srouter" // mode can be one of "router" or "0x" or "curve" or "crouter" or "srouter"
 const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>
