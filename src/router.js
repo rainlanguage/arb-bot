@@ -132,6 +132,11 @@ const routerClear = async(
             else {
                 console.log(">>> Getting best route for this token pair", "\n");
 
+                let cumulativeAmountFixed = ethers.constants.Zero;
+                bundledOrders[i].takeOrders.forEach(v => {
+                    cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
+                });  
+
                 console.log(
                     ">>> getting market rate for " +
                     ethers.utils.formatUnits(cumulativeAmountFixed) +
@@ -139,10 +144,6 @@ const routerClear = async(
                     bundledOrders[i].sellTokenSymbol
                 );
 
-                let cumulativeAmountFixed = ethers.constants.Zero;
-                bundledOrders[i].takeOrders.forEach(v => {
-                    cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
-                });
                 const cumulativeAmount = cumulativeAmountFixed.div(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                 );
