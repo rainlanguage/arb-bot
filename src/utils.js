@@ -790,7 +790,8 @@ const createViemClient = (chainId, rpcs, useFallbacs = false) => {
                 [...rpcs.map(v => http(v)), ...fallbacks[chainId].transport],
                 { rank: true }
             )
-            : rpcs.map(v => http(v));
+            : rpcs.map(v => http(v))[0];  
+
     return createPublicClient({
         chain: viemConfig[chainId]?.chain,
         transport

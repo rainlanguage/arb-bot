@@ -220,7 +220,228 @@
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"
         },
         "curve": {
-            "pools": []
+            "pools": [
+                {
+                    "address": "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+                    "coins": [
+                        {
+                            "symbol": "FRAX",
+                            "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+                    "coins": [
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
+                    "coins": [
+                        {
+                            "symbol": "FRAX",
+                            "address": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "3Crv",
+                            "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "FRAX",
+                            "address": " ",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+                    "coins": [
+                        {
+                            "symbol": "LUSD",
+                            "address": "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "3Crv",
+                            "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "LUSD",
+                            "address": "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c",
+                    "coins": [
+                        {
+                            "symbol": "ALUSD",
+                            "address": "0xbc6da0fe9ad5f3b0d58160288917aa56653660e9",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "3Crv",
+                            "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "ALUSD",
+                            "address": "0xbc6da0fe9ad5f3b0d58160288917aa56653660e9",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
+                    "coins": [
+                        {
+                            "symbol": "MIM",
+                            "address": "0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "3Crv",
+                            "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "MIM",
+                            "address": "0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                },
+                {
+                    "address": "0x4f062658eaaf2c1ccf8c8e36d6824cdf41167956",
+                    "coins": [
+                        {
+                            "symbol": "GUSD",
+                            "address": "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "3Crv",
+                            "address": "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                            "decimals": 18
+                        }
+                    ],
+                    "underlyingCoins": [
+                        {
+                            "symbol": "GUSD",
+                            "address": "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "DAI",
+                            "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+                            "decimals": 18
+                        },
+                        {
+                            "symbol": "USDC",
+                            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                            "decimals": 6
+                        },
+                        {
+                            "symbol": "USDT",
+                            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                            "decimals": 6
+                        }
+                    ]
+                }
+            ]
         },
         "nativeToken": {
             "symbol": "ETH",
