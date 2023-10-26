@@ -170,8 +170,10 @@ const getConfig = async(
 
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
-    
-    const provider  = !!options?.flashBotRpc ? new ethers.providers.JsonRpcProvider(options.flashBotRpc) : new ethers.providers.JsonRpcProvider(rpcUrl);
+
+    const provider  = options.flashBotRpc ?
+        new ethers.providers.JsonRpcProvider(options.flashBotRpc) :
+        new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
     const config    = CONFIG.find(v => v.chainId === chainId);
