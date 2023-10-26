@@ -26,6 +26,10 @@ const configOptions = {
      */
     liquidityProviders: undefined,
     /**
+     * Flashbot rpc url
+     */
+    flashBotRpc: undefined,
+    /**
      * 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
      */
     monthlyRatelimit: undefined,
@@ -166,8 +170,8 @@ const getConfig = async(
 
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
-
-    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
+    
+    const provider  = !!options?.flashBotRpc ? new ethers.providers.JsonRpcProvider(options.flashBotRpc) : new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
     const config    = CONFIG.find(v => v.chainId === chainId);

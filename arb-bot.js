@@ -32,6 +32,7 @@ const DEFAULT_OPTIONS = {
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
+    flashBotRpc         : process?.env?.FLASHBOT_RPC,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined
@@ -58,6 +59,7 @@ const getOptions = async argv => {
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
+        .option("--flash-bot-rpc <flashbot url>", "Optional flashbot url to submit transaction to.")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -89,6 +91,7 @@ const getOptions = async argv => {
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
     cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
+    cmdOptions.flashBotRpc      = cmdOptions.flashBotRpc          || DEFAULT_OPTIONS.flashBotRpc;
 
     return cmdOptions;
 };
@@ -113,6 +116,7 @@ const arbRound = async options => {
             maxProfit           : options.maxProfit,
             maxRatio            : options.maxRatio,
             usePublicRpcs       : options.usePublicRpcs,
+            flashBotRpc         : options.flashBotRpc,
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
             liquidityProviders  : options.lps
