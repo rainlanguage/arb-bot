@@ -1,6 +1,6 @@
 {
     "name": "@rainprotocol/arb-bot",
-    "version": "2.2.3",
+    "version": "2.2.4",
     "description": "NodeJS app that clears Rain orderbook orders against decentralized liquididty providers (decentralized exchanges)",
     "author": "Rain Protocol",
     "license": "CAL-1.0",
