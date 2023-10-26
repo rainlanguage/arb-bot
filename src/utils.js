@@ -1473,6 +1473,14 @@ const shuffleArray = (array) => {
     return array;
 };
 
+
+function awaitTransactionTimeout(timeout, ...args) {
+    function timeOut() {
+      return new Promise((resolve, reject) => setTimeout(reject, timeout, new Error(`Transaction failed to mine after ${timeout}ms`)));
+    }
+    return Promise.race([...args, timeOut()]);
+  }
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1498,5 +1506,6 @@ module.exports = {
     visualizeRoute,
     build0xQueries,
     shuffleArray,
-    createViemClient
+    createViemClient,
+    awaitTransactionTimeout
 };

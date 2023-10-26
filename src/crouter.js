@@ -10,7 +10,8 @@ const {
     getActualPrice,
     visualizeRoute,
     bundleTakeOrders,
-    createViemClient
+    createViemClient,
+    awaitTransactionTimeout
 } = require("./utils");
 
 
@@ -653,8 +654,10 @@ const crouterClear = async(
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
-                                );
-                                const receipt = await tx.wait();
+                                ); 
+                                
+                                const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
+                                // const receipt = await tx.wait();
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,

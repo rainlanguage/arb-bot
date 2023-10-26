@@ -9,7 +9,8 @@ const {
     getActualPrice,
     visualizeRoute,
     bundleTakeOrders,
-    getActualClearAmount
+    getActualClearAmount,
+    awaitTransactionTimeout
 } = require("./utils");
 
 
@@ -270,7 +271,8 @@ const srouterClear = async(
                                 ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                 "\n"
                             );
-                            const receipt = await tx.wait();
+                            // const receipt = await tx.wait();
+                            const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
                             if (receipt.status === 1) {
                                 const clearActualAmount = getActualClearAmount(
                                     arbAddress,

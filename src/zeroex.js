@@ -1,6 +1,6 @@
 const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders } = require("./utils");
+const { bundleTakeOrders, awaitTransactionTimeout } = require("./utils");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { sleep, getIncome, getActualPrice } = require("./utils");
 
@@ -360,7 +360,8 @@ const zeroExClear = async(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"
                                     );
-                                    const receipt = await tx.wait();
+                                    const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
+                                    // const receipt = await tx.wait();
                                     const income = getIncome(signer, receipt);
                                     const clearActualPrice = getActualPrice(
                                         receipt,

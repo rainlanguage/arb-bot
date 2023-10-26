@@ -8,7 +8,8 @@ const {
     getDataFetcher,
     getActualPrice,
     visualizeRoute,
-    bundleTakeOrders
+    bundleTakeOrders,
+    awaitTransactionTimeout
 } = require("./utils");
 
 
@@ -373,7 +374,8 @@ const routerClear = async(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
-                                const receipt = await tx.wait();
+                                // const receipt = await tx.wait();
+                                const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,

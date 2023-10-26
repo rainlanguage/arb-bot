@@ -29,6 +29,7 @@ const DEFAULT_OPTIONS = {
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
+    timeout             : process?.env?.TIMEOUT,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -60,6 +61,7 @@ const getOptions = async argv => {
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
         .option("--flash-bot-rpc <flashbot url>", "Optional flashbot url to submit transaction to.")
+        .option("--timeout <timeout>", "Optional timeout to wait till the transaction is mined in milliseconds. Default is 5 minutes i.e 300000.")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -91,7 +93,9 @@ const getOptions = async argv => {
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
     cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
-    cmdOptions.flashBotRpc      = cmdOptions.flashBotRpc          || DEFAULT_OPTIONS.flashBotRpc;
+    cmdOptions.flashBotRpc      = cmdOptions.flashBotRpc        || DEFAULT_OPTIONS.flashBotRpc;
+    cmdOptions.timeout          = cmdOptions.timeout            || DEFAULT_OPTIONS.timeout;
+
 
     return cmdOptions;
 };
@@ -119,6 +123,7 @@ const arbRound = async options => {
             flashBotRpc         : options.flashBotRpc,
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
+            timeout             : options.timeout,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
@@ -152,6 +157,12 @@ const main = async argv => {
     let roundGap = 10000;
     let rpcTurn = 0;
 
+    if(!options.timeout){
+        options.timeout = 300 * 1000
+    }else{
+        if (/^\d+$/.test(options.timeout)) options.timeout = Number(options.timeout) * 1000;
+        else throw "invalid timeout, must be an integer greater than equal 0";
+    }
     if (options.repetitions) {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";

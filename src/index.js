@@ -22,6 +22,10 @@ const configOptions = {
      */
     zeroExApiKey: undefined,
     /**
+     * The 0x API key
+     */
+    timeout: undefined,
+    /**
      * List of liquidity providers for router contract tomoperate on
      */
     liquidityProviders: undefined,
@@ -193,6 +197,8 @@ const getConfig = async(
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
     config.usePublicRpcs    = !!options?.usePublicRpcs;
+    config.timeout          = options.timeout;
+
     return config;
 };
 

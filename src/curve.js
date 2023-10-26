@@ -8,7 +8,8 @@ const {
     getDataFetcher,
     getActualPrice,
     bundleTakeOrders,
-    createViemClient
+    createViemClient,
+    awaitTransactionTimeout
 } = require("./utils");
 
 /**
@@ -543,7 +544,8 @@ const curveClear = async(
                                     "\n"
                                 );
 
-                                const receipt = await tx.wait();
+                                // const receipt = await tx.wait();
+                                const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,
