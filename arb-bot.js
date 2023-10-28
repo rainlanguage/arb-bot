@@ -30,10 +30,10 @@ const DEFAULT_OPTIONS = {
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
     timeout             : process?.env?.TIMEOUT,
+    flashbotRpc         : process?.env?.FLASHBOT_RPC,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
-    flashBotRpc         : process?.env?.FLASHBOT_RPC,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined
@@ -58,10 +58,10 @@ const getOptions = async argv => {
         .option("--order-interpreter <address>", "Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables")
         .option("--monthly-ratelimit <integer>", "0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables")
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
+        .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
+        .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
-        .option("--flash-bot-rpc <flashbot url>", "Optional flashbot url to submit transaction to.")
-        .option("--timeout <timeout>", "Optional timeout to wait till the transaction is mined in milliseconds. Default is 5 minutes i.e 300000.")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -93,7 +93,7 @@ const getOptions = async argv => {
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
     cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
-    cmdOptions.flashBotRpc      = cmdOptions.flashBotRpc        || DEFAULT_OPTIONS.flashBotRpc;
+    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || DEFAULT_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || DEFAULT_OPTIONS.timeout;
 
 
@@ -120,7 +120,7 @@ const arbRound = async options => {
             maxProfit           : options.maxProfit,
             maxRatio            : options.maxRatio,
             usePublicRpcs       : options.usePublicRpcs,
-            flashBotRpc         : options.flashBotRpc,
+            flashbotRpc         : options.flashbotRpc,
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
             timeout             : options.timeout,
@@ -157,12 +157,6 @@ const main = async argv => {
     let roundGap = 10000;
     let rpcTurn = 0;
 
-    if(!options.timeout){
-        options.timeout = 300 * 1000
-    }else{
-        if (/^\d+$/.test(options.timeout)) options.timeout = Number(options.timeout) * 1000;
-        else throw "invalid timeout, must be an integer greater than equal 0";
-    }
     if (options.repetitions) {
         if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";

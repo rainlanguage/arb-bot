@@ -1,8 +1,7 @@
 const axios = require("axios");
 const ethers = require("ethers");
-const { bundleTakeOrders, awaitTransactionTimeout } = require("./utils");
 const { arbAbis, orderbookAbi } = require("./abis");
-const { sleep, getIncome, getActualPrice } = require("./utils");
+const { sleep, getIncome, getActualPrice, bundleTakeOrders, promiseTimeout } = require("./utils");
 
 
 const HEADERS = { headers: { "accept-encoding": "null" } };
@@ -41,6 +40,12 @@ const zeroExClear = async(
     const orderbookAddress  = config.orderbookAddress;
     const arbType           = config.arbType;
     // const nativeToken       = config.nativeWrappedToken;
+    const flashbotSigner    = config.flashbotRpc
+        ? new ethers.Wallet(
+            signer.privateKey,
+            new ethers.providers.JsonRpcProvider(config.flashbotRpc)
+        )
+        : undefined;
 
     // set the api key in headers
     if (config.apiKey) HEADERS.headers["0x-api-key"] = config.apiKey;
@@ -353,15 +358,22 @@ const zeroExClear = async(
                                             ]
                                     );
                                     console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                    const tx = await signer.sendTransaction(rawtx);
+                                    const tx = flashbotSigner !== undefined
+                                        ? await flashbotSigner.sendTransaction(rawtx)
+                                        : await signer.sendTransaction(rawtx);
 
                                     console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                     console.log(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"
                                     );
-                                    const receipt = await awaitTransactionTimeout(config.timeout,tx.wait())
-                                    // const receipt = await tx.wait();
+                                    const receipt = config.timeout
+                                        ? await promiseTimeout(
+                                            tx.wait(),
+                                            config.timeout,
+                                            `Transaction failed to mine after ${config.timeout}ms`
+                                        )
+                                        : await tx.wait();
                                     const income = getIncome(signer, receipt);
                                     const clearActualPrice = getActualPrice(
                                         receipt,

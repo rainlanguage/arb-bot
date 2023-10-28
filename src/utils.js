@@ -436,10 +436,10 @@ const getOrderStruct = (orderDetails) => {
  * Waits for provided miliseconds
  * @param {number} ms - Miliseconds to wait
  */
-const sleep = async(ms) => {
+const sleep = async(ms, msg = "") => {
     let _timeoutReference;
     return new Promise(
-        resolve => _timeoutReference = setTimeout(resolve, ms)
+        resolve => _timeoutReference = setTimeout(resolve(msg), ms),
     ).finally(
         () => clearTimeout(_timeoutReference)
     );
@@ -1231,8 +1231,7 @@ const appGlobalLogger = (scrub, ...data) => {
  *
  * @param {Promise} promise - The Promise to put timeout on
  * @param {number} time - The time in milliseconds
- * @param {string | number | bigint | symbol | boolean} exception - The exception value to reject with if the
- * promise is not settled within time
+ * @param {string | number | bigint | symbol | boolean} exception - The exception value to reject with if the promise is not settled within time
  * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
  * if the time runs out before the main promise settlement
  */
@@ -1473,14 +1472,6 @@ const shuffleArray = (array) => {
     return array;
 };
 
-
-function awaitTransactionTimeout(timeout, ...args) {
-    function timeOut() {
-      return new Promise((resolve, reject) => setTimeout(reject, timeout, new Error(`Transaction failed to mine after ${timeout}ms`)));
-    }
-    return Promise.race([...args, timeOut()]);
-  }
-
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1506,6 +1497,5 @@ module.exports = {
     visualizeRoute,
     build0xQueries,
     shuffleArray,
-    createViemClient,
-    awaitTransactionTimeout
+    createViemClient
 };
