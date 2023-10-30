@@ -22,13 +22,17 @@ const configOptions = {
      */
     zeroExApiKey: undefined,
     /**
+     * Seconds to wait for the transaction to mine before disregarding it
+     */
+    timeout: undefined,
+    /**
      * List of liquidity providers for router contract tomoperate on
      */
     liquidityProviders: undefined,
     /**
      * Flashbot rpc url
      */
-    flashBotRpc: undefined,
+    flashbotRpc: undefined,
     /**
      * 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
      */
@@ -170,10 +174,20 @@ const getConfig = async(
 
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
+    if (options.timeout !== undefined){
+        if (typeof options.timeout === "number") {
+            if (!Number.isInteger(options.timeout) || options.timeout == 0) throw "invalid timeout, must be an integer greater than 0";
+            else options.timeout = options.timeout * 1000;
+        }
+        else if (typeof options.timeout === "string") {
+            if (/^\d+$/.test(options.timeout)) options.timeout = Number(options.timeout) * 1000;
+            else throw "invalid timeout, must be an integer greater than 0";
+            if (options.timeout == 0) throw "invalid timeout, must be an integer greater than 0";
+        }
+        else throw "invalid timeout, must be an integer greater than 0";
+    }
 
-    const provider  = options.flashBotRpc ?
-        new ethers.providers.JsonRpcProvider(options.flashBotRpc) :
-        new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
     const config    = CONFIG.find(v => v.chainId === chainId);
@@ -190,9 +204,12 @@ const getConfig = async(
     config.lps              = options?.liquidityProviders;
     config.apiKey           = options?.zeroExApiKey;
     config.monthlyRatelimit = options?.monthlyRatelimit;
+    config.timeout          = options?.timeout;
+    config.flashbotRpc      = options?.flashbotRpc;
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
     config.usePublicRpcs    = !!options?.usePublicRpcs;
+
     return config;
 };
 

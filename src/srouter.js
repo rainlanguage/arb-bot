@@ -8,6 +8,7 @@ const {
     getDataFetcher,
     getActualPrice,
     visualizeRoute,
+    promiseTimeout,
     bundleTakeOrders,
     getActualClearAmount
 } = require("./utils");
@@ -39,6 +40,12 @@ const srouterClear = async(
     const orderbookAddress  = config.orderbookAddress;
     const maxProfit         = config.maxProfit;
     const maxRatio          = config.maxRatio;
+    const flashbotSigner    = config.flashbotRpc
+        ? new ethers.Wallet(
+            signer.privateKey,
+            new ethers.providers.JsonRpcProvider(config.flashbotRpc)
+        )
+        : undefined;
 
     // instantiating arb contract
     const arb = new ethers.Contract(arbAddress, arbAbis["srouter"], signer);
@@ -263,14 +270,22 @@ const srouterClear = async(
                                 ]
                             );
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            const tx = await signer.sendTransaction(rawtx);
+                            const tx = flashbotSigner !== undefined
+                                ? await flashbotSigner.sendTransaction(rawtx)
+                                : await signer.sendTransaction(rawtx);
 
                             console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                             console.log(
                                 ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                 "\n"
                             );
-                            const receipt = await tx.wait();
+                            const receipt = config.timeout
+                                ? await promiseTimeout(
+                                    tx.wait(),
+                                    config.timeout,
+                                    `Transaction failed to mine after ${config.timeout}ms`
+                                )
+                                : await tx.wait();
                             if (receipt.status === 1) {
                                 const clearActualAmount = getActualClearAmount(
                                     arbAddress,

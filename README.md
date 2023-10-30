@@ -57,6 +57,8 @@ Other optional arguments are:
 - `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `--max-ratio`, Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
 - `--use-public-rpcs`, Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
+- `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
+- `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -102,7 +104,7 @@ which will show:
 
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-      -r, --rpc <url...>                RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
+      -r, --rpc <url...>             RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
       -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
@@ -118,6 +120,8 @@ which will show:
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
       --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
       --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+      --flashbot-rpc <url>           Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
+      --timeout <integer>            Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
       --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
       --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
@@ -133,6 +137,9 @@ BOT_WALLET_PRIVATEKEY="123..."
 # RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
+
+# Option to submit transactions using the flashbot RPC. 
+FLASHBOT_RPC=""
 
 # bot running mode, one of "router", "0x", "curve", "crouter", "srouter"
 MODE="router"
@@ -189,6 +196,9 @@ MAX_RATIO="true"
 
 # Option to use public rpcs as fallback option for 'srouter' and 'router' mode
 USE_PUBLIC_RPCS="true"
+
+# Optional seconds to wait for the transaction to mine before disregarding it
+TIMEOUT=""
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -213,6 +223,8 @@ const configOptions = {
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
   maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
   usePublicRpcs         : false,   // option to fallback to public rpcs
+  flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
+  timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
