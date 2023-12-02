@@ -59,7 +59,7 @@ Other optional arguments are:
 - `--use-public-rpcs`, Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
-- `--interpreter-v2`, Flag for operating with interpreter V2, note that 'curve' and '0x' modes, as well as 'flash-loan-v2' are NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
+- `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -126,7 +126,7 @@ which will show:
       --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
       --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
-      --interpreter-v2               Flag for operating with interpreter V2, note that 'curve' and '0x' modes, as well as 'flash-loan-v2' are NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
+      --interpreter-v2               Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -203,7 +203,7 @@ USE_PUBLIC_RPCS="true"
 TIMEOUT=""
 
 # Flag for operating with with interpreter V2. false will result in operating under interpreter v1
-# note that 'curve' and '0x' modes, as well as 'flash-loan-v2' are NOT compatible with interpreter v2
+# note that 'flash-loan-v2' is NOT compatible with interpreter v2
 INTERPRETERV2="true"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
@@ -231,7 +231,7 @@ const configOptions = {
   usePublicRpcs         : false,   // option to fallback to public rpcs
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  interpreterv2         : true     // if interpreter v2 should be used
+  interpreterv2         : true     // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
