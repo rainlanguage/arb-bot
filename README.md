@@ -231,6 +231,7 @@ const configOptions = {
   usePublicRpcs         : false,   // option to fallback to public rpcs
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
+  interpreterv2         : true     // if interpreter v2 should be used
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
