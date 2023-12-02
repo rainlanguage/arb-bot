@@ -29,6 +29,7 @@ const DEFAULT_OPTIONS = {
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
+    interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     rpc                 : process?.env?.RPC_URL
@@ -63,6 +64,7 @@ const getOptions = async argv => {
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
+        .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'curve' and '0x' modes, as well as 'flash-loan-v2' are NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -95,7 +97,7 @@ const getOptions = async argv => {
     cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || DEFAULT_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || DEFAULT_OPTIONS.timeout;
-
+    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || DEFAULT_OPTIONS.interpreterv2;
 
     return cmdOptions;
 };
@@ -124,6 +126,7 @@ const arbRound = async options => {
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
             timeout             : options.timeout,
+            interpreterv2       : options.interpreterv2,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,

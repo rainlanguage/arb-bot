@@ -13,4 +13,4 @@ logs
 
 ## That one annoying file
 .DS_Store
-.mem-cache
+mem-cache

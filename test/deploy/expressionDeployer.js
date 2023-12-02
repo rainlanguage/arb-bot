@@ -1,8 +1,11 @@
-const { OpMeta, NPOpMeta } = require("./meta");
+const fs = require("fs");
+const { ethers } = require("hardhat");
 const { basicDeploy } = require("../utils");
+const { OpMeta, NPOpMeta } = require("./meta");
 const { rainterpreterDeploy, rainterpreterStoreDeploy } = require("./rainterpreterDeploy");
 const ExpressionDeployerArtifact = require("../abis/RainterpreterExpressionDeployer.json");
 const ExpressionDeployerNPArtifact = require("../abis/RainterpreterExpressionDeployerNP.json");
+const ExpressionDeployerNPE2Artifact = require("../abis/new/RainterpreterExpressionDeployerNPE2.json");
 
 
 exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store, np = false) => {
@@ -17,6 +20,18 @@ exports.rainterpreterExpressionDeployerDeploy = async(interpreter, store, np = f
             interpreter: interpreter.address,
             store: store.address,
             meta: OpMeta,
+        }
+    );
+};
+
+exports.rainterpreterExpressionDeployerNPE2Deploy = async(interpreter, store, parser) => {
+    return await basicDeploy(
+        ExpressionDeployerNPE2Artifact,
+        {
+            interpreter: interpreter.address,
+            store: store.address,
+            parser: parser.address,
+            meta: ethers.utils.hexlify(Uint8Array.from(fs.readFileSync("./test/abis/new/meta/RainterpreterExpressionDeployerNPE2.rain.meta"))),
         }
     );
 };

@@ -1,0 +1,795 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IInterpreterStoreV1",
+          "name": "store",
+          "type": "address"
+        },
+        {
+          "internalType": "FullyQualifiedNamespace",
+          "name": "namespace",
+          "type": "uint256"
+        },
+        {
+          "internalType": "EncodedDispatch",
+          "name": "dispatch",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256[][]",
+          "name": "context",
+          "type": "uint256[][]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "inputs",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "eval2",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "stack",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "writes",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "functionPointers",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {
+    "eval2(address,uint256,uint256,uint256[][],uint256[])": "6046c5f9",
+    "functionPointers()": "f933c72f"
+  },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.19+commit.7dd6d404\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"contract IInterpreterStoreV1\",\"name\":\"store\",\"type\":\"address\"},{\"internalType\":\"FullyQualifiedNamespace\",\"name\":\"namespace\",\"type\":\"uint256\"},{\"internalType\":\"EncodedDispatch\",\"name\":\"dispatch\",\"type\":\"uint256\"},{\"internalType\":\"uint256[][]\",\"name\":\"context\",\"type\":\"uint256[][]\"},{\"internalType\":\"uint256[]\",\"name\":\"inputs\",\"type\":\"uint256[]\"}],\"name\":\"eval2\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"stack\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"writes\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"functionPointers\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"eval2(address,uint256,uint256,uint256[][],uint256[])\":{\"params\":{\"context\":\"A 2-dimensional array of data that can be indexed into at runtime by the interpreter. The calling contract is responsible for ensuring the authenticity and completeness of context data. The interpreter MUST revert at runtime if an expression attempts to index into some context value that is not provided by the caller. This implies that context reads cannot be checked for out of bounds reads at deploy time, as the runtime context MAY be provided in a different shape to what the expression is expecting.\",\"dispatch\":\"All the information required for the interpreter to load an expression, select an entrypoint and return the values expected by the caller. The interpreter MAY encode dispatches differently to `LibEncodedDispatch` but this WILL negatively impact compatibility for calling contracts that hardcode the encoding logic.\",\"inputs\":\"The inputs to the entrypoint stack of the expression. MAY be empty if the caller prefers to specify all inputs via. context.\",\"namespace\":\"The fully qualified namespace that will be used by the interpreter at runtime in order to perform gets on the underlying store.\",\"store\":\"The storage contract that the returned key/value pairs MUST be passed to IF the calling contract is in a non-static calling context. Static calling contexts MUST pass `address(0)`.\"},\"returns\":{\"stack\":\"The list of values produced by evaluating the expression. MUST NOT be longer than the maximum length specified by `dispatch`, if applicable. MUST be ordered such that the top of the stack is the FIRST item in the array.\",\"writes\":\"A list of values to be processed by a store. Most likely will be pairwise key/value items but this is not strictly required if some store expects some other format.\"}}},\"title\":\"IInterpreterV2 Interface into a standard interpreter that supports: - evaluating `view` logic deployed onchain by an `IExpressionDeployerV1` - receiving arbitrary `uint256[][]` supporting context to be made available   to the evaluated logic - handling subsequent state changes in bulk in response to evaluated logic - namespacing state changes according to the caller's preferences to avoid   unwanted key collisions - exposing its internal function pointers to support external precompilation   of logic for more gas efficient runtime evaluation by the interpreter The interface is designed to be stable across many versions and implementations of an interpreter, balancing minimalism with features required for a general purpose onchain interpreted compute environment. The security model of an interpreter is that it MUST be resilient to malicious expressions even if they dispatch arbitrary internal function pointers during an eval. The interpreter MAY return garbage or exhibit undefined behaviour or error during an eval, _provided that no state changes are persisted_ e.g. in storage, such that only the caller that specifies the malicious expression can be negatively impacted by the result. In turn, the caller must guard itself against arbitrarily corrupt/malicious reverts and return values from any interpreter that it requests an expression from. And so on and so forth up to the externally owned account (EOA) who signs the transaction and agrees to a specific combination of contracts, expressions and interpreters, who can presumably make an informed decision about which ones to trust to get the job done. The state changes for an interpreter are expected to be produced by an `eval2` and passed to the `IInterpreterStoreV1` returned by the eval, as-is by the caller, after the caller has had an opportunity to apply their own intermediate logic such as reentrancy defenses against malicious interpreters. The interpreter is free to structure the state changes however it wants but MUST guard against the calling contract corrupting the changes between `eval2` and `set`. For example a store could sandbox storage writes per-caller so that a malicious caller can only damage their own state changes, while honest callers respect, benefit from and are protected by the interpreter store's state change handling. The two step eval-state model allows evaluation to be read-only which provides security guarantees for the caller such as no stateful reentrancy, either from the interpreter or some contract interface used by some word, while still allowing for storage writes. As the storage writes happen on the interpreter rather than the caller (c.f. delegate call) the caller DOES NOT need to trust the interpreter, which allows for permissionless selection of interpreters by end users. Delegate call always implies an admin key on the caller because the delegatee contract can write arbitrarily to the state of the delegator, which severely limits the generality of contract composition.\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"eval2(address,uint256,uint256,uint256[][],uint256[])\":{\"notice\":\"The raison d'etre for an interpreter. Given some expression and per-call additional contextual data, produce a stack of results and a set of state changes that the caller MAY OPTIONALLY pass back to be persisted by a call to `IInterpreterStoreV1.set`. There are two key differences between `eval` and `eval2`: - `eval` was ambiguous about whether the top value of the final stack is the first or last item of the array. `eval2` is unambiguous in that the top of the stack MUST be the first item in the array. - `eval2` allows the caller to specify inputs to the entrypoint stack of the expression. This allows the `eval` and `offchainDebugEval` functions to be merged into a single function that can be used for both onchain and offchain evaluation. For example, the caller can simulate \\\"internal\\\" calls by specifying the inputs to the entrypoint stack of the expression as the outputs of some other expression. Legacy behaviour can be achieved by passing an empty array for `inputs`.\"},\"functionPointers()\":{\"notice\":\"Exposes the function pointers as `uint16` values packed into a single `bytes` in the same order as they would be indexed into by opcodes. For example, if opcode `2` should dispatch function at position `0x1234` then the start of the returned bytes would be `0xXXXXXXXX1234` where `X` is a placeholder for the function pointers of opcodes `0` and `1`. `IExpressionDeployerV3` contracts use these function pointers to \\\"compile\\\" the expression into something that an interpreter can dispatch directly without paying gas to lookup the same at runtime. As the validity of any integrity check and subsequent dispatch is highly sensitive to both the function pointers and overall bytecode of the interpreter, `IExpressionDeployerV3` contracts SHOULD implement guards against accidentally being deployed onchain paired against an unknown interpreter. It is very easy for an apparent compatible pairing to be subtly and critically incompatible due to addition/removal/reordering of opcodes and compiler optimisations on the interpreter bytecode. This MAY return different values during construction vs. all other times after the interpreter has been successfully deployed onchain. DO NOT rely on function pointers reported during contract construction.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/interface/unstable/IInterpreterV2.sol\":\"IInterpreterV2\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"appendCBOR\":false,\"bytecodeHash\":\"none\"},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[\":@prb/test/=lib/prb-math/lib/prb-test/src/\",\":ds-test/=lib/forge-std/lib/ds-test/src/\",\":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/\",\":forge-std/=lib/forge-std/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/\",\":openzeppelin/=lib/openzeppelin-contracts/contracts/\",\":prb-math/=lib/prb-math/src/\",\":prb-test/=lib/prb-math/lib/prb-test/src/\",\":rain.chainlink/=lib/rain.chainlink/src/\",\":rain.datacontract/=lib/rain.datacontract/src/\",\":rain.erc1820/=lib/rain.erc1820/src/\",\":rain.lib.hash/=lib/rain.lib.memkv/lib/rain.lib.hash/src/\",\":rain.lib.memkv/=lib/rain.lib.memkv/src/\",\":rain.lib.typecast/=lib/rain.lib.typecast/src/\",\":rain.math.fixedpoint/=lib/rain.math.fixedpoint/src/\",\":rain.math.saturating/=lib/rain.math.fixedpoint/lib/rain.math.saturating/src/\",\":rain.metadata/=lib/rain.metadata/src/\",\":rain.solmem/=lib/rain.solmem/src/\",\":rain.uniswapv2/=lib/rain.uniswapv2/\",\":rain.will-overflow/=lib/rain.uniswapv2/lib/\",\":sol.lib.binmaskflag/=lib/sol.lib.binmaskflag/src/\",\":v2-core/=lib/v2-core/contracts/\",\":v2-periphery/=lib/v2-periphery/contracts/\"]},\"sources\":{\"src/interface/IInterpreterStoreV1.sol\":{\"keccak256\":\"0x8fe347844f029b84087daae66742fb10aa9e44f94ac90af696318188aa922c19\",\"license\":\"CAL\",\"urls\":[\"bzz-raw://5eea5d2116f643db3ede89fd2dc3a5d293e35aec1d62a9daf6531f88a9656fb3\",\"dweb:/ipfs/Qmdys5MsEjgpXokb5FhMg96SYB6Bmf3frtVRvX74WrbKTc\"]},\"src/interface/deprecated/IInterpreterV1.sol\":{\"keccak256\":\"0xb58d3b75312da70f4fb7896dc07d8a3d77de0638d169db4acf6c246ddab0f518\",\"license\":\"CAL\",\"urls\":[\"bzz-raw://970029663ca4321640ca0d577213e938046a3fe2995b580f9f7c8f0bfa34a3f3\",\"dweb:/ipfs/QmeZgH1RKqLgDh56FWQATBy8BCt6CyGiCuamrKY22QyCRz\"]},\"src/interface/unstable/IInterpreterV2.sol\":{\"keccak256\":\"0xcf050192ba12f7eb129e0262cee4920cbd65bb331e7487cfc21151882464be50\",\"license\":\"CAL\",\"urls\":[\"bzz-raw://10ff84f0acf532c5e11e69b7ab41c739ce4ad0f9193d347b5cc4a34f158774a8\",\"dweb:/ipfs/QmRvfB8jCdCwDdLrLHQh8yLLLv2eowpwjfwXgy2u629xew\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": {
+      "version": "0.8.19+commit.7dd6d404"
+    },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "contract IInterpreterStoreV1",
+              "name": "store",
+              "type": "address"
+            },
+            {
+              "internalType": "FullyQualifiedNamespace",
+              "name": "namespace",
+              "type": "uint256"
+            },
+            {
+              "internalType": "EncodedDispatch",
+              "name": "dispatch",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256[][]",
+              "name": "context",
+              "type": "uint256[][]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "inputs",
+              "type": "uint256[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "eval2",
+          "outputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "stack",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "writes",
+              "type": "uint256[]"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "functionPointers",
+          "outputs": [
+            {
+              "internalType": "bytes",
+              "name": "",
+              "type": "bytes"
+            }
+          ]
+        }
+      ],
+      "devdoc": {
+        "kind": "dev",
+        "methods": {
+          "eval2(address,uint256,uint256,uint256[][],uint256[])": {
+            "params": {
+              "context": "A 2-dimensional array of data that can be indexed into at runtime by the interpreter. The calling contract is responsible for ensuring the authenticity and completeness of context data. The interpreter MUST revert at runtime if an expression attempts to index into some context value that is not provided by the caller. This implies that context reads cannot be checked for out of bounds reads at deploy time, as the runtime context MAY be provided in a different shape to what the expression is expecting.",
+              "dispatch": "All the information required for the interpreter to load an expression, select an entrypoint and return the values expected by the caller. The interpreter MAY encode dispatches differently to `LibEncodedDispatch` but this WILL negatively impact compatibility for calling contracts that hardcode the encoding logic.",
+              "inputs": "The inputs to the entrypoint stack of the expression. MAY be empty if the caller prefers to specify all inputs via. context.",
+              "namespace": "The fully qualified namespace that will be used by the interpreter at runtime in order to perform gets on the underlying store.",
+              "store": "The storage contract that the returned key/value pairs MUST be passed to IF the calling contract is in a non-static calling context. Static calling contexts MUST pass `address(0)`."
+            },
+            "returns": {
+              "stack": "The list of values produced by evaluating the expression. MUST NOT be longer than the maximum length specified by `dispatch`, if applicable. MUST be ordered such that the top of the stack is the FIRST item in the array.",
+              "writes": "A list of values to be processed by a store. Most likely will be pairwise key/value items but this is not strictly required if some store expects some other format."
+            }
+          }
+        },
+        "version": 1
+      },
+      "userdoc": {
+        "kind": "user",
+        "methods": {
+          "eval2(address,uint256,uint256,uint256[][],uint256[])": {
+            "notice": "The raison d'etre for an interpreter. Given some expression and per-call additional contextual data, produce a stack of results and a set of state changes that the caller MAY OPTIONALLY pass back to be persisted by a call to `IInterpreterStoreV1.set`. There are two key differences between `eval` and `eval2`: - `eval` was ambiguous about whether the top value of the final stack is the first or last item of the array. `eval2` is unambiguous in that the top of the stack MUST be the first item in the array. - `eval2` allows the caller to specify inputs to the entrypoint stack of the expression. This allows the `eval` and `offchainDebugEval` functions to be merged into a single function that can be used for both onchain and offchain evaluation. For example, the caller can simulate \"internal\" calls by specifying the inputs to the entrypoint stack of the expression as the outputs of some other expression. Legacy behaviour can be achieved by passing an empty array for `inputs`."
+          },
+          "functionPointers()": {
+            "notice": "Exposes the function pointers as `uint16` values packed into a single `bytes` in the same order as they would be indexed into by opcodes. For example, if opcode `2` should dispatch function at position `0x1234` then the start of the returned bytes would be `0xXXXXXXXX1234` where `X` is a placeholder for the function pointers of opcodes `0` and `1`. `IExpressionDeployerV3` contracts use these function pointers to \"compile\" the expression into something that an interpreter can dispatch directly without paying gas to lookup the same at runtime. As the validity of any integrity check and subsequent dispatch is highly sensitive to both the function pointers and overall bytecode of the interpreter, `IExpressionDeployerV3` contracts SHOULD implement guards against accidentally being deployed onchain paired against an unknown interpreter. It is very easy for an apparent compatible pairing to be subtly and critically incompatible due to addition/removal/reordering of opcodes and compiler optimisations on the interpreter bytecode. This MAY return different values during construction vs. all other times after the interpreter has been successfully deployed onchain. DO NOT rely on function pointers reported during contract construction."
+          }
+        },
+        "version": 1
+      }
+    },
+    "settings": {
+      "remappings": [
+        "@prb/test/=lib/prb-math/lib/prb-test/src/",
+        "ds-test/=lib/forge-std/lib/ds-test/src/",
+        "erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+        "forge-std/=lib/forge-std/src/",
+        "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+        "openzeppelin/=lib/openzeppelin-contracts/contracts/",
+        "prb-math/=lib/prb-math/src/",
+        "prb-test/=lib/prb-math/lib/prb-test/src/",
+        "rain.chainlink/=lib/rain.chainlink/src/",
+        "rain.datacontract/=lib/rain.datacontract/src/",
+        "rain.erc1820/=lib/rain.erc1820/src/",
+        "rain.lib.hash/=lib/rain.lib.memkv/lib/rain.lib.hash/src/",
+        "rain.lib.memkv/=lib/rain.lib.memkv/src/",
+        "rain.lib.typecast/=lib/rain.lib.typecast/src/",
+        "rain.math.fixedpoint/=lib/rain.math.fixedpoint/src/",
+        "rain.math.saturating/=lib/rain.math.fixedpoint/lib/rain.math.saturating/src/",
+        "rain.metadata/=lib/rain.metadata/src/",
+        "rain.solmem/=lib/rain.solmem/src/",
+        "rain.uniswapv2/=lib/rain.uniswapv2/",
+        "rain.will-overflow/=lib/rain.uniswapv2/lib/",
+        "sol.lib.binmaskflag/=lib/sol.lib.binmaskflag/src/",
+        "v2-core/=lib/v2-core/contracts/",
+        "v2-periphery/=lib/v2-periphery/contracts/"
+      ],
+      "optimizer": {
+        "enabled": true,
+        "runs": 1000000
+      },
+      "metadata": {
+        "bytecodeHash": "none",
+        "appendCBOR": false
+      },
+      "compilationTarget": {
+        "src/interface/unstable/IInterpreterV2.sol": "IInterpreterV2"
+      },
+      "libraries": {}
+    },
+    "sources": {
+      "src/interface/IInterpreterStoreV1.sol": {
+        "keccak256": "0x8fe347844f029b84087daae66742fb10aa9e44f94ac90af696318188aa922c19",
+        "urls": [
+          "bzz-raw://5eea5d2116f643db3ede89fd2dc3a5d293e35aec1d62a9daf6531f88a9656fb3",
+          "dweb:/ipfs/Qmdys5MsEjgpXokb5FhMg96SYB6Bmf3frtVRvX74WrbKTc"
+        ],
+        "license": "CAL"
+      },
+      "src/interface/deprecated/IInterpreterV1.sol": {
+        "keccak256": "0xb58d3b75312da70f4fb7896dc07d8a3d77de0638d169db4acf6c246ddab0f518",
+        "urls": [
+          "bzz-raw://970029663ca4321640ca0d577213e938046a3fe2995b580f9f7c8f0bfa34a3f3",
+          "dweb:/ipfs/QmeZgH1RKqLgDh56FWQATBy8BCt6CyGiCuamrKY22QyCRz"
+        ],
+        "license": "CAL"
+      },
+      "src/interface/unstable/IInterpreterV2.sol": {
+        "keccak256": "0xcf050192ba12f7eb129e0262cee4920cbd65bb331e7487cfc21151882464be50",
+        "urls": [
+          "bzz-raw://10ff84f0acf532c5e11e69b7ab41c739ce4ad0f9193d347b5cc4a34f158774a8",
+          "dweb:/ipfs/QmRvfB8jCdCwDdLrLHQh8yLLLv2eowpwjfwXgy2u629xew"
+        ],
+        "license": "CAL"
+      }
+    },
+    "version": 1
+  },
+  "ast": {
+    "absolutePath": "src/interface/unstable/IInterpreterV2.sol",
+    "id": 56690,
+    "exportedSymbols": {
+      "DEFAULT_STATE_NAMESPACE": [
+        56505
+      ],
+      "EncodedDispatch": [
+        56493
+      ],
+      "FullyQualifiedNamespace": [
+        56131
+      ],
+      "IInterpreterStoreV1": [
+        56163
+      ],
+      "IInterpreterV2": [
+        56689
+      ],
+      "Operand": [
+        56497
+      ],
+      "SourceIndexV2": [
+        56655
+      ],
+      "StateNamespace": [
+        56495
+      ]
+    },
+    "nodeType": "SourceUnit",
+    "src": "32:8558:103",
+    "nodes": [
+      {
+        "id": 56645,
+        "nodeType": "PragmaDirective",
+        "src": "32:24:103",
+        "nodes": [],
+        "literals": [
+          "solidity",
+          "^",
+          "0.8",
+          ".18"
+        ]
+      },
+      {
+        "id": 56650,
+        "nodeType": "ImportDirective",
+        "src": "58:115:103",
+        "nodes": [],
+        "absolutePath": "src/interface/deprecated/IInterpreterV1.sol",
+        "file": "../deprecated/IInterpreterV1.sol",
+        "nameLocation": "-1:-1:-1",
+        "scope": 56690,
+        "sourceUnit": 56537,
+        "symbolAliases": [
+          {
+            "foreign": {
+              "id": 56646,
+              "name": "EncodedDispatch",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56493,
+              "src": "66:15:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          },
+          {
+            "foreign": {
+              "id": 56647,
+              "name": "StateNamespace",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56495,
+              "src": "83:14:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          },
+          {
+            "foreign": {
+              "id": 56648,
+              "name": "Operand",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56497,
+              "src": "99:7:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          },
+          {
+            "foreign": {
+              "id": 56649,
+              "name": "DEFAULT_STATE_NAMESPACE",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56505,
+              "src": "108:23:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          }
+        ],
+        "unitAlias": ""
+      },
+      {
+        "id": 56653,
+        "nodeType": "ImportDirective",
+        "src": "174:88:103",
+        "nodes": [],
+        "absolutePath": "src/interface/IInterpreterStoreV1.sol",
+        "file": "../IInterpreterStoreV1.sol",
+        "nameLocation": "-1:-1:-1",
+        "scope": 56690,
+        "sourceUnit": 56164,
+        "symbolAliases": [
+          {
+            "foreign": {
+              "id": 56651,
+              "name": "FullyQualifiedNamespace",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56131,
+              "src": "182:23:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          },
+          {
+            "foreign": {
+              "id": 56652,
+              "name": "IInterpreterStoreV1",
+              "nodeType": "Identifier",
+              "overloadedDeclarations": [],
+              "referencedDeclaration": 56163,
+              "src": "207:19:103",
+              "typeDescriptions": {}
+            },
+            "nameLocation": "-1:-1:-1"
+          }
+        ],
+        "unitAlias": ""
+      },
+      {
+        "id": 56655,
+        "nodeType": "UserDefinedValueTypeDefinition",
+        "src": "472:30:103",
+        "nodes": [],
+        "canonicalName": "SourceIndexV2",
+        "name": "SourceIndexV2",
+        "nameLocation": "477:13:103",
+        "underlyingType": {
+          "id": 56654,
+          "name": "uint256",
+          "nodeType": "ElementaryTypeName",
+          "src": "494:7:103",
+          "typeDescriptions": {
+            "typeIdentifier": "t_uint256",
+            "typeString": "uint256"
+          }
+        }
+      },
+      {
+        "id": 56689,
+        "nodeType": "ContractDefinition",
+        "src": "3715:4874:103",
+        "nodes": [
+          {
+            "id": 56662,
+            "nodeType": "FunctionDefinition",
+            "src": "5150:67:103",
+            "nodes": [],
+            "documentation": {
+              "id": 56657,
+              "nodeType": "StructuredDocumentation",
+              "src": "3746:1399:103",
+              "text": "Exposes the function pointers as `uint16` values packed into a single\n `bytes` in the same order as they would be indexed into by opcodes. For\n example, if opcode `2` should dispatch function at position `0x1234` then\n the start of the returned bytes would be `0xXXXXXXXX1234` where `X` is\n a placeholder for the function pointers of opcodes `0` and `1`.\n `IExpressionDeployerV3` contracts use these function pointers to\n \"compile\" the expression into something that an interpreter can dispatch\n directly without paying gas to lookup the same at runtime. As the\n validity of any integrity check and subsequent dispatch is highly\n sensitive to both the function pointers and overall bytecode of the\n interpreter, `IExpressionDeployerV3` contracts SHOULD implement guards\n against accidentally being deployed onchain paired against an unknown\n interpreter. It is very easy for an apparent compatible pairing to be\n subtly and critically incompatible due to addition/removal/reordering of\n opcodes and compiler optimisations on the interpreter bytecode.\n This MAY return different values during construction vs. all other times\n after the interpreter has been successfully deployed onchain. DO NOT rely\n on function pointers reported during contract construction."
+            },
+            "functionSelector": "f933c72f",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "functionPointers",
+            "nameLocation": "5159:16:103",
+            "parameters": {
+              "id": 56658,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "5175:2:103"
+            },
+            "returnParameters": {
+              "id": 56661,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 56660,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56662,
+                  "src": "5201:14:103",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_calldata_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 56659,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "5201:5:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5200:16:103"
+            },
+            "scope": 56689,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 56688,
+            "nodeType": "FunctionDefinition",
+            "src": "8305:282:103",
+            "nodes": [],
+            "documentation": {
+              "id": 56663,
+              "nodeType": "StructuredDocumentation",
+              "src": "5223:3077:103",
+              "text": "The raison d'etre for an interpreter. Given some expression and per-call\n additional contextual data, produce a stack of results and a set of state\n changes that the caller MAY OPTIONALLY pass back to be persisted by a\n call to `IInterpreterStoreV1.set`.\n There are two key differences between `eval` and `eval2`:\n - `eval` was ambiguous about whether the top value of the final stack is\n the first or last item of the array. `eval2` is unambiguous in that the\n top of the stack MUST be the first item in the array.\n - `eval2` allows the caller to specify inputs to the entrypoint stack of\n the expression. This allows the `eval` and `offchainDebugEval` functions\n to be merged into a single function that can be used for both onchain and\n offchain evaluation. For example, the caller can simulate \"internal\"\n calls by specifying the inputs to the entrypoint stack of the expression\n as the outputs of some other expression. Legacy behaviour can be achieved\n by passing an empty array for `inputs`.\n @param store The storage contract that the returned key/value pairs\n MUST be passed to IF the calling contract is in a non-static calling\n context. Static calling contexts MUST pass `address(0)`.\n @param namespace The fully qualified namespace that will be used by the\n interpreter at runtime in order to perform gets on the underlying store.\n @param dispatch All the information required for the interpreter to load\n an expression, select an entrypoint and return the values expected by the\n caller. The interpreter MAY encode dispatches differently to\n `LibEncodedDispatch` but this WILL negatively impact compatibility for\n calling contracts that hardcode the encoding logic.\n @param context A 2-dimensional array of data that can be indexed into at\n runtime by the interpreter. The calling contract is responsible for\n ensuring the authenticity and completeness of context data. The\n interpreter MUST revert at runtime if an expression attempts to index\n into some context value that is not provided by the caller. This implies\n that context reads cannot be checked for out of bounds reads at deploy\n time, as the runtime context MAY be provided in a different shape to what\n the expression is expecting.\n @param inputs The inputs to the entrypoint stack of the expression. MAY\n be empty if the caller prefers to specify all inputs via. context.\n @return stack The list of values produced by evaluating the expression.\n MUST NOT be longer than the maximum length specified by `dispatch`, if\n applicable. MUST be ordered such that the top of the stack is the FIRST\n item in the array.\n @return writes A list of values to be processed by a store. Most likely\n will be pairwise key/value items but this is not strictly required if\n some store expects some other format."
+            },
+            "functionSelector": "6046c5f9",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "eval2",
+            "nameLocation": "8314:5:103",
+            "parameters": {
+              "id": 56680,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 56666,
+                  "mutability": "mutable",
+                  "name": "store",
+                  "nameLocation": "8349:5:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8329:25:103",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_IInterpreterStoreV1_$56163",
+                    "typeString": "contract IInterpreterStoreV1"
+                  },
+                  "typeName": {
+                    "id": 56665,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 56664,
+                      "name": "IInterpreterStoreV1",
+                      "nameLocations": [
+                        "8329:19:103"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 56163,
+                      "src": "8329:19:103"
+                    },
+                    "referencedDeclaration": 56163,
+                    "src": "8329:19:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_IInterpreterStoreV1_$56163",
+                      "typeString": "contract IInterpreterStoreV1"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 56669,
+                  "mutability": "mutable",
+                  "name": "namespace",
+                  "nameLocation": "8388:9:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8364:33:103",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_userDefinedValueType$_FullyQualifiedNamespace_$56131",
+                    "typeString": "FullyQualifiedNamespace"
+                  },
+                  "typeName": {
+                    "id": 56668,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 56667,
+                      "name": "FullyQualifiedNamespace",
+                      "nameLocations": [
+                        "8364:23:103"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 56131,
+                      "src": "8364:23:103"
+                    },
+                    "referencedDeclaration": 56131,
+                    "src": "8364:23:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_userDefinedValueType$_FullyQualifiedNamespace_$56131",
+                      "typeString": "FullyQualifiedNamespace"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 56672,
+                  "mutability": "mutable",
+                  "name": "dispatch",
+                  "nameLocation": "8423:8:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8407:24:103",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_userDefinedValueType$_EncodedDispatch_$56493",
+                    "typeString": "EncodedDispatch"
+                  },
+                  "typeName": {
+                    "id": 56671,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 56670,
+                      "name": "EncodedDispatch",
+                      "nameLocations": [
+                        "8407:15:103"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 56493,
+                      "src": "8407:15:103"
+                    },
+                    "referencedDeclaration": 56493,
+                    "src": "8407:15:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_userDefinedValueType$_EncodedDispatch_$56493",
+                      "typeString": "EncodedDispatch"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 56676,
+                  "mutability": "mutable",
+                  "name": "context",
+                  "nameLocation": "8462:7:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8441:28:103",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_array$_t_uint256_$dyn_calldata_ptr_$dyn_calldata_ptr",
+                    "typeString": "uint256[][]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "baseType": {
+                        "id": 56673,
+                        "name": "uint256",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "8441:7:103",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      "id": 56674,
+                      "nodeType": "ArrayTypeName",
+                      "src": "8441:9:103",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                        "typeString": "uint256[]"
+                      }
+                    },
+                    "id": 56675,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8441:11:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_array$_t_uint256_$dyn_storage_$dyn_storage_ptr",
+                      "typeString": "uint256[][]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 56679,
+                  "mutability": "mutable",
+                  "name": "inputs",
+                  "nameLocation": "8498:6:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8479:25:103",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "typeString": "uint256[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 56677,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "8479:7:103",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 56678,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8479:9:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                      "typeString": "uint256[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "8319:191:103"
+            },
+            "returnParameters": {
+              "id": 56687,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 56683,
+                  "mutability": "mutable",
+                  "name": "stack",
+                  "nameLocation": "8553:5:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8534:24:103",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "typeString": "uint256[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 56681,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "8534:7:103",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 56682,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8534:9:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                      "typeString": "uint256[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 56686,
+                  "mutability": "mutable",
+                  "name": "writes",
+                  "nameLocation": "8579:6:103",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 56688,
+                  "src": "8560:25:103",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "typeString": "uint256[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 56684,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "8560:7:103",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 56685,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8560:9:103",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                      "typeString": "uint256[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "8533:53:103"
+            },
+            "scope": 56689,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "IInterpreterV2",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 56656,
+          "nodeType": "StructuredDocumentation",
+          "src": "504:3211:103",
+          "text": "@title IInterpreterV2\n Interface into a standard interpreter that supports:\n - evaluating `view` logic deployed onchain by an `IExpressionDeployerV1`\n - receiving arbitrary `uint256[][]` supporting context to be made available\n   to the evaluated logic\n - handling subsequent state changes in bulk in response to evaluated logic\n - namespacing state changes according to the caller's preferences to avoid\n   unwanted key collisions\n - exposing its internal function pointers to support external precompilation\n   of logic for more gas efficient runtime evaluation by the interpreter\n The interface is designed to be stable across many versions and\n implementations of an interpreter, balancing minimalism with features\n required for a general purpose onchain interpreted compute environment.\n The security model of an interpreter is that it MUST be resilient to\n malicious expressions even if they dispatch arbitrary internal function\n pointers during an eval. The interpreter MAY return garbage or exhibit\n undefined behaviour or error during an eval, _provided that no state changes\n are persisted_ e.g. in storage, such that only the caller that specifies the\n malicious expression can be negatively impacted by the result. In turn, the\n caller must guard itself against arbitrarily corrupt/malicious reverts and\n return values from any interpreter that it requests an expression from. And\n so on and so forth up to the externally owned account (EOA) who signs the\n transaction and agrees to a specific combination of contracts, expressions\n and interpreters, who can presumably make an informed decision about which\n ones to trust to get the job done.\n The state changes for an interpreter are expected to be produced by an\n `eval2` and passed to the `IInterpreterStoreV1` returned by the eval, as-is\n by the caller, after the caller has had an opportunity to apply their own\n intermediate logic such as reentrancy defenses against malicious\n interpreters. The interpreter is free to structure the state changes however\n it wants but MUST guard against the calling contract corrupting the changes\n between `eval2` and `set`. For example a store could sandbox storage writes\n per-caller so that a malicious caller can only damage their own state\n changes, while honest callers respect, benefit from and are protected by the\n interpreter store's state change handling.\n The two step eval-state model allows evaluation to be read-only which\n provides security guarantees for the caller such as no stateful reentrancy,\n either from the interpreter or some contract interface used by some word,\n while still allowing for storage writes. As the storage writes happen on the\n interpreter rather than the caller (c.f. delegate call) the caller DOES NOT\n need to trust the interpreter, which allows for permissionless selection of\n interpreters by end users. Delegate call always implies an admin key on the\n caller because the delegatee contract can write arbitrarily to the state of\n the delegator, which severely limits the generality of contract composition."
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [
+          56689
+        ],
+        "name": "IInterpreterV2",
+        "nameLocation": "3725:14:103",
+        "scope": 56690,
+        "usedErrors": []
+      }
+    ],
+    "license": "CAL"
+  },
+  "id": 103
+}

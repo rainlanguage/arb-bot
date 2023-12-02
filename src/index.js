@@ -55,8 +55,12 @@ const configOptions = {
     maxRatio: false,
     /**
      * Option to fallback to public rpcs
-    */
-    usePublicRpcs: false
+     */
+    usePublicRpcs: false,
+    /**
+     * Option for operating with interpreter v2
+     */
+    interpreterv2: false
 };
 
 /**
@@ -209,6 +213,7 @@ const getConfig = async(
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
     config.usePublicRpcs    = !!options?.usePublicRpcs;
+    config.interpreterv2    = !!options?.interpreterv2;
 
     return config;
 };
@@ -245,22 +250,31 @@ const clear = async(
         }
     }
 
-    if (_mode === "0x") return await zeroExClear(
-        config,
-        ordersDetails,
-        gasCoveragePercentage,
-        // prioritization
-    );
+    if (_mode === "0x") {
+        if (!config.interpreterv2) {
+            return await zeroExClear(
+                config,
+                ordersDetails,
+                gasCoveragePercentage,
+                // prioritization
+            );
+        }
+        else throw "interpreter v2 is not compatible with this mode!";
+    }
     else if (_mode === "curve") {
-        if (majorVersion >= 18) return await curveClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            // prioritization
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
+        if (!config.interpreterv2) {
+            if (majorVersion >= 18) return await curveClear(
+                config,
+                ordersDetails,
+                gasCoveragePercentage,
+                // prioritization
+            );
+            else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
+        }
+        else throw "interpreter v2 is not compatible with this mode!";
     }
     else if (_mode === "router") {
+        if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
         if (majorVersion >= 18) return await routerClear(
             config,
             ordersDetails,
@@ -270,6 +284,7 @@ const clear = async(
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
     else if (_mode === "crouter") {
+        if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
         if (majorVersion >= 18) return await crouterClear(
             config,
             ordersDetails,
@@ -279,6 +294,7 @@ const clear = async(
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
     else if (_mode === "srouter") {
+        if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
         if (majorVersion >= 18) return await srouterClear(
             config,
             ordersDetails,
