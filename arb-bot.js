@@ -8,9 +8,9 @@ const { getOrderDetails, clear, getConfig } = require("./src");
 
 
 /**
- * Default CLI arguments
+ * Options specified in env variables
  */
-const DEFAULT_OPTIONS = {
+const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
     mode                : process?.env?.MODE,
     arbAddress          : process?.env?.ARB_ADDRESS,
@@ -75,29 +75,30 @@ const getOptions = async argv => {
         .parse(argv)
         .opts();
 
-    cmdOptions.key              = cmdOptions.key                || DEFAULT_OPTIONS.key;
-    cmdOptions.rpc              = cmdOptions.rpc                || DEFAULT_OPTIONS.rpc;
-    cmdOptions.mode             = cmdOptions.mode               || DEFAULT_OPTIONS.mode;
-    cmdOptions.arbAddress       = cmdOptions.arbAddress         || DEFAULT_OPTIONS.arbAddress;
-    cmdOptions.arbType          = cmdOptions.arbType            || DEFAULT_OPTIONS.arbType;
-    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || DEFAULT_OPTIONS.orderbookAddress;
-    cmdOptions.orders           = cmdOptions.orders             || DEFAULT_OPTIONS.orders;
-    cmdOptions.subgraph         = cmdOptions.subgraph           || DEFAULT_OPTIONS.subgraph;
-    cmdOptions.apiKey           = cmdOptions.apiKey             || DEFAULT_OPTIONS.apiKey;
-    cmdOptions.lps              = cmdOptions.lps                || DEFAULT_OPTIONS.lps;
-    cmdOptions.gasCoverage      = cmdOptions.gasCoverage        || DEFAULT_OPTIONS.gasCoverage;
-    cmdOptions.repetitions      = cmdOptions.repetitions        || DEFAULT_OPTIONS.repetitions;
-    cmdOptions.orderHash        = cmdOptions.orderHash          || DEFAULT_OPTIONS.orderHash;
-    cmdOptions.orderOwner       = cmdOptions.orderOwner         || DEFAULT_OPTIONS.orderOwner;
-    cmdOptions.sleep            = cmdOptions.sleep              || DEFAULT_OPTIONS.sleep;
-    cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || DEFAULT_OPTIONS.orderInterpreter;
-    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || DEFAULT_OPTIONS.monthlyRatelimit;
-    cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
-    cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
-    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
-    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || DEFAULT_OPTIONS.flashbotRpc;
-    cmdOptions.timeout          = cmdOptions.timeout            || DEFAULT_OPTIONS.timeout;
-    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || DEFAULT_OPTIONS.interpreterv2;
+    // assigning specified options from cli/env
+    cmdOptions.key              = cmdOptions.key                || ENV_OPTIONS.key;
+    cmdOptions.rpc              = cmdOptions.rpc                || ENV_OPTIONS.rpc;
+    cmdOptions.mode             = cmdOptions.mode               || ENV_OPTIONS.mode;
+    cmdOptions.arbAddress       = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
+    cmdOptions.arbType          = cmdOptions.arbType            || ENV_OPTIONS.arbType;
+    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
+    cmdOptions.orders           = cmdOptions.orders             || ENV_OPTIONS.orders;
+    cmdOptions.subgraph         = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
+    cmdOptions.apiKey           = cmdOptions.apiKey             || ENV_OPTIONS.apiKey;
+    cmdOptions.lps              = cmdOptions.lps                || ENV_OPTIONS.lps;
+    cmdOptions.gasCoverage      = cmdOptions.gasCoverage        || ENV_OPTIONS.gasCoverage;
+    cmdOptions.repetitions      = cmdOptions.repetitions        || ENV_OPTIONS.repetitions;
+    cmdOptions.orderHash        = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
+    cmdOptions.orderOwner       = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
+    cmdOptions.sleep            = cmdOptions.sleep              || ENV_OPTIONS.sleep;
+    cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
+    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || ENV_OPTIONS.monthlyRatelimit;
+    cmdOptions.maxProfit        = cmdOptions.maxProfit          || ENV_OPTIONS.maxProfit;
+    cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
+    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || ENV_OPTIONS.usePublicRpcs;
+    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
+    cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
+    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
 
     return cmdOptions;
 };
