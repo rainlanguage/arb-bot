@@ -1,34 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>JSDoc: Source: router.js</title>
-
-    <script src="scripts/prettify/prettify.js"> </script>
-    <script src="scripts/prettify/lang-css.js"> </script>
-    <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
-    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
-</head>
-
-<body>
-
-<div id="main">
-
-    <h1 class="page-title">Source: router.js</h1>
-
-    
-
-
-
-    
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>const ethers = require("ethers");
+const ethers = require("ethers");
+const { parseAbi } = require("viem");
 const { Router, Token } = require("sushiswap-router");
-const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("./abis");
+const { arbAbis, orderbookAbi, routeProcessor3Abi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("../abis");
 const {
     getIncome,
     processLps,
@@ -37,9 +10,133 @@ const {
     getActualPrice,
     visualizeRoute,
     promiseTimeout,
-    bundleTakeOrders
-} = require("./utils");
+    bundleTakeOrders,
+    createViemClient
+} = require("../utils");
 
+
+/**
+ * Returns array of available swaps pairs from specified curve pools in config file
+ * @param {any} config - The config of a network from config.json file
+ */
+const getCurveSwaps = (config) => {
+    const swaps = [];
+    for (let i = 0; i < config.curve.pools.length; i++) {
+        const pool = config.curve.pools[i];
+        swaps.push({ address: pool.address, index: i });
+        if (pool.coins) {
+            swaps[swaps.length - 1].coins = [];
+            for (let j = 0; j < pool.coins.length; j++) {
+                for (let k = j + 1; k < pool.coins.length; k++) {
+                    const pair1 = pool.coins[j].symbol +
+                        "/" +
+                        pool.coins[k].symbol;
+                    const pair2 = pool.coins[k].symbol +
+                        "/" +
+                        pool.coins[j].symbol;
+                    if (!swaps[swaps.length - 1].coins.includes(pair1))
+                        swaps[swaps.length - 1].coins.push(pair1);
+                    if (!swaps[swaps.length - 1].coins.includes(pair2))
+                        swaps[swaps.length - 1].coins.push(pair2);
+                }
+            }
+        }
+        if (pool.underlyingCoins) {
+            swaps[swaps.length - 1].underlyingCoins = [];
+            for (let j = 0; j < pool.underlyingCoins.length; j++) {
+                for (let k = j + 1; k < pool.underlyingCoins.length; k++) {
+                    const pair1 = pool.underlyingCoins[j].symbol +
+                        "/" +
+                        pool.underlyingCoins[k].symbol;
+                    const pair2 = pool.underlyingCoins[k].symbol +
+                        "/" +
+                        pool.underlyingCoins[j].symbol;
+                    if (!swaps[swaps.length - 1].underlyingCoins.includes(pair1))
+                        swaps[swaps.length - 1].underlyingCoins.push(pair1);
+                    if (!swaps[swaps.length - 1].underlyingCoins.includes(pair2))
+                        swaps[swaps.length - 1].underlyingCoins.push(pair2);
+                }
+            }
+        }
+        if (pool.underlyingCoinsUnwrapped) {
+            swaps[swaps.length - 1].underlyingCoinsUnwrapped = [];
+            for (let j = 0; j < pool.underlyingCoinsUnwrapped.length; j++) {
+                for (let k = j + 1; k < pool.underlyingCoinsUnwrapped.length; k++) {
+                    const pair1 = pool.underlyingCoinsUnwrapped[j].symbol +
+                        "/" +
+                        pool.underlyingCoinsUnwrapped[k].symbol;
+                    const pair2 = pool.underlyingCoinsUnwrapped[k].symbol +
+                        "/" +
+                        pool.underlyingCoinsUnwrapped[j].symbol;
+                    if (!swaps[swaps.length - 1].underlyingCoinsUnwrapped.includes(pair1))
+                        swaps[swaps.length - 1].underlyingCoinsUnwrapped.push(pair1);
+                    if (!swaps[swaps.length - 1].underlyingCoinsUnwrapped.includes(pair2))
+                        swaps[swaps.length - 1].underlyingCoinsUnwrapped.push(pair2);
+                }
+            }
+        }
+    }
+    return swaps;
+};
+
+/**
+ * Prepares the bundled orders by getting the best deals from Curve pools and sorting the
+ * bundled orders based on the best deals
+ *
+ * @param {any[]} bundledOrders - The bundled orders array
+ * @param {any[]} availableSwaps - The available swaps from Curve specofied pools
+ * @param {any} config - The network config data
+ * @param {ethers.Signer} - The ethersjs signer
+ * @param {boolean} sort - (optional) Sort based on best deals or not
+ */
+const setCurveSwaps = (bundledOrders, availableSwaps, config, signer) => {
+    for (let i = 0; i < bundledOrders.length; i++) {
+        const pairFormat = [];
+        const bOrder = bundledOrders[i];
+        const pair = bOrder.buyTokenSymbol + "/" + bOrder.sellTokenSymbol;
+        const pools = availableSwaps.filter(v => {
+            const _l = pairFormat.length;
+            if (v.coins?.includes(pair)) pairFormat.push("c");
+            else if (v.underlyingCoins?.includes(pair)) pairFormat.push("uc");
+            else if (v.underlyingCoinsUnwrapped?.includes(pair)) pairFormat.push("ucu");
+            return pairFormat.length > _l;
+        });
+        if (pools.length > 0) {
+            bOrder.curve = [];
+            pools.forEach((_pool, i) => {
+                const _curvePoolDetailsForPair = {};
+                const poolConfig = config.curve.pools[_pool.index];
+                _curvePoolDetailsForPair.poolContract = new ethers.Contract(
+                    _pool.address,
+                    CURVE_POOLS_FNS,
+                    signer
+                );
+                _curvePoolDetailsForPair.pairFormat = pairFormat[i];
+                _curvePoolDetailsForPair.buyTokenIndex = pairFormat[i] === "c"
+                    ? poolConfig.coins.findIndex(v => v.symbol === bOrder.buyTokenSymbol)
+                    : pairFormat[i] === "uc"
+                        ? poolConfig.underlyingCoins.findIndex(
+                            v => v.symbol === bOrder.buyTokenSymbol
+                        )
+                        : poolConfig.underlyingCoinsUnwrapped.findIndex(
+                            v => v.symbol === bOrder.buyTokenSymbol
+                        );
+                _curvePoolDetailsForPair.sellTokenIndex = pairFormat[i] === "c"
+                    ? poolConfig.coins.findIndex(v => v.symbol === bOrder.sellTokenSymbol)
+                    : pairFormat[i] === "uc"
+                        ? poolConfig.underlyingCoins.findIndex(
+                            v => v.symbol === bOrder.sellTokenSymbol
+                        )
+                        : poolConfig.underlyingCoinsUnwrapped.findIndex(
+                            v => v.symbol === bOrder.sellTokenSymbol
+                        );
+                bOrder.curve.push(_curvePoolDetailsForPair);
+            });
+        }
+    }
+    // bundledOrders = bundledOrders.filter(v => v.curve !== undefined);
+    return bundledOrders;
+};
 
 /**
  * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with router contract
@@ -50,18 +147,19 @@ const {
  * for it to be considered profitable and get submitted
  * @returns The report of details of cleared orders
  */
-const routerClear = async(
+const crouterClear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100"
 ) => {
     if (
-        gasCoveragePercentage &lt; 0 ||
+        gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
+    const viemClient        = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -81,7 +179,7 @@ const routerClear = async(
 
     console.log(
         "------------------------- Starting The",
-        "\x1b[32mROUTER\x1b[0m",
+        "\x1b[32mCURVE-ROUTER\x1b[0m",
         "Mode -------------------------",
         "\n"
     );
@@ -95,6 +193,13 @@ const routerClear = async(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test", config.interpreterv2);
+        const availableSwaps = getCurveSwaps(config);
+        bundledOrders = setCurveSwaps(
+            bundledOrders,
+            availableSwaps,
+            config,
+            signer
+        );
     }
     else {
         console.log("No orders found, exiting...", "\n");
@@ -107,7 +212,7 @@ const routerClear = async(
     }
 
     const report = [];
-    for (let i = 0; i &lt; bundledOrders.length; i++) {
+    for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
                 `------------------------- Trying To Clear ${
@@ -165,20 +270,12 @@ const routerClear = async(
                 "\n"
             );
             else {
-                console.log(">>> Getting best route for this token pair", "\n");
+                console.log(">>> Getting best market rate for this token pair", "\n");
 
                 let cumulativeAmountFixed = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
                 });
-
-                console.log(
-                    ">>> getting market rate for " +
-                    ethers.utils.formatUnits(cumulativeAmountFixed) +
-                    " " +
-                    bundledOrders[i].sellTokenSymbol
-                );
-
                 const cumulativeAmount = cumulativeAmountFixed.div(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                 );
@@ -196,10 +293,54 @@ const routerClear = async(
                     symbol: bundledOrders[i].buyTokenSymbol
                 });
 
-                // await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
-                await dataFetcher.fetchPoolsForToken(fromToken, toToken);
-                const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
                 const gasPrice = await signer.provider.getGasPrice();
+                const pricePromises = [
+                    dataFetcher.fetchPoolsForToken(fromToken, toToken)
+                ];
+                if (bundledOrders[i].curve) pricePromises.push(viemClient.multicall({
+                    multicallAddress: viemClient.chain?.contracts?.multicall3?.address,
+                    allowFailure: true,
+                    contracts: bundledOrders[i].curve.map((curvePool) => {
+                        if (curvePool.pairFormat === "c") return {
+                            address: curvePool.poolContract.address,
+                            chainId: config.chainId,
+                            args: [
+                                curvePool.sellTokenIndex,
+                                curvePool.buyTokenIndex,
+                                cumulativeAmount.toBigInt()
+                            ],
+                            abi: parseAbi(CURVE_POOLS_FNS),
+                            functionName: "get_dy"
+                        };
+                        else return {
+                            address: curvePool.poolContract.address,
+                            chainId: config.chainId,
+                            args: [
+                                curvePool.sellTokenIndex,
+                                curvePool.buyTokenIndex,
+                                cumulativeAmount.toBigInt()
+                            ],
+                            abi: parseAbi(CURVE_POOLS_FNS),
+                            functionName: "get_dy_underlying"
+                        };
+                    })
+                }));
+
+                console.log(
+                    ">>> getting market rate for " +
+                    ethers.utils.formatUnits(cumulativeAmountFixed) +
+                    " " +
+                    bundledOrders[i].sellTokenSymbol
+                );
+
+                const _res = await Promise.allSettled(pricePromises);
+                let topCurveDealPoolIndex = -1;
+                if (_res[1] !== undefined && _res[1].status === "fulfilled") topCurveDealPoolIndex = _res[1].value.indexOf(
+                    (_res[1].value.filter(v => v.status === "success").sort(
+                        (a, b) => b.result > a.result ? 1 : b.result < a.result ? -1 : 0
+                    ))[0]
+                );
+                const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
@@ -211,25 +352,67 @@ const routerClear = async(
                     // providers,
                     // poolFilter
                 );
-                if (route.status == "NoWay") throw "could not find any route for this token pair";
 
-                console.log(
-                    "best rate from router: " +
-                    ethers.utils.formatUnits(
-                        route.amountOutBN,
-                        bundledOrders[i].buyTokenDecimals
-                    ) +
-                    " " +
-                    bundledOrders[i].buyTokenSymbol
-                );
+                let rate;
+                let useCurve = false;
+                if (route.status == "NoWay" && topCurveDealPoolIndex === -1) throw "could not find any routes or quote form curve for this token pair";
+                else if (route.status !== "NoWay" && topCurveDealPoolIndex !== -1) {
+                    const curveAmountOut = ethers.BigNumber.from(
+                        _res[1].value[topCurveDealPoolIndex].result
+                    );
+                    console.log(
+                        "best rate from specified curve pools: " +
+                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)+
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
+                    );
+                    console.log(
+                        "best rate from router: " +
+                        ethers.utils.formatUnits(
+                            route.amountOutBN,
+                            bundledOrders[i].buyTokenDecimals
+                        ) +
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
+                    );
+                    if (route.amountOutBN.lt(_res[1].value[topCurveDealPoolIndex].result)) {
+                        useCurve = true;
+                    }
+                    console.log(useCurve ? "choosing curve..." : "choosing router...");
+                    rate = useCurve
+                        ? ethers.BigNumber.from(_res[1].value[topCurveDealPoolIndex].result)
+                        : route.amountOutBN;
+                }
+                else if (route.status !== "NoWay" && topCurveDealPoolIndex === -1) {
+                    console.log("got no quote from curve");
+                    console.log(
+                        "best rate from router: " +
+                        ethers.utils.formatUnits(
+                            route.amountOutBN,
+                            bundledOrders[i].buyTokenDecimals
+                        ) +
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
+                    );
+                    rate = route.amountOutBN;
+                }
+                else {
+                    console.log("found no route from router");
+                    console.log(
+                        "best rate from specified curve pools: " +
+                        ethers.utils.formatUnits(curveAmountOut, bundledOrders[i].buyTokenDecimals)+
+                        " " +
+                        bundledOrders[i].buyTokenSymbol
+                    );
+                    rate = ethers.BigNumber.from(_res[1].value[topCurveDealPoolIndex].result);
+                    useCurve = true;
+                }
 
-                const rateFixed = route.amountOutBN.mul(
-                    "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
-                );
+                const rateFixed = rate.mul("1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals));
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
                 console.log("");
                 console.log(
-                    "Current best route price for this token pair:",
+                    "Current best price for this token pair:",
                     `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
                     "\n"
                 );
@@ -251,35 +434,128 @@ const routerClear = async(
                         "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                     );
 
-                    // find best route with final qoute amount and get routeProcessor params
-                    // route = Router.findBestRoute(
-                    //     pcMap,
-                    //     config.chainId,
-                    //     fromToken,
-                    //     bundledQuoteAmount,
-                    //     toToken,
-                    //     gasPrice.toNumber(),
-                    //     // 30e9
-                    //     // providers,
-                    //     // poolFilter
-                    // );
-                    // if (route.status == "NoWay") throw "could not find any route for this token pair";
-                    console.log(">>> Route portions: ", "\n");
-                    visualizeRoute(fromToken, toToken, route.legs).forEach(
-                        v => console.log("\x1b[36m%s\x1b[0m", v)
-                    );
-                    console.log("");
+                    let exchangeData;
+                    if (!useCurve) {
+                        console.log(">>> Route portions: ", "\n");
+                        visualizeRoute(fromToken, toToken, route.legs).forEach(
+                            v => console.log("\x1b[36m%s\x1b[0m", v)
+                        );
+                        console.log("");
+                        const rpParams = Router.routeProcessor2Params(
+                            pcMap,
+                            route,
+                            fromToken,
+                            toToken,
+                            arb.address,
+                            config.routeProcessor3Address,
+                            // permits
+                            // "0.005"
+                        );
+                        const iface = new ethers.utils.Interface(routeProcessor3Abi);
+                        const fnData = iface.encodeFunctionData(
+                            "processRoute",
+                            [
+                                rpParams.tokenIn,
+                                // rpParams.amountIn,
+                                bundledQuoteAmount,
+                                rpParams.tokenOut,
+                                // rpParams.amountOutMin,
+                                // guaranteedAmount,
+                                ethers.BigNumber.from("0"),
+                                rpParams.to,
+                                rpParams.routeCode
+                            ]
+                        );
+                        exchangeData = ethers.utils.defaultAbiCoder.encode(
+                            ["address", "address", "bytes"],
+                            [
+                                config.routeProcessor3Address,
+                                config.routeProcessor3Address,
+                                fnData
+                            ]
+                        );
+                    }
+                    else {
+                        if (bundledOrders[i].curve[topCurveDealPoolIndex].pairFormat === "ucu") {
+                            if (config.curve.usdZapAddress) {
+                                iface = new ethers.utils.Interface(CURVE_ZAP_FNS[0]);
+                                fnData = iface.encodeFunctionData(
+                                    "exchange_underlying",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].poolContract.address,
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                                exchangeData = ethers.utils.defaultAbiCoder.encode(
+                                    ["address", "address", "bytes"],
+                                    [
+                                        config.curve.usdZapAddress,
+                                        config.curve.usdZapAddress,
+                                        fnData
+                                    ]
+                                );
+                            }
+                            else throw ">>> cannot find Zap contract address for this network, skipping...";
+                        }
+                        else {
+                            iface = new ethers.utils.Interface(CURVE_POOLS_FNS);
+                            if (bundledOrders[i].curve[topCurveDealPoolIndex].pairFormat === "c") {
+                                fnData = iface.encodeFunctionData(
+                                    "exchange",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                            }
+                            else {
+                                fnData = iface.encodeFunctionData(
+                                    "exchange_underlying",
+                                    [
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].sellTokenIndex.toString(),
+                                        bundledOrders[i].curve[
+                                            topCurveDealPoolIndex
+                                        ].buyTokenIndex.toString(),
+                                        bundledQuoteAmount.toString(),
+                                        // guaranteedAmount.toString()
+                                        "0"
+                                    ]
+                                );
+                            }
+                            exchangeData = ethers.utils.defaultAbiCoder.encode(
+                                ["address", "address", "bytes"],
+                                [
+                                    bundledOrders[i].curve[
+                                        topCurveDealPoolIndex
+                                    ].poolContract.address,
+                                    bundledOrders[i].curve[
+                                        topCurveDealPoolIndex
+                                    ].poolContract.address,
+                                    fnData
+                                ]
+                            );
+                        }
+                    }
 
-                    const rpParams = Router.routeProcessor2Params(
-                        pcMap,
-                        route,
-                        fromToken,
-                        toToken,
-                        arb.address,
-                        config.routeProcessor3Address,
-                        // permits
-                        // "0.005"
-                    );
                     const takeOrdersConfigStruct = {
                         output: bundledOrders[i].buyToken,
                         input: bundledOrders[i].sellToken,
@@ -299,29 +575,6 @@ const routerClear = async(
 
                     // building and submit the transaction
                     try {
-                        const iface = new ethers.utils.Interface(routeProcessor3Abi);
-                        const fnData = iface.encodeFunctionData(
-                            "processRoute",
-                            [
-                                rpParams.tokenIn,
-                                // rpParams.amountIn,
-                                bundledQuoteAmount,
-                                rpParams.tokenOut,
-                                // rpParams.amountOutMin,
-                                // guaranteedAmount,
-                                ethers.BigNumber.from("0"),
-                                rpParams.to,
-                                rpParams.routeCode
-                            ]
-                        );
-                        const exchangeData = ethers.utils.defaultAbiCoder.encode(
-                            ["address", "address", "bytes"],
-                            [
-                                config.routeProcessor3Address,
-                                config.routeProcessor3Address,
-                                fnData
-                            ]
-                        );
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
                         const ethPrice = gasCoveragePercentage === "0"
@@ -410,6 +663,7 @@ const routerClear = async(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
+
                                 const receipt = config.timeout
                                     ? await promiseTimeout(
                                         tx.wait(),
@@ -522,27 +776,5 @@ const routerClear = async(
 };
 
 module.exports = {
-    routerClear
-};</code></pre>
-        </article>
-    </section>
-
-
-
-
-</div>
-
-<nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#build0xQueries">build0xQueries</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#createViemClient">createViemClient</a></li><li><a href="global.html#crouterClear">crouterClear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getCurveSwaps">getCurveSwaps</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#interpreterV2Eval">interpreterV2Eval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#setCurveSwaps">setCurveSwaps</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
-</nav>
-
-<br class="clear">
-
-<footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Dec 02 2023 17:26:55 GMT+0000 (Coordinated Universal Time)
-</footer>
-
-<script> prettyPrint(); </script>
-<script src="scripts/linenumber.js"> </script>
-</body>
-</html>
+    crouterClear
+};

@@ -5,11 +5,11 @@ const { ethers } = require("ethers");
 const { getQuery } = require("./query");
 const { versions } = require("process");
 const CONFIG = require("../config.json");
-const { curveClear } = require("./curve");
-const { zeroExClear } = require("./zeroex");
-const { routerClear } = require("./router");
-const { crouterClear } = require("./crouter");
-const { srouterClear } = require("./srouter");
+const { curveClear } = require("./modes/curve");
+const { zeroExClear } = require("./modes/zeroex");
+const { routerClear } = require("./modes/router");
+const { crouterClear } = require("./modes/crouter");
+const { srouterClear } = require("./modes/srouter");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 

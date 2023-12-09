@@ -1,33 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>JSDoc: Source: srouter.js</title>
-
-    <script src="scripts/prettify/prettify.js"> </script>
-    <script src="scripts/prettify/lang-css.js"> </script>
-    <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
-    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
-</head>
-
-<body>
-
-<div id="main">
-
-    <h1 class="page-title">Source: srouter.js</h1>
-
-    
-
-
-
-    
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>const ethers = require("ethers");
-const { arbAbis, orderbookAbi } = require("./abis");
+const ethers = require("ethers");
+const { arbAbis, orderbookAbi } = require("../abis");
 const { Router, Token } = require("sushiswap-router");
 const {
     getIncome,
@@ -39,7 +11,7 @@ const {
     promiseTimeout,
     bundleTakeOrders,
     getActualClearAmount
-} = require("./utils");
+} = require("../utils");
 
 
 /**
@@ -57,7 +29,7 @@ const srouterClear = async(
     gasCoveragePercentage = "100"
 ) => {
     if (
-        gasCoveragePercentage &lt; 0 ||
+        gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
@@ -109,7 +81,7 @@ const srouterClear = async(
     }
 
     const report = [];
-    for (let i = 0; i &lt; bundledOrders.length; i++) {
+    for (let i = 0; i < bundledOrders.length; i++) {
         try {
             console.log(
                 `------------------------- Trying To Clear ${
@@ -206,9 +178,13 @@ const srouterClear = async(
                         "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                     );
                     const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
+
+                    // filter out orders that are not price match or failed eval when --max-profit is enabled
+                    // price check is at +2% as a headroom for current block vs tx block
                     if (maxProfit) bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
-                        v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : true
+                        v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
                     );
+
                     console.log(
                         "Current best route price for this token pair:",
                         `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
@@ -409,20 +385,10 @@ const srouterClear = async(
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                             console.log(error, "\n");
                             throw "failed-exec";
-                            // if (j > 1) console.log(
-                            //     "\x1b[34m%s\x1b[0m",
-                            //     `could not clear with ${ethers.utils.formatEther(
-                            //         maximumInputFixed
-                            //     )} ${
-                            //         bundledOrders[i].sellTokenSymbol
-                            //     } as max input, trying with lower amount...`, "\n"
-                            // );
-                            // else console.log("\x1b[34m%s\x1b[0m", "could not arb this pair", "\n");
                         }
-
                     }
                     catch (error) {
-                        if (error !== "nomatch" &amp;&amp; error !== "dryrun" &amp;&amp; error !== "failed-exec") {
+                        if (error !== "nomatch" && error !== "dryrun" && error !== "failed-exec") {
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                             console.log(error, "\n");
                             // reason, code, method, transaction, error, stack, message
@@ -454,26 +420,4 @@ const srouterClear = async(
 
 module.exports = {
     srouterClear
-};</code></pre>
-        </article>
-    </section>
-
-
-
-
-</div>
-
-<nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#build0xQueries">build0xQueries</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#createViemClient">createViemClient</a></li><li><a href="global.html#crouterClear">crouterClear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getCurveSwaps">getCurveSwaps</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#interpreterV2Eval">interpreterV2Eval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#setCurveSwaps">setCurveSwaps</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
-</nav>
-
-<br class="clear">
-
-<footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Dec 02 2023 17:26:55 GMT+0000 (Coordinated Universal Time)
-</footer>
-
-<script> prettyPrint(); </script>
-<script src="scripts/linenumber.js"> </script>
-</body>
-</html>
+};

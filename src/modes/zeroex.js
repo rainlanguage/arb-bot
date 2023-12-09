@@ -1,35 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>JSDoc: Source: zeroex.js</title>
-
-    <script src="scripts/prettify/prettify.js"> </script>
-    <script src="scripts/prettify/lang-css.js"> </script>
-    <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
-    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
-</head>
-
-<body>
-
-<div id="main">
-
-    <h1 class="page-title">Source: zeroex.js</h1>
-
-    
-
-
-
-    
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>const axios = require("axios");
+const axios = require("axios");
 const ethers = require("ethers");
-const { arbAbis, orderbookAbi } = require("./abis");
-const { sleep, getIncome, getActualPrice, bundleTakeOrders, promiseTimeout } = require("./utils");
+const { arbAbis, orderbookAbi } = require("../abis");
+const { sleep, getIncome, getActualPrice, bundleTakeOrders, promiseTimeout } = require("../utils");
 
 
 const HEADERS = { headers: { "accept-encoding": "null" } };
@@ -48,14 +20,14 @@ const zeroExClear = async(
     gasCoveragePercentage = "100"
 ) => {
     if (
-        gasCoveragePercentage &lt; 0 ||
+        gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     let rateLimit;
     if (config.monthlyRatelimit !== undefined) {
         const _val = Number(config.monthlyRatelimit);
-        if (Number.isInteger(_val) &amp;&amp; _val > 0) rateLimit = Number((_val / 2592).toFixed()) / 1000;
+        if (Number.isInteger(_val) && _val > 0) rateLimit = Number((_val / 2592).toFixed()) / 1000;
         else throw new Error("specified monthly ratelimit must be an integer greater than 0");
     }
 
@@ -103,7 +75,7 @@ const zeroExClear = async(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
         bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test", config.interpreterv2);
-        // for (let i = 0; i &lt; bundledOrders.length; i++) {
+        // for (let i = 0; i < bundledOrders.length; i++) {
         //     build0xQueries(
         //         api,
         //         initPriceQueries,
@@ -140,9 +112,9 @@ const zeroExClear = async(
     //             api
     //         }swap/v1/price?buyToken=${
     //             nativeToken.address.toLowerCase()
-    //         }&amp;sellToken=${
+    //         }&sellToken=${
     //             initPriceQueries[initPriceQueries.length - 1][0]
-    //         }&amp;sellAmount=${
+    //         }&sellAmount=${
     //             "1" + "0".repeat(initPriceQueries[initPriceQueries.length - 1][1])
     //         }`,
     //         tokens: [
@@ -167,7 +139,7 @@ const zeroExClear = async(
     }
 
     const report = [];
-    for (let i = 0; i &lt; bundledOrders.length; i++) {
+    for (let i = 0; i < bundledOrders.length; i++) {
         await sleep(1000);
         if (bundledOrders[i].takeOrders.length) {
             try {
@@ -234,9 +206,9 @@ const zeroExClear = async(
                             api
                         }swap/v1/price?buyToken=${
                             bundledOrders[i].buyToken
-                        }&amp;sellToken=${
+                        }&sellToken=${
                             bundledOrders[i].sellToken
-                        }&amp;sellAmount=${
+                        }&sellAmount=${
                             cumulativeAmount.div(
                                 "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                             ).div(2).toString()
@@ -284,9 +256,9 @@ const zeroExClear = async(
                                 api
                             }swap/v1/quote?buyToken=${
                                 bundledOrders[i].buyToken
-                            }&amp;sellToken=${
+                            }&sellToken=${
                                 bundledOrders[i].sellToken
-                            }&amp;sellAmount=${
+                            }&sellAmount=${
                                 bundledQuoteAmount.toString()
                             }`,
                             HEADERS
@@ -528,26 +500,4 @@ const zeroExClear = async(
 
 module.exports = {
     zeroExClear
-};</code></pre>
-        </article>
-    </section>
-
-
-
-
-</div>
-
-<nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#DefaultQuery">DefaultQuery</a></li><li><a href="global.html#appGlobalLogger">appGlobalLogger</a></li><li><a href="global.html#bnFromFloat">bnFromFloat</a></li><li><a href="global.html#build0xQueries">build0xQueries</a></li><li><a href="global.html#bundleTakeOrders">bundleTakeOrders</a></li><li><a href="global.html#clear">clear</a></li><li><a href="global.html#clearOptions">clearOptions</a></li><li><a href="global.html#configOptions">configOptions</a></li><li><a href="global.html#createViemClient">createViemClient</a></li><li><a href="global.html#crouterClear">crouterClear</a></li><li><a href="global.html#curveClear">curveClear</a></li><li><a href="global.html#estimateProfit">estimateProfit</a></li><li><a href="global.html#fallbacks">fallbacks</a></li><li><a href="global.html#fromFixed18">fromFixed18</a></li><li><a href="global.html#getActualClearAmount">getActualClearAmount</a></li><li><a href="global.html#getActualPrice">getActualPrice</a></li><li><a href="global.html#getAvailableSwaps">getAvailableSwaps</a></li><li><a href="global.html#getConfig">getConfig</a></li><li><a href="global.html#getCurveSwaps">getCurveSwaps</a></li><li><a href="global.html#getDataFetcher">getDataFetcher</a></li><li><a href="global.html#getEthPrice">getEthPrice</a></li><li><a href="global.html#getIncome">getIncome</a></li><li><a href="global.html#getOrderDetails">getOrderDetails</a></li><li><a href="global.html#getOrderDetailsFromJson">getOrderDetailsFromJson</a></li><li><a href="global.html#getOrderHash">getOrderHash</a></li><li><a href="global.html#getOrderStruct">getOrderStruct</a></li><li><a href="global.html#getQuery">getQuery</a></li><li><a href="global.html#getRouteForTokens">getRouteForTokens</a></li><li><a href="global.html#interpreterEval">interpreterEval</a></li><li><a href="global.html#interpreterV2Eval">interpreterV2Eval</a></li><li><a href="global.html#prepare">prepare</a></li><li><a href="global.html#processLps">processLps</a></li><li><a href="global.html#promiseTimeout">promiseTimeout</a></li><li><a href="global.html#routerClear">routerClear</a></li><li><a href="global.html#setCurveSwaps">setCurveSwaps</a></li><li><a href="global.html#sleep">sleep</a></li><li><a href="global.html#srouterClear">srouterClear</a></li><li><a href="global.html#toFixed18">toFixed18</a></li><li><a href="global.html#validateOrders">validateOrders</a></li><li><a href="global.html#visualizeRoute">visualizeRoute</a></li><li><a href="global.html#zeroExClear">zeroExClear</a></li></ul>
-</nav>
-
-<br class="clear">
-
-<footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Sat Dec 02 2023 17:26:55 GMT+0000 (Coordinated Universal Time)
-</footer>
-
-<script> prettyPrint(); </script>
-<script src="scripts/linenumber.js"> </script>
-</body>
-</html>
+};

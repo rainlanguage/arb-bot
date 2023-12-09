@@ -294,7 +294,4 @@ module.exports = {
     CURVE_POOLS_FNS,
     CURVE_ZAP_FNS,
     interpreterV2Abi
-    // genericArbAbi,
-    // zeroExArbAbi,
-    // arbTakerAbi
 };

@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 const { Router, Token } = require("sushiswap-router");
-const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("./abis");
+const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("../abis");
 const {
     getIncome,
     processLps,
@@ -10,7 +10,7 @@ const {
     visualizeRoute,
     promiseTimeout,
     bundleTakeOrders
-} = require("./utils");
+} = require("../utils");
 
 
 /**

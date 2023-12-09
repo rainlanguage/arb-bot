@@ -871,7 +871,13 @@ const bundleTakeOrders = async(
             ? a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
             : 0
     ));
-    if (_shuffle) shuffleArray(bundledOrders);
+    if (_shuffle) {
+        // shuffle take orders for each pair
+        bundledOrders.forEach(v => shuffleArray(v.takeOrders));
+
+        // shuffle bundled orders pairs
+        shuffleArray(bundledOrders);
+    }
     return bundledOrders;
 };
 
