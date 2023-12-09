@@ -514,7 +514,7 @@ const getOrderStruct = (orderDetails) => {
 const sleep = async(ms, msg = "") => {
     let _timeoutReference;
     return new Promise(
-        resolve => _timeoutReference = setTimeout(resolve(msg), ms),
+        resolve => _timeoutReference = setTimeout(() => resolve(msg), ms),
     ).finally(
         () => clearTimeout(_timeoutReference)
     );
