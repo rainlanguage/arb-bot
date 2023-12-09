@@ -179,7 +179,7 @@ const srouterClear = async(
                     );
                     const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
                     if (maxProfit) bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
-                        v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : true
+                        v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
                     );
                     console.log(
                         "Current best route price for this token pair:",
