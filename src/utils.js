@@ -873,7 +873,7 @@ const bundleTakeOrders = async(
     ));
     if (_shuffle) {
         // shuffle take orders for each pair
-        bundledOrders.forEach(v => shuffleArray(v.takeOrders));
+        if (!_eval) bundledOrders.forEach(v => shuffleArray(v.takeOrders));
 
         // shuffle bundled orders pairs
         shuffleArray(bundledOrders);

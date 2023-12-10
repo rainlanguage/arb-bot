@@ -182,7 +182,7 @@ const srouterClear = async(
                     // filter out orders that are not price match or failed eval when --max-profit is enabled
                     // price check is at +2% as a headroom for current block vs tx block
                     if (maxProfit) bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
-                        v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
+                        v => v.ratio !== undefined ? price.gte(v.ratio) : false
                     );
 
                     console.log(
