@@ -60,7 +60,11 @@ const configOptions = {
     /**
      * Option for operating with interpreter v2
      */
-    interpreterv2: false
+    interpreterv2: false,
+    /**
+     * Flag for not bundling orders based on pairs and clear each order individually
+     */
+    bundle: true
 };
 
 /**
@@ -199,6 +203,9 @@ const getConfig = async(
 
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+
+    config.bundle = true;
+    if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
     config.rpc              = rpcUrl;
     config.signer           = signer;

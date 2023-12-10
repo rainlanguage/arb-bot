@@ -192,7 +192,15 @@ const crouterClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test", config.interpreterv2);
+        bundledOrders = await bundleTakeOrders(
+            ordersDetails,
+            orderbook,
+            arb,
+            undefined,
+            config.rpc !== "test",
+            config.interpreterv2,
+            config.bundle
+        );
         const availableSwaps = getCurveSwaps(config);
         bundledOrders = setCurveSwaps(
             bundledOrders,

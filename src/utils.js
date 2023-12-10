@@ -668,6 +668,7 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {boolean} _eval - To eval() the orders and filter them based on the eval result
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @param {boolean} _interpreterv2 - If should use eval2 of interpreter v2 for evaling
+ * @param {boolean} _bundle = If orders should be bundled based on token pair
  * @returns Array of bundled take orders
  */
 const bundleTakeOrders = async(
@@ -676,7 +677,8 @@ const bundleTakeOrders = async(
     arb,
     _eval = true,
     _shuffle = true,
-    _interpreterv2 = false
+    _interpreterv2 = false,
+    _bundle = true
 ) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
@@ -824,12 +826,12 @@ const bundleTakeOrders = async(
                             }
                         }
 
-                        if (!_eval || !quoteAmount.isZero()) {
+                        if (!_eval || (!quoteAmount.isZero() && ratio !== undefined)) {
                             const pair = bundledOrders.find(v =>
                                 v.sellToken === _output.token.id &&
                                 v.buyToken === _input.token.id
                             );
-                            if (pair) pair.takeOrders.push({
+                            if (pair && _bundle) pair.takeOrders.push({
                                 id: order.id,
                                 ratio,
                                 quoteAmount,

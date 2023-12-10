@@ -60,6 +60,7 @@ Other optional arguments are:
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
+- `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -127,6 +128,7 @@ which will show:
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
       --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
       --interpreter-v2               Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
+      --no-bundle                    Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -205,6 +207,9 @@ TIMEOUT=""
 # Flag for operating with with interpreter V2. false will result in operating under interpreter v1
 # note that 'flash-loan-v2' is NOT compatible with interpreter v2
 INTERPRETERV2="true"
+
+# Flag for not bundling orders based on pairs and clear each order individually
+NO_BUNDLE="false"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -231,7 +236,8 @@ const configOptions = {
   usePublicRpcs         : false,   // option to fallback to public rpcs
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  interpreterv2         : true     // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
+  interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
+  bundle                : true,    // if orders should be bundled based on token pair or be handled individually
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"

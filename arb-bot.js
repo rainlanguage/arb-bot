@@ -30,6 +30,7 @@ const ENV_OPTIONS = {
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
     interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
+    bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     rpc                 : process?.env?.RPC_URL
@@ -65,6 +66,7 @@ const getOptions = async argv => {
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
+        .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -99,6 +101,7 @@ const getOptions = async argv => {
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
+    cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
 };
@@ -128,6 +131,7 @@ const arbRound = async options => {
             shortenLargeLogs    : false,
             timeout             : options.timeout,
             interpreterv2       : options.interpreterv2,
+            bundle              : options.bundle,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
