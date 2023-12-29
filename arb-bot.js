@@ -101,7 +101,9 @@ const getOptions = async argv => {
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
-    cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false; 
+
+    console.log("**************************** key : " , cmdOptions.key )
 
     return cmdOptions;
 };
