@@ -171,9 +171,6 @@ const getConfig = async(
     arbType,
     options = configOptions
 ) => {
-
-    console.log("*************** walletPrivateKey : ", walletPrivateKey )
-
     // applied for API mode
     if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
         !!options.hideSensitiveData,

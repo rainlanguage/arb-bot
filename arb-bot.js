@@ -103,8 +103,6 @@ const getOptions = async argv => {
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false; 
 
-    console.log("**************************** key : " , cmdOptions.key )
-
     return cmdOptions;
 };
 
@@ -179,7 +177,7 @@ const main = async argv => {
     appGlobalLogger(
         true,
         ...rpcs,
-        // options.key,
+        options.key,
         options.apiKey
     );
 
