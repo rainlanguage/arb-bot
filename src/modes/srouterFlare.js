@@ -1,18 +1,13 @@
 const ethers = require("ethers");
 const { arbAbis, orderbookAbi } = require("../abis");
-const { Router, Token } = require("sushiswap-router");
+const { Token } = require("sushiswap-router");
 const {
     getIncome,
-    processLps,
-    getEthPrice,
-    getDataFetcher,
     getActualPrice,
-    visualizeRoute,
     promiseTimeout,
     bundleTakeOrders,
     getActualClearAmount,
     getAmountOutFlareSwap,
-    getBuyRoute,
     getUniV2Route
 } = require("../utils");
 
@@ -36,7 +31,7 @@ const srouterFlareClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
-    const lps               = processLps(config.lps, config.chainId);
+    // const lps               = processLps(config.lps, config.chainId);
     // const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -129,7 +124,7 @@ const srouterFlareClear = async(
 
             if (obSellTokenBalance.isZero()) throw `Orderbook has no ${
                 bundledOrders[i].sellTokenSymbol
-            } balance, skipping...`; 
+            } balance, skipping...`;
 
             const gasPrice = await signer.provider.getGasPrice();
             try {
@@ -140,13 +135,13 @@ const srouterFlareClear = async(
                     "1" + "0".repeat(config.nativeWrappedToken.decimals),
                     bundledOrders[i].buyToken,
                     bundledOrders[i].buyTokenDecimals
-                ); 
+                );
                 else ethPrice = "0";
                 if (ethPrice === undefined) throw "could not find a route for ETH price, skipping...";
             }
             catch {
                 throw "could not get ETH price, skipping...";
-            } 
+            }
 
             let maximumInput = obSellTokenBalance;
             let succesOrFailure = true;
@@ -171,7 +166,7 @@ const srouterFlareClear = async(
                     toToken.address,
                     toToken.decimals
                 );
-                amountOutBN = ethers.utils.parseUnits(amountOutBN,toToken.decimals)
+                amountOutBN = ethers.utils.parseUnits(amountOutBN,toToken.decimals);
                 if (amountOutBN === undefined) {
                     succesOrFailure = false;
                     console.log(
@@ -206,7 +201,12 @@ const srouterFlareClear = async(
                     // );
                     console.log("");
 
-                    const routeCode = await getUniV2Route(signer,fromToken.address,toToken.address,arbAddress)
+                    const routeCode = await getUniV2Route(
+                        signer,
+                        fromToken.address,
+                        toToken.address,
+                        arbAddress
+                    );
 
                     const takeOrdersConfigStruct = {
                         minimumInput: ethers.constants.One,
@@ -428,7 +428,7 @@ const srouterFlareClear = async(
     }
     return report;
 
-}
+};
 module.exports = {
     srouterFlareClear
 };

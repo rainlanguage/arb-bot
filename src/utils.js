@@ -1589,12 +1589,12 @@ const getAmountOutFlareSwap = async(
     amountIn,
     toToken,
     toTokenDecimals
-) => { 
-    const swapRouter = new ethers.Contract(uniswapV2Router, uniswapV2Route02Abi, signer); 
-    const amountOutBN = await swapRouter.getAmountsOut(amountIn,[fromToken,toToken])
-    if (amountOutBN[1]) return ethers.utils.formatUnits(amountOutBN[1], toTokenDecimals)
-    return undefined
-}
+) => {
+    const swapRouter = new ethers.Contract(uniswapV2Router, uniswapV2Route02Abi, signer);
+    const amountOutBN = await swapRouter.getAmountsOut(amountIn,[fromToken,toToken]);
+    if (amountOutBN[1]) return ethers.utils.formatUnits(amountOutBN[1], toTokenDecimals);
+    return undefined;
+};
 
 // Get UniswapV2 route for tokens.
 const getUniV2Route = async (signer,fromTokenAddress,toTokenAddress,toAddress) => {
@@ -1602,34 +1602,41 @@ const getUniV2Route = async (signer,fromTokenAddress,toTokenAddress,toAddress) =
     const config    = CONFIG.find(v => v.chainId === chainId);
     const pool = config.enosys.pools.filter(e => {
         if(
-            (e.token0.toLowerCase() == fromTokenAddress.toLowerCase() && e.token1.toLowerCase() == toTokenAddress.toLowerCase()) ||
-            (e.token0.toLowerCase() == toTokenAddress.toLowerCase() && e.token1.toLowerCase() == fromTokenAddress.toLowerCase())
-        ) return true
-        else return false
-    }) 
-    if(pool.length == 0) throw "UniswapV2 LP pool not found"
+            (
+                e.token0.toLowerCase() == fromTokenAddress.toLowerCase() &&
+                e.token1.toLowerCase() == toTokenAddress.toLowerCase()
+            )
+            ||
+            (
+                e.token0.toLowerCase() == toTokenAddress.toLowerCase() &&
+                e.token1.toLowerCase() == fromTokenAddress.toLowerCase()
+            )
+        ) return true;
+        else return false;
+    });
+    if(pool.length == 0) throw "UniswapV2 LP pool not found";
 
-    return getUniV2RouteData(pool[0],fromTokenAddress,toAddress)
+    return getUniV2RouteData(pool[0],fromTokenAddress,toAddress);
 
-}
+};
 
 const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
 
-    const offeringToken = ethers.BigNumber.from(fromTokenAddress)
-    const token0 = ethers.BigNumber.from(uniV2Pool.token0)
-    const token1 = ethers.BigNumber.from(uniV2Pool.token1) 
+    const offeringToken = ethers.BigNumber.from(fromTokenAddress);
+    const token0 = ethers.BigNumber.from(uniV2Pool.token0);
+    const token1 = ethers.BigNumber.from(uniV2Pool.token1);
 
-    const poolDirection = token0.lt(token1) ? 
-            (offeringToken.eq(token0) ? "01" : "00") :
-            (offeringToken.eq(token1) ? "00" : "01")
+    const poolDirection = token0.lt(token1) ?
+        (offeringToken.eq(token0) ? "01" : "00") :
+        (offeringToken.eq(token1) ? "00" : "01");
 
-    return  `0x02`+
+    return  "0x02"+
             `${fromTokenAddress.toString().split("x")[1]}` +
-            `01ffff00` +
+            "01ffff00" +
             `${uniV2Pool.address.split("x")[1]}` +
             `${poolDirection}` +
-            `${toAddress.toString().split("x")[1]}`
-}
+            `${toAddress.toString().split("x")[1]}`;
+};
 
 module.exports = {
     fallbacks,
