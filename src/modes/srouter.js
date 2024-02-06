@@ -145,7 +145,7 @@ const srouterClear = async(
             }
             let maximumInput = obSellTokenBalance;
             let succesOrFailure = true;
-            for (let j = 1; j < 6; j++) {
+            for (let j = 1; j < 12; j++) {
                 // const maximumInput = j === 5 ? obSellTokenBalance : quoteChunks.mul(j);
                 const maximumInputFixed = maximumInput.mul(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
@@ -276,7 +276,7 @@ const srouterClear = async(
                             }
                         }
                         succesOrFailure = true;
-                        if (j == 1 || j == 5) {
+                        if (j == 1 || j == 11) {
                             // submit the tx only if dry runs with headroom is passed
                             try {
                                 console.log(">>> Trying to submit the transaction...", "\n");
@@ -384,11 +384,11 @@ const srouterClear = async(
                                             v => v.id
                                         ),
                                     });
-                                    j = 6;
+                                    j = 12;
                                 }
                                 else {
                                     succesOrFailure = false;
-                                    if (j < 5) console.log(
+                                    if (j < 11) console.log(
                                         `could not clear with ${ethers.utils.formatEther(
                                             maximumInputFixed
                                         )} ${
@@ -413,7 +413,7 @@ const srouterClear = async(
                             // reason, code, method, transaction, error, stack, message
                         }
                         if (error === "failed-exec") throw "Transaction execution failed, skipping this pair...";
-                        if (j < 5) console.log(
+                        if (j < 11) console.log(
                             "\x1b[34m%s\x1b[0m",
                             `could not clear with ${ethers.utils.formatEther(
                                 maximumInputFixed
