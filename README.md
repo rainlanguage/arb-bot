@@ -210,6 +210,9 @@ INTERPRETERV2="true"
 
 # Flag for not bundling orders based on pairs and clear each order individually
 NO_BUNDLE="false"
+
+# number of hops of binary search in srouter mode, if left unspecified will be 11 by default
+HOPS=11
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

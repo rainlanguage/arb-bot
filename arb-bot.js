@@ -33,6 +33,7 @@ const ENV_OPTIONS = {
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
+    hops                : process?.env?.HOPS,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -67,6 +68,7 @@ const getOptions = async argv => {
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
+        .option("--hops <integer>", "Option to specify how many hops the binary search should o in srouter mode, default is 11 is left unspecified, Will override the 'HOPS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -101,6 +103,7 @@ const getOptions = async argv => {
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
+    cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
@@ -132,6 +135,7 @@ const arbRound = async options => {
             timeout             : options.timeout,
             interpreterv2       : options.interpreterv2,
             bundle              : options.bundle,
+            hops                : options.hops,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,

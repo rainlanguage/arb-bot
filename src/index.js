@@ -64,7 +64,11 @@ const configOptions = {
     /**
      * Flag for not bundling orders based on pairs and clear each order individually
      */
-    bundle: true
+    bundle: true,
+    /**
+     * The amount of hops of binary search for sorouter mode
+     */
+    hops: 11
 };
 
 /**
@@ -206,6 +210,16 @@ const getConfig = async(
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
+    let hops = 11;
+    if (options.hops) {
+        if (/^\d+$/.test(options.hops)) {
+            hops = Number(options.hops);
+            if (v === 0) throw "invalid sleep value, must be an integer greater than 0";
+        }
+        else throw "invalid sleep value, must be an integer greater than 0";
+    }
+
+
     config.rpc              = rpcUrl;
     config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
@@ -220,6 +234,7 @@ const getConfig = async(
     config.maxRatio         = !!options?.maxRatio;
     config.usePublicRpcs    = !!options?.usePublicRpcs;
     config.interpreterv2    = !!options?.interpreterv2;
+    config.hops             = hops;
 
     return config;
 };
