@@ -960,10 +960,13 @@ const getEthPrice = async(
     targetTokenDecimals,
     gasPrice,
     dataFetcher = undefined
-) => {
+) => { 
     const amountIn = BigNumber.from(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
-    );
+    ); 
+    if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
+        return ethers.utils.formatUnits(amountIn, config.nativeWrappedToken.decimals);
+    }
     const fromToken = new Token({
         chainId: config.chainId,
         decimals: config.nativeWrappedToken.decimals,
