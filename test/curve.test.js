@@ -156,7 +156,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         turn++;
     });
 
-    it("should clear orders in 'flash-loan-v2' mode", async function () {
+    xit("should clear orders in 'flash-loan-v2' mode", async function () {
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());

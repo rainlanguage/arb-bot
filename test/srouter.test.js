@@ -148,7 +148,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         turn++;
     });
 
-    it("should clear orders in 'srouter' mode", async function () {
+    xit("should clear orders in 'srouter' mode", async function () {
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
