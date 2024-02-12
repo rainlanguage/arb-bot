@@ -11,7 +11,7 @@ module.exports = {
     networks: {
         hardhat: {
             forking: {
-                url: "https://polygon.llamarpc.com", // avalanche network to run the test on
+                url: "https://polygon-pokt.nodies.app", // avalanche network to run the test on
                 blockNumber: 47102059
             },
             // mining: {
