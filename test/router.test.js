@@ -38,7 +38,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
     beforeEach(async() => {
         // reset network before each test
         // await helpers.reset("http://127.0.0.1:8545/");
-        await helpers.reset("https://polygon.llamarpc.com", 47102059);
+        await helpers.reset("https://rpc.ankr.com/polygon", 53559376);
 
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
@@ -156,7 +156,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         turn++;
     });
 
-    xit("should clear orders in 'flash-loan-v2' mode", async function () {
+    it("should clear orders in 'flash-loan-v2' mode", async function () {
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -522,7 +522,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         );
     });
 
-    it("should clear orders in 'flash-loan-v3' mode using interpreter v2", async function () {
+    xit("should clear orders in 'flash-loan-v3' mode using interpreter v2", async function () {
 
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());

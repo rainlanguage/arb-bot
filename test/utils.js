@@ -5,11 +5,11 @@ const { ethers } = require("hardhat");
  * Addresses with token balance to get from with impersonation
  */
 exports.AddressWithBalance = {
-    usdc:   "0xc47919bbF3276a416Ec34ffE097De3C1D0b7F1CD",
-    usdt:   "0x555e179d64335945fc6b155b7235a31b0a595542",
+    usdc:   "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
+    usdt:   "0xF977814e90dA44bFA03b6295A0616a897441aceC",
     dai:    "0x4aac95EBE2eA6038982566741d1860556e265F8B",
-    frax:   "0x97ee4eD562c7eD22F4Ff7dC3FC4A24B5F0B9627e",
-    busd:   "0x6b5b98d4aac2dafadc94e10f6b5254a683d98294",
+    frax:   "0xda86DaECd8c56Ec266872F2f0978ac8705C43959",
+    busd:   "0x51bfacfcE67821EC05d3C9bC9a8BC8300fB29564",
 };
 
 /**
