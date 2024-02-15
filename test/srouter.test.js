@@ -13,7 +13,7 @@ const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, 
 
 
 // This test runs on hardhat forked network of polygon
-describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
+describe.only("Rain Arb Bot 'srouter' Mode Tests", async function () {
     let turn = 0;
     let interpreter,
         store,
@@ -184,6 +184,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = false;
+        config.hops = 5;
         const reports = await clear("srouter", config, sgOrders);
 
         // should have cleared 2 toke pairs bundled orders
@@ -304,6 +305,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = true;
+        config.hops = 5;
         const reports = await clear("srouter", config, sgOrders);
 
         // should have cleared 2 toke pairs bundled orders

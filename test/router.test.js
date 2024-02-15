@@ -83,7 +83,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
                         bytecode: "0x01000000000000"
                     }
                 ),
-            turn === 0 ? undefined : turn === 1 || turn === 3 ? "flash-loan-v3" : "order-taker",
+            turn === 0 ? undefined : turn === 1 ? "flash-loan-v3" : "order-taker",
             undefined,
             turn > 2 ? true : undefined
         );
@@ -522,127 +522,127 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         );
     });
 
-    xit("should clear orders in 'flash-loan-v3' mode using interpreter v2", async function () {
+    // it("should clear orders in 'flash-loan-v3' mode using interpreter v2", async function () {
 
-        // set up vault ids
-        const USDC_vaultId = ethers.BigNumber.from(randomUint256());
-        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
-        const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-        const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
+    //     // set up vault ids
+    //     const USDC_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const DAI_vaultId = ethers.BigNumber.from(randomUint256());
+    //     const FRAX_vaultId = ethers.BigNumber.from(randomUint256());
 
-        const sgOrders = await prepareOrders(
-            owners,
-            [USDC, USDT, DAI, FRAX],
-            [USDCDecimals, USDTDecimals, DAIDecimals, FRAXDecimals],
-            [USDC_vaultId, USDT_vaultId, DAI_vaultId, FRAX_vaultId],
-            orderbook,
-            expressionDeployer,
-            true
-        );
+    //     const sgOrders = await prepareOrders(
+    //         owners,
+    //         [USDC, USDT, DAI, FRAX],
+    //         [USDCDecimals, USDTDecimals, DAIDecimals, FRAXDecimals],
+    //         [USDC_vaultId, USDT_vaultId, DAI_vaultId, FRAX_vaultId],
+    //         orderbook,
+    //         expressionDeployer,
+    //         true
+    //     );
 
-        // check that bot's balance is zero for all tokens
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
-        );
+    //     // check that bot's balance is zero for all tokens
+    //     assert.ok(
+    //         (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await DAI.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
 
-        // run the clearing process
-        config.rpc = "test";
-        config.signer = bot;
-        config.lps = ["SushiSwapV2"];
-        config.arbType = "flash-loan-v3";
-        config.interpreterv2 = true;
-        const reports = await clear("router", config, sgOrders);
+    //     // run the clearing process
+    //     config.rpc = "test";
+    //     config.signer = bot;
+    //     config.lps = ["SushiSwapV2"];
+    //     config.arbType = "flash-loan-v3";
+    //     config.interpreterv2 = true;
+    //     const reports = await clear("router", config, sgOrders);
 
-        // should have cleared 2 toke pairs bundled orders
-        assert.ok(reports.length == 2);
+    //     // should have cleared 2 toke pairs bundled orders
+    //     assert.ok(reports.length == 2);
 
-        // validate first cleared token pair orders
-        assert.equal(reports[0].tokenPair, "USDT/USDC");
-        assert.equal(reports[0].clearedAmount, "200000000");
-        assert.equal(reports[0].clearedOrders.length, 2);
+    //     // validate first cleared token pair orders
+    //     assert.equal(reports[0].tokenPair, "USDT/USDC");
+    //     assert.equal(reports[0].clearedAmount, "200000000");
+    //     assert.equal(reports[0].clearedOrders.length, 2);
 
-        // check vault balances for orders in cleared token pair USDT/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[0].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[2].address,
-                USDT.address,
-                USDT_vaultId
-            )).toString(),
-            "150000000"
-        );
+    //     // check vault balances for orders in cleared token pair USDT/USDC
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[0].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[0].address,
+    //             USDT.address,
+    //             USDT_vaultId
+    //         )).toString(),
+    //         "150000000"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[2].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[2].address,
+    //             USDT.address,
+    //             USDT_vaultId
+    //         )).toString(),
+    //         "150000000"
+    //     );
 
-        // validate second cleared token pair orders
-        assert.equal(reports[1].tokenPair, "DAI/USDC");
-        assert.equal(reports[1].clearedAmount, "100000000");
-        assert.equal(reports[1].clearedOrders.length, 1);
+    //     // validate second cleared token pair orders
+    //     assert.equal(reports[1].tokenPair, "DAI/USDC");
+    //     assert.equal(reports[1].clearedAmount, "100000000");
+    //     assert.equal(reports[1].clearedOrders.length, 1);
 
-        // check vault balances for orders in cleared token pair FRAX/USDC
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                USDC.address,
-                USDC_vaultId
-            )).toString(),
-            "0"
-        );
-        assert.equal(
-            (await orderbook.vaultBalance(
-                owners[1].address,
-                DAI.address,
-                DAI_vaultId
-            )).toString(),
-            "150000000000000000000"
-        );
+    //     // check vault balances for orders in cleared token pair FRAX/USDC
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[1].address,
+    //             USDC.address,
+    //             USDC_vaultId
+    //         )).toString(),
+    //         "0"
+    //     );
+    //     assert.equal(
+    //         (await orderbook.vaultBalance(
+    //             owners[1].address,
+    //             DAI.address,
+    //             DAI_vaultId
+    //         )).toString(),
+    //         "150000000000000000000"
+    //     );
 
-        // bot should have received the bounty for cleared orders input token
-        assert.ok(
-            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
-        );
-        assert.ok(
-            (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
-        );
+    //     // bot should have received the bounty for cleared orders input token
+    //     assert.ok(
+    //         (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+    //     );
+    //     assert.ok(
+    //         (await DAI.connect(bot).balanceOf(bot.address)).gt("0")
+    //     );
 
-        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
-        assert.ok(
-            (await USDC.connect(bot).balanceOf(bot.address)).isZero()
-        );
-        assert.ok(
-            (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
-        );
-    });
+    //     // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+    //     assert.ok(
+    //         (await USDC.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    //     assert.ok(
+    //         (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
+    //     );
+    // });
 
     it("should clear orders in 'order-taker' mode using interpreter v2", async function () {
         // set up vault ids
