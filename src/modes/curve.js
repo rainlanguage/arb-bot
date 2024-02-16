@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 const { parseAbi } = require("viem");
-const { arbAbis, orderbookAbi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("./abis");
+const { arbAbis, orderbookAbi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("../abis");
 const {
     getIncome,
     processLps,
@@ -10,7 +10,7 @@ const {
     promiseTimeout,
     bundleTakeOrders,
     createViemClient,
-} = require("./utils");
+} = require("../utils");
 
 /**
  * Returns array of available swaps pairs from specified curve pools in config file
@@ -242,7 +242,15 @@ const curveClear = async(
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
         );
-        bundledOrders = await bundleTakeOrders(ordersDetails, orderbook, arb, undefined, config.rpc !== "test");
+        bundledOrders = await bundleTakeOrders(
+            ordersDetails,
+            orderbook,
+            arb,
+            undefined,
+            config.rpc !== "test",
+            config.interpreterv2,
+            config.bundle
+        );
         const availableSwaps = getAvailableSwaps(config);
         bundledOrders = prepare(
             bundledOrders,

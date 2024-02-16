@@ -5,11 +5,11 @@ const { ethers } = require("ethers");
 const { getQuery } = require("./query");
 const { versions } = require("process");
 const CONFIG = require("../config.json");
-const { curveClear } = require("./curve");
-const { zeroExClear } = require("./zeroex");
-const { routerClear } = require("./router");
-const { crouterClear } = require("./crouter");
-const { srouterClear } = require("./srouter");
+const { curveClear } = require("./modes/curve");
+const { zeroExClear } = require("./modes/zeroex");
+const { routerClear } = require("./modes/router");
+const { crouterClear } = require("./modes/crouter");
+const { srouterClear } = require("./modes/srouter");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
@@ -55,8 +55,20 @@ const configOptions = {
     maxRatio: false,
     /**
      * Option to fallback to public rpcs
-    */
-    usePublicRpcs: false
+     */
+    usePublicRpcs: false,
+    /**
+     * Option for operating with interpreter v2
+     */
+    interpreterv2: false,
+    /**
+     * Flag for not bundling orders based on pairs and clear each order individually
+     */
+    bundle: true,
+    /**
+     * The amount of hops of binary search for sorouter mode
+     */
+    hops: 11
 };
 
 /**
@@ -163,7 +175,6 @@ const getConfig = async(
     arbType,
     options = configOptions
 ) => {
-
     // applied for API mode
     if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
         !!options.hideSensitiveData,
@@ -196,6 +207,19 @@ const getConfig = async(
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
 
+    config.bundle = true;
+    if (options?.bundle !== undefined) config.bundle = !!options.bundle;
+
+    let hops = 11;
+    if (options.hops) {
+        if (/^\d+$/.test(options.hops)) {
+            hops = Number(options.hops);
+            if (v === 0) throw "invalid sleep value, must be an integer greater than 0";
+        }
+        else throw "invalid sleep value, must be an integer greater than 0";
+    }
+
+
     config.rpc              = rpcUrl;
     config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
@@ -209,6 +233,8 @@ const getConfig = async(
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
     config.usePublicRpcs    = !!options?.usePublicRpcs;
+    config.interpreterv2    = !!options?.interpreterv2;
+    config.hops             = hops;
 
     return config;
 };
@@ -244,6 +270,7 @@ const clear = async(
             throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
         }
     }
+    if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
 
     if (_mode === "0x") return await zeroExClear(
         config,

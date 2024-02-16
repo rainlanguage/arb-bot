@@ -1,9 +1,6 @@
 const { ethers, BigNumber } = require("ethers");
-// const { ChainId } = require("@sushiswap/chain");
-// const { Token } = require("@sushiswap/currency");
-const { erc20Abi, interpreterAbi } = require("./abis");
 const { createPublicClient, http, fallback } = require("viem");
-// const { config: viemConfig } = require("@sushiswap/viem-config");
+const { erc20Abi, interpreterAbi, interpreterV2Abi } = require("./abis");
 const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = require("sushiswap-router");
 
 
@@ -401,6 +398,84 @@ const interpreterEval = async(
 };
 
 /**
+ * Calls eval2 on interpreter v2 for a specific order to get its max output and ratio
+ *
+ * @param {ethers.Contract} interpreter - The interpreter v2 ethersjs contract instance with signer
+ * @param {string} arbAddress - Arb contract address
+ * @param {string} obAddress - OrderBook contract address
+ * @param {object} order - The order details fetched from sg
+ * @param {number} inputIndex - The input token index
+ * @param {number} outputIndex - The ouput token index
+ * @returns The ratio and maxOuput as BigNumber
+*/
+const interpreterV2Eval = async(
+    interpreter,
+    arbAddress,
+    obAddress,
+    order,
+    inputIndex,
+    outputIndex,
+    inputBalance,
+    outputBalance
+) => {
+    try {
+        const { stack: [ ratio, maxOutput ] } = await interpreter.eval2(
+            order.interpreterStore,
+            order.owner.id,
+            order.expression + "00000002",
+            // construct the context for eval
+            [
+                [
+                    // base column
+                    arbAddress,
+                    obAddress
+                ],
+                [
+                    // calling context column
+                    order.id,
+                    order.owner.id,
+                    arbAddress
+                ],
+                [
+                    // calculateIO context column
+                ],
+                [
+                    // input context column
+                    order.validInputs[inputIndex].token.id,
+                    order.validInputs[inputIndex].token.decimals,
+                    order.validInputs[inputIndex].vault.id.split("-")[0],
+                    inputBalance,
+                    "0"
+                ],
+                [
+                    // output context column
+                    order.validOutputs[outputIndex].token.id,
+                    order.validOutputs[outputIndex].token.decimals,
+                    order.validOutputs[outputIndex].vault.id.split("-")[0],
+                    outputBalance,
+                    "0"
+                ],
+                [
+                    // empty context column
+                ],
+                [
+                    // signed context column
+                ]
+            ],
+            // empty inputs
+            []
+        );
+        return { ratio, maxOutput };
+    }
+    catch {
+        return {
+            ratio: undefined,
+            maxOutput: undefined
+        };
+    }
+};
+
+/**
  * Constructs Order struct from the result of sg default query
  *
  * @param {object} orderDetails - The order details fetched from sg
@@ -439,7 +514,7 @@ const getOrderStruct = (orderDetails) => {
 const sleep = async(ms, msg = "") => {
     let _timeoutReference;
     return new Promise(
-        resolve => _timeoutReference = setTimeout(resolve(msg), ms),
+        resolve => _timeoutReference = setTimeout(() => resolve(msg), ms),
     ).finally(
         () => clearTimeout(_timeoutReference)
     );
@@ -592,9 +667,19 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @param {boolean} _eval - To eval() the orders and filter them based on the eval result
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
+ * @param {boolean} _interpreterv2 - If should use eval2 of interpreter v2 for evaling
+ * @param {boolean} _bundle = If orders should be bundled based on token pair
  * @returns Array of bundled take orders
  */
-const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true, _shuffle = true) => {
+const bundleTakeOrders = async(
+    ordersDetails,
+    orderbook,
+    arb,
+    _eval = true,
+    _shuffle = true,
+    _interpreterv2 = false,
+    _bundle = true
+) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
@@ -705,32 +790,48 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true, _shu
                                 }
                                 _inputBalance = _iv.balance;
                             }
-                            ({ maxOutput, ratio } = await interpreterEval(
-                                new ethers.Contract(
-                                    order.interpreter,
-                                    interpreterAbi,
-                                    obAsSigner
-                                ),
-                                arb.address,
-                                orderbook.address,
-                                order,
-                                k,
-                                j ,
-                                _inputBalance.toString() ,
-                                _outputBalance.toString()
-                            ));
+                            ({ maxOutput, ratio } = _interpreterv2
+                                ? await interpreterV2Eval(
+                                    new ethers.Contract(
+                                        order.interpreter,
+                                        interpreterV2Abi,
+                                        obAsSigner
+                                    ),
+                                    arb.address,
+                                    orderbook.address,
+                                    order,
+                                    k,
+                                    j ,
+                                    _inputBalance.toString() ,
+                                    _outputBalance.toString()
+                                )
+                                : await interpreterEval(
+                                    new ethers.Contract(
+                                        order.interpreter,
+                                        interpreterAbi,
+                                        obAsSigner
+                                    ),
+                                    arb.address,
+                                    orderbook.address,
+                                    order,
+                                    k,
+                                    j ,
+                                    _inputBalance.toString() ,
+                                    _outputBalance.toString()
+                                )
+                            );
 
                             if (maxOutput && ratio && maxOutput.lt(quoteAmount)) {
                                 quoteAmount = maxOutput;
                             }
                         }
 
-                        if (!_eval || !quoteAmount.isZero()) {
+                        if (!_eval || (!quoteAmount.isZero() && ratio !== undefined)) {
                             const pair = bundledOrders.find(v =>
                                 v.sellToken === _output.token.id &&
                                 v.buyToken === _input.token.id
                             );
-                            if (pair) pair.takeOrders.push({
+                            if (pair && _bundle) pair.takeOrders.push({
                                 id: order.id,
                                 ratio,
                                 quoteAmount,
@@ -772,7 +873,13 @@ const bundleTakeOrders = async(ordersDetails, orderbook, arb, _eval = true, _shu
             ? a.ratio.gt(b.ratio) ? 1 : a.ratio.lt(b.ratio) ? -1 : 0
             : 0
     ));
-    if (_shuffle) shuffleArray(bundledOrders);
+    if (_shuffle) {
+        // shuffle take orders for each pair
+        if (!_eval) bundledOrders.forEach(v => shuffleArray(v.takeOrders));
+
+        // shuffle bundled orders pairs
+        shuffleArray(bundledOrders);
+    }
     return bundledOrders;
 };
 
@@ -854,6 +961,9 @@ const getEthPrice = async(
     gasPrice,
     dataFetcher = undefined
 ) => {
+    if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
+        return "1" + "0".repeat(config.nativeWrappedToken.decimals);
+    }
     const amountIn = BigNumber.from(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
     );
@@ -1497,5 +1607,6 @@ module.exports = {
     visualizeRoute,
     build0xQueries,
     shuffleArray,
-    createViemClient
+    createViemClient,
+    interpreterV2Eval
 };

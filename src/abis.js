@@ -30,6 +30,19 @@ const interpreterAbi = [
 ];
 
 /**
+ * Minimal ABI for IInterpreterV2 contract only including eval() function
+ */
+const interpreterV2Abi = [
+    `function eval2(
+        address store,
+        uint256 namespace,
+        uint256 dispatch,
+        uint256[][] calldata context,
+        uint256[] calldata inputs
+    ) external view returns (uint256[] calldata stack, uint256[] calldata writes)`
+];
+
+/**
  * Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
  */
 const routeProcessor3Abi = [
@@ -279,8 +292,6 @@ module.exports = {
     routeProcessor3Abi,
     uniswapV2Route02Abi,
     CURVE_POOLS_FNS,
-    CURVE_ZAP_FNS
-    // genericArbAbi,
-    // zeroExArbAbi,
-    // arbTakerAbi
+    CURVE_ZAP_FNS,
+    interpreterV2Abi
 };

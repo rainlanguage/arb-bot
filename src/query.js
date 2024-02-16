@@ -52,28 +52,9 @@ const DefaultQuery = `{
  * @returns the query string
  */
 const getQuery = (orderHash, owner, interpreter) => {
-    const orderHashFilter = orderHash ? `, id :"${orderHash.toLowerCase()}"` : "";
     const ownerFilter = owner ? `, owner :"${owner.toLowerCase()}"` : "";
+    const orderHashFilter = orderHash ? `, id :"${orderHash.toLowerCase()}"` : "";
     const interpreterFilter = interpreter ? `, interpreter :"${interpreter.toLowerCase()}"` : "";
-    // let orderingProp, orderingDir;
-    // const _turn = shuffle % 4;
-    // if (_turn === 0) {
-    //     orderingProp = "id";
-    //     orderingDir = "asc";
-    // }
-    // if (_turn === 1) {
-    //     orderingProp = "id";
-    //     orderingDir = "desc";
-    // }
-    // if (_turn === 2) {
-    //     orderingProp = "timestamp";
-    //     orderingDir = "asc";
-    // }
-    // if (_turn === 3) {
-    //     orderingProp = "timestamp";
-    //     orderingDir = "desc";
-    // }
-    // orderBy: ${orderingProp}, orderDirection: ${orderingDir},
     return `{
         orders(
             where: {orderActive: true${orderHashFilter}${ownerFilter}${interpreterFilter}}

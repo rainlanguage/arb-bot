@@ -8,9 +8,9 @@ const { getOrderDetails, clear, getConfig } = require("./src");
 
 
 /**
- * Default CLI arguments
+ * Options specified in env variables
  */
-const DEFAULT_OPTIONS = {
+const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
     mode                : process?.env?.MODE,
     arbAddress          : process?.env?.ARB_ADDRESS,
@@ -29,8 +29,11 @@ const DEFAULT_OPTIONS = {
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
+    interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
+    bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
+    hops                : process?.env?.HOPS,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -63,6 +66,9 @@ const getOptions = async argv => {
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
+        .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
+        .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
+        .option("--hops <integer>", "Option to specify how many hops the binary search should o in srouter mode, default is 11 is left unspecified, Will override the 'HOPS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -73,29 +79,32 @@ const getOptions = async argv => {
         .parse(argv)
         .opts();
 
-    cmdOptions.key              = cmdOptions.key                || DEFAULT_OPTIONS.key;
-    cmdOptions.rpc              = cmdOptions.rpc                || DEFAULT_OPTIONS.rpc;
-    cmdOptions.mode             = cmdOptions.mode               || DEFAULT_OPTIONS.mode;
-    cmdOptions.arbAddress       = cmdOptions.arbAddress         || DEFAULT_OPTIONS.arbAddress;
-    cmdOptions.arbType          = cmdOptions.arbType            || DEFAULT_OPTIONS.arbType;
-    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || DEFAULT_OPTIONS.orderbookAddress;
-    cmdOptions.orders           = cmdOptions.orders             || DEFAULT_OPTIONS.orders;
-    cmdOptions.subgraph         = cmdOptions.subgraph           || DEFAULT_OPTIONS.subgraph;
-    cmdOptions.apiKey           = cmdOptions.apiKey             || DEFAULT_OPTIONS.apiKey;
-    cmdOptions.lps              = cmdOptions.lps                || DEFAULT_OPTIONS.lps;
-    cmdOptions.gasCoverage      = cmdOptions.gasCoverage        || DEFAULT_OPTIONS.gasCoverage;
-    cmdOptions.repetitions      = cmdOptions.repetitions        || DEFAULT_OPTIONS.repetitions;
-    cmdOptions.orderHash        = cmdOptions.orderHash          || DEFAULT_OPTIONS.orderHash;
-    cmdOptions.orderOwner       = cmdOptions.orderOwner         || DEFAULT_OPTIONS.orderOwner;
-    cmdOptions.sleep            = cmdOptions.sleep              || DEFAULT_OPTIONS.sleep;
-    cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || DEFAULT_OPTIONS.orderInterpreter;
-    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || DEFAULT_OPTIONS.monthlyRatelimit;
-    cmdOptions.maxProfit        = cmdOptions.maxProfit          || DEFAULT_OPTIONS.maxProfit;
-    cmdOptions.maxRatio         = cmdOptions.maxRatio           || DEFAULT_OPTIONS.maxRatio;
-    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || DEFAULT_OPTIONS.usePublicRpcs;
-    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || DEFAULT_OPTIONS.flashbotRpc;
-    cmdOptions.timeout          = cmdOptions.timeout            || DEFAULT_OPTIONS.timeout;
-
+    // assigning specified options from cli/env
+    cmdOptions.key              = cmdOptions.key                || ENV_OPTIONS.key;
+    cmdOptions.rpc              = cmdOptions.rpc                || ENV_OPTIONS.rpc;
+    cmdOptions.mode             = cmdOptions.mode               || ENV_OPTIONS.mode;
+    cmdOptions.arbAddress       = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
+    cmdOptions.arbType          = cmdOptions.arbType            || ENV_OPTIONS.arbType;
+    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
+    cmdOptions.orders           = cmdOptions.orders             || ENV_OPTIONS.orders;
+    cmdOptions.subgraph         = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
+    cmdOptions.apiKey           = cmdOptions.apiKey             || ENV_OPTIONS.apiKey;
+    cmdOptions.lps              = cmdOptions.lps                || ENV_OPTIONS.lps;
+    cmdOptions.gasCoverage      = cmdOptions.gasCoverage        || ENV_OPTIONS.gasCoverage;
+    cmdOptions.repetitions      = cmdOptions.repetitions        || ENV_OPTIONS.repetitions;
+    cmdOptions.orderHash        = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
+    cmdOptions.orderOwner       = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
+    cmdOptions.sleep            = cmdOptions.sleep              || ENV_OPTIONS.sleep;
+    cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
+    cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || ENV_OPTIONS.monthlyRatelimit;
+    cmdOptions.maxProfit        = cmdOptions.maxProfit          || ENV_OPTIONS.maxProfit;
+    cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
+    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || ENV_OPTIONS.usePublicRpcs;
+    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
+    cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
+    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
+    cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
+    cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
 };
@@ -124,6 +133,9 @@ const arbRound = async options => {
             hideSensitiveData   : false,
             shortenLargeLogs    : false,
             timeout             : options.timeout,
+            interpreterv2       : options.interpreterv2,
+            bundle              : options.bundle,
+            hops                : options.hops,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
