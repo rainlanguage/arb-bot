@@ -1,18 +1,18 @@
 {
-    "name": "@rainprotocol/arb-bot",
+    "name": "@rainlanguage/arb-bot",
     "version": "2.3.1",
     "description": "NodeJS app that clears Rain orderbook orders against decentralized liquididty providers (decentralized exchanges)",
     "author": "Rain Protocol",
     "license": "CAL-1.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/rainprotocol/arb-bot.git"
+        "url": "https://github.com/rainlanguage/arb-bot.git"
     },
     "keywords": [],
     "bugs": {
-        "url": "https://github.com/rainprotocol/arb-bot/issues"
+        "url": "https://github.com/rainlanguage/arb-bot/issues"
     },
-    "homepage": "https://github.com/rainprotocol/arb-bot/",
+    "homepage": "https://github.com/rainlanguage/arb-bot/",
     "engines": {
         "node": ">=18"
     },
