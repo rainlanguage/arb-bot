@@ -237,7 +237,7 @@ const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                         const rawtx = {
                             data: arb.interface.encodeFunctionData("arb", [takeOrdersConfigStruct, "0"]),
                             to: arb.address,
-                            gasPrice
+                            gasPrice: gasPrice.add(gasPrice.div("10"))
                         };
                         console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                         let gasLimit;
