@@ -220,12 +220,11 @@ const srouterClear = async(
                         // permits
                         // "0.005"
                     );
-const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                     const takeOrdersConfigStruct = {
                         minimumInput: ethers.constants.One,
                         maximumInput,
                         maximumIORatio: maxRatio ? ethers.constants.MaxUint256 : price,
-                        orders: [order,order],
+                        orders: bundledOrders[i].takeOrders.map(v => v.takeOrder),
                         data: ethers.utils.defaultAbiCoder.encode(
                             ["bytes"],
                             [rpParams.routeCode]
@@ -272,6 +271,7 @@ const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                                 ]
                             );
                             try {
+                                console.log("minimumSenderOuput : ",gasCostInToken.mul(headroom).div("100"))
                                 await signer.estimateGas(rawtx);
                             }
                             catch(error) { 
