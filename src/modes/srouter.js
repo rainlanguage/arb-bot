@@ -219,8 +219,8 @@ const srouterClear = async(
                         config.routeProcessor3Address,
                         // permits
                         // "0.005"
-                    ); 
-                    const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
+                    );
+const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                     const takeOrdersConfigStruct = {
                         minimumInput: ethers.constants.One,
                         maximumInput,
@@ -244,8 +244,9 @@ const srouterClear = async(
                         try {
                             gasLimit = await signer.estimateGas(rawtx);
                         }
-                        catch {
-                                                        throw "nomatch";
+                        catch(error) {
+                            console.log("estimate gas fail : ",error)
+                             throw "nomatch";
                         }
                         gasLimit = gasLimit.mul("112").div("100");
                         rawtx.gasLimit = gasLimit;
@@ -269,8 +270,8 @@ const srouterClear = async(
                                     takeOrdersConfigStruct,
                                     gasCostInToken.mul(headroom).div("100")
                                 ]
-                            ); 
-                                                        try {
+                            );
+                            try {
                                 await signer.estimateGas(rawtx);
                             }
                             catch {
@@ -279,136 +280,137 @@ const srouterClear = async(
                         }
                         succesOrFailure = true;
                         if (j == 1 || j == hops) {
-                        // submit the tx only if dry runs with headroom is passed
-                        try {
-                        console.log(">>> Trying to submit the transaction...", "\n");
-                        rawtx.data = arb.interface.encodeFunctionData(
-                        "arb",
-                        [
+                            // submit the tx only if dry runs with headroom is passed
+                            try {
+                                console.log(">>> Trying to submit the transaction...", "\n");
+                                rawtx.data = arb.interface.encodeFunctionData(
+                                    "arb",
+                                    [
                                         takeOrdersConfigStruct,
-                        gasCostInToken.mul(gasCoveragePercentage).div("100")
-                        ]
+                                        gasCostInToken.mul(gasCoveragePercentage).div("100")
+                                    ]
                                 );
-                        console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                        const tx = flashbotSigner !== undefined
-                        ? await flashbotSigner.sendTransaction(rawtx)
-                        : await signer.sendTransaction(rawtx);
+                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+                                const tx = flashbotSigner !== undefined
+                                    ? await flashbotSigner.sendTransaction(rawtx)
+                                    : await signer.sendTransaction(rawtx);
 
-                        console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
-                        console.log(
-                        ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
-                        "\n"
-                        );
-                        const receipt = config.timeout
-                        ? await promiseTimeout(
-                        tx.wait(),
-                        config.timeout,
-                        `Transaction failed to mine after ${config.timeout}ms`
-                        )
+                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+                                console.log(
+                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
+                                    "\n"
+                                );
+                                const receipt = config.timeout
+                                    ? await promiseTimeout(
+                                        tx.wait(),
+                                        config.timeout,
+                                        `Transaction failed to mine after ${config.timeout}ms`
+                                    )
                                     : await tx.wait(); 
-                        if (receipt.status === 1) {
-                        const clearActualAmount = getActualClearAmount(
-                        arbAddress,
-                        orderbookAddress,
-                        receipt
-                        );
-                        const income = getIncome(signer, receipt);
-                        const clearActualPrice = getActualPrice(
-                        receipt,
-                        orderbookAddress,
-                        arbAddress,
-                        clearActualAmount.mul("1" + "0".repeat(
-                        18 - bundledOrders[i].sellTokenDecimals
-                        )),
-                        bundledOrders[i].buyTokenDecimals
-                        );
-                        const actualGasCost = ethers.BigNumber.from(
-                        receipt.effectiveGasPrice
-                        ).mul(receipt.gasUsed);
-                        const actualGasCostInToken = ethers.utils.parseUnits(
-                        ethPrice
-                        ).mul(
-                        actualGasCost
-                        ).div(
-                        "1" + "0".repeat(
-                        36 - bundledOrders[i].buyTokenDecimals
-                        )
+                                                                if (receipt.status === 1) {
+                                    const clearActualAmount = getActualClearAmount(
+                                        arbAddress,
+                                        orderbookAddress,
+                                        receipt
                                     );
-                        const netProfit = income
-                        ? income.sub(actualGasCostInToken)
-                        : undefined;
+                                    const income = getIncome(signer, receipt);
+                                    const clearActualPrice = getActualPrice(
+                                        receipt,
+                                        orderbookAddress,
+                                        arbAddress,
+                                        clearActualAmount.mul("1" + "0".repeat(
+                                            18 - bundledOrders[i].sellTokenDecimals
+                                        )),
+                                        bundledOrders[i].buyTokenDecimals
+                                    );
+                                    const actualGasCost = ethers.BigNumber.from(
+                                        receipt.effectiveGasPrice
+                                    ).mul(receipt.gasUsed);
+                                    const actualGasCostInToken = ethers.utils.parseUnits(
+                                        ethPrice
+                                    ).mul(
+                                        actualGasCost
+                                    ).div(
+                                        "1" + "0".repeat(
+                                            36 - bundledOrders[i].buyTokenDecimals
+                                        )
+                                    );
+                                    const netProfit = income
+                                        ? income.sub(actualGasCostInToken)
+                                        : undefined;
 
-                        console.log(
-                        "\x1b[36m%s\x1b[0m",
-                        `Clear Initial Price: ${ethers.utils.formatEther(price)}`
-                        );
-                        console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
-                        console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
-                        ethers.utils.formatUnits(
-                        clearActualAmount,
-                        bundledOrders[i].sellTokenDecimals
-                        )
+                                    console.log(
+                                        "\x1b[36m%s\x1b[0m",
+                                        `Clear Initial Price: ${ethers.utils.formatEther(price)}`
+                                    );
+                                    console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
+                                    console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
+                                        ethers.utils.formatUnits(
+                                            clearActualAmount,
+                                            bundledOrders[i].sellTokenDecimals
+                                        )
                                     } ${bundledOrders[i].sellTokenSymbol}`);
-                        console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
-                        ethers.utils.formatEther(actualGasCost)
-                        } ${
-                        config.nativeToken.symbol
-                        }`, "\n");
-                        if (income) {
-                        console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
-                        income,
-                        bundledOrders[i].buyTokenDecimals
-                        )} ${bundledOrders[i].buyTokenSymbol}`);
-                        console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
-                        netProfit,
-                        bundledOrders[i].buyTokenDecimals
-                        )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
-                        }
+                                    console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
+                                        ethers.utils.formatEther(actualGasCost)
+                                    } ${
+                                        config.nativeToken.symbol
+                                    }`, "\n");
+                                    if (income) {
+                                        console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
+                                            income,
+                                            bundledOrders[i].buyTokenDecimals
+                                        )} ${bundledOrders[i].buyTokenSymbol}`);
+                                        console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
+                                            netProfit,
+                                            bundledOrders[i].buyTokenDecimals
+                                        )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                                    }
 
-                        report.push({
-                        transactionHash: receipt.transactionHash,
-                        tokenPair:
-                        bundledOrders[i].buyTokenSymbol +
-                        "/" +
-                        bundledOrders[i].sellTokenSymbol,
-                        buyToken: bundledOrders[i].buyToken,
-                        buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
-                        sellToken: bundledOrders[i].sellToken,
-                        sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
-                        clearedAmount: clearActualAmount.toString(),
-                        clearPrice: ethers.utils.formatEther(price),
-                        clearActualPrice,
-                        gasUsed: receipt.gasUsed,
-                        gasCost: actualGasCost,
-                        income,
-                        netProfit,
-                        clearedOrders: bundledOrders[i].takeOrders.map(
-                        v => v.id
-                        ),
-                        });
-                        j = hops + 1;
-                        }
+                                    report.push({
+                                        transactionHash: receipt.transactionHash,
+                                        tokenPair:
+                                            bundledOrders[i].buyTokenSymbol +
+                                            "/" +
+                                            bundledOrders[i].sellTokenSymbol,
+                                        buyToken: bundledOrders[i].buyToken,
+                                        buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
+                                        sellToken: bundledOrders[i].sellToken,
+                                        sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
+                                        clearedAmount: clearActualAmount.toString(),
+                                        clearPrice: ethers.utils.formatEther(price),
+                                        clearActualPrice,
+                                        gasUsed: receipt.gasUsed,
+                                        gasCost: actualGasCost,
+                                        income,
+                                        netProfit,
+                                        clearedOrders: bundledOrders[i].takeOrders.map(
+                                            v => v.id
+                                        ),
+                                    });
+                                    j = hops + 1;
+                                }
                                 else {
-                        succesOrFailure = false;
-                        if (j < hops) console.log(
-                        `could not clear with ${ethers.utils.formatEther(
-                        maximumInputFixed
-                        )} ${
-                        bundledOrders[i].sellTokenSymbol
-                        } as max input, trying with lower amount...`
-                        );
-                        else console.log("could not arb this pair");
-                        }
+                                    succesOrFailure = false;
+                                    if (j < hops) console.log(
+                                        `could not clear with ${ethers.utils.formatEther(
+                                            maximumInputFixed
+                                        )} ${
+                                            bundledOrders[i].sellTokenSymbol
+                                        } as max input, trying with lower amount...`
+                                    );
+                                    else console.log("could not arb this pair");
+                                }
                             }
                             catch (error) {
                                 console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
-                        console.log(error, "\n");
-                        throw "failed-exec";
-                        }
+                                console.log(error, "\n");
+                                throw "failed-exec";
+                            }
                         }
                     }
-                    catch (error) {
-                                                succesOrFailure = false;
+                    catch (error) { 
+                        console.log(error)
+                        succesOrFailure = false;
                         if (error !== "nomatch" && error !== "dryrun" && error !== "failed-exec") {
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                             console.log(error, "\n");
