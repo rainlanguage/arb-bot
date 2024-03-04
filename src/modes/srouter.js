@@ -219,12 +219,13 @@ const srouterClear = async(
                         config.routeProcessor3Address,
                         // permits
                         // "0.005"
-                    );
+                    ); 
+                    const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                     const takeOrdersConfigStruct = {
                         minimumInput: ethers.constants.One,
                         maximumInput,
                         maximumIORatio: maxRatio ? ethers.constants.MaxUint256 : price,
-                        orders: bundledOrders[i].takeOrders.map(v => v.takeOrder),
+                        orders: [order,order],
                         data: ethers.utils.defaultAbiCoder.encode(
                             ["bytes"],
                             [rpParams.routeCode]

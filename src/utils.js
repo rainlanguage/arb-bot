@@ -962,7 +962,7 @@ const getEthPrice = async(
     dataFetcher = undefined
 ) => {
     if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
-        return "1" + "0".repeat(config.nativeWrappedToken.decimals);
+        return "1";
     }
     const amountIn = BigNumber.from(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
