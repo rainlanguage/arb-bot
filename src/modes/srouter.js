@@ -274,7 +274,8 @@ const order = bundledOrders[i].takeOrders.map(v => v.takeOrder)[0]
                             try {
                                 await signer.estimateGas(rawtx);
                             }
-                            catch {
+                            catch(error) { 
+                                console.log("dryrun failed : ", error)
                                 throw "dryrun";
                             }
                         }
