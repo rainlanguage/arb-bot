@@ -256,7 +256,7 @@ const routerClear = async(
                         fromToken,
                         toToken,
                         arb.address,
-                        config.routeProcessor3Address,
+                        config.routeProcessor3_2Address,
                         // permits
                         // "0.005"
                     );
@@ -297,8 +297,8 @@ const routerClear = async(
                         const exchangeData = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
-                                config.routeProcessor3Address,
-                                config.routeProcessor3Address,
+                                config.routeProcessor3_2Address,
+                                config.routeProcessor3_2Address,
                                 fnData
                             ]
                         );

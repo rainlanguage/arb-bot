@@ -4,6 +4,7 @@
         "chainId": 137,
         "explorer": "https://polygonscan.com/",
         "routeProcessor3Address": "0x0a6e511Fe663827b9cA7e2D2542b20B37fC217A6",
+        "routeProcessor3_2Address": "0xE7eb31f23A5BefEEFf76dbD2ED6AdC822568a5d2",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://polygon.api.0x.org/",
@@ -214,6 +215,7 @@
         "chainId": 1,
         "explorer": "https://etherscan.io/",
         "routeProcessor3Address": "0x827179dD56d07A7eeA32e3873493835da2866976",
+        "routeProcessor3_2Address": "0x5550D13389bB70F45fCeF58f19f6b6e87F6e747d",
         "uniV2Router02Address": "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
         "zeroEx": {
             "apiUrl": "https://api.0x.org/",
@@ -551,6 +553,7 @@
         "chainId": 43114,
         "explorer": "https://snowtrace.io/",
         "routeProcessor3Address": "0x717b7948AA264DeCf4D780aa6914482e5F46Da3e",
+        "routeProcessor3_2Address": "0x8f54301F315C56c112D492D9443047D4745dbe9e",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://avalanche.api.0x.org/",
@@ -643,6 +646,7 @@
         "chainId": 42161,
         "explorer": "https://arbiscan.io/",
         "routeProcessor3Address": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674",
+        "routeProcessor3_2Address": "0x09bD2A33c47746fF03b86BCe4E885D03C74a8E8C",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://arbitrum.api.0x.org/",
@@ -721,6 +725,7 @@
         "chainId": 250,
         "explorer": "https://ftmscan.com/",
         "routeProcessor3Address": "0x2214A42d8e2A1d20635c2cb0664422c528B6A432",
+        "routeProcessor3_2Address": "0xFB70AD5a200d784E7901230E6875d91d5Fa6B68c",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://fantom.api.0x.org/",
@@ -810,6 +815,7 @@
         "chainId": 56,
         "explorer": "https://bscscan.com/",
         "routeProcessor3Address": "0x400d75dAb26bBc18D163AEA3e83D9Ea68F6c1804",
+        "routeProcessor3_2Address": "0xd36990D74b947eC4Ad9f52Fe3D49d14AdDB51E44",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://bsc.api.0x.org/",
@@ -901,6 +907,7 @@
         "chainId": 42220,
         "explorer": "https://celoscan.io/",
         "routeProcessor3Address": "0x2f686751b19a9d91cc3d57d90150Bc767f050066",
+        "routeProcessor3_2Address": "0xaB235da7f52d35fb4551AfBa11BFB56e18774A65",
         "uniV2Router02Address": "0x1421bDe4B10e8dd459b3BCb598810B1337D56842",
         "zeroEx": {
             "apiUrl": "https://celo.api.0x.org/",
@@ -936,6 +943,7 @@
         "chainId": 10,
         "explorer": "https://optimistic.etherscan.io/",
         "routeProcessor3Address": "0x4C5D5234f232BD2D76B96aA33F5AE4FCF0E4BFAb",
+        "routeProcessor3_2Address": "0xEb94EcA012eC0bbB254722FdDa2CE7475875A52B",
         "uniV2Router02Address": "",
         "zeroEx": {
             "apiUrl": "https://optimism.api.0x.org/",

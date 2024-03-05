@@ -455,7 +455,7 @@ const crouterClear = async(
                             fromToken,
                             toToken,
                             arb.address,
-                            config.routeProcessor3Address,
+                            config.routeProcessor3_2Address,
                             // permits
                             // "0.005"
                         );
@@ -477,8 +477,8 @@ const crouterClear = async(
                         exchangeData = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
-                                config.routeProcessor3Address,
-                                config.routeProcessor3Address,
+                                config.routeProcessor3_2Address,
+                                config.routeProcessor3_2Address,
                                 fnData
                             ]
                         );
