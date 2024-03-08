@@ -197,7 +197,7 @@ const srouterClear = async(
                 let choice;
                 for (let j = 0; j < allPromises.length; j++) {
                     if (allPromises[j].status === "fulfilled") {
-                        if (!choice || choice.hop < allPromises[j].value.hop) {
+                        if (!choice || choice.maximumInput.lt(allPromises[j].value.maximumInput)) {
                             choice = allPromises[j].value;
                         }
                     }
@@ -516,7 +516,7 @@ async function checkArb(
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
-                    return {rawtx, hop: j, gasCostInToken, takeOrdersConfigStruct, price};
+                    return {rawtx, maximumInput, gasCostInToken, takeOrdersConfigStruct, price};
                 }
             }
             catch (error) {
