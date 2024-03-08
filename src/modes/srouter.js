@@ -535,7 +535,6 @@ async function checkArb(
                     } as max input, trying with lower amount...`, "\n"
                 );
                 else {
-                    console.log(error, "\n");
                     console.log("\x1b[34m%s\x1b[0m", `could not arb this pair for ${modeText}`, "\n");
                 }
             }
