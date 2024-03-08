@@ -128,7 +128,7 @@ const srouterClear = async(
             } balance, skipping...`;
 
             let ethPrice;
-            const gasPrice = await signer.provider.getGasPrice();
+            const gasPrice = (await signer.provider.getGasPrice()).mul("11").div("10");
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
                     config,
