@@ -549,12 +549,11 @@ async function checkArb(
             }
             catch (error) {
                 succesOrFailure = false;
-                if (error !== "nomatch" && error !== "dryrun" && error !== "failed-exec") {
+                if (error !== "nomatch" && error !== "dryrun") {
                     console.log("\x1b[31m%s\x1b[0m", `>>> Transaction for ${modeText} failed due to:`);
                     console.log(error, "\n");
                     // reason, code, method, transaction, error, stack, message
                 }
-                if (error === "failed-exec") throw `Transaction for ${modeText} execution failed, skipping this pair...`;
                 if (j < hops) console.log(
                     "\x1b[34m%s\x1b[0m",
                     `could not clear ${modeText} with ${ethers.utils.formatEther(
@@ -563,7 +562,10 @@ async function checkArb(
                         bundledOrder.sellTokenSymbol
                     } as max input, trying with lower amount...`, "\n"
                 );
-                else console.log("\x1b[34m%s\x1b[0m", `could not arb this pair for ${modeText}`, "\n");
+                else {
+                    console.log(error, "\n");
+                    console.log("\x1b[34m%s\x1b[0m", `could not arb this pair for ${modeText}`, "\n");
+                }
             }
         }
         maximumInput = succesOrFailure
