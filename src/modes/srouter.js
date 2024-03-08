@@ -412,9 +412,13 @@ async function checkArb(
 
             // filter out orders that are not price match or failed eval when --max-profit is enabled
             // price check is at +2% as a headroom for current block vs tx block
-            if (maxProfit) bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
+            if (!mode && maxProfit) bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
                 v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
             );
+
+            if (bundledOrder.takeOrders.length === 0) {
+                continue;
+            }
 
             console.log(
                 `Current best route price for ${modeText} for this token pair:`,
