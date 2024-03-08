@@ -417,6 +417,7 @@ async function checkArb(
             );
 
             if (bundledOrder.takeOrders.length === 0) {
+                maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
                 continue;
             }
 
