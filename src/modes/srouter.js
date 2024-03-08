@@ -170,62 +170,29 @@ const srouterClear = async(
                     rawtx = undefined;
                 }
             } else {
-                const single = checkArb(
-                    1,
-                    hops,
-                    bundledOrders[i],
-                    dataFetcher,
-                    fromToken,
-                    toToken,
-                    signer,
-                    obSellTokenBalance,
-                    gasPrice,
-                    gasCoveragePercentage,
-                    maxProfit,
-                    maxRatio,
-                    arb,
-                    ethPrice,
-                    config,
-                );
-                const double = checkArb(
-                    2,
-                    hops,
-                    bundledOrders[i],
-                    dataFetcher,
-                    fromToken,
-                    toToken,
-                    signer,
-                    obSellTokenBalance,
-                    gasPrice,
-                    gasCoveragePercentage,
-                    maxProfit,
-                    maxRatio,
-                    arb,
-                    ethPrice,
-                    config,
-                );
-                const triple = checkArb(
-                    3,
-                    hops,
-                    bundledOrders[i],
-                    dataFetcher,
-                    fromToken,
-                    toToken,
-                    signer,
-                    obSellTokenBalance,
-                    gasPrice,
-                    gasCoveragePercentage,
-                    maxProfit,
-                    maxRatio,
-                    arb,
-                    ethPrice,
-                    config,
-                );
-                const allPromises = await Promise.allSettled([
-                    single,
-                    double,
-                    triple
-                ]);
+                const promises = [];
+                for (let j = 1; j < 4; j++) {
+                    promises.push(
+                        checkArb(
+                            j,
+                            hops,
+                            bundledOrders[i],
+                            dataFetcher,
+                            fromToken,
+                            toToken,
+                            signer,
+                            obSellTokenBalance,
+                            gasPrice,
+                            gasCoveragePercentage,
+                            maxProfit,
+                            maxRatio,
+                            arb,
+                            ethPrice,
+                            config,
+                        )
+                    );
+                }
+                const allPromises = await Promise.allSettled(promises);
 
                 let choice;
                 for (let j = 0; j < allPromises.length; j++) {
