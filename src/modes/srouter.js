@@ -129,7 +129,7 @@ const srouterClear = async(
             } balance, skipping...`;
 
             let ethPrice;
-            const gasPrice = await signer.provider.getGasPrice();
+            const gasPrice = (await signer.provider.getGasPrice()).mul("11").div("10");
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
                     config,
@@ -236,7 +236,7 @@ const srouterClear = async(
                         const rawtx = {
                             data: arb.interface.encodeFunctionData("arb", [takeOrdersConfigStruct, "0"]),
                             to: arb.address,
-                            gasPrice : gasPrice.add(gasPrice.div("10"))
+                            gasPrice
                         };
                         console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                         let gasLimit;
@@ -408,7 +408,7 @@ const srouterClear = async(
                         }
                     }
                     catch (error) {
-                        console.log("error :",error)
+                        console.log("error :",error);
                         succesOrFailure = false;
                         if (error !== "nomatch" && error !== "dryrun" && error !== "failed-exec") {
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
