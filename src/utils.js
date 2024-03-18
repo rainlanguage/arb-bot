@@ -8,6 +8,13 @@ const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = 
  * Chain specific fallback data
  */
 const fallbacks = {
+    [ChainId.ARBITRUM_NOVA]: {
+        transport: http("https://nova.arbitrum.io/rpc"),
+        liquidityProviders: [
+            "sushiswapv3",
+            "sushiswapv2"
+        ]
+    },
     [ChainId.ARBITRUM]: {
         transport: [
             http("https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
