@@ -128,7 +128,9 @@ const srouterClear = async(
             } balance, skipping...`;
 
             let ethPrice;
-            const gasPrice = await signer.provider.getGasPrice();
+            const gasPrice = flashbotSigner
+                ? await flashbotSigner.provider.getGasPrice()
+                : await signer.provider.getGasPrice();
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
                     config,
@@ -157,6 +159,7 @@ const srouterClear = async(
                         fromToken,
                         toToken,
                         signer,
+                        flashbotSigner,
                         obSellTokenBalance,
                         gasPrice,
                         gasCoveragePercentage,
@@ -181,6 +184,7 @@ const srouterClear = async(
                             fromToken,
                             toToken,
                             signer,
+                            flashbotSigner,
                             obSellTokenBalance,
                             gasPrice,
                             gasCoveragePercentage,
@@ -348,6 +352,7 @@ async function checkArb(
     fromToken,
     toToken,
     signer,
+    flashbotSigner,
     obSellTokenBalance,
     gasPrice,
     gasCoveragePercentage,
@@ -479,7 +484,9 @@ async function checkArb(
                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                 let gasLimit;
                 try {
-                    gasLimit = await signer.estimateGas(rawtx);
+                    gasLimit = flashbotSigner
+                        ? await flashbotSigner.estimateGas(rawtx)
+                        : await signer.estimateGas(rawtx);
                 }
                 catch {
                     throw "nomatch";
@@ -508,7 +515,9 @@ async function checkArb(
                         ]
                     );
                     try {
-                        await signer.estimateGas(rawtx);
+                        flashbotSigner
+                            ? await flashbotSigner.estimateGas(rawtx)
+                            : await signer.estimateGas(rawtx);
                     }
                     catch {
                         throw "dryrun";

@@ -179,7 +179,9 @@ const routerClear = async(
                 // await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
                 await dataFetcher.fetchPoolsForToken(fromToken, toToken);
                 const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
-                const gasPrice = await signer.provider.getGasPrice();
+                const gasPrice = flashbotSigner
+                    ? await flashbotSigner.provider.getGasPrice()
+                    : await signer.provider.getGasPrice();
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
@@ -333,7 +335,9 @@ const routerClear = async(
                                 gasPrice
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            let gasLimit = await signer.estimateGas(rawtx);
+                            let gasLimit = flashbotSigner
+                                ? await flashbotSigner.estimateGas(rawtx)
+                                : await signer.estimateGas(rawtx);
                             gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
@@ -363,7 +367,9 @@ const routerClear = async(
                                             exchangeData
                                         ]
                                 );
-                                await signer.estimateGas(rawtx);
+                                flashbotSigner
+                                    ? await flashbotSigner.estimateGas(rawtx)
+                                    : await signer.estimateGas(rawtx);
                             }
 
                             try {
