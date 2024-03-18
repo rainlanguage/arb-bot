@@ -128,7 +128,7 @@ const srouterClear = async(
             } balance, skipping...`;
 
             let ethPrice;
-            const gasPrice = (await signer.provider.getGasPrice()).mul("11").div("10");
+            const gasPrice = (await signer.provider.getGasPrice()).mul("102").div("100");
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
                     config,
@@ -484,7 +484,7 @@ async function checkArb(
                 catch {
                     throw "nomatch";
                 }
-                gasLimit = gasLimit.mul("112").div("100");
+                gasLimit = gasLimit.mul("105").div("100");
                 rawtx.gasLimit = gasLimit;
                 const gasCost = gasLimit.mul(gasPrice);
                 const gasCostInToken = ethers.utils.parseUnits(
@@ -498,7 +498,7 @@ async function checkArb(
                 );
                 if (gasCoveragePercentage !== "0") {
                     const headroom = (
-                        Number(gasCoveragePercentage) * 1.2
+                        Number(gasCoveragePercentage) * 1.05
                     ).toFixed();
                     rawtx.data = arb.interface.encodeFunctionData(
                         "arb",

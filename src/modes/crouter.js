@@ -615,7 +615,7 @@ const crouterClear = async(
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                             let gasLimit = await signer.estimateGas(rawtx);
-                            gasLimit = gasLimit.mul("112").div("100");
+                            gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
                             const gasCostInToken = ethers.utils.parseUnits(
@@ -629,7 +629,7 @@ const crouterClear = async(
                             );
                             if (gasCoveragePercentage !== "0") {
                                 const headroom = (
-                                    Number(gasCoveragePercentage) * 1.15
+                                    Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",

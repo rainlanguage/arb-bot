@@ -8,13 +8,6 @@ const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = 
  * Chain specific fallback data
  */
 const fallbacks = {
-    [ChainId.ARBITRUM_NOVA]: {
-        transport: http("https://nova.arbitrum.io/rpc"),
-        liquidityProviders: [
-            "sushiswapv3",
-            "sushiswapv2"
-        ]
-    },
     [ChainId.ARBITRUM]: {
         transport: [
             http("https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w"),
@@ -1610,3 +1603,27 @@ module.exports = {
     createViemClient,
     interpreterV2Eval
 };
+const abi = [
+    "function allowance(address owner, address spender) view returns (uint256)"
+  ]
+async function y() {
+    // setTimeout(() => console.log("yes"), 5000);
+    // const provider  = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/polygon");
+    // return provider.getBlockNumber();
+    const q = new ethers.utils.Interface(abi);
+    console.log(q.fragments);
+}
+y();
+// async function x(a) {
+//     if (a > 0) return Promise.reject("yo");
+//     else return y();
+// }
+
+// (async() => {
+//     try {
+//         console.log(await x(0));
+//     } catch (e) {
+//         console.log(e);
+//     }
+// })();
+
