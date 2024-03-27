@@ -614,9 +614,7 @@ const crouterClear = async(
                                 gasPrice
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            let gasLimit = flashbotSigner
-                                ? await flashbotSigner.estimateGas(rawtx)
-                                : await signer.estimateGas(rawtx);
+                            let gasLimit = await signer.estimateGas(rawtx);
                             gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
@@ -646,9 +644,7 @@ const crouterClear = async(
                                             exchangeData
                                         ]
                                 );
-                                flashbotSigner
-                                    ? await flashbotSigner.estimateGas(rawtx)
-                                    : await signer.estimateGas(rawtx);
+                                await signer.estimateGas(rawtx);
                             }
 
                             try {

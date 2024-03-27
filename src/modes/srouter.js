@@ -157,7 +157,6 @@ const srouterClear = async(
                         fromToken,
                         toToken,
                         signer,
-                        flashbotSigner,
                         obSellTokenBalance,
                         gasPrice,
                         gasCoveragePercentage,
@@ -182,7 +181,6 @@ const srouterClear = async(
                             fromToken,
                             toToken,
                             signer,
-                            flashbotSigner,
                             obSellTokenBalance,
                             gasPrice,
                             gasCoveragePercentage,
@@ -350,7 +348,6 @@ async function checkArb(
     fromToken,
     toToken,
     signer,
-    flashbotSigner,
     obSellTokenBalance,
     gasPrice,
     gasCoveragePercentage,
@@ -482,9 +479,7 @@ async function checkArb(
                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                 let gasLimit;
                 try {
-                    gasLimit = flashbotSigner
-                        ? await flashbotSigner.estimateGas(rawtx)
-                        : await signer.estimateGas(rawtx);
+                    gasLimit = await signer.estimateGas(rawtx);
                 }
                 catch {
                     throw "nomatch";
@@ -513,9 +508,7 @@ async function checkArb(
                         ]
                     );
                     try {
-                        flashbotSigner
-                            ? await flashbotSigner.estimateGas(rawtx)
-                            : await signer.estimateGas(rawtx);
+                        await signer.estimateGas(rawtx);
                     }
                     catch {
                         throw "dryrun";
