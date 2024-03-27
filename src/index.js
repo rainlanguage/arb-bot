@@ -198,6 +198,7 @@ const getConfig = async(
         else throw "invalid timeout, must be an integer greater than 0";
     }
 
+    console.log("\x1b[33m%s\x1b[0m", `current working rpc: ${rpcUrl}`);
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();

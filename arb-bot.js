@@ -180,7 +180,7 @@ const main = async argv => {
 
     appGlobalLogger(
         true,
-        ...rpcs,
+        // ...rpcs,
         options.key,
         options.apiKey
     );
