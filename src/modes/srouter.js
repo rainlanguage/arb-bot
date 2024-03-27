@@ -128,9 +128,7 @@ const srouterClear = async(
             } balance, skipping...`;
 
             let ethPrice;
-            const gasPrice = flashbotSigner
-                ? await flashbotSigner.provider.getGasPrice()
-                : await signer.provider.getGasPrice();
+            const gasPrice = await signer.provider.getGasPrice();
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
                     config,

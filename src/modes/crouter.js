@@ -301,9 +301,7 @@ const crouterClear = async(
                     symbol: bundledOrders[i].buyTokenSymbol
                 });
 
-                const gasPrice = flashbotSigner
-                    ? await flashbotSigner.provider.getGasPrice()
-                    : await signer.provider.getGasPrice();
+                const gasPrice = await signer.provider.getGasPrice();
                 const pricePromises = [
                     dataFetcher.fetchPoolsForToken(fromToken, toToken)
                 ];

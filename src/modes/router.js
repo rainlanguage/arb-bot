@@ -179,9 +179,7 @@ const routerClear = async(
                 // await fetchPoolsForTokenWrapper(dataFetcher, fromToken, toToken);
                 await dataFetcher.fetchPoolsForToken(fromToken, toToken);
                 const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken,toToken);
-                const gasPrice = flashbotSigner
-                    ? await flashbotSigner.provider.getGasPrice()
-                    : await signer.provider.getGasPrice();
+                const gasPrice = await signer.provider.getGasPrice();
                 const route = Router.findBestRoute(
                     pcMap,
                     config.chainId,
