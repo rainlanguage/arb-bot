@@ -34,7 +34,7 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter` or `suniv2`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--arb-contract-type`, Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
@@ -61,6 +61,8 @@ Other optional arguments are:
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
+- `--hops`, Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
+- `--rp32`, Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -107,7 +109,7 @@ which will show:
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url...>             RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter` or `suniv2`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
@@ -129,6 +131,8 @@ which will show:
       --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
       --interpreter-v2               Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
       --no-bundle                    Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
+      --hops <integer>               Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
+      --rp32                         Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -145,7 +149,7 @@ RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.co
 # Option to submit transactions using the flashbot RPC. 
 FLASHBOT_RPC=""
 
-# bot running mode, one of "router", "0x", "curve", "crouter", "srouter"
+# bot running mode, one of "router", "0x", "curve", "crouter", "srouter", "suniv2"
 MODE="router"
 
 # arb contract address
@@ -213,6 +217,9 @@ NO_BUNDLE="false"
 
 # number of hops of binary search in srouter mode, if left unspecified will be 11 by default
 HOPS=11
+
+# Option to use sushi RouteProcessorv3.2, default is v3
+RP3_2="true"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -241,6 +248,8 @@ const configOptions = {
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
   interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
+  hops                  : 6,       // The amount of hops of binary search for sorouter mode
+  rp32                  : true,    // Option to use sushi RouteProcessorv3.2, default is v3
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
@@ -266,7 +275,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const mode = "srouter" // mode can be one of "router" or "0x" or "curve" or "crouter" or "srouter"
+const mode = "srouter" // mode can be one of "router" or "0x" or "curve" or "crouter" or "srouter" or "suniv2"
 const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>

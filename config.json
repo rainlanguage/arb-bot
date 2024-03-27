@@ -1015,5 +1015,42 @@
             "address": "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
             "decimals": 18
         }
+    },
+    {
+        "network": "flare mainnet",
+        "chainId": 14,
+        "explorer": "https://flarescan.com/",
+        "routeProcessor3Address": "0x9B3F1D56D9004e6C69d8247d402F38DE5F87A27c",
+        "uniV2Router02Address": "0x088EeCB467B3968Da36c71F05023A1d3133B2B83",
+        "zeroEx": {
+        },
+        "curve": {
+            "pools": []
+        },
+        "enosys":{
+            "pools": [
+                {
+                    "address": "0x7520005032F43229F606d3ACeae97045b9D6F7ea",
+                    "token0": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d",
+                    "token1": "0x96B41289D90444B8adD57e6F265DB5aE8651DF29"
+                }
+            ]
+        },
+        "nativeToken": {
+            "symbol": "FLR",
+            "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "decimals": 18
+        },
+        "nativeWrappedToken": {
+            "symbol": "WFLR",
+            "address": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d",
+            "decimals": 18
+        },
+        "liquidityProviders": [
+            
+        ],
+        "stableTokens": {
+
+        }
     }
 ]

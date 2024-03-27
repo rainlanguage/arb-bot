@@ -10,6 +10,7 @@ const { zeroExClear } = require("./modes/zeroex");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
+const { suniv2Clear } = require("./modes/suniv2");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
@@ -68,7 +69,11 @@ const configOptions = {
     /**
      * The amount of hops of binary search for sorouter mode
      */
-    hops: 11
+    hops: 11,
+    /**
+     * Option to use sushi RouteProcessorv3.2, default is v3
+     */
+    rp32: false
 };
 
 /**
@@ -236,6 +241,7 @@ const getConfig = async(
     config.usePublicRpcs    = !!options?.usePublicRpcs;
     config.interpreterv2    = !!options?.interpreterv2;
     config.hops             = hops;
+    config.rp32             = !!options?.rp32;
 
     return config;
 };
@@ -258,14 +264,11 @@ const clear = async(
     const _mode = mode.toLowerCase();
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
-    // const prioritization = options.prioritization !== undefined
-    //     ? !!options.prioritization
-    //     : clearOptions.prioritization;
     const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
 
-    if (_mode !== "srouter") {
+    if (_mode !== "srouter" && _mode !== "suniv2") {
         if (!config.arbType) throw "undefined arb contract type";
         if (!/^flash-loan-v[23]$|^order-taker$/.test(config.arbType)) {
             throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
@@ -308,6 +311,15 @@ const clear = async(
     }
     else if (_mode === "srouter") {
         if (majorVersion >= 18) return await srouterClear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            // prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
+    }
+    else if (_mode === "suniv2") {
+        if (majorVersion >= 18) return await suniv2Clear(
             config,
             ordersDetails,
             gasCoveragePercentage,
