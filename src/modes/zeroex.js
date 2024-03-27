@@ -383,6 +383,7 @@ const zeroExClear = async(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"
                                     );
+                                    console.log(tx);
                                     const receipt = config.timeout
                                         ? await promiseTimeout(
                                             tx.wait(),
@@ -390,6 +391,7 @@ const zeroExClear = async(
                                             `Transaction failed to mine after ${config.timeout}ms`
                                         )
                                         : await tx.wait();
+                                    console.log(receipt);
                                     const income = getIncome(signer, receipt);
                                     const clearActualPrice = getActualPrice(
                                         receipt,
