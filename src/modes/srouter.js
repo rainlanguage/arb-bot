@@ -34,7 +34,7 @@ const srouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
+    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpcs);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;

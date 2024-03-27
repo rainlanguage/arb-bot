@@ -270,7 +270,7 @@ const curveClear = async(
     }
 
     const report = [];
-    const viemClient = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const viemClient = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpcs);
     const dataFetcher = getDataFetcher(viemClient, processLps(config.lps, config.chainId));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {

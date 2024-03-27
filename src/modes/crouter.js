@@ -158,7 +158,7 @@ const crouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const viemClient        = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const viemClient        = createViemClient(config.chainId, [config.rpc],!!config.usePublicRpcs);
     const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
