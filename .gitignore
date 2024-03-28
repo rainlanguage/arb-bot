@@ -1,16 +1,17 @@
 ## Deps
 node_modules
 
+## Private
+.env
+
+## That one annoying file
+.DS_Store
+
 ## Generated
 cache
 /contracts
 artifacts
 logs.txt
 logs
-
-## Private
-.env
-
-## That one annoying file
-.DS_Store
+docs
 mem-cache

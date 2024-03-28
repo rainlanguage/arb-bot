@@ -1,6 +1,6 @@
 const { ethers, BigNumber } = require("ethers");
 const { createPublicClient, http, fallback } = require("viem");
-const { erc20Abi, interpreterAbi, interpreterV2Abi } = require("./abis");
+const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi } = require("./abis");
 const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = require("sushiswap-router");
 
 
@@ -1223,7 +1223,7 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
  * @param {...any} data - The optinnal data to hide
  */
 const appGlobalLogger = (scrub, ...data) => {
-    const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
+    // const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
     // Stringifies an object
@@ -1284,7 +1284,7 @@ const appGlobalLogger = (scrub, ...data) => {
         const orgConsole = console[methodName];
         console[methodName] = function (...params) {
             const modifiedParams = [];
-            const shortenedLogs = [];
+            // const shortenedLogs = [];
             for (let i = 0; i < params.length; i++) {
                 let logItem = params[i];
                 if (
@@ -1301,33 +1301,33 @@ const appGlobalLogger = (scrub, ...data) => {
                             "**********"
                         );
                     }
-                    logItem = logItem.replace(
-                        largeDataPattern,
-                        largeData => {
-                            if (!shortenedLogs.includes(largeData)) {
-                                shortenedLogs.push(largeData);
-                                return largeData;
-                            }
-                            else return largeData.slice(0, 67) + "...";
-                        }
-                    );
+                    // logItem = logItem.replace(
+                    //     largeDataPattern,
+                    //     largeData => {
+                    //         if (!shortenedLogs.includes(largeData)) {
+                    //             shortenedLogs.push(largeData);
+                    //             return largeData;
+                    //         }
+                    //         else return largeData.slice(0, 67) + "...";
+                    //     }
+                    // );
                 }
                 else if (typeof logItem === "object" && logItem !== null) {
                     logItem = objStringify(logItem);
                     if (scrub) for (let j = 0; j < _data.length; j++) {
                         logItem = objStrReplacer(logItem, _data[j], "**********");
                     }
-                    logItem = objStrReplacer(
-                        logItem,
-                        largeDataPattern,
-                        largeData => {
-                            if (!shortenedLogs.includes(largeData)) {
-                                shortenedLogs.push(largeData);
-                                return largeData;
-                            }
-                            else return largeData.slice(0, 67) + "...";
-                        }
-                    );
+                    // logItem = objStrReplacer(
+                    //     logItem,
+                    //     largeDataPattern,
+                    //     largeData => {
+                    //         if (!shortenedLogs.includes(largeData)) {
+                    //             shortenedLogs.push(largeData);
+                    //             return largeData;
+                    //         }
+                    //         else return largeData.slice(0, 67) + "...";
+                    //     }
+                    // );
                 }
                 modifiedParams.push(logItem);
             }
@@ -1582,6 +1582,61 @@ const shuffleArray = (array) => {
     return array;
 };
 
+// Get UniswapV2 pool amount out for token
+const getAmountOutFlareSwap = async(
+    signer,
+    uniswapV2Router,
+    fromToken,
+    amountIn,
+    toToken,
+    toTokenDecimals
+) => {
+    const swapRouter = new ethers.Contract(uniswapV2Router, uniswapV2Route02Abi, signer);
+    const amountOutBN = await swapRouter.getAmountsOut(amountIn, [fromToken,toToken]);
+    if (amountOutBN[1]) return ethers.utils.formatUnits(amountOutBN[1], toTokenDecimals);
+    return undefined;
+};
+
+// Get UniswapV2 route for tokens.
+const getUniV2Route = (config,fromTokenAddress,toTokenAddress,toAddress) => {
+    const pool = config.enosys.pools.filter(e => {
+        if(
+            (
+                e.token0.toLowerCase() == fromTokenAddress.toLowerCase() &&
+                e.token1.toLowerCase() == toTokenAddress.toLowerCase()
+            )
+            ||
+            (
+                e.token0.toLowerCase() == toTokenAddress.toLowerCase() &&
+                e.token1.toLowerCase() == fromTokenAddress.toLowerCase()
+            )
+        ) return true;
+        else return false;
+    });
+    if(pool.length == 0) throw "UniswapV2 LP pool not found";
+
+    return getUniV2RouteData(pool[0],fromTokenAddress,toAddress);
+
+};
+
+const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
+
+    const offeringToken = ethers.BigNumber.from(fromTokenAddress);
+    const token0 = ethers.BigNumber.from(uniV2Pool.token0);
+    const token1 = ethers.BigNumber.from(uniV2Pool.token1);
+
+    const poolDirection = token0.lt(token1) ?
+        (offeringToken.eq(token0) ? "01" : "00") :
+        (offeringToken.eq(token1) ? "00" : "01");
+
+    return  "0x02"+
+            `${fromTokenAddress.toString().split("x")[1]}` +
+            "01ffff00" +
+            `${uniV2Pool.address.split("x")[1]}` +
+            `${poolDirection}` +
+            `${toAddress.toString().split("x")[1]}`;
+};
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1608,5 +1663,8 @@ module.exports = {
     build0xQueries,
     shuffleArray,
     createViemClient,
-    interpreterV2Eval
+    interpreterV2Eval,
+    getAmountOutFlareSwap,
+    getUniV2Route,
+    getUniV2RouteData,
 };

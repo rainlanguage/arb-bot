@@ -34,6 +34,7 @@ const ENV_OPTIONS = {
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     hops                : process?.env?.HOPS,
+    rp32                : process?.env?.RP3_2?.toLowerCase() === "true" ? true : false,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -46,7 +47,7 @@ const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
-        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables")
+        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter` or `suniv2`, Will override the 'MODE' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
@@ -68,7 +69,8 @@ const getOptions = async argv => {
         .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
-        .option("--hops <integer>", "Option to specify how many hops the binary search should o in srouter mode, default is 11 is left unspecified, Will override the 'HOPS' in env variables")
+        .option("--hops <integer>", "Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
+        .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -104,6 +106,7 @@ const getOptions = async argv => {
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
     cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
+    cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
@@ -136,6 +139,7 @@ const arbRound = async options => {
             interpreterv2       : options.interpreterv2,
             bundle              : options.bundle,
             hops                : options.hops,
+            rp32                : options.rp32,
             liquidityProviders  : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
@@ -180,7 +184,7 @@ const main = async argv => {
 
     appGlobalLogger(
         true,
-        ...rpcs,
+        // ...rpcs,
         options.key,
         options.apiKey
     );

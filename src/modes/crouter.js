@@ -158,7 +158,7 @@ const crouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const viemClient        = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const viemClient        = createViemClient(config.chainId, [config.rpc],!!config.usePublicRpcs);
     const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -455,7 +455,9 @@ const crouterClear = async(
                             fromToken,
                             toToken,
                             arb.address,
-                            config.routeProcessor3_2Address,
+                            config.rp32
+                                ? config.routeProcessor3_2Address
+                                : config.routeProcessor3Address,
                             // permits
                             // "0.005"
                         );
@@ -477,8 +479,12 @@ const crouterClear = async(
                         exchangeData = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
-                                config.routeProcessor3_2Address,
-                                config.routeProcessor3_2Address,
+                                config.rp32
+                                    ? config.routeProcessor3_2Address
+                                    : config.routeProcessor3Address,
+                                config.rp32
+                                    ? config.routeProcessor3_2Address
+                                    : config.routeProcessor3Address,
                                 fnData
                             ]
                         );
@@ -615,7 +621,7 @@ const crouterClear = async(
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                             let gasLimit = await signer.estimateGas(rawtx);
-                            gasLimit = gasLimit.mul("112").div("100");
+                            gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
                             const gasCostInToken = ethers.utils.parseUnits(
@@ -629,7 +635,7 @@ const crouterClear = async(
                             );
                             if (gasCoveragePercentage !== "0") {
                                 const headroom = (
-                                    Number(gasCoveragePercentage) * 1.15
+                                    Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
@@ -663,15 +669,23 @@ const crouterClear = async(
                                         ]
                                 );
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                const tx = flashbotSigner !== undefined
-                                    ? await flashbotSigner.sendTransaction(rawtx)
-                                    : await signer.sendTransaction(rawtx);
+                                const tx = config.timeout
+                                    ? await promiseTimeout(
+                                        (flashbotSigner !== undefined
+                                            ? flashbotSigner.sendTransaction(rawtx)
+                                            : signer.sendTransaction(rawtx)),
+                                        config.timeout,
+                                        `Transaction failed to get submitted after ${config.timeout}ms`
+                                    )
+                                    : flashbotSigner !== undefined
+                                        ? await flashbotSigner.sendTransaction(rawtx)
+                                        : await signer.sendTransaction(rawtx);
                                 console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
-
+                                console.log(tx);
                                 const receipt = config.timeout
                                     ? await promiseTimeout(
                                         tx.wait(),
@@ -679,6 +693,7 @@ const crouterClear = async(
                                         `Transaction failed to mine after ${config.timeout}ms`
                                     )
                                     : await tx.wait();
+                                console.log(receipt);
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,

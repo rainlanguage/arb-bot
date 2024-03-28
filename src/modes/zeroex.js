@@ -366,15 +366,24 @@ const zeroExClear = async(
                                             ]
                                     );
                                     console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                    const tx = flashbotSigner !== undefined
-                                        ? await flashbotSigner.sendTransaction(rawtx)
-                                        : await signer.sendTransaction(rawtx);
+                                    const tx = config.timeout
+                                        ? await promiseTimeout(
+                                            (flashbotSigner !== undefined
+                                                ? flashbotSigner.sendTransaction(rawtx)
+                                                : signer.sendTransaction(rawtx)),
+                                            config.timeout,
+                                            `Transaction failed to get submitted after ${config.timeout}ms`
+                                        )
+                                        : flashbotSigner !== undefined
+                                            ? await flashbotSigner.sendTransaction(rawtx)
+                                            : await signer.sendTransaction(rawtx);
 
                                     console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                     console.log(
                                         ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                         "\n"
                                     );
+                                    console.log(tx);
                                     const receipt = config.timeout
                                         ? await promiseTimeout(
                                             tx.wait(),
@@ -382,6 +391,7 @@ const zeroExClear = async(
                                             `Transaction failed to mine after ${config.timeout}ms`
                                         )
                                         : await tx.wait();
+                                    console.log(receipt);
                                     const income = getIncome(signer, receipt);
                                     const clearActualPrice = getActualPrice(
                                         receipt,
