@@ -575,7 +575,7 @@ const curveClear = async(
                                         `Transaction failed to mine after ${config.timeout}ms`
                                     )
                                     : await tx.wait();
-                                console.log(receipt);
+
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,

@@ -246,7 +246,7 @@ const srouterClear = async(
                             `Transaction failed to mine after ${config.timeout}ms`
                         )
                         : await tx.wait();
-                    console.log(receipt);
+
                     if (receipt.status === 1) {
                         const clearActualAmount = getActualClearAmount(
                             arbAddress,
