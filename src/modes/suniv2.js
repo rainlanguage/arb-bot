@@ -53,7 +53,7 @@ const suniv2Clear = async(
 
     console.log(
         "------------------------- Starting The",
-        "\x1b[32mS-ROUTER\x1b[0m",
+        "\x1b[32mSUNIV2\x1b[0m",
         "Mode -------------------------",
         "\n"
     );
