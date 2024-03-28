@@ -1,5 +1,5 @@
 name: Standard Publish
-
+permissions: write-all
 on:
   push:
     branches:
