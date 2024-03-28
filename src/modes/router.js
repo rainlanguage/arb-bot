@@ -33,7 +33,7 @@ const routerClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpc);
+    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpcs);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -256,7 +256,9 @@ const routerClear = async(
                         fromToken,
                         toToken,
                         arb.address,
-                        config.routeProcessor3Address,
+                        config.rp32
+                            ? config.routeProcessor3_2Address
+                            : config.routeProcessor3Address,
                         // permits
                         // "0.005"
                     );
@@ -297,8 +299,12 @@ const routerClear = async(
                         const exchangeData = ethers.utils.defaultAbiCoder.encode(
                             ["address", "address", "bytes"],
                             [
-                                config.routeProcessor3Address,
-                                config.routeProcessor3Address,
+                                config.rp32
+                                    ? config.routeProcessor3_2Address
+                                    : config.routeProcessor3Address,
+                                config.rp32
+                                    ? config.routeProcessor3_2Address
+                                    : config.routeProcessor3Address,
                                 fnData
                             ]
                         );
@@ -334,7 +340,7 @@ const routerClear = async(
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                             let gasLimit = await signer.estimateGas(rawtx);
-                            gasLimit = gasLimit.mul("112").div("100");
+                            gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
                             const gasCostInToken = ethers.utils.parseUnits(
@@ -348,7 +354,7 @@ const routerClear = async(
                             );
                             if (gasCoveragePercentage !== "0") {
                                 const headroom = (
-                                    Number(gasCoveragePercentage) * 1.15
+                                    Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
@@ -382,14 +388,23 @@ const routerClear = async(
                                         ]
                                 );
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                const tx = flashbotSigner !== undefined
-                                    ? await flashbotSigner.sendTransaction(rawtx)
-                                    : await signer.sendTransaction(rawtx);
+                                const tx = config.timeout
+                                    ? await promiseTimeout(
+                                        (flashbotSigner !== undefined
+                                            ? flashbotSigner.sendTransaction(rawtx)
+                                            : signer.sendTransaction(rawtx)),
+                                        config.timeout,
+                                        `Transaction failed to get submitted after ${config.timeout}ms`
+                                    )
+                                    : flashbotSigner !== undefined
+                                        ? await flashbotSigner.sendTransaction(rawtx)
+                                        : await signer.sendTransaction(rawtx);
                                 console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
+                                console.log(tx);
                                 const receipt = config.timeout
                                     ? await promiseTimeout(
                                         tx.wait(),
@@ -397,6 +412,7 @@ const routerClear = async(
                                         `Transaction failed to mine after ${config.timeout}ms`
                                     )
                                     : await tx.wait();
+
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,

@@ -1,21 +1,18 @@
 const ethers = require("ethers");
 const { arbAbis, orderbookAbi } = require("../abis");
-const { Router, Token } = require("sushiswap-router");
+const { Token } = require("sushiswap-router");
 const {
     getIncome,
-    processLps,
-    getEthPrice,
-    getDataFetcher,
     getActualPrice,
-    visualizeRoute,
     promiseTimeout,
     bundleTakeOrders,
-    getActualClearAmount
+    getActualClearAmount,
+    getAmountOutFlareSwap,
+    getUniV2Route
 } = require("../utils");
 
-
 /**
- * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with specialized router contract
+ * Main function that gets order details from subgraph, bundles the ones that have balance and tries clearing them with specialized router contract specifically for flare mainnet
  *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
@@ -23,18 +20,18 @@ const {
  * for it to be considered profitable and get submitted
  * @returns The report of details of cleared orders
  */
-const srouterClear = async(
+const suniv2Clear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100"
 ) => {
+
+    if (!config.uniV2Router02Address) throw "no univ2Router contract address is specified for this network";
     if (
         gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
-    const lps               = processLps(config.lps, config.chainId);
-    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpcs);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -65,6 +62,7 @@ const srouterClear = async(
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
     let bundledOrders = [];
+
     if (ordersDetails.length) {
         console.log(
             "------------------------- Bundling Orders -------------------------", "\n"
@@ -130,12 +128,13 @@ const srouterClear = async(
             let ethPrice;
             const gasPrice = await signer.provider.getGasPrice();
             try {
-                if (gasCoveragePercentage !== "0") ethPrice = await getEthPrice(
-                    config,
+                if (gasCoveragePercentage !== "0") ethPrice = await getAmountOutFlareSwap(
+                    signer,
+                    config.uniV2Router02Address,
+                    config.nativeWrappedToken.address,
+                    "1" + "0".repeat(config.nativeWrappedToken.decimals),
                     bundledOrders[i].buyToken,
-                    bundledOrders[i].buyTokenDecimals,
-                    gasPrice,
-                    dataFetcher
+                    bundledOrders[i].buyTokenDecimals
                 );
                 else ethPrice = "0";
                 if (ethPrice === undefined) throw "could not find a route for ETH price, skipping...";
@@ -144,8 +143,6 @@ const srouterClear = async(
                 throw "could not get ETH price, skipping...";
             }
 
-            await dataFetcher.fetchPoolsForToken(fromToken, toToken);
-
             let rawtx, gasCostInToken, takeOrdersConfigStruct, price;
             if (config.bundle) {
                 try {
@@ -153,7 +150,6 @@ const srouterClear = async(
                         0,
                         hops,
                         bundledOrders[i],
-                        dataFetcher,
                         fromToken,
                         toToken,
                         signer,
@@ -177,7 +173,6 @@ const srouterClear = async(
                             j,
                             hops,
                             bundledOrders[i],
-                            dataFetcher,
                             fromToken,
                             toToken,
                             signer,
@@ -211,6 +206,7 @@ const srouterClear = async(
                 console.log("\x1b[31m%s\x1b[0m", "found no match for this pair...");
             }
             else {
+                // submit the tx only if dry runs with headroom is passed
                 try {
                     console.log(">>> Trying to submit the transaction...", "\n");
                     rawtx.data = arb.interface.encodeFunctionData(
@@ -354,7 +350,6 @@ async function checkArb(
     mode,
     hops,
     bundledOrder,
-    dataFetcher,
     fromToken,
     toToken,
     signer,
@@ -388,22 +383,15 @@ async function checkArb(
         } as maximum input`);
         console.log(`>>> Getting best route ${modeText}`, "\n");
 
-        const pcMap = dataFetcher.getCurrentPoolCodeMap(
-            fromToken,
-            toToken
+        const amountOut = await getAmountOutFlareSwap(
+            signer,
+            config.uniV2Router02Address,
+            fromToken.address,
+            "1" + "0".repeat(config.nativeWrappedToken.decimals),
+            toToken.address,
+            toToken.decimals
         );
-        const route = Router.findBestRoute(
-            pcMap,
-            config.chainId,
-            fromToken,
-            maximumInput,
-            toToken,
-            gasPrice.toNumber(),
-            // 30e9,
-            // providers,
-            // poolFilter
-        );
-        if (route.status == "NoWay") {
+        if (amountOut === undefined) {
             succesOrFailure = false;
             console.log(
                 "\x1b[31m%s\x1b[0m",
@@ -415,7 +403,8 @@ async function checkArb(
             );
         }
         else {
-            const rateFixed = route.amountOutBN.mul(
+            const amountOutBN = ethers.utils.parseUnits(amountOut,toToken.decimals);
+            const rateFixed = amountOutBN.mul(
                 "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
             );
             const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
@@ -436,23 +425,14 @@ async function checkArb(
                 `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
                 "\n"
             );
-            console.log(`>>> Route portions for ${modeText}: `, "\n");
-            visualizeRoute(fromToken, toToken, route.legs).forEach(
-                v => console.log("\x1b[36m%s\x1b[0m", v)
-            );
             console.log("");
 
-            const rpParams = Router.routeProcessor2Params(
-                pcMap,
-                route,
-                fromToken,
-                toToken,
-                arb.address,
-                config.rp32 ? config.routeProcessor3_2Address : config.routeProcessor3Address,
-                // permits
-                // "0.005"
+            const routeCode = getUniV2Route(
+                config,
+                fromToken.address,
+                toToken.address,
+                arb.address
             );
-
             const orders = mode === 0
                 ? bundledOrder.takeOrders.map(v => v.takeOrder)
                 : mode === 1
@@ -475,7 +455,7 @@ async function checkArb(
                 orders,
                 data: ethers.utils.defaultAbiCoder.encode(
                     ["bytes"],
-                    [rpParams.routeCode]
+                    [routeCode]
                 )
             };
 
@@ -557,5 +537,5 @@ async function checkArb(
 }
 
 module.exports = {
-    srouterClear
+    suniv2Clear
 };

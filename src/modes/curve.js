@@ -270,7 +270,7 @@ const curveClear = async(
     }
 
     const report = [];
-    const viemClient = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpc);
+    const viemClient = createViemClient(config.chainId, [config.rpc], !!config.usePublicRpcs);
     const dataFetcher = getDataFetcher(viemClient, processLps(config.lps, config.chainId));
     for (let i = 0; i < bundledOrders.length; i++) {
         try {
@@ -503,7 +503,7 @@ const curveClear = async(
                             };
                             console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
                             let gasLimit = await signer.estimateGas(rawtx);
-                            gasLimit = gasLimit.mul("112").div("100");
+                            gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
                             const gasCostInToken = ethers.utils.parseUnits(
@@ -517,7 +517,7 @@ const curveClear = async(
                             );
                             if (gasCoveragePercentage !== "0") {
                                 const headroom = (
-                                    Number(gasCoveragePercentage) * 1.15
+                                    Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
@@ -551,15 +551,23 @@ const curveClear = async(
                                         ]
                                 );
                                 console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                                const tx = flashbotSigner !== undefined
-                                    ? await flashbotSigner.sendTransaction(rawtx)
-                                    : await signer.sendTransaction(rawtx);
+                                const tx = config.timeout
+                                    ? await promiseTimeout(
+                                        (flashbotSigner !== undefined
+                                            ? flashbotSigner.sendTransaction(rawtx)
+                                            : signer.sendTransaction(rawtx)),
+                                        config.timeout,
+                                        `Transaction failed to get submitted after ${config.timeout}ms`
+                                    )
+                                    : flashbotSigner !== undefined
+                                        ? await flashbotSigner.sendTransaction(rawtx)
+                                        : await signer.sendTransaction(rawtx);
                                 console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
-
+                                console.log(tx);
                                 const receipt = config.timeout
                                     ? await promiseTimeout(
                                         tx.wait(),
@@ -567,6 +575,7 @@ const curveClear = async(
                                         `Transaction failed to mine after ${config.timeout}ms`
                                     )
                                     : await tx.wait();
+
                                 const income = getIncome(signer, receipt);
                                 const clearActualPrice = getActualPrice(
                                     receipt,
