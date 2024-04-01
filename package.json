@@ -39,7 +39,7 @@
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "sushiswap-router": "github:rouzwelt/sushiswap-router#384e7965883dcefb7195b1fed9ef3a3a0a7cb05f",
+        "sushiswap-router": "github:rouzwelt/sushiswap-router#4c13590286d6ac9312e567b7a60f566e5f782baf",
         "viem": "^1.6.0"
     },
     "devDependencies": {
