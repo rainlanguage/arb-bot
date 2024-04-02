@@ -13,7 +13,7 @@ const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterPars
 
 
 // This test runs on hardhat forked network of polygon
-describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
+describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
     let interpreter,
         store,
         expressionDeployer,
@@ -33,8 +33,7 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         await helpers.reset("https://rpc.ankr.com/arbitrum", 196636675);
 
         [bot, ...owners] = await ethers.getSigners();
-        config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
-        console.log("1");
+        config = CONFIG.find((v) => v.chainId === 42161);
         // deploy contracts
         interpreter = await rainterpreterNPE2Deploy();
         store = await rainterpreterStoreNPE2Deploy();
@@ -45,7 +44,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             parser
         );
         orderbook = await deployOrderBookNPE2(expressionDeployer);
-        console.log(orderbook.address);
         arb = await arbDeploy(
             expressionDeployer,
             orderbook.address,
@@ -60,7 +58,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             config.routeProcessor3_2Address,
             true
         );
-        console.log("2");
         // update config with new addresses
         config.arbAddress = arb.address;
         config.orderbookAddress = orderbook.address;
@@ -71,25 +68,20 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             config.stableTokens.find(v => v.symbol === "USDT").address
         );
         USDTDecimals = config.stableTokens.find(v => v.symbol === "USDT").decimals;
-        console.log("3");
         BJ = await ethers.getContractAt(
             ERC20Artifact.abi,
             "0x9cAAe40DCF950aFEA443119e51E821D6FE2437ca"
         );
-        console.log("4");
         BJDecimals = 18;
 
         // impersonate addresses with large token balances to fund the owners 1 2 3
         // accounts with 1000 tokens each used for topping up the order vaults
         const USDTHolder = await ethers.getImpersonatedSigner("0x8841774533d3d76c170b2a72e1b1542aaa751c4e");
-        console.log("5");
         await bot.sendTransaction({
             value: ethers.utils.parseEther("50"),
             to: USDTHolder.address
         });
-        console.log("6");
         await USDT.connect(USDTHolder).transfer(owners[0].address, "1000" + "0".repeat(USDTDecimals));
-        console.log("7");
     });
 
     it.only("should clear orders in 'srouter' mode using interpreter v2", async function () {
@@ -105,7 +97,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         await USDT
             .connect(owners[0])
             .approve(orderbook.address, depositConfigStruct.amount);
-        console.log("8");
         await orderbook
             .connect(owners[0])
             .deposit(
@@ -113,7 +104,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
                 depositConfigStruct.vaultId,
                 depositConfigStruct.amount
             );
-        console.log("9");
 
         const expConfig = {
             constants: [
@@ -139,7 +129,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             meta: encodeMeta("owner1_order1"),
         };
         const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
-        console.log("10");
         const sgOrders = [];
         // get sg-like order details from tx event
         sgOrders.push(await mockSgFromEvent(
@@ -151,7 +140,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             orderbook,
             [USDT, BJ]
         ));
-        console.log("11");
 
         // check that bot's balance is zero for all tokens
         assert.ok(
@@ -160,7 +148,6 @@ describe.only("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         assert.ok(
             (await BJ.connect(bot).balanceOf(bot.address)).isZero()
         );
-        console.log("12");
 
         // run the clearing process
         config.rpc = "test";

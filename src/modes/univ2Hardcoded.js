@@ -138,7 +138,8 @@ const suniv2HarcodeClear = async(
                 else ethPrice = "0";
                 if (ethPrice === undefined) throw "could not find a route for ETH price, skipping...";
             }
-            catch {
+            catch(e) {
+                console.log(e);
                 throw "could not get ETH price, skipping...";
             }
 
@@ -382,14 +383,29 @@ async function checkArb(
         } as maximum input`);
         console.log(`>>> Getting best route ${modeText}`, "\n");
 
+        console.log(ethPrice);
+        ethPriceToSellToken = await getAmountOutFlareSwap(
+            signer,
+            config.uniV2Router02HardcodedAddress,
+            config.nativeWrappedToken.address,
+            "1" + "0".repeat(config.nativeWrappedToken.decimals),
+            bundledOrder.sellToken,
+            bundledOrder.sellTokenDecimals
+        );
+        console.log(maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)));
+        if (!ethPriceToSellToken) {
+            continue;
+        }
+        // .000 583 605 007 789 435
         const amountOut = await getAmountOutFlareSwap(
             signer,
             config.uniV2Router02HardcodedAddress,
             config.nativeWrappedToken.address,
-            maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPrice)),
+            maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)),
             toToken.address,
             toToken.decimals
         );
+        console.log(amountOut);
         if (amountOut === undefined) {
             succesOrFailure = false;
             console.log(
@@ -434,7 +450,7 @@ async function checkArb(
                     config.univ20Routes[k].sellToken?.toLowerCase() ===
                     fromToken.address.toLowerCase()
                 ) {
-                    routeCode = config.univ20Route.route + arb.address.substring(2);
+                    routeCode = config.univ20Routes.route + arb.address.substring(2);
                 }
             }
             if (!routeCode) {

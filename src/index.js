@@ -269,7 +269,7 @@ const clear = async(
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
 
-    if (_mode !== "srouter" && _mode !== "suniv2") {
+    if (_mode !== "srouter" && _mode !== "suniv2" && _mode !== "univ2hardcode") {
         if (!config.arbType) throw "undefined arb contract type";
         if (!/^flash-loan-v[23]$|^order-taker$/.test(config.arbType)) {
             throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
