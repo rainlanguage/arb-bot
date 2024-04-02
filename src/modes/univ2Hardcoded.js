@@ -405,9 +405,8 @@ async function checkArb(
         //     toToken.address,
         //     toToken.decimals
         // );
-        // console.log(amountOut);
+        const amountOut = undefined
         if (amountOut !== undefined) {
-            succesOrFailure = false;
             console.log(
                 "\x1b[31m%s\x1b[0m",
                 `could not find any route for ${modeText} for this token pair for ${
@@ -450,7 +449,7 @@ async function checkArb(
                     config.univ20Routes[k].sellToken?.toLowerCase() ===
                     fromToken.address.toLowerCase()
                 ) {
-                    routeCode = config.univ20Routes.route + arb.address.substring(2);
+                    routeCode = config.univ20Routes[k].route + arb.address.substring(2);
                 }
             }
             if (!routeCode) {
