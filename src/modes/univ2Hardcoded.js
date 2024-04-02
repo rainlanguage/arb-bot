@@ -129,7 +129,7 @@ const suniv2HarcodeClear = async(
             try {
                 if (gasCoveragePercentage !== "0") ethPrice = await getAmountOutFlareSwap(
                     signer,
-                    config.uniV2Router02Address,
+                    config.uniV2Router02HardcodedAddress,
                     config.nativeWrappedToken.address,
                     "1" + "0".repeat(config.nativeWrappedToken.decimals),
                     bundledOrders[i].buyToken,
