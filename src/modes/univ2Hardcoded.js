@@ -384,9 +384,9 @@ async function checkArb(
 
         const amountOut = await getAmountOutFlareSwap(
             signer,
-            config.uniV2Router02Address,
-            fromToken.address,
-            "1" + "0".repeat(config.nativeWrappedToken.decimals),
+            config.uniV2Router02HardcodedAddress,
+            config.nativeWrappedToken.address,
+            maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPrice)),
             toToken.address,
             toToken.decimals
         );

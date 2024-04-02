@@ -648,6 +648,7 @@
         "routeProcessor3Address": "0xfc506AaA1340b4dedFfd88bE278bEe058952D674",
         "routeProcessor3_2Address": "0x09bD2A33c47746fF03b86BCe4E885D03C74a8E8C",
         "uniV2Router02Address": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+        "uniV2Router02HardcodedAddress": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
         "zeroEx": {
             "apiUrl": "https://arbitrum.api.0x.org/",
             "proxyAddress": "0xdef1c0ded9bec7f1a1670819833240f027b25eff"

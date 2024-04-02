@@ -387,7 +387,7 @@ async function checkArb(
             signer,
             config.uniV2Router02Address,
             fromToken.address,
-            "1" + "0".repeat(config.nativeWrappedToken.decimals),
+            maximumInput.toString(),
             toToken.address,
             toToken.decimals
         );
