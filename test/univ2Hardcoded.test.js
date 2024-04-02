@@ -108,7 +108,7 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         const expConfig = {
             constants: [
                 ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+                "2" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
             ],
             bytecode: "0x020000000c02020002010000000100000100000000"
         };
@@ -172,7 +172,7 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
                 BJ.address,
                 BJ_vaultId
             )).toString(),
-            "500000000000000000"
+            "200000000000000000"
         );
         assert.equal(
             (await orderbook.vaultBalance(

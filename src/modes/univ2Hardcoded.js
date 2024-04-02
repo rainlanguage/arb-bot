@@ -383,30 +383,30 @@ async function checkArb(
         } as maximum input`);
         console.log(`>>> Getting best route ${modeText}`, "\n");
 
-        console.log(ethPrice);
-        ethPriceToSellToken = await getAmountOutFlareSwap(
-            signer,
-            config.uniV2Router02HardcodedAddress,
-            config.nativeWrappedToken.address,
-            "1" + "0".repeat(config.nativeWrappedToken.decimals),
-            bundledOrder.sellToken,
-            bundledOrder.sellTokenDecimals
-        );
-        console.log(maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)));
-        if (!ethPriceToSellToken) {
-            continue;
-        }
-        // .000 583 605 007 789 435
-        const amountOut = await getAmountOutFlareSwap(
-            signer,
-            config.uniV2Router02HardcodedAddress,
-            config.nativeWrappedToken.address,
-            maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)),
-            toToken.address,
-            toToken.decimals
-        );
-        console.log(amountOut);
-        if (amountOut === undefined) {
+        // console.log(ethPrice);
+        // ethPriceToSellToken = await getAmountOutFlareSwap(
+        //     signer,
+        //     config.uniV2Router02HardcodedAddress,
+        //     config.nativeWrappedToken.address,
+        //     "1" + "0".repeat(config.nativeWrappedToken.decimals),
+        //     bundledOrder.sellToken,
+        //     bundledOrder.sellTokenDecimals
+        // );
+        // console.log(maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)));
+        // if (!ethPriceToSellToken) {
+        //     continue;
+        // }
+        // // .000 583 605 007 789 435
+        // const amountOut = await getAmountOutFlareSwap(
+        //     signer,
+        //     config.uniV2Router02HardcodedAddress,
+        //     config.nativeWrappedToken.address,
+        //     maximumInputFixed.mul("1" + "0".repeat(config.nativeWrappedToken.decimals)).div(ethers.utils.parseEther(ethPriceToSellToken)),
+        //     toToken.address,
+        //     toToken.decimals
+        // );
+        // console.log(amountOut);
+        if (amountOut !== undefined) {
             succesOrFailure = false;
             console.log(
                 "\x1b[31m%s\x1b[0m",
@@ -418,29 +418,29 @@ async function checkArb(
             );
         }
         else {
-            const amountOutBN = ethers.utils.parseUnits(amountOut,toToken.decimals);
-            const rateFixed = amountOutBN.mul(
-                "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
-            );
-            const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
+            // const amountOutBN = ethers.utils.parseUnits(amountOut,toToken.decimals);
+            // const rateFixed = amountOutBN.mul(
+            //     "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
+            // );
+            // const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
 
-            // filter out orders that are not price match or failed eval when --max-profit is enabled
-            // price check is at +2% as a headroom for current block vs tx block
-            if (!mode && maxProfit) bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
-                v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
-            );
+            // // filter out orders that are not price match or failed eval when --max-profit is enabled
+            // // price check is at +2% as a headroom for current block vs tx block
+            // if (!mode && maxProfit) bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
+            //     v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
+            // );
 
             if (bundledOrder.takeOrders.length === 0) {
                 maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
                 continue;
             }
 
-            console.log(
-                `Current best route price for ${modeText} for this token pair:`,
-                `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
-                "\n"
-            );
-            console.log("");
+            // console.log(
+            //     `Current best route price for ${modeText} for this token pair:`,
+            //     `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
+            //     "\n"
+            // );
+            // console.log("");
 
             let routeCode;
             for (let k = 0; k < config.univ20Routes?.length ?? 0; k++) {
@@ -475,7 +475,7 @@ async function checkArb(
             const takeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
                 maximumInput,
-                maximumIORatio: maxRatio ? ethers.constants.MaxUint256 : price,
+                maximumIORatio: ethers.constants.MaxUint256,
                 orders,
                 data: ethers.utils.defaultAbiCoder.encode(
                     ["bytes"],
@@ -530,7 +530,10 @@ async function checkArb(
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
-                    return {rawtx, maximumInput, gasCostInToken, takeOrdersConfigStruct, price};
+                    return {
+                        rawtx, maximumInput, gasCostInToken, takeOrdersConfigStruct,
+                        price: ethers.constants.Zero
+                    };
                 }
             }
             catch (error) {
