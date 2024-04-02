@@ -11,6 +11,7 @@ const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
 const { suniv2Clear } = require("./modes/suniv2");
+const { suniv2HarcodeClear } = require("./modes/univ2Hardcoded");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
@@ -320,6 +321,15 @@ const clear = async(
     }
     else if (_mode === "suniv2") {
         if (majorVersion >= 18) return await suniv2Clear(
+            config,
+            ordersDetails,
+            gasCoveragePercentage,
+            // prioritization
+        );
+        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
+    }
+    else if (_mode === "univ2hardcode") {
+        if (majorVersion >= 18) return await suniv2HarcodeClear(
             config,
             ordersDetails,
             gasCoveragePercentage,

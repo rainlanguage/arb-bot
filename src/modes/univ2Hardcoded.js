@@ -19,7 +19,7 @@ const {
  * for it to be considered profitable and get submitted
  * @returns The report of details of cleared orders
  */
-const suniv2Clear = async(
+const suniv2HarcodeClear = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100"
@@ -427,11 +427,17 @@ async function checkArb(
             console.log("");
 
             let routeCode;
-            if (config.univ20Route?.buyToken?.toLowerCase() === toToken.address.toLowerCase() &&
-                config.univ20Route?.sellToken?.toLowerCase() === fromToken.address.toLowerCase()
-            ) {
-                routeCode = config.univ20Route.route + arb.address.substring(2);
-            } else {
+            for (let k = 0; k < config.univ20Routes?.length ?? 0; k++) {
+                if (
+                    config.univ20Routes[k].buyToken?.toLowerCase() ===
+                    toToken.address.toLowerCase() &&
+                    config.univ20Routes[k].sellToken?.toLowerCase() ===
+                    fromToken.address.toLowerCase()
+                ) {
+                    routeCode = config.univ20Route.route + arb.address.substring(2);
+                }
+            }
+            if (!routeCode) {
                 console.log("found no route");
                 continue;
             }
@@ -539,5 +545,5 @@ async function checkArb(
 }
 
 module.exports = {
-    suniv2Clear
+    suniv2HarcodeClear
 };
