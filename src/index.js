@@ -220,11 +220,10 @@ const getConfig = async(
     if (options.hops) {
         if (/^\d+$/.test(options.hops)) {
             hops = Number(options.hops);
-            if (v === 0) throw "invalid hops value, must be an integer greater than 0";
+            if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
         }
         else throw "invalid hops value, must be an integer greater than 0";
     }
-
 
     config.rpc              = rpcUrl;
     config.signer           = signer;

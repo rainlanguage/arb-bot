@@ -387,7 +387,7 @@ async function checkArb(
             signer,
             config.uniV2Router02Address,
             fromToken.address,
-            "1" + "0".repeat(config.nativeWrappedToken.decimals),
+            maximumInput,
             toToken.address,
             toToken.decimals
         );
@@ -403,7 +403,7 @@ async function checkArb(
             );
         }
         else {
-            const amountOutBN = ethers.utils.parseUnits(amountOut,toToken.decimals);
+            const amountOutBN = ethers.utils.parseUnits(amountOut, toToken.decimals);
             const rateFixed = amountOutBN.mul(
                 "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
             );
