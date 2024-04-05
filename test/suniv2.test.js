@@ -76,7 +76,6 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         // impersonate addresses with large token balances to fund the owners 1 2 3
         // accounts with 1000 tokens each used for topping up the order vaults
         const USDTHolder = await ethers.getImpersonatedSigner("0x09F5e7452d72b4A4e51b77DF1Ec8391e46e5F864");
-        // 9999 746703416985650280
         await bot.sendTransaction({
             value: ethers.utils.parseEther("5"),
             to: USDTHolder.address
