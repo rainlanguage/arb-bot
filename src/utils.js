@@ -1591,6 +1591,9 @@ const getAmountOutFlareSwap = async(
     toToken,
     toTokenDecimals
 ) => {
+    if(fromToken.toLowerCase() == toToken.toLowerCase()){
+        return "1";
+    }
     const swapRouter = new ethers.Contract(uniswapV2Router, uniswapV2Route02Abi, signer);
     const amountOutBN = await swapRouter.getAmountsOut(amountIn, [fromToken,toToken]);
     if (amountOutBN[1]) return ethers.utils.formatUnits(amountOutBN[1], toTokenDecimals);
