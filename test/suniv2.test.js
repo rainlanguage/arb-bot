@@ -7,8 +7,8 @@ const { arbDeploy } = require("./deploy/arbDeploy");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
-const { randomUint256, generateEvaluableConfig, mockSgFromEvent, encodeMeta, getEventArgs } = require("./utils");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
+const { randomUint256, generateEvaluableConfig, mockSgFromEvent, encodeMeta, getEventArgs } = require("./utils");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
 
 
@@ -81,9 +81,15 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
             to: USDTHolder.address
         });
         await USDT.connect(USDTHolder).transfer(owners[0].address, "1000" + "0".repeat(USDTDecimals));
+        const WFLRHolder = await ethers.getImpersonatedSigner("0x7Cd076A634b8B57d429486ff99b0b71094A944Fc");
+        await bot.sendTransaction({
+            value: ethers.utils.parseEther("5"),
+            to: WFLRHolder.address
+        });
+        await WFLR.connect(WFLRHolder).transfer(owners[0].address, "1000" + "0".repeat(WFLRDecimals));
     });
 
-    it("should clear orders in 'srouter' mode using interpreter v2", async function () {
+    it("should clear orders in 'suniv2' mode using interpreter v2 WFLR/eUSDT", async function () {
         // set up vault ids
         const WFLR_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -191,6 +197,117 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
         assert.ok(
             (await WFLR.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+    });
+
+    it("should clear orders in 'suniv2' mode using interpreter v2 eUSDT/WFLR", async function () {
+        // set up vault ids
+        const WFLR_vaultId = ethers.BigNumber.from(randomUint256());
+        const USDT_vaultId = ethers.BigNumber.from(randomUint256());
+
+        const depositConfigStruct = {
+            token: WFLR.address,
+            vaultId: WFLR_vaultId,
+            amount: "100" + "0".repeat(WFLRDecimals),
+        };
+        await WFLR
+            .connect(owners[0])
+            .approve(orderbook.address, depositConfigStruct.amount);
+        await orderbook
+            .connect(owners[0])
+            .deposit(
+                depositConfigStruct.token,
+                depositConfigStruct.vaultId,
+                depositConfigStruct.amount
+            );
+
+        const expConfig = {
+            constants: [
+                ethers.constants.MaxUint256.toHexString(),  // max output
+                "0" + "0".repeat(16)                        // ratio 0.5, for testing purpose to ensure clearance
+            ],
+            bytecode: "0x020000000c02020002010000000100000100000000"
+        };
+        const EvaluableConfig = generateEvaluableConfig(
+            expressionDeployer,
+            expConfig
+        );
+
+        // add orders
+        const owner1_order1 = {
+            validInputs: [
+                { token: USDT.address, decimals: USDTDecimals, vaultId: USDT_vaultId },
+            ],
+            validOutputs: [
+                { token: WFLR.address, decimals: WFLRDecimals, vaultId: WFLR_vaultId },
+            ],
+            evaluableConfig: EvaluableConfig,
+            meta: encodeMeta("owner1_order1"),
+        };
+        const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
+        const sgOrders = [];
+        // get sg-like order details from tx event
+        sgOrders.push(await mockSgFromEvent(
+            await getEventArgs(
+                tx_owner1_order1,
+                "AddOrder",
+                orderbook
+            ),
+            orderbook,
+            [USDT, WFLR]
+        ));
+
+        // check that bot's balance is zero for all tokens
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).isZero()
+        );
+        assert.ok(
+            (await WFLR.connect(bot).balanceOf(bot.address)).isZero()
+        );
+
+        // run the clearing process
+        config.rpc = "test";
+        config.signer = bot;
+        config.interpreterv2 = true;
+        config.hops = 5;
+        config.bundle = true;
+        const reports = await clear("suniv2", config, sgOrders);
+
+        // should have cleared 2 toke pairs bundled orders
+        assert.ok(reports.length == 1);
+
+        // validate first cleared token pair orders
+        assert.equal(reports[0].tokenPair, "eUSDT/WFLR");
+        assert.equal(reports[0].clearedAmount, "100000000000000000000");
+        assert.equal(reports[0].clearedOrders.length, 1);
+
+        // check vault balances for orders in cleared token pair USDT/BJ
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                WFLR.address,
+                WFLR_vaultId
+            )).toString(),
+            "0"
+        );
+        assert.equal(
+            (await orderbook.vaultBalance(
+                owners[0].address,
+                USDT.address,
+                USDT_vaultId
+            )).toString(),
+            "2000000"
+        );
+
+
+        // bot should have received the bounty for cleared orders input token
+        assert.ok(
+            (await USDT.connect(bot).balanceOf(bot.address)).gt("0")
+        );
+
+        // should not have received any bounty for the tokens that were not part of the cleared orders input tokens
+        assert.ok(
+            (await WFLR.connect(bot).balanceOf(bot.address)).isZero()
         );
     });
 });
