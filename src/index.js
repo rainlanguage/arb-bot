@@ -225,7 +225,6 @@ const getConfig = async(
         else throw "invalid hops value, must be an integer greater than 0";
     }
 
-
     config.rpc              = rpcUrl;
     config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
