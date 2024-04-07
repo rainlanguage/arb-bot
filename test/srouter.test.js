@@ -10,6 +10,10 @@ const { deployOrderBook, deployOrderBookNPE2 } = require("./deploy/orderbookDepl
 const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfig } = require("./utils");
 const { rainterpreterExpressionDeployerDeploy, rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
 const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const { Resource } = require("@opentelemetry/resources");
+const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
+const { trace, context } = require("@opentelemetry/api");
 
 
 // This test runs on hardhat forked network of polygon
@@ -33,6 +37,16 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         bot,
         owners,
         config;
+
+    const exporter = new ConsoleSpanExporter();
+    const provider = new BasicTracerProvider({
+        resource: new Resource({
+            [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
+        }),
+    });
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
+    const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {
         // npx hardhat node --fork https://polygon-rpc.com/ --fork-block-number 47102059
@@ -149,6 +163,9 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
     });
 
     it("should clear orders in 'srouter' mode", async function () {
+        const testSpan = tracer.startSpan("test-srouter");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -186,7 +203,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.interpreterv2 = false;
         config.hops = 5;
         config.bundle = true;
-        const reports = await clear("srouter", config, sgOrders);
+        const reports = await clear("srouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -268,9 +285,13 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 
     it("should clear orders in 'srouter' mode using interpreter v2", async function () {
+        const testSpan = tracer.startSpan("test-srouter-int-v2");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -308,7 +329,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.interpreterv2 = true;
         config.hops = 5;
         config.bundle = true;
-        const reports = await clear("srouter", config, sgOrders);
+        const reports = await clear("srouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -390,5 +411,6 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 });

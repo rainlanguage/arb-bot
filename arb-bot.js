@@ -246,15 +246,19 @@ const arbRound = async (tracer, roundCtx, options) => {
 };
 
 const main = async argv => {
-    const exporter = new OTLPTraceExporter({
-        url: "https://in-otel.hyperdx.io/v1/traces",
-        headers: {
-            authorization: process?.env?.HYPERDX_API_KEY,
-        }
-    });
+    const exporter = new OTLPTraceExporter((
+        process?.env?.HYPERDX_API_KEY
+            ? {
+                url: "https://in-otel.hyperdx.io/v1/traces",
+                headers: {
+                    authorization: process?.env?.HYPERDX_API_KEY,
+                }
+            }
+            : {}
+    ));
     const provider = new BasicTracerProvider({
         resource: new Resource({
-            [SEMRESATTRS_SERVICE_NAME]: process?.env?.TRACER_SERVICE_NAME
+            [SEMRESATTRS_SERVICE_NAME]: process?.env?.TRACER_SERVICE_NAME ?? "arb-bot"
         }),
     });
     provider.addSpanProcessor(new BatchSpanProcessor(exporter));

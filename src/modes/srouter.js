@@ -39,7 +39,7 @@ const srouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const dataFetcher       = getDataFetcher(config, lps, !!config.usePublicRpcs);
+    const dataFetcher       = getDataFetcher(config, lps, false);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -86,7 +86,9 @@ const srouterClear = async(
                 maxProfit,
                 config.rpc !== "test",
                 config.interpreterv2,
-                config.bundle
+                config.bundle,
+                tracer,
+                trace.setSpan(context.active(), span)
             );
             const status = {code: SpanStatusCode.OK};
             if (!result.length) status.message = "could not find any orders for current market price or with vault balance";
@@ -183,7 +185,7 @@ const srouterClear = async(
                     span.recordException(getSpanException(e));
                     span.end();
                     console.log("could not get gas price, skipping...");
-                    return Promise.reject(e);
+                    return Promise.reject("could not get gas price");
                 }
             });
             if (gasCoveragePercentage !== "0") {
@@ -204,7 +206,7 @@ const srouterClear = async(
                         span.recordException(getSpanException(e));
                         span.end();
                         console.log("could not get ETH price, skipping...");
-                        return Promise.reject(e);
+                        return Promise.reject("could not get ETH price");
                     }
                 });
             }
@@ -225,7 +227,7 @@ const srouterClear = async(
                         span.recordException(getSpanException(e));
                         span.end();
                         console.log("could not get pool details, skipping...");
-                        return Promise.reject(e);
+                        return Promise.reject("could not get pool details");
                     }
                 }
             );
@@ -429,6 +431,7 @@ const srouterClear = async(
                         "details.clearActualPrice": clearActualPrice,
                     });
                     pairSpan.setStatus({ code: SpanStatusCode.OK, message: "successfuly cleared" });
+
                     report.push({
                         transactionHash: receipt.transactionHash,
                         tokenPair:
@@ -551,6 +554,7 @@ async function dryrun(
             // poolFilter
         );
         if (route.status == "NoWay") {
+            hopSpan.setAttribute("details.route", "no-way");
             hopSpan.setStatus({ code: SpanStatusCode.ERROR });
             hopSpan.end();
             succesOrFailure = false;

@@ -10,6 +10,10 @@ const { deployOrderBook, deployOrderBookNPE2 } = require("./deploy/orderbookDepl
 const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfig } = require("./utils");
 const { rainterpreterExpressionDeployerDeploy, rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
 const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const { Resource } = require("@opentelemetry/resources");
+const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
+const { trace, context } = require("@opentelemetry/api");
 
 
 // This test runs on hardhat forked network of polygon
@@ -34,6 +38,16 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         bot,
         owners,
         config;
+
+    const exporter = new ConsoleSpanExporter();
+    const provider = new BasicTracerProvider({
+        resource: new Resource({
+            [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
+        }),
+    });
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
+    const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {
         // reset network before each test
@@ -157,6 +171,9 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     });
 
     it("should clear orders in 'flash-loan-v2' mode", async function () {
+        const testSpan = tracer.startSpan("test-crouter-flash-loan-v2");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -193,7 +210,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         config.arbType = "flash-loan-v2";
         config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("crouter", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -275,9 +292,12 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 
     it("should clear orders in 'flash-loan-v3' mode", async function () {
+        const testSpan = tracer.startSpan("test-crouter-flash-loan-v3");
+        const ctx = trace.setSpan(context.active(), testSpan);
 
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
@@ -316,7 +336,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         config.arbType = "flash-loan-v3";
         config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("crouter", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -398,9 +418,13 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 
     it("should clear orders in 'order-taker' mode", async function () {
+        const testSpan = tracer.startSpan("test-crouter-order-taker");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -438,7 +462,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         config.arbType = "order-taker";
         config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("crouter", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -520,6 +544,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 
     // it("should clear orders in 'flash-loan-v3' mode using interpreter v2", async function () {
@@ -560,7 +585,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     //     config.lps = ["SushiSwapV2"];
     //     config.arbType = "flash-loan-v3";
     //     config.interpreterv2 = true;
-    //     const reports = await clear("crouter", config, sgOrders);
+    //     const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
     //     // should have cleared 2 toke pairs bundled orders
     //     assert.ok(reports.length == 2);
@@ -645,6 +670,9 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     // });
 
     it("should clear orders in 'order-taker' mode using interpreter v2", async function () {
+        const testSpan = tracer.startSpan("test-crouter-order-taker-int-v2");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const USDC_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -681,7 +709,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
         config.interpreterv2 = true;
-        const reports = await clear("crouter", config, sgOrders);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -763,5 +791,6 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         assert.ok(
             (await FRAX.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 });

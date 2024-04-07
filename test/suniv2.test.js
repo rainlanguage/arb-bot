@@ -10,6 +10,10 @@ const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
 const { randomUint256, generateEvaluableConfig, mockSgFromEvent, encodeMeta, getEventArgs } = require("./utils");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const { Resource } = require("@opentelemetry/resources");
+const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
+const { trace, context } = require("@opentelemetry/api");
 
 
 // This test runs on hardhat forked network of polygon
@@ -26,6 +30,16 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         bot,
         owners,
         config;
+
+    const exporter = new ConsoleSpanExporter();
+    const provider = new BasicTracerProvider({
+        resource: new Resource({
+            [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
+        }),
+    });
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
+    const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {
         // reset network before each test
@@ -90,6 +104,9 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
     });
 
     it("should clear orders in 'suniv2' mode using interpreter v2 WFLR/eUSDT", async function () {
+        const testSpan = tracer.startSpan("test-suniv2");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const WFLR_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -160,7 +177,7 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         config.interpreterv2 = true;
         config.hops = 5;
         config.bundle = true;
-        const reports = await clear("suniv2", config, sgOrders);
+        const reports = await clear("suniv2", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 1);
@@ -198,9 +215,13 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         assert.ok(
             (await WFLR.connect(bot).balanceOf(bot.address)).gt("0")
         );
+        testSpan.end();
     });
 
     it("should clear orders in 'suniv2' mode using interpreter v2 eUSDT/WFLR", async function () {
+        const testSpan = tracer.startSpan("test-suniv2");
+        const ctx = trace.setSpan(context.active(), testSpan);
+
         // set up vault ids
         const WFLR_vaultId = ethers.BigNumber.from(randomUint256());
         const USDT_vaultId = ethers.BigNumber.from(randomUint256());
@@ -271,7 +292,7 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         config.interpreterv2 = true;
         config.hops = 5;
         config.bundle = true;
-        const reports = await clear("suniv2", config, sgOrders);
+        const reports = await clear("suniv2", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 1);
@@ -309,5 +330,6 @@ describe("Rain Arb Bot 'univ2 hardcoded' Mode Tests", async function () {
         assert.ok(
             (await WFLR.connect(bot).balanceOf(bot.address)).isZero()
         );
+        testSpan.end();
     });
 });

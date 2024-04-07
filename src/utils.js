@@ -406,6 +406,8 @@ const interpreterEval = async(
  * @param {object} order - The order details fetched from sg
  * @param {number} inputIndex - The input token index
  * @param {number} outputIndex - The ouput token index
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/api").Context} ctx
  * @returns The ratio and maxOuput as BigNumber
 */
 const interpreterV2Eval = async(
@@ -416,8 +418,24 @@ const interpreterV2Eval = async(
     inputIndex,
     outputIndex,
     inputBalance,
-    outputBalance
+    outputBalance,
+    tracer,
+    ctx
 ) => {
+    const span = tracer.startSpan("eval-order", undefined, ctx);
+    span.setAttributes({
+        "details.order.id": order.id,
+        "details.order.owner": order.owner.id,
+        "details.input.token.address": order.validInputs[inputIndex].token.id,
+        "details.input.token.decimals": order.validInputs[inputIndex].token.decimals,
+        "details.input.token.vaultId": order.validInputs[inputIndex].vault.id.split("-")[0],
+        "details.input.token.balance": inputBalance,
+        "details.output.token.address": order.validOutputs[outputIndex].token.id,
+        "details.output.token.decimals": order.validOutputs[outputIndex].token.decimals,
+        "details.output.token.vaultId": order.validOutputs[outputIndex].vault.id.split("-")[0],
+        "details.output.token.balance": outputBalance,
+    });
+    // const clearProcCtx = trace.setSpan(context.active(), span);
     try {
         const { stack: [ ratio, maxOutput ] } = await interpreter.eval2(
             order.interpreterStore,
@@ -465,9 +483,18 @@ const interpreterV2Eval = async(
             // empty inputs
             []
         );
+        span.setAttributes({
+            "details.result.ratio": ratio,
+            "details.result.maxOutput": maxOutput,
+        });
+        span.setStatus({ code: 1 });
+        span.end();
         return { ratio, maxOutput };
     }
-    catch {
+    catch(e) {
+        span.recordException(this.getSpanException(e));
+        span.setStatus({ code: 2 });
+        span.end();
         return {
             ratio: undefined,
             maxOutput: undefined
@@ -669,6 +696,8 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @param {boolean} _interpreterv2 - If should use eval2 of interpreter v2 for evaling
  * @param {boolean} _bundle = If orders should be bundled based on token pair
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/api").Context} ctx
  * @returns Array of bundled take orders
  */
 const bundleTakeOrders = async(
@@ -678,7 +707,9 @@ const bundleTakeOrders = async(
     _eval = true,
     _shuffle = true,
     _interpreterv2 = false,
-    _bundle = true
+    _bundle = true,
+    tracer,
+    ctx
 ) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
@@ -803,7 +834,9 @@ const bundleTakeOrders = async(
                                     k,
                                     j ,
                                     _inputBalance.toString() ,
-                                    _outputBalance.toString()
+                                    _outputBalance.toString(),
+                                    tracer,
+                                    ctx
                                 )
                                 : await interpreterEval(
                                     new ethers.Contract(
@@ -817,7 +850,9 @@ const bundleTakeOrders = async(
                                     k,
                                     j ,
                                     _inputBalance.toString() ,
-                                    _outputBalance.toString()
+                                    _outputBalance.toString(),
+                                    tracer,
+                                    ctx
                                 )
                             );
 
