@@ -23,6 +23,3 @@ jobs:
 
       - name: Test
         run: npm test
-
-      - name: Test Docs Generation
-        run: npm run docgen

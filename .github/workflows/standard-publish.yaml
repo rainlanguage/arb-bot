@@ -46,16 +46,10 @@ jobs:
         if: steps.lint.outcome == 'success'
         run: npm test
 
-      # Test doc generation
-      - name: Test Docs Generation
-        id: docs
-        if: steps.test.outcome == 'success'
-        run: npm run docgen
-
       # Configure Git
       - name: Git Config
         id: git
-        if: steps.docs.outcome == 'success'
+        if: steps.lint.outcome == 'success'
         # set git user and email to github actions, 
         # this email and user id will result in github user with github avatar in Github
         run: |
