@@ -3,7 +3,8 @@
  */
 const erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
-    "function symbol() public view returns (string memory)"
+    "function symbol() public view returns (string memory)",
+    "function transfer(address to, uint256 amount) external returns (bool)"
 ];
 
 /**

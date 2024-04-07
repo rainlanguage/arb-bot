@@ -3,8 +3,13 @@
 require("dotenv").config();
 const { Command } = require("commander");
 const { version } = require("./package.json");
-const { sleep, appGlobalLogger } = require("./src/utils");
+const { sleep, appGlobalLogger, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
+const { Resource } = require("@opentelemetry/resources");
+const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
+const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 
 
 /**
@@ -112,7 +117,13 @@ const getOptions = async argv => {
     return cmdOptions;
 };
 
-const arbRound = async options => {
+/**
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/sdk-trace-base").Span} roundSpan
+ * @param {import("@opentelemetry/api").Context} roundCtx
+ * @param {*} options
+ */
+const arbRound = async (tracer, roundCtx, options) => {
 
     if (!options.key)               throw "undefined wallet private key";
     if (!options.rpc)               throw "undefined RPC URL";
@@ -120,52 +131,136 @@ const arbRound = async options => {
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
     if (!options.mode)              throw "undefined operating mode";
 
-    const config = await getConfig(
-        options.rpc,
-        options.key,
-        options.orderbookAddress,
-        options.arbAddress,
-        options.arbType,
-        {
-            zeroExApiKey        : options.apiKey,
-            monthlyRatelimit    : options.monthlyRatelimit,
-            maxProfit           : options.maxProfit,
-            maxRatio            : options.maxRatio,
-            usePublicRpcs       : options.usePublicRpcs,
-            flashbotRpc         : options.flashbotRpc,
-            hideSensitiveData   : false,
-            shortenLargeLogs    : false,
-            timeout             : options.timeout,
-            interpreterv2       : options.interpreterv2,
-            bundle              : options.bundle,
-            hops                : options.hops,
-            rp32                : options.rp32,
-            liquidityProviders  : options.lps
-                ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
-                : undefined,
+    const config = await tracer.startActiveSpan("get-config", {}, roundCtx, async (span) => {
+        try {
+            const result = await getConfig(
+                options.rpc,
+                options.key,
+                options.orderbookAddress,
+                options.arbAddress,
+                options.arbType,
+                {
+                    zeroExApiKey        : options.apiKey,
+                    monthlyRatelimit    : options.monthlyRatelimit,
+                    maxProfit           : options.maxProfit,
+                    maxRatio            : options.maxRatio,
+                    usePublicRpcs       : options.usePublicRpcs,
+                    flashbotRpc         : options.flashbotRpc,
+                    hideSensitiveData   : false,
+                    shortenLargeLogs    : false,
+                    timeout             : options.timeout,
+                    interpreterv2       : options.interpreterv2,
+                    bundle              : options.bundle,
+                    hops                : options.hops,
+                    rp32                : options.rp32,
+                    liquidityProviders  : options.lps
+                        ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
+                        : undefined,
+                }
+            );
+            span.setStatus({code: SpanStatusCode.OK});
+            span.end();
+            return result;
+        } catch(e) {
+            span.setStatus({code: SpanStatusCode.ERROR });
+            span.recordException(getSpanException(e));
+            span.end();
+            return Promise.reject(e);
         }
-    );
-    const ordersDetails = await getOrderDetails(
-        options.subgraph,
-        options.orders,
-        config.signer,
-        {
-            orderHash       : options.orderHash,
-            orderOwner      : options.orderOwner,
-            orderInterpreter: options.orderInterpreter
+    });
+
+    const ordersDetails = await tracer.startActiveSpan("get-order-details", {}, roundCtx, async (span) => {
+        try {
+            const result = await getOrderDetails(
+                options.subgraph,
+                options.orders,
+                config.signer,
+                {
+                    orderHash       : options.orderHash,
+                    orderOwner      : options.orderOwner,
+                    orderInterpreter: options.orderInterpreter
+                }
+            );
+            if (result.length) {
+                span.setAttribute("details.orders.json", JSON.stringify(result));
+                span.setStatus({code: SpanStatusCode.OK});
+            }
+            else {
+                span.setStatus({code: SpanStatusCode.OK, message: "found no orders"});
+            }
+            span.end();
+            return result;
+        } catch(e) {
+            span.setStatus({code: SpanStatusCode.ERROR });
+            span.recordException(getSpanException(e));
+            span.end();
+            return Promise.reject(e);
         }
-    );
-    await clear(
-        options.mode,
-        config,
-        ordersDetails,
-        {
-            gasCoveragePercentage: options.gasCoverage
+    });
+
+    if (!ordersDetails.length) return;
+
+    await tracer.startActiveSpan("take-orders", {}, roundCtx, async (span) => {
+        span.setAttributes({
+            "details.config.chainid": options.chainId,
+            "details.config.network": options.network,
+            "details.config.mode": options.mode,
+            "details.config.gasCoveragePercentage": options.gasCoverage ?? "100",
+            "details.config.rpcUrl": config.rpc,
+            "details.config.orderbookAddress": config.orderbookAddress,
+            "details.config.arbAddress": config.arbAddress,
+            "details.config.arbType": config.arbType,
+            "details.config.maxProfit": config.maxProfit,
+            "details.config.maxRatio": config.maxRatio,
+            "details.config.usePublicRpcs": config.usePublicRpcs,
+            "details.config.interpreterV2": config.interpreterv2,
+            "details.config.usesFlashbots": config.flashbotRpc ? true : false,
+        });
+        if (config.mode !== "0x" && config.mode !== "curve" && config.mode !== "suniv2") {
+            span.setAttribute("details.config.sushiRouteProcessorVersion", config.rp32 ? "3.2" : "3.0");
         }
-    );
+        if (config.mode === "srouter" || config.mode === "suniv2") {
+            span.setAttribute("details.config.amountDiscoveryHops", config.hops);
+        }
+        const ctx = trace.setSpan(context.active(), span);
+        try {
+            await clear(
+                options.mode,
+                config,
+                ordersDetails,
+                {
+                    gasCoveragePercentage: options.gasCoverage
+                },
+                tracer,
+                ctx
+            );
+            span.end();
+            return;
+        } catch(e) {
+            span.setStatus({code: SpanStatusCode.ERROR});
+            span.recordException(getSpanException(e));
+            span.end();
+            return Promise.reject(e);
+        }
+    });
 };
 
 const main = async argv => {
+    const exporter = new OTLPTraceExporter({
+        url: "https://in-otel.hyperdx.io/v1/traces",
+        headers: {
+            authorization: process?.env?.HYPERDX_API_KEY,
+        }
+    });
+    const provider = new BasicTracerProvider({
+        resource: new Resource({
+            [SEMRESATTRS_SERVICE_NAME]: process?.env?.TRACER_SERVICE_NAME
+        }),
+    });
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
+    const tracer = provider.getTracer("arb-bot-tracer");
+
     let repetitions = -1;
     const options = await getOptions(argv);
     if (!options.rpc) throw "undefined RPC URL";
@@ -189,39 +284,59 @@ const main = async argv => {
         options.apiKey
     );
 
+    let counter = 0;
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
-        options.rpc = rpcs[rpcTurn];
-        try {
-            await arbRound(options);
-            console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
-            console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
-        }
-        catch (error) {
-            console.log("\x1b[31m%s\x1b[0m", "An error occured during the round: ");
-            console.log(error);
-        }
-        if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
-        else rpcTurn++;
-        await sleep(roundGap);
+        await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
+            const roundCtx = trace.setSpan(context.active(), roundSpan);
+            options.rpc = rpcs[rpcTurn];
+            try {
+                await arbRound(tracer, roundCtx, options);
+                roundSpan.setStatus({code: SpanStatusCode.OK, message: "Round finished successfully!"});
+                console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
+                console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
+            }
+            catch (error) {
+                roundSpan.setStatus({code: SpanStatusCode.ERROR });
+                console.log("\x1b[31m%s\x1b[0m", "An error occured during the round: ");
+                console.log(error);
+            }
+            if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
+            else rpcTurn++;
+            roundSpan.end();
+            await sleep(roundGap);
+            await sleep(2000);
+        });
+        counter++;
     }
     else for (let i = 1; i <= repetitions; i++) {
-        options.rpc = rpcs[rpcTurn];
-        try {
-            await arbRound(options);
-            console.log("\x1b[32m%s\x1b[0m", `Round ${i} finished successfully!`);
-            if (i !== repetitions) console.log(
-                `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
-            );
-        }
-        catch (error) {
-            console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i}:`);
-            console.log(error);
-        }
-        if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
-        else rpcTurn++;
-        await sleep(roundGap);
+        await tracer.startActiveSpan(`round-${i}`, async (roundSpan) => {
+            const roundCtx = trace.setSpan(context.active(), roundSpan);
+            options.rpc = rpcs[rpcTurn];
+            try {
+                await arbRound(tracer, roundCtx, options);
+                roundSpan.setStatus({code: SpanStatusCode.OK, message: "Round finished successfully!"});
+                console.log("\x1b[32m%s\x1b[0m", `Round ${i} finished successfully!`);
+                if (i !== repetitions) console.log(
+                    `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
+                );
+            }
+            catch (error) {
+                roundSpan.setStatus({code: SpanStatusCode.ERROR });
+                console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i}:`);
+                console.log(error);
+            }
+            if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
+            else rpcTurn++;
+            roundSpan.end();
+            await sleep(roundGap);
+            await sleep(2000);
+        });
     }
+
+    // flush and close the connection.
+    await exporter.shutdown();
+    await sleep(10000);
 };
 
 main(

@@ -1637,6 +1637,13 @@ const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
             `${toAddress.toString().split("x")[1]}`;
 };
 
+function getSpanException(error) {
+    if (error instanceof Error && Object.keys(error).length && error.message.includes("providers/5.7.0")) {
+        error.message = JSON.stringify(error);
+    }
+    return error;
+}
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1667,4 +1674,5 @@ module.exports = {
     getAmountOutFlareSwap,
     getUniV2Route,
     getUniV2RouteData,
+    getSpanException
 };
