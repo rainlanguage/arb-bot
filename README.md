@@ -220,6 +220,12 @@ HOPS=11
 
 # Option to use sushi RouteProcessorv3.2, default is v3
 RP3_2="true"
+
+# api key for heyperDx platfomr to send spans to, if not set will send traces to localhost
+HYPERDX_API_KEY=""
+
+# trace/spans service name, defaults to "arb-bot" if not set
+TRACER_SERVICE_NAME=""
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

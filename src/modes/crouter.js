@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { parseAbi } = require("viem");
 const { Router, Token } = require("sushiswap-router");
+const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, routeProcessor3Abi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("../abis");
 const {
     getIncome,
@@ -11,7 +12,8 @@ const {
     visualizeRoute,
     promiseTimeout,
     bundleTakeOrders,
-    createViemClient
+    createViemClient,
+    getSpanException
 } = require("../utils");
 
 
@@ -145,12 +147,16 @@ const setCurveSwaps = (bundledOrders, availableSwaps, config, signer) => {
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction
  * for it to be considered profitable and get submitted
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/api").Context} ctx
  * @returns The report of details of cleared orders
  */
 const crouterClear = async(
     config,
     ordersDetails,
-    gasCoveragePercentage = "100"
+    gasCoveragePercentage = "100",
+    tracer,
+    ctx
 ) => {
     if (
         gasCoveragePercentage < 0 ||
@@ -158,7 +164,7 @@ const crouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps, config.chainId);
-    const viemClient        = createViemClient(config.chainId, [config.rpc],!!config.usePublicRpcs);
+    const viemClient        = createViemClient(config.chainId, [config.rpc], false);
     const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -188,46 +194,75 @@ const crouterClear = async(
     console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
 
     let bundledOrders = [];
-    if (ordersDetails.length) {
-        console.log(
-            "------------------------- Bundling Orders -------------------------", "\n"
-        );
-        bundledOrders = await bundleTakeOrders(
-            ordersDetails,
-            orderbook,
-            arb,
-            undefined,
-            config.rpc !== "test",
-            config.interpreterv2,
-            config.bundle
-        );
-        const availableSwaps = getCurveSwaps(config);
-        bundledOrders = setCurveSwaps(
-            bundledOrders,
-            availableSwaps,
-            config,
-            signer
-        );
-    }
-    else {
-        console.log("No orders found, exiting...", "\n");
-        return;
-    }
+    console.log(
+        "------------------------- Bundling Orders -------------------------", "\n"
+    );
+    bundledOrders = await tracer.startActiveSpan("preparing-orders", {}, ctx, async (span) => {
+        span.setAttributes({
+            "details.doesEval": true,
+            "details.doesBundle": config.bundle
+        });
+        try {
+            const result = await bundleTakeOrders(
+                ordersDetails,
+                orderbook,
+                arb,
+                undefined,
+                config.rpc !== "test",
+                config.interpreterv2,
+                config.bundle,
+                tracer,
+                trace.setSpan(context.active(), span)
+            );
+            const status = {code: SpanStatusCode.OK};
+            if (!result.length) status.message = "could not find any orders for current market price or with vault balance";
+            span.setStatus(status);
+            span.end();
+            return result;
+        } catch (e) {
+            span.setStatus({code: SpanStatusCode.ERROR });
+            span.recordException(getSpanException(e));
+            span.end();
+            return Promise.reject(e);
+        }
+    });
+    const availableSwaps = getCurveSwaps(config);
+    bundledOrders = setCurveSwaps(
+        bundledOrders,
+        availableSwaps,
+        config,
+        signer
+    );
 
     if (!bundledOrders.length) {
         console.log("Could not find any order to clear for current market price, exiting...", "\n");
         return;
     }
 
+    const clearProcSpan = tracer.startSpan("clear-process", undefined, ctx);
+    const clearProcCtx = trace.setSpan(context.active(), clearProcSpan);
+
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
+        const pair = `${
+            bundledOrders[i].buyTokenSymbol
+        }/${
+            bundledOrders[i].sellTokenSymbol
+        }`;
+        const pairSpan = tracer.startSpan(
+            config.bundle ? "bundled-orders" : "single-order",
+            undefined,
+            clearProcCtx
+        );
+        const pairCtx = trace.setSpan(context.active(), pairSpan);
+        pairSpan.setAttributes({
+            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.pair": pair
+        });
+
         try {
             console.log(
-                `------------------------- Trying To Clear ${
-                    bundledOrders[i].buyTokenSymbol
-                }/${
-                    bundledOrders[i].sellTokenSymbol
-                } -------------------------`,
+                `------------------------- Trying To Clear ${pair} -------------------------`,
                 "\n"
             );
             console.log(`Buy Token Address: ${bundledOrders[i].buyToken}`);
@@ -273,10 +308,10 @@ const crouterClear = async(
                 v => !v.quoteAmount.isZero()
             );
 
-            if (!bundledOrders[i].takeOrders.length) console.log(
-                "All orders of this token pair have empty vault balance, skipping...",
-                "\n"
-            );
+            if (!bundledOrders[i].takeOrders.length) {
+                pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault balance"});
+                console.log("All orders of this token pair have empty vault balance, skipping...");
+            }
             else {
                 console.log(">>> Getting best market rate for this token pair", "\n");
 
@@ -301,7 +336,21 @@ const crouterClear = async(
                     symbol: bundledOrders[i].buyTokenSymbol
                 });
 
-                const gasPrice = await signer.provider.getGasPrice();
+                const gasPrice = await tracer.startActiveSpan("getGasPrice", {}, pairCtx, async (span) => {
+                    try {
+                        const result = await signer.provider.getGasPrice();
+                        span.setAttribute("details.price", result.toString());
+                        span.setStatus({code: SpanStatusCode.OK});
+                        span.end();
+                        return result;
+                    } catch(e) {
+                        span.setStatus({code: SpanStatusCode.ERROR });
+                        span.recordException(getSpanException(e));
+                        span.end();
+                        console.log("could not get gas price, skipping...");
+                        return Promise.reject("could not get gas price");
+                    }
+                });
                 const pricePromises = [
                     dataFetcher.fetchPoolsForToken(fromToken, toToken)
                 ];
@@ -363,7 +412,13 @@ const crouterClear = async(
 
                 let rate;
                 let useCurve = false;
-                if (route.status == "NoWay" && topCurveDealPoolIndex === -1) throw "could not find any routes or quote form curve for this token pair";
+                if (route.status == "NoWay" && topCurveDealPoolIndex === -1) {
+                    pairSpan.setAttribute("details.route", "no-way");
+                    pairSpan.setStatus({ code: SpanStatusCode.ERROR });
+                    pairSpan.end();
+                    console.log("could not find any routes or quote form curve for this token pair");
+                    continue;
+                }
                 else if (route.status !== "NoWay" && topCurveDealPoolIndex !== -1) {
                     const curveAmountOut = ethers.BigNumber.from(
                         _res[1].value[topCurveDealPoolIndex].result
@@ -418,6 +473,7 @@ const crouterClear = async(
 
                 const rateFixed = rate.mul("1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals));
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
+                pairSpan.setAttribute("details.price", ethers.utils.formatEther(price));
                 console.log("");
                 console.log(
                     "Current best price for this token pair:",
@@ -429,10 +485,15 @@ const crouterClear = async(
                 bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
                     v => price.gte(v.ratio)
                 );
-                if (!bundledOrders[i].takeOrders.length) console.log(
-                    "All orders of this token pair have higher ratio than current market price, skipping...",
-                    "\n"
-                );
+                pairSpan.addEvent("filtered out orders with lower ratio than current market price");
+
+                if (!bundledOrders[i].takeOrders.length) {
+                    pairSpan.addEvent("all orders had lower ratio than current market price");
+                    console.log(
+                        "All orders of this token pair have higher ratio than current market price, skipping...",
+                        "\n"
+                    );
+                }
                 else {
                     cumulativeAmountFixed = ethers.constants.Zero;
                     bundledOrders[i].takeOrders.forEach(v => {
@@ -441,6 +502,9 @@ const crouterClear = async(
                     const bundledQuoteAmount = cumulativeAmountFixed.div(
                         "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
                     );
+                    pairSpan.setAttributes({
+                        "details.bundledQuoteAmount": bundledQuoteAmount.toString(),
+                    });
 
                     let exchangeData;
                     if (!useCurve) {
@@ -587,21 +651,37 @@ const crouterClear = async(
                         if (arbType === "flash-loan-v3") takeOrdersConfigStruct.data = "0x";
                     }
 
+                    const dryrunSpan = tracer.startSpan("dryrun", undefined, pairCtx);
                     // building and submit the transaction
                     try {
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
-                        const ethPrice = gasCoveragePercentage === "0"
-                            ? "0"
-                            : await getEthPrice(
-                                config,
-                                bundledOrders[i].buyToken,
-                                bundledOrders[i].buyTokenDecimals,
-                                gasPrice,
-                                dataFetcher
-                            );
+                        let ethPrice;
+                        if (gasCoveragePercentage !== "0") {
+                            await tracer.startActiveSpan("getEthPrice", {}, pairCtx, async (span) => {
+                                try {
+                                    ethPrice = await getEthPrice(
+                                        config,
+                                        bundledOrders[i].buyToken,
+                                        bundledOrders[i].buyTokenDecimals,
+                                        gasPrice,
+                                        dataFetcher
+                                    );
+                                    span.setAttribute("details.price", ethPrice);
+                                    span.setStatus({code: SpanStatusCode.OK});
+                                    span.end();
+                                } catch(e) {
+                                    span.setStatus({code: SpanStatusCode.ERROR });
+                                    span.recordException(getSpanException(e));
+                                    span.end();
+                                }
+                            });
+                        }
+                        else ethPrice = "0";
+
                         if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
                         else {
+                            dryrunSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                             const rawtx = {
                                 data: arb.interface.encodeFunctionData(
                                     "arb",
@@ -619,8 +699,21 @@ const crouterClear = async(
                                 to: arb.address,
                                 gasPrice
                             };
-                            console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
-                            let gasLimit = await signer.estimateGas(rawtx);
+
+                            const blockNumber = await signer.provider.getBlockNumber();
+                            dryrunSpan.setAttribute("details.blockNumber", blockNumber);
+                            console.log("Block Number: " + blockNumber, "\n");
+
+                            let gasLimit;
+                            try {
+                                gasLimit = await signer.estimateGas(rawtx);
+                                dryrunSpan.setAttribute("details.estimateGas.value", gasLimit.toString());
+                            }
+                            catch(e) {
+                                dryrunSpan.recordException(getSpanException(e));
+                                throw "nomatch";
+                            }
+
                             gasLimit = gasLimit.mul("105").div("100");
                             rawtx.gasLimit = gasLimit;
                             const gasCost = gasLimit.mul(gasPrice);
@@ -633,10 +726,13 @@ const crouterClear = async(
                                     36 - bundledOrders[i].buyTokenDecimals
                                 )
                             );
+                            dryrunSpan.setAttribute("details.gasCostInToken", gasCostInToken.toString());
+
                             if (gasCoveragePercentage !== "0") {
                                 const headroom = (
                                     Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
+                                dryrunSpan.setAttribute("details.headroom", gasCostInToken.mul(headroom).div("100").toString());
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"
@@ -650,10 +746,18 @@ const crouterClear = async(
                                             exchangeData
                                         ]
                                 );
-                                await signer.estimateGas(rawtx);
+                                try {
+                                    await signer.estimateGas(rawtx);
+                                    dryrunSpan.setStatus({ code: SpanStatusCode.OK });
+                                }
+                                catch(e) {
+                                    dryrunSpan.recordException(getSpanException(e));
+                                    throw "dryrun";
+                                }
                             }
 
                             try {
+                                pairSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                                 console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
@@ -668,7 +772,11 @@ const crouterClear = async(
                                             exchangeData
                                         ]
                                 );
-                                console.log("Block Number: " + await signer.provider.getBlockNumber(), "\n");
+
+                                const blockNumber = await signer.provider.getBlockNumber();
+                                pairSpan.setAttribute("details.blockNumber", blockNumber);
+                                console.log("Block Number: " + blockNumber, "\n");
+
                                 const tx = config.timeout
                                     ? await promiseTimeout(
                                         (flashbotSigner !== undefined
@@ -680,12 +788,19 @@ const crouterClear = async(
                                     : flashbotSigner !== undefined
                                         ? await flashbotSigner.sendTransaction(rawtx)
                                         : await signer.sendTransaction(rawtx);
-                                console.log("\x1b[33m%s\x1b[0m", config.explorer + "tx/" + tx.hash, "\n");
+
+                                const txUrl = config.explorer + "tx/" + tx.hash;
+                                console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
                                 console.log(
                                     ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
                                     "\n"
                                 );
                                 console.log(tx);
+                                pairSpan.setAttributes({
+                                    "details.txUrl": txUrl,
+                                    "details.tx": JSON.stringify(tx)
+                                });
+
                                 const receipt = config.timeout
                                     ? await promiseTimeout(
                                         tx.wait(),
@@ -739,15 +854,27 @@ const crouterClear = async(
                                     config.nativeToken.symbol
                                 }`, "\n");
                                 if (income) {
-                                    console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${ethers.utils.formatUnits(
+                                    const incomeFormated = ethers.utils.formatUnits(
                                         income,
                                         bundledOrders[i].buyTokenDecimals
-                                    )} ${bundledOrders[i].buyTokenSymbol}`);
-                                    console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${ethers.utils.formatUnits(
+                                    );
+                                    const netProfitFormated = ethers.utils.formatUnits(
                                         netProfit,
                                         bundledOrders[i].buyTokenDecimals
-                                    )} ${bundledOrders[i].buyTokenSymbol}`, "\n");
+                                    );
+                                    pairSpan.setAttributes({
+                                        "details.income": incomeFormated,
+                                        "details.netProfit": netProfitFormated
+                                    });
+                                    console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${incomeFormated} ${bundledOrders[i].buyTokenSymbol}`);
+                                    console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${netProfitFormated} ${bundledOrders[i].buyTokenSymbol}`, "\n");
                                 }
+                                pairSpan.setAttributes({
+                                    "details.clearAmount": bundledQuoteAmount.toString(),
+                                    "details.clearPrice": ethers.utils.formatEther(price),
+                                    "details.clearActualPrice": clearActualPrice,
+                                });
+                                pairSpan.setStatus({ code: SpanStatusCode.OK, message: "successfuly cleared" });
 
                                 report.push({
                                     transactionHash: receipt.transactionHash,
@@ -772,6 +899,8 @@ const crouterClear = async(
                                 });
                             }
                             catch (error) {
+                                pairSpan.recordException(getSpanException(error));
+                                pairSpan.setStatus({ code: SpanStatusCode.ERROR });
                                 console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
                                 console.log(error, "\n");
                             }
@@ -782,19 +911,25 @@ const crouterClear = async(
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
                         }
                         else {
+                            dryrunSpan.recordException(getSpanException(error));
                             console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
                             console.log(error, "\n");
                             // reason, code, method, transaction, error, stack, message
                         }
                     }
+                    dryrunSpan.end();
                 }
             }
         }
         catch (error) {
+            pairSpan.recordException(getSpanException(error));
+            pairSpan.setStatus({ code: SpanStatusCode.ERROR });
             console.log("\x1b[31m%s\x1b[0m", ">>> Something went wrong, reason:", "\n");
             console.log(error);
         }
+        pairSpan.end();
     }
+    clearProcSpan.end();
     return report;
 };
 

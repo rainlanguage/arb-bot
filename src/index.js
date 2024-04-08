@@ -252,13 +252,17 @@ const getConfig = async(
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/api").Context} ctx
  * @returns The report of details of cleared orders
  */
 const clear = async(
     mode,
     config,
     ordersDetails,
-    options = clearOptions
+    options = clearOptions,
+    tracer,
+    ctx
 ) => {
     const _mode = mode.toLowerCase();
     const version = versions.node;
@@ -279,14 +283,16 @@ const clear = async(
         config,
         ordersDetails,
         gasCoveragePercentage,
-        // prioritization
+        tracer,
+        ctx
     );
     else if (_mode === "curve") {
         if (majorVersion >= 18) return await curveClear(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            // prioritization
+            tracer,
+            ctx
         );
         else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
     }
@@ -295,7 +301,8 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            // prioritization
+            tracer,
+            ctx
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
@@ -304,7 +311,8 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            // prioritization
+            tracer,
+            ctx
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
@@ -313,7 +321,8 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            // prioritization
+            tracer,
+            ctx
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
@@ -322,7 +331,8 @@ const clear = async(
             config,
             ordersDetails,
             gasCoveragePercentage,
-            // prioritization
+            tracer,
+            ctx
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
