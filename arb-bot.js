@@ -17,7 +17,7 @@ const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
  */
 const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
-    mode                : process?.env?.MODE,
+    mode                : process?.env?.MODE ?? "srouter",
     arbAddress          : process?.env?.ARB_ADDRESS,
     arbType             : process?.env?.ARB_TYPE,
     orderbookAddress    : process?.env?.ORDERBOOK_ADDRESS,
@@ -33,7 +33,6 @@ const ENV_OPTIONS = {
     sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
-    usePublicRpcs       : process?.env?.USE_PUBLIC_RPCS?.toLowerCase() === "true" ? true : false,
     interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
@@ -71,7 +70,6 @@ const getOptions = async argv => {
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
         .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
-        .option("--use-public-rpcs", "Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables")
         .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
@@ -106,7 +104,6 @@ const getOptions = async argv => {
     cmdOptions.monthlyRatelimit = cmdOptions.monthlyRatelimit   || ENV_OPTIONS.monthlyRatelimit;
     cmdOptions.maxProfit        = cmdOptions.maxProfit          || ENV_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
-    cmdOptions.usePublicRpcs    = cmdOptions.usePublicRpcs      || ENV_OPTIONS.usePublicRpcs;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
@@ -144,7 +141,6 @@ const arbRound = async (tracer, roundCtx, options) => {
                     monthlyRatelimit    : options.monthlyRatelimit,
                     maxProfit           : options.maxProfit,
                     maxRatio            : options.maxRatio,
-                    usePublicRpcs       : options.usePublicRpcs,
                     flashbotRpc         : options.flashbotRpc,
                     hideSensitiveData   : false,
                     shortenLargeLogs    : false,
@@ -212,7 +208,6 @@ const arbRound = async (tracer, roundCtx, options) => {
             "details.config.arbType": config.arbType,
             "details.config.maxProfit": config.maxProfit,
             "details.config.maxRatio": config.maxRatio,
-            "details.config.usePublicRpcs": config.usePublicRpcs,
             "details.config.interpreterV2": config.interpreterv2,
             "details.config.usesFlashbots": config.flashbotRpc ? true : false,
         });

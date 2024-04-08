@@ -54,10 +54,6 @@ const configOptions = {
      */
     maxRatio: false,
     /**
-     * Option to fallback to public rpcs
-     */
-    usePublicRpcs: false,
-    /**
      * Option for operating with interpreter v2
      */
     interpreterv2: false,
@@ -236,7 +232,6 @@ const getConfig = async(
     config.flashbotRpc      = options?.flashbotRpc;
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
-    config.usePublicRpcs    = !!options?.usePublicRpcs;
     config.interpreterv2    = !!options?.interpreterv2;
     config.hops             = hops;
     config.rp32             = !!options?.rp32;

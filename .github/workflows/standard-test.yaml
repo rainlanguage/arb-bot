@@ -14,7 +14,7 @@ jobs:
       - name: Install Dependencies
         run:  nix run .#install-deps
 
-      - name: Build
+      - name: Lint
         run:  nix run .#lint
       
       - name: Run Tests
