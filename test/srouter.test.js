@@ -49,10 +49,11 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
     const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {
-        // npx hardhat node --fork https://polygon-rpc.com/ --fork-block-number 47102059
         // reset network before each test
-        // await helpers.reset("http://127.0.0.1:8545/");
-        await helpers.reset("https://rpc.ankr.com/polygon", 53559376);
+        await helpers.reset(
+            (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon"),
+            53559376
+        );
 
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
@@ -197,7 +198,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = false;
@@ -323,7 +324,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = true;

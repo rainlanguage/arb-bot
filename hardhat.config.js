@@ -11,7 +11,7 @@ module.exports = {
     networks: {
         hardhat: {
             forking: {
-                url: "https://rpc.ankr.com/polygon", // avalanche network to run the test on
+                url: process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon", // avalanche network to run the test on
                 blockNumber: 53559376
             },
             // mining: {

@@ -51,7 +51,10 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
     beforeEach(async() => {
         // reset network before each test
-        await helpers.reset("https://rpc.ankr.com/polygon", 53559376);
+        await helpers.reset(
+            (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon"),
+            53559376
+        );
 
         [bot, ...owners] = await ethers.getSigners();
         config = CONFIG.find(async(v) => v.chainId === await bot.getChainId());
@@ -204,7 +207,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v2";
@@ -329,7 +332,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v3";
@@ -454,7 +457,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
@@ -577,7 +580,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     //     );
 
     //     // run the clearing process
-    //     config.rpc = "test";
+    //     config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
     //     config.signer = bot;
     //     config.lps = ["SushiSwapV2"];
     //     config.arbType = "flash-loan-v3";
@@ -701,7 +704,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon");
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
