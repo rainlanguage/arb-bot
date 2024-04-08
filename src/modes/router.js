@@ -38,7 +38,7 @@ const routerClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
-    const lps               = processLps(config.lps, config.chainId);
+    const lps               = processLps(config.lps);
     const dataFetcher       = getDataFetcher(config, lps, false);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -83,7 +83,7 @@ const routerClear = async(
                 orderbook,
                 arb,
                 undefined,
-                config.rpc !== "test",
+                config.shuffle,
                 config.interpreterv2,
                 config.bundle,
                 tracer,

@@ -23,3 +23,5 @@ jobs:
 
       - name: Test
         run: npm test
+        env:
+          TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}
