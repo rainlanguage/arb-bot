@@ -17,7 +17,7 @@ jobs:
       # Checkout repo
       - name: Checkout Repo
         id: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Install node
       - name: Install NodeJS v18
@@ -34,22 +34,10 @@ jobs:
         if: steps.node.outcome == 'success'
         run: npm install
 
-      # Lint the source code
-      - name: Lint
-        id: lint
-        if: steps.install.outcome == 'success'
-        run: npm run lint
-
-      # Run the tests
-      - name: Test
-        id: test
-        if: steps.lint.outcome == 'success'
-        run: npm test
-
       # Configure Git
       - name: Git Config
         id: git
-        if: steps.lint.outcome == 'success'
+        if: steps.install.outcome == 'success'
         # set git user and email to github actions, 
         # this email and user id will result in github user with github avatar in Github
         run: |

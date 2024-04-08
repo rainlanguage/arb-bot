@@ -18,9 +18,6 @@
             npm install
           '';
           additionalBuildInputs = [
-            pkgs.wasm-bindgen-cli
-            rainix.rust-toolchain.${system}
-            rainix.rust-build-inputs.${system}
             rainix.node-build-inputs.${system}
           ];
         };
@@ -35,17 +32,41 @@
             rainix.node-build-inputs.${system}
           ];
         };
-      } // rainix.packages.${system};
+
+        lint = rainix.mkTask.${system} {
+          name = "lint";
+          body = ''
+            set -euxo pipefail
+            npm run lint
+          '';
+          additionalBuildInputs = [
+            rainix.node-build-inputs.${system}
+          ];
+        };
+
+        lint-fix = rainix.mkTask.${system} {
+          name = "lint-fix";
+          body = ''
+            set -euxo pipefail
+            npm run lint-fix
+          '';
+          additionalBuildInputs = [
+            rainix.node-build-inputs.${system}
+          ];
+        };
+      };
 
       # For `nix develop`:
       devShell = pkgs.mkShell {
         packages = [
           packages.install-deps
           packages.test-bot
+          packages.lint
+          packages.lint-fix
         ];
         nativeBuildInputs = [
           rainix.node-build-inputs.${system}
-        ]
+        ];
       };
     }
   );
