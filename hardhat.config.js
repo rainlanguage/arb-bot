@@ -1,6 +1,14 @@
 require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
+const { appGlobalLogger } = require("./src/utils");
+
+// hide senstive data from test logs
+if (process?.env?.API_KEY || process?.env?.TEST_POLYGON_RPC) appGlobalLogger(
+    true,
+    process?.env?.TEST_POLYGON_RPC,
+    process?.env?.API_KEY
+);
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
