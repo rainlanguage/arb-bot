@@ -199,6 +199,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = false;
@@ -325,6 +326,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = true;

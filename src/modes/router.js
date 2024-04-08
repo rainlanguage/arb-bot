@@ -83,7 +83,7 @@ const routerClear = async(
                 orderbook,
                 arb,
                 undefined,
-                config.rpc !== "test",
+                config.test,
                 config.interpreterv2,
                 config.bundle,
                 tracer,

@@ -79,7 +79,7 @@ const zeroExClear = async(
             orderbook,
             arb,
             undefined,
-            config.rpc !== "test",
+            config.test,
             config.interpreterv2,
             config.bundle
         );

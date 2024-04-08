@@ -208,6 +208,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v2";
@@ -333,6 +334,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v3";
@@ -458,6 +460,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
@@ -581,6 +584,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
     //     // run the clearing process
     //     //     //     config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+    config.test = true;
     //     config.signer = bot;
     //     config.lps = ["SushiSwapV2"];
     //     config.arbType = "flash-loan-v3";
@@ -705,6 +709,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
 
         // run the clearing process
         config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.test = true;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
