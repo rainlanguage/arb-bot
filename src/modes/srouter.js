@@ -84,7 +84,7 @@ const srouterClear = async(
                 orderbook,
                 arb,
                 maxProfit,
-                config.rpc !== "test",
+                config.shuffle,
                 config.interpreterv2,
                 config.bundle,
                 tracer,

@@ -51,7 +51,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
     beforeEach(async() => {
         // reset network before each test
         await helpers.reset(
-            (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon"),
+            process?.env?.TEST_POLYGON_RPC,
             53559376
         );
 
@@ -198,7 +198,8 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
+        config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = false;
@@ -324,7 +325,8 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = "test";
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
+        config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.interpreterv2 = true;
