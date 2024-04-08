@@ -961,7 +961,7 @@ const bundleTakeOrders = async(
  * @param {boolean} useFallbacs - If fallback RPCs should be used as well or not
  */
 const createViemClient = (chainId, rpcs, useFallbacs = false) => {
-    const transport = rpcs.length === 0
+    const transport = rpcs.includes("test") || rpcs.length === 0
         ? fallback(fallbacks[chainId].transport, {rank: true})
         : useFallbacs
             ? fallback(
