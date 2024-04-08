@@ -340,8 +340,23 @@ const interpreterEval = async(
     inputIndex,
     outputIndex,
     inputBalance,
-    outputBalance
+    outputBalance,
+    tracer,
+    ctx
 ) => {
+    const span = tracer.startSpan("eval-order", undefined, ctx);
+    span.setAttributes({
+        "details.order.id": order.id,
+        "details.order.owner": order.owner.id,
+        "details.input.token.address": order.validInputs[inputIndex].token.id,
+        "details.input.token.decimals": order.validInputs[inputIndex].token.decimals,
+        "details.input.token.vaultId": order.validInputs[inputIndex].vault.id.split("-")[0],
+        "details.input.token.balance": inputBalance,
+        "details.output.token.address": order.validOutputs[outputIndex].token.id,
+        "details.output.token.decimals": order.validOutputs[outputIndex].token.decimals,
+        "details.output.token.vaultId": order.validOutputs[outputIndex].vault.id.split("-")[0],
+        "details.output.token.balance": outputBalance,
+    });
     try {
         const { stack: [ maxOutput, ratio ] } = await interpreter.eval(
             order.interpreterStore,
@@ -387,9 +402,18 @@ const interpreterEval = async(
                 ]
             ]
         );
+        span.setAttributes({
+            "details.result.ratio": ratio.toString(),
+            "details.result.maxOutput": maxOutput.toString(),
+        });
+        span.setStatus({ code: 1 });
+        span.end();
         return { ratio, maxOutput };
     }
     catch {
+        span.recordException(getSpanException(e));
+        span.setStatus({ code: 2 });
+        span.end();
         return {
             ratio: undefined,
             maxOutput: undefined
@@ -484,15 +508,15 @@ const interpreterV2Eval = async(
             []
         );
         span.setAttributes({
-            "details.result.ratio": ratio,
-            "details.result.maxOutput": maxOutput,
+            "details.result.ratio": ratio.toString(),
+            "details.result.maxOutput": maxOutput.toString(),
         });
         span.setStatus({ code: 1 });
         span.end();
         return { ratio, maxOutput };
     }
     catch(e) {
-        span.recordException(this.getSpanException(e));
+        span.recordException(getSpanException(e));
         span.setStatus({ code: 2 });
         span.end();
         return {
