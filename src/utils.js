@@ -31,7 +31,8 @@ const fallbacks = {
             "elk",
             "sushiswapv3",
             "uniswapv3",
-            "sushiswapv2"
+            "sushiswapv2",
+            "camelot"
         ]
     },
     [ChainId.AVALANCHE]: {
@@ -253,6 +254,17 @@ const fallbacks = {
         liquidityProviders: [
             "laserswap",
             "sushiswapv3"
+        ]
+    },
+    // flare
+    14: {
+        transport: [
+            http("https://rpc.ankr.com/flare"),
+            http("https://flare-api.flare.network/ext/C/rpc"),
+            http("https://flare.rpc.thirdweb.com")
+        ],
+        liquidityProviders: [
+            "enosys"
         ]
     },
 };

@@ -52,7 +52,7 @@ const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
-        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter` or `suniv2`, Will override the 'MODE' in env variables")
+        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
@@ -216,10 +216,10 @@ const arbRound = async (tracer, roundCtx, options) => {
             "details.config.interpreterV2": config.interpreterv2,
             "details.config.usesFlashbots": config.flashbotRpc ? true : false,
         });
-        if (config.mode !== "0x" && config.mode !== "curve" && config.mode !== "suniv2") {
+        if (config.mode !== "0x" && config.mode !== "curve") {
             span.setAttribute("details.config.sushiRouteProcessorVersion", config.rp32 ? "3.2" : "3.0");
         }
-        if (config.mode === "srouter" || config.mode === "suniv2") {
+        if (config.mode === "srouter") {
             span.setAttribute("details.config.amountDiscoveryHops", config.hops);
         }
         const ctx = trace.setSpan(context.active(), span);

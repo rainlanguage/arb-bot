@@ -38,7 +38,6 @@
         "lint-fix": "eslint ./src ./test ./arb-bot.js --fix"
     },
     "dependencies": {
-        "@hyperdx/node-opentelemetry": "^0.6.1",
         "@opentelemetry/api": "^1.8.0",
         "@opentelemetry/core": "^1.22.0",
         "@opentelemetry/exporter-trace-otlp-grpc": "^0.49.1",
@@ -51,7 +50,7 @@
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "sushiswap-router": "github:rouzwelt/sushiswap-router#384e7965883dcefb7195b1fed9ef3a3a0a7cb05f",
+        "sushiswap-router": "github:rouzwelt/sushiswap-router#908330cf077f5be4b3184a21200d987e548e23d4",
         "viem": "^1.6.0"
     },
     "devDependencies": {

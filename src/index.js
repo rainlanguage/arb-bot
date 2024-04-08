@@ -10,7 +10,6 @@ const { zeroExClear } = require("./modes/zeroex");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
-const { suniv2Clear } = require("./modes/suniv2");
 const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
 
 
@@ -271,7 +270,7 @@ const clear = async(
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
 
-    if (_mode !== "srouter" && _mode !== "suniv2") {
+    if (_mode !== "srouter") {
         if (!config.arbType) throw "undefined arb contract type";
         if (!/^flash-loan-v[23]$|^order-taker$/.test(config.arbType)) {
             throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
@@ -318,16 +317,6 @@ const clear = async(
     }
     else if (_mode === "srouter") {
         if (majorVersion >= 18) return await srouterClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            tracer,
-            ctx
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
-    }
-    else if (_mode === "suniv2") {
-        if (majorVersion >= 18) return await suniv2Clear(
             config,
             ordersDetails,
             gasCoveragePercentage,

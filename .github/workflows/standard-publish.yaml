@@ -32,7 +32,7 @@ jobs:
       - name: Install Dependencies
         id: install
         if: steps.node.outcome == 'success'
-        run: npm install --ignore-scripts
+        run: npm install
 
       # Lint the source code
       - name: Lint
