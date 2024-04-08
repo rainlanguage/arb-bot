@@ -207,7 +207,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
         config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
@@ -333,7 +333,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
         config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
@@ -459,7 +459,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
         config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
@@ -583,7 +583,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     //     );
 
     //     // run the clearing process
-    //     //     //     config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+    //     //     //     config.rpc = process?.env?.TEST_POLYGON_RPC;
     config.shuffle = false;
     //     config.signer = bot;
     //     config.lps = ["SushiSwapV2"];
@@ -708,7 +708,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         );
 
         // run the clearing process
-        config.rpc = (process?.env?.TEST_POLYGON_RPC ?? "test");
+        config.rpc = process?.env?.TEST_POLYGON_RPC;
         config.shuffle = false;
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
