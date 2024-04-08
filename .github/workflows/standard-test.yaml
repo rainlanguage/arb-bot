@@ -6,22 +6,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Install NodeJS v18
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'npm'
+      - uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
 
       - name: Install Dependencies
-        run: npm install
+        run:  nix develop -c npm install
 
       - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
+        run:  nix develop -c npm run lint
+      
+      - name: Run Tests
+        run:  nix develop -c npm test
         env:
           TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}
