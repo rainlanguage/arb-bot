@@ -670,7 +670,8 @@
             "elk",
             "sushiswapv3",
             "uniswapv3",
-            "sushiswapv2"
+            "sushiswapv2",
+            "camelot"
         ],
         "stableTokens": [
             {
@@ -1033,6 +1034,41 @@
                     "address": "0x7520005032F43229F606d3ACeae97045b9D6F7ea",
                     "token0": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d",
                     "token1": "0x96B41289D90444B8adD57e6F265DB5aE8651DF29"
+                },
+                {
+                    "address": "0x2C934BbBD152A40419d3330e4d79f362Bc6691D6",
+                    "token0": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d",
+                    "token1": "0xfD3449E8Ee31117a848D41Ee20F497a9bCb53164"
+                },
+                {
+                    "address": "0xEd920325b7dB1e909DbE2d562fCD07f714395e10",
+                    "token0": "0x60fDC7B744E886e96Aa0DEf5f69eE440dB9d8c77",
+                    "token1": "0x140D8d3649Ec605CF69018C627fB44cCC76eC89f"
+                },
+                {
+                    "address": "0x80A08BbAbB0A5C51A9ae53211Df09EF23Debd4f3",
+                    "token0": "0x60fDC7B744E886e96Aa0DEf5f69eE440dB9d8c77",
+                    "token1": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d"
+                },
+                {
+                    "address": "0x32fd7858393918A984DA6ee279EcA27f630a1C02",
+                    "token0": "0xa76dcddce60a442d69bac7158f3660f50921b122",
+                    "token1": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d"
+                },
+                {
+                    "address": "0x87E0E33558c8e8EAE3c1E9EB276e05574190b48a",
+                    "token0": "0x140d8d3649ec605cf69018c627fb44ccc76ec89f",
+                    "token1": "0xff56eb5b1a7faa972291117e5e9565da29bc808d"
+                },
+                {
+                    "address": "0x02C6b5B1fbE01Da872E21f9Dab1B980933B0EF27",
+                    "token0": "0x140d8d3649ec605cf69018c627fb44ccc76ec89f",
+                    "token1": "0x1d80c49bbbcd1c0911346656b529df9e5c2f783d"
+                },
+                {
+                    "address": "0xef24D5155818d4bD16AF0Cea1148A147eb620743",
+                    "token0": "0xff56eb5b1a7faa972291117e5e9565da29bc808d",
+                    "token1": "0x1d80c49bbbcd1c0911346656b529df9e5c2f783d"
                 }
             ]
         },
@@ -1047,7 +1083,7 @@
             "decimals": 18
         },
         "liquidityProviders": [
-            
+            "enosys"
         ],
         "stableTokens": [
             {
