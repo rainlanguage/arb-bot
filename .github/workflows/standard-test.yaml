@@ -12,12 +12,12 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v2
 
       - name: Install Dependencies
-        run:  nix run .#install-deps
+        run:  nix develop -c npm install
 
       - name: Lint
-        run:  nix run .#lint
+        run:  nix develop -c npm run lint
       
       - name: Run Tests
-        run:  nix run .#test-bot
+        run:  nix develop -c npm test
         env:
           TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}
