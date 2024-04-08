@@ -181,6 +181,7 @@ const routerClear = async(
                 console.log("All orders of this token pair have empty vault balance, skipping...");
             }
             else {
+                console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
                 console.log(">>> Getting best route for this token pair", "\n");
 
                 let cumulativeAmountFixed = ethers.constants.Zero;
