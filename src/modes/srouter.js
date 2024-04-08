@@ -143,6 +143,7 @@ const srouterClear = async(
                 console.log("All orders of this token pair have empty vault balance, skipping...");
                 continue;
             }
+            console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
 
             const fromToken = new Token({
                 chainId: config.chainId,
