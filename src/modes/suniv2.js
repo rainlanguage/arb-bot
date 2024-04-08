@@ -72,7 +72,7 @@ const suniv2Clear = async(
     );
     bundledOrders = await tracer.startActiveSpan("preparing-orders", {}, ctx, async (span) => {
         span.setAttributes({
-            "details.doesEval": maxProfit,
+            "details.doesEval": maxProfit ?? true,
             "details.doesBundle": config.bundle
         });
         try {
@@ -116,7 +116,7 @@ const suniv2Clear = async(
             bundledOrders[i].sellTokenSymbol
         }`;
         const pairSpan = tracer.startSpan(
-            config.bundle ? "bundled-orders" : "single-order",
+            (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
             undefined,
             clearProcCtx
         );
@@ -136,6 +136,7 @@ const suniv2Clear = async(
 
             if (!bundledOrders[i].takeOrders.length) {
                 pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault balance"});
+                pairSpan.end();
                 console.log("All orders of this token pair have empty vault balance, skipping...");
                 continue;
             }
@@ -163,6 +164,7 @@ const suniv2Clear = async(
                     code: SpanStatusCode.OK,
                     message: `Orderbook has no ${bundledOrders[i].sellTokenSymbol} balance`
                 });
+                pairSpan.end();
                 console.log(
                     `Orderbook has no ${bundledOrders[i].sellTokenSymbol} balance, skipping...`
                 );
@@ -196,9 +198,16 @@ const suniv2Clear = async(
                             bundledOrders[i].buyToken,
                             bundledOrders[i].buyTokenDecimals
                         );
-                        span.setAttribute("details.price", ethPrice);
-                        span.setStatus({code: SpanStatusCode.OK});
-                        span.end();
+                        if (!ethPrice) {
+                            span.setStatus({code: SpanStatusCode.ERROR });
+                            span.recordException(new Error("could not get ETH price"));
+                            span.end();
+                            return Promise.reject("could not get ETH price");
+                        } else {
+                            span.setAttribute("details.price", ethPrice);
+                            span.setStatus({code: SpanStatusCode.OK});
+                            span.end();
+                        }
                     } catch(e) {
                         span.setStatus({code: SpanStatusCode.ERROR });
                         span.recordException(getSpanException(e));
@@ -278,6 +287,7 @@ const suniv2Clear = async(
                     code: SpanStatusCode.OK,
                     message: "could not find any opportunity to clear"
                 });
+                pairSpan.end();
                 console.log("\x1b[31m%s\x1b[0m", "found no match for this pair...");
                 continue;
             }
@@ -543,7 +553,7 @@ async function checkArb(
                 "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
             );
             const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
-            hopSpan.setAttribute("details.price", ethers.utils.formatEther(price));
+            hopSpan.setAttribute("details.marketPrice", ethers.utils.formatEther(price));
 
             // filter out orders that are not price match or failed eval when --max-profit is enabled
             // price check is at +2% as a headroom for current block vs tx block
@@ -556,6 +566,7 @@ async function checkArb(
 
             if (bundledOrder.takeOrders.length === 0) {
                 hopSpan.addEvent("all orders had lower ratio than current market price");
+                hopSpan.end();
                 maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
                 continue;
             }
@@ -620,7 +631,7 @@ async function checkArb(
                     gasLimit = await signer.estimateGas(rawtx);
                     hopSpan.setAttribute("details.estimateGas.value", gasLimit.toString());
                 }
-                catch {
+                catch(e) {
                     hopSpan.recordException(getSpanException(e));
                     throw "nomatch";
                 }
@@ -653,7 +664,7 @@ async function checkArb(
                         await signer.estimateGas(rawtx);
                         hopSpan.setStatus({ code: SpanStatusCode.OK });
                     }
-                    catch {
+                    catch(e) {
                         hopSpan.recordException(getSpanException(e));
                         throw "dryrun";
                     }
