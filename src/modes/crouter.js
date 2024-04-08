@@ -250,7 +250,7 @@ const crouterClear = async(
             bundledOrders[i].sellTokenSymbol
         }`;
         const pairSpan = tracer.startSpan(
-            config.bundle ? "bundled-orders" : "single-order",
+            (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
             undefined,
             clearProcCtx
         );
@@ -413,8 +413,10 @@ const crouterClear = async(
                 let rate;
                 let useCurve = false;
                 if (route.status == "NoWay" && topCurveDealPoolIndex === -1) {
-                    pairSpan.setAttribute("details.route", "no-way");
-                    pairSpan.setStatus({ code: SpanStatusCode.ERROR });
+                    pairSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "could not find any routes or quote form curve for this token pair"
+                    });
                     pairSpan.end();
                     console.log("could not find any routes or quote form curve for this token pair");
                     continue;
@@ -473,7 +475,7 @@ const crouterClear = async(
 
                 const rateFixed = rate.mul("1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals));
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
-                pairSpan.setAttribute("details.price", ethers.utils.formatEther(price));
+                pairSpan.setAttribute("details.marketPrice", ethers.utils.formatEther(price));
                 console.log("");
                 console.log(
                     "Current best price for this token pair:",
@@ -667,9 +669,15 @@ const crouterClear = async(
                                         gasPrice,
                                         dataFetcher
                                     );
-                                    span.setAttribute("details.price", ethPrice);
-                                    span.setStatus({code: SpanStatusCode.OK});
-                                    span.end();
+                                    if (!ethPrice) {
+                                        span.setStatus({code: SpanStatusCode.ERROR });
+                                        span.recordException(new Error("could not get ETH price"));
+                                        span.end();
+                                    } else {
+                                        span.setAttribute("details.price", ethPrice);
+                                        span.setStatus({code: SpanStatusCode.OK});
+                                        span.end();
+                                    }
                                 } catch(e) {
                                     span.setStatus({code: SpanStatusCode.ERROR });
                                     span.recordException(getSpanException(e));
@@ -679,7 +687,10 @@ const crouterClear = async(
                         }
                         else ethPrice = "0";
 
-                        if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
+                        if (ethPrice === undefined) {
+                            console.log("can not get ETH price, skipping...", "\n");
+                            pairSpan.recordException(new Error("could not get ETH price"));
+                        }
                         else {
                             dryrunSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                             const rawtx = {

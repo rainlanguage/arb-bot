@@ -302,7 +302,7 @@ const curveClear = async(
             bundledOrders[i].sellTokenSymbol
         }`;
         const pairSpan = tracer.startSpan(
-            config.bundle ? "bundled-orders" : "single-order",
+            (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
             undefined,
             clearProcCtx
         );
@@ -432,6 +432,22 @@ const curveClear = async(
                     console.log("could not get deal from curve pools");
                 }
                 else {
+                    const gasPrice = await tracer.startActiveSpan("getGasPrice", {}, pairCtx, async (span) => {
+                        try {
+                            const result = await signer.provider.getGasPrice();
+                            span.setAttribute("details.price", result.toString());
+                            span.setStatus({code: SpanStatusCode.OK});
+                            span.end();
+                            return result;
+                        } catch(e) {
+                            span.setStatus({code: SpanStatusCode.ERROR });
+                            span.recordException(getSpanException(e));
+                            span.end();
+                            console.log("could not get gas price, skipping...");
+                            return Promise.reject("could not get gas price");
+                        }
+                    });
+
                     const dryrunSpan = tracer.startSpan("dryrun", undefined, pairCtx);
                     // submit the transaction
                     try {
@@ -514,21 +530,6 @@ const curveClear = async(
                         }
                         if (arbType === "order-taker") takeOrdersConfigStruct.data = exchangeData;
 
-                        const gasPrice = await tracer.startActiveSpan("getGasPrice", {}, pairCtx, async (span) => {
-                            try {
-                                const result = await signer.provider.getGasPrice();
-                                span.setAttribute("details.price", result.toString());
-                                span.setStatus({code: SpanStatusCode.OK});
-                                span.end();
-                                return result;
-                            } catch(e) {
-                                span.setStatus({code: SpanStatusCode.ERROR });
-                                span.recordException(getSpanException(e));
-                                span.end();
-                                console.log("could not get gas price, skipping...");
-                                return Promise.reject("could not get gas price");
-                            }
-                        });
                         let ethPrice;
                         if (gasCoveragePercentage !== "0") {
                             await tracer.startActiveSpan("getEthPrice", {}, pairCtx, async (span) => {
@@ -540,9 +541,15 @@ const curveClear = async(
                                         gasPrice,
                                         dataFetcher
                                     );
-                                    span.setAttribute("details.price", ethPrice);
-                                    span.setStatus({code: SpanStatusCode.OK});
-                                    span.end();
+                                    if (!ethPrice) {
+                                        span.setStatus({code: SpanStatusCode.ERROR });
+                                        span.recordException(new Error("could not get ETH price"));
+                                        span.end();
+                                    } else {
+                                        span.setAttribute("details.price", ethPrice);
+                                        span.setStatus({code: SpanStatusCode.OK});
+                                        span.end();
+                                    }
                                 } catch(e) {
                                     span.setStatus({code: SpanStatusCode.ERROR });
                                     span.recordException(getSpanException(e));
@@ -552,7 +559,10 @@ const curveClear = async(
                         }
                         else ethPrice = "0";
 
-                        if (ethPrice === undefined) console.log("can not get ETH price, skipping...", "\n");
+                        if (ethPrice === undefined) {
+                            console.log("can not get ETH price, skipping...", "\n");
+                            pairSpan.recordException(new Error("could not get ETH price"));
+                        }
                         else {
                             dryrunSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                             const rawtx = {

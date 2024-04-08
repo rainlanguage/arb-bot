@@ -2,9 +2,14 @@ name: Docker image CI
 
 on:
   push:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to give the build. Try to make it unique.'
+        required: true
 
 env:
-  CHANNEL: ${{ github.head_ref || github.ref_name }}
+  CHANNEL: ${{ inputs.tag || github.head_ref || github.ref_name }}
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
   TAG_BASE: rainprotocol/arb-bot
