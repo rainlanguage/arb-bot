@@ -56,7 +56,6 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `--max-ratio`, Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
-- `--use-public-rpcs`, Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
@@ -128,7 +127,6 @@ which will show:
       --timeout <integer>            Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
       --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
       --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
-      --use-public-rpcs              Option to use public rpcs as fallback option for 'srouter' and 'router' mode, Will override the 'USE_PUBLIC_RPCS' in env variables
       --interpreter-v2               Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
       --no-bundle                    Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
       --hops <integer>               Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
@@ -202,9 +200,6 @@ SLEEP=10
 # Option to maximize maxIORatio for 'srouter' mode
 MAX_RATIO="true"
 
-# Option to use public rpcs as fallback option for 'srouter' and 'router' mode
-USE_PUBLIC_RPCS="true"
-
 # Optional seconds to wait for the transaction to mine before disregarding it
 TIMEOUT=""
 
@@ -249,7 +244,6 @@ const configOptions = {
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
   maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
-  usePublicRpcs         : false,   // option to fallback to public rpcs
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
   interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract

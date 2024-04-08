@@ -163,7 +163,7 @@ const crouterClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
-    const lps               = processLps(config.lps, config.chainId);
+    const lps               = processLps(config.lps);
     const viemClient        = createViemClient(config.chainId, [config.rpc], false);
     const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;

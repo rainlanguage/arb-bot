@@ -1116,9 +1116,8 @@ const getEthPrice = async(
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
- * @param {number} chainId - The chain id
  */
-const processLps = (liquidityProviders, chainId) => {
+const processLps = (liquidityProviders) => {
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
@@ -1130,9 +1129,6 @@ const processLps = (liquidityProviders, chainId) => {
     for (let i = 0; i < liquidityProviders.length; i++) {
         const index = LP.findIndex(
             v => v.toLowerCase() === liquidityProviders[i].toLowerCase()
-                && !!fallbacks[chainId]?.liquidityProviders.includes(
-                    liquidityProviders[i].toLowerCase()
-                )
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }

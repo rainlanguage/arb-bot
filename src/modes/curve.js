@@ -294,7 +294,7 @@ const curveClear = async(
 
     const report = [];
     const viemClient = createViemClient(config.chainId, [config.rpc], false);
-    const dataFetcher = getDataFetcher(viemClient, processLps(config.lps, config.chainId));
+    const dataFetcher = getDataFetcher(viemClient, processLps(config.lps));
     for (let i = 0; i < bundledOrders.length; i++) {
         const pair = `${
             bundledOrders[i].buyTokenSymbol
