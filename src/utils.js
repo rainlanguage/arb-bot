@@ -1128,7 +1128,7 @@ const processLps = (liquidityProviders) => {
     const LP = Object.values(LiquidityProviders);
     for (let i = 0; i < liquidityProviders.length; i++) {
         const index = LP.findIndex(
-            v => v.toLowerCase() === liquidityProviders[i].toLowerCase()
+            v => v.toLowerCase() === liquidityProviders[i].toLowerCase().trim()
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
