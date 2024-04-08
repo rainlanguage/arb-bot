@@ -2,8 +2,6 @@ require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 
-console.log(process?.env?.TEST_POLYGON_RPC);
-
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 /**
