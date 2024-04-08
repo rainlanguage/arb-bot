@@ -366,6 +366,7 @@ const curveClear = async(
                 console.log("All orders of this token pair have empty vault balance, skipping...");
             }
             else {
+                console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
                 let cumulativeAmount = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmount = cumulativeAmount.add(v.quoteAmount);

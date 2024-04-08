@@ -247,6 +247,7 @@ const zeroExClear = async(
                     bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
                         v => currentPrice.gte(v.ratio)
                     );
+                    console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
 
                     if (bundledOrders[i].takeOrders.length) {
                         cumulativeAmount = ethers.constants.Zero;

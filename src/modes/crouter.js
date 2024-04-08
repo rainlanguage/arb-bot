@@ -497,6 +497,7 @@ const crouterClear = async(
                     );
                 }
                 else {
+                    console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
                     cumulativeAmountFixed = ethers.constants.Zero;
                     bundledOrders[i].takeOrders.forEach(v => {
                         cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
