@@ -22,6 +22,6 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: TEST_POLYGON_RPC=$TEST_POLYGON_RPC npm test
+        run: npm test
         env:
           TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}

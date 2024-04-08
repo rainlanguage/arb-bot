@@ -51,7 +51,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
     beforeEach(async() => {
         // reset network before each test
         await helpers.reset(
-            (process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon"),
+            process?.env?.TEST_POLYGON_RPC,
             53559376
         );
 
