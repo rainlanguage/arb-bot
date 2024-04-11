@@ -9,7 +9,8 @@ const { curveClear } = require("./modes/curve");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
-const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
+const { getOrderDetailsFromJson, appGlobalLogger, getSpanException } = require("./utils");
+const { SpanStatusCode } = require("@opentelemetry/api");
 
 
 /**
@@ -84,26 +85,34 @@ const clearOptions = {
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
  * @param {any} sgFilters - The filters for subgraph query
+ * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
+ * @param {import("@opentelemetry/api").Context} ctx
  * @returns An array of order details
  */
-const getOrderDetails = async(sgs, json, signer, sgFilters) => {
+const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
     const ordersDetails = [];
     const isInvalidJson = typeof json !== "string" || !json;
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
     if (isInvalidSg && isInvalidJson) throw "type of provided sources are invalid";
     else {
-        let hasJson = false;
+        hasjson = false;
         const promises = [];
         if (!isInvalidJson) {
-            try {
-                const content = fs.readFileSync(path.resolve(json)).toString();
-                promises.push(getOrderDetailsFromJson(content, signer));
-                hasJson = true;
-            }
-            catch (error) {
-                console.log(error);
-            }
+            await tracer.startActiveSpan("read-json-orders", {}, ctx, async (span) => {
+                try {
+                    const content = fs.readFileSync(path.resolve(json)).toString();
+                    const orders = await getOrderDetailsFromJson(content, signer);
+                    ordersDetails.push(...orders);
+                    hasjson = true;
+                    span.setStatus({code: SpanStatusCode.OK});
+                }
+                catch (error) {
+                    span.setStatus({code: SpanStatusCode.ERROR});
+                    span.recordException(getSpanException(error));
+                }
+                span.end();
+            });
         }
         if (!isInvalidSg) {
             sgs.forEach(v => {
@@ -122,25 +131,33 @@ const getOrderDetails = async(sgs, json, signer, sgFilters) => {
         }
 
         const responses = await Promise.allSettled(promises);
-        if (responses.every(v => v.status === "rejected")) {
-            responses.forEach(v => console.log(v.reason));
-            throw "could not read anything from provided sources";
+        if (responses.every((v) => v.status === "rejected")) {
+            responses.forEach((v, i) => {
+                tracer.startActiveSpan("read-sg-orders", {}, ctx, async (span) => {
+                    span.setAttribute("details.sgUrl", sgs[i]);
+                    span.recordException(getSpanException(v.reason));
+                    span.setStatus({code: SpanStatusCode.ERROR});
+                    span.end();
+                });
+            });
+            if (!hasjson) throw "could not read anything from provided sources";
         }
         else {
             for (let i = 0; i < responses.length; i++) {
-                if (i === 0) {
-                    if (responses[0].status === "fulfilled") {
-                        if (hasJson) ordersDetails.push(...responses[0].value);
-                        else ordersDetails.push(...responses[0].value.data.data.orders);
+                tracer.startActiveSpan("read-sg-orders", {}, ctx, async (span) => {
+                    span.setAttribute("details.sgUrl", sgs[i]);
+                    if (responses[i].status === "fulfilled") {
+                        ordersDetails.push(
+                            ...responses[i].value.data.data.orders
+                        );
+                        span.setStatus({code: SpanStatusCode.OK});
                     }
-                    else console.log(responses[0].reason);
-                }
-                else {
-                    if (responses[i].status === "fulfilled") ordersDetails.push(
-                        ...responses[i].value.data.data.orders
-                    );
-                    else console.log(responses[i].reason);
-                }
+                    else {
+                        span.setStatus({code: SpanStatusCode.ERROR});
+                        span.recordException(getSpanException(responses[i].reason));
+                    }
+                    span.end();
+                });
             }
         }
     }
@@ -188,7 +205,6 @@ const getConfig = async(
         else throw "invalid timeout, must be an integer greater than 0";
     }
 
-    console.log("\x1b[33m%s\x1b[0m", `current working rpc: ${rpcUrl}`);
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
