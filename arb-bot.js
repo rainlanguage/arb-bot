@@ -8,7 +8,7 @@ const { getOrderDetails, clear, getConfig } = require("./src");
 const { Resource } = require("@opentelemetry/resources");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 
 
@@ -116,7 +116,6 @@ const getOptions = async argv => {
 
 /**
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/sdk-trace-base").Span} roundSpan
  * @param {import("@opentelemetry/api").Context} roundCtx
  * @param {*} options
  */
@@ -127,6 +126,9 @@ const arbRound = async (tracer, roundCtx, options) => {
     if (!options.arbAddress)        throw "undefined arb contract address";
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
     if (!options.mode)              throw "undefined operating mode";
+    if (options.mode !== "crouter" && options.mode !== "curve" && options.mode !== "router" && options.mode !== "srouter") {
+        throw "invalid mode, must be either of 'crouter', 'curve', 'router' or 'srouter'";
+    }
 
     const config = await tracer.startActiveSpan("get-config", {}, roundCtx, async (span) => {
         try {
@@ -175,7 +177,9 @@ const arbRound = async (tracer, roundCtx, options) => {
                     orderHash       : options.orderHash,
                     orderOwner      : options.orderOwner,
                     orderInterpreter: options.orderInterpreter
-                }
+                },
+                tracer,
+                trace.setSpan(context.active(), span)
             );
             if (result.length) {
                 span.setAttribute("details.orders.json", JSON.stringify(result));
@@ -260,6 +264,13 @@ const main = async argv => {
         }),
     });
     provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+
+    // console spans in case hyperdx api is not defined
+    if (!process?.env?.HYPERDX_API_KEY) {
+        const consoleExporter = new ConsoleSpanExporter();
+        provider.addSpanProcessor(new SimpleSpanProcessor(consoleExporter));
+    }
+
     provider.register();
     const tracer = provider.getTracer("arb-bot-tracer");
 

@@ -57,21 +57,7 @@ const routerClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    console.log(
-        "------------------------- Starting The",
-        "\x1b[32mROUTER\x1b[0m",
-        "Mode -------------------------",
-        "\n"
-    );
-    console.log("\x1b[33m%s\x1b[0m", Date());
-    console.log("Arb Contract Address: " , arbAddress);
-    console.log("OrderBook Contract Address: " , orderbookAddress, "\n");
-
     let bundledOrders = [];
-
-    console.log(
-        "------------------------- Bundling Orders -------------------------", "\n"
-    );
     bundledOrders = await tracer.startActiveSpan("preparing-orders", {}, ctx, async (span) => {
         span.setAttributes({
             "details.doesEval": true,
@@ -102,10 +88,7 @@ const routerClear = async(
         }
     });
 
-    if (!bundledOrders.length) {
-        console.log("Could not find any order to clear for current market price, exiting...", "\n");
-        return;
-    }
+    if (!bundledOrders.length) return;
 
     const clearProcSpan = tracer.startSpan("clear-process", undefined, ctx);
     const clearProcCtx = trace.setSpan(context.active(), clearProcSpan);
@@ -129,14 +112,6 @@ const routerClear = async(
         });
 
         try {
-            console.log(
-                `------------------------- Trying To Clear ${pair} -------------------------`,
-                "\n"
-            );
-            console.log(`Buy Token Address: ${bundledOrders[i].buyToken}`);
-            console.log(`Sell Token Address: ${bundledOrders[i].sellToken}`, "\n");
-
-            console.log(">>> Updating vault balances...", "\n");
             const newBalances = await Promise.allSettled(
                 bundledOrders[i].takeOrders.map(async(v) => {
                     return ethers.utils.parseUnits(
@@ -165,10 +140,6 @@ const routerClear = async(
                     }
                 }
                 else {
-                    console.log(`Could not get vault balance for order ${
-                        bundledOrders[i].takeOrders[j].id
-                    } due to:`);
-                    console.log(v.reason);
                     bundledOrders[i].takeOrders[j].quoteAmount = ethers.BigNumber.from("0");
                 }
             });
@@ -178,23 +149,12 @@ const routerClear = async(
 
             if (!bundledOrders[i].takeOrders.length) {
                 pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault balance"});
-                console.log("All orders of this token pair have empty vault balance, skipping...");
             }
             else {
-                console.log(">>> order ids", bundledOrders[i].takeOrders.map(v => v.id));
-                console.log(">>> Getting best route for this token pair", "\n");
-
                 let cumulativeAmountFixed = ethers.constants.Zero;
                 bundledOrders[i].takeOrders.forEach(v => {
                     cumulativeAmountFixed = cumulativeAmountFixed.add(v.quoteAmount);
                 });
-
-                console.log(
-                    ">>> getting market rate for " +
-                    ethers.utils.formatUnits(cumulativeAmountFixed) +
-                    " " +
-                    bundledOrders[i].sellTokenSymbol
-                );
 
                 const cumulativeAmount = cumulativeAmountFixed.div(
                     "1" + "0".repeat(18 - bundledOrders[i].sellTokenDecimals)
@@ -224,7 +184,6 @@ const routerClear = async(
                         span.setStatus({code: SpanStatusCode.ERROR });
                         span.recordException(getSpanException(e));
                         span.end();
-                        console.log("could not get gas price, skipping...");
                         return Promise.reject("could not get gas price");
                     }
                 });
@@ -243,7 +202,6 @@ const routerClear = async(
                             span.setStatus({code: SpanStatusCode.ERROR });
                             span.recordException(getSpanException(e));
                             span.end();
-                            console.log("could not get pool details, skipping...");
                             return Promise.reject("could not get pool details");
                         }
                     }
@@ -264,31 +222,14 @@ const routerClear = async(
                     pairSpan.setAttribute("details.route", "no-way");
                     pairSpan.setStatus({ code: SpanStatusCode.ERROR });
                     pairSpan.end();
-                    console.log("could not find any route for this token pair");
                     continue;
                 }
-
-                console.log(
-                    "best rate from router: " +
-                    ethers.utils.formatUnits(
-                        route.amountOutBN,
-                        bundledOrders[i].buyTokenDecimals
-                    ) +
-                    " " +
-                    bundledOrders[i].buyTokenSymbol
-                );
 
                 const rateFixed = route.amountOutBN.mul(
                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                 );
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
                 pairSpan.setAttribute("details.marketPrice", ethers.utils.formatEther(price));
-                console.log("");
-                console.log(
-                    "Current best route price for this token pair:",
-                    `\x1b[33m${ethers.utils.formatEther(price)}\x1b[0m`,
-                    "\n"
-                );
 
                 // filter take orders based on curent price and calculate final bundle quote amount
                 bundledOrders[i].takeOrders = bundledOrders[i].takeOrders.filter(
@@ -298,7 +239,6 @@ const routerClear = async(
 
                 if (!bundledOrders[i].takeOrders.length) {
                     pairSpan.addEvent("all orders had lower ratio than current market price");
-                    console.log("all orders had lower ratio than current market price, skipping...");
                 }
                 else {
                     cumulativeAmountFixed = ethers.constants.Zero;
@@ -327,15 +267,10 @@ const routerClear = async(
                     //     // poolFilter
                     // );
                     // if (route.status == "NoWay") throw "could not find any route for this token pair";
-                    console.log(">>> Route portions: ", "\n");
                     const routeVisual = [];
                     visualizeRoute(fromToken, toToken, route.legs).forEach(
-                        v => {
-                            console.log("\x1b[36m%s\x1b[0m", v);
-                            routeVisual.push(v);
-                        }
+                        v => {routeVisual.push(v);}
                     );
-                    console.log("");
                     pairSpan.setAttributes({
                         "details.route.legs": JSON.stringify(route.legs),
                         "details.route.visual": routeVisual,
@@ -434,7 +369,6 @@ const routerClear = async(
                         else ethPrice = "0";
 
                         if (ethPrice === undefined) {
-                            console.log("can not get ETH price, skipping...", "\n");
                             pairSpan.recordException(new Error("could not get ETH price"));
                         }
                         else {
@@ -459,7 +393,6 @@ const routerClear = async(
 
                             const blockNumber = await signer.provider.getBlockNumber();
                             dryrunSpan.setAttribute("details.blockNumber", blockNumber);
-                            console.log("Block Number: " + blockNumber, "\n");
 
                             let gasLimit;
                             try {
@@ -515,7 +448,6 @@ const routerClear = async(
 
                             try {
                                 pairSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
-                                console.log(">>> Trying to submit the transaction for this token pair...", "\n");
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"
@@ -532,7 +464,6 @@ const routerClear = async(
 
                                 const blockNumber = await signer.provider.getBlockNumber();
                                 pairSpan.setAttribute("details.blockNumber", blockNumber);
-                                console.log("Block Number: " + blockNumber, "\n");
 
                                 const tx = config.timeout
                                     ? await promiseTimeout(
@@ -548,11 +479,6 @@ const routerClear = async(
 
                                 const txUrl = config.explorer + "tx/" + tx.hash;
                                 console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
-                                console.log(
-                                    ">>> Transaction submitted successfully to the network, waiting for transaction to mine...",
-                                    "\n"
-                                );
-                                console.log(tx);
                                 pairSpan.setAttributes({
                                     "details.txUrl": txUrl,
                                     "details.tx": JSON.stringify(tx)
@@ -589,27 +515,6 @@ const routerClear = async(
                                 const netProfit = income
                                     ? income.sub(actualGasCostInToken)
                                     : undefined;
-                                console.log(
-                                    "\x1b[34m%s\x1b[0m",
-                                    `${bundledOrders[i].takeOrders.length} orders cleared successfully of this token pair!`,
-                                    "\n"
-                                );
-                                console.log(
-                                    "\x1b[36m%s\x1b[0m",
-                                    `Clear Initial Price: ${ethers.utils.formatEther(price)}`
-                                );
-                                console.log("\x1b[36m%s\x1b[0m", `Clear Actual Price: ${clearActualPrice}`);
-                                console.log("\x1b[36m%s\x1b[0m", `Clear Amount: ${
-                                    ethers.utils.formatUnits(
-                                        bundledQuoteAmount,
-                                        bundledOrders[i].sellTokenDecimals
-                                    )
-                                } ${bundledOrders[i].sellTokenSymbol}`);
-                                console.log("\x1b[36m%s\x1b[0m", `Consumed Gas: ${
-                                    ethers.utils.formatEther(actualGasCost)
-                                } ${
-                                    config.nativeToken.symbol
-                                }`, "\n");
                                 if (income) {
                                     const incomeFormated = ethers.utils.formatUnits(
                                         income,
@@ -623,8 +528,6 @@ const routerClear = async(
                                         "details.income": incomeFormated,
                                         "details.netProfit": netProfitFormated
                                     });
-                                    console.log("\x1b[35m%s\x1b[0m", `Gross Income: ${incomeFormated} ${bundledOrders[i].buyTokenSymbol}`);
-                                    console.log("\x1b[35m%s\x1b[0m", `Net Profit: ${netProfitFormated} ${bundledOrders[i].buyTokenSymbol}`, "\n");
                                 }
                                 pairSpan.setAttributes({
                                     "details.clearAmount": bundledQuoteAmount.toString(),
@@ -658,18 +561,11 @@ const routerClear = async(
                             catch (error) {
                                 pairSpan.recordException(getSpanException(error));
                                 pairSpan.setStatus({ code: SpanStatusCode.ERROR });
-                                console.log("\x1b[31m%s\x1b[0m", ">>> Transaction execution failed due to:");
-                                console.log(error, "\n");
                             }
                         }
                     }
                     catch (error) {
-                        if (error === "dryrun" || error === "nomatch") {
-                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction dry run failed, skipping...");
-                        }
-                        else {
-                            console.log("\x1b[31m%s\x1b[0m", ">>> Transaction failed due to:");
-                            console.log(error, "\n");
+                        if (error !== "dryrun" && error !== "nomatch") {
                             dryrunSpan.recordException(getSpanException(error));
                             // reason, code, method, transaction, error, stack, message
                         }
@@ -681,8 +577,6 @@ const routerClear = async(
         catch (error) {
             pairSpan.recordException(getSpanException(error));
             pairSpan.setStatus({ code: SpanStatusCode.ERROR });
-            console.log("\x1b[31m%s\x1b[0m", ">>> Something went wrong, reason:", "\n");
-            console.log(error);
         }
         pairSpan.end();
     }
