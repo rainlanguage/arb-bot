@@ -388,6 +388,7 @@ const srouterClear = async(
                     pairSpan.setStatus({ code: SpanStatusCode.OK, message: "successfuly cleared" });
 
                     report.push({
+                        txUrl,
                         transactionHash: receipt.transactionHash,
                         tokenPair:
                             bundledOrders[i].buyTokenSymbol +

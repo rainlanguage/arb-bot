@@ -156,11 +156,11 @@ const arbRound = async (tracer, roundCtx, options) => {
                         : undefined,
                 }
             );
-            span.setStatus({code: SpanStatusCode.OK});
+            span.setStatus({ code: SpanStatusCode.OK });
             span.end();
             return result;
         } catch(e) {
-            span.setStatus({code: SpanStatusCode.ERROR });
+            span.setStatus({ code: SpanStatusCode.ERROR });
             span.recordException(getSpanException(e));
             span.end();
             return Promise.reject(e);
@@ -183,15 +183,15 @@ const arbRound = async (tracer, roundCtx, options) => {
             );
             if (result.length) {
                 span.setAttribute("details.orders.json", JSON.stringify(result));
-                span.setStatus({code: SpanStatusCode.OK});
+                span.setStatus({ code: SpanStatusCode.OK });
             }
             else {
-                span.setStatus({code: SpanStatusCode.OK, message: "found no orders"});
+                span.setStatus({ code: SpanStatusCode.OK, message: "found no orders"});
             }
             span.end();
             return result;
         } catch(e) {
-            span.setStatus({code: SpanStatusCode.ERROR });
+            span.setStatus({ code: SpanStatusCode.ERROR });
             span.recordException(getSpanException(e));
             span.end();
             return Promise.reject(e);
@@ -223,7 +223,8 @@ const arbRound = async (tracer, roundCtx, options) => {
         }
         const ctx = trace.setSpan(context.active(), span);
         try {
-            await clear(
+            let txs;
+            const reports = await clear(
                 options.mode,
                 config,
                 ordersDetails,
@@ -233,10 +234,22 @@ const arbRound = async (tracer, roundCtx, options) => {
                 tracer,
                 ctx
             );
+            if (reports && reports.length) {
+                txs = reports.map(v => v.txUrl).filter(v => !!v);
+                if (txs.length) {
+                    span.setAttribute("details.txUrls", txs);
+                    span.setAttribute("details.didClear", true);
+                }
+            }
+            else {
+                span.setAttribute("details.didClear", false);
+            }
+            span.setStatus({ code: SpanStatusCode.OK });
             span.end();
             return;
         } catch(e) {
-            span.setStatus({code: SpanStatusCode.ERROR});
+            span.setAttribute("details.didClear", false);
+            span.setStatus({ code: SpanStatusCode.ERROR });
             span.recordException(getSpanException(e));
             span.end();
             return Promise.reject(e);
@@ -304,15 +317,27 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                await arbRound(tracer, roundCtx, options);
-                roundSpan.setStatus({code: SpanStatusCode.OK, message: "Round finished successfully!"});
-                console.log("\x1b[32m%s\x1b[0m", "Round finished successfully!");
+                const txs = await arbRound(tracer, roundCtx, options);
+                if (txs && txs.length) {
+                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("didClear", true);
+                    roundSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Round finished successfully with clears!"
+                    });
+                }
+                else {
+                    roundSpan.setAttribute("didClear", false);
+                    roundSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Round finished successfully without clears!"
+                    });
+                }
                 console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             }
             catch (error) {
-                roundSpan.setStatus({code: SpanStatusCode.ERROR });
-                console.log("\x1b[31m%s\x1b[0m", "An error occured during the round: ");
-                console.log(error);
+                roundSpan.setAttribute("didClear", false);
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
             }
             if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
             else rpcTurn++;
@@ -327,17 +352,29 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                await arbRound(tracer, roundCtx, options);
-                roundSpan.setStatus({code: SpanStatusCode.OK, message: "Round finished successfully!"});
-                console.log("\x1b[32m%s\x1b[0m", `Round ${i} finished successfully!`);
+                const txs = await arbRound(tracer, roundCtx, options);
+                if (txs && txs.length) {
+                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("didClear", true);
+                    roundSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Round finished successfully with clears!"
+                    });
+                }
+                else {
+                    roundSpan.setAttribute("didClear", false);
+                    roundSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Round finished successfully without clears!"
+                    });
+                }
                 if (i !== repetitions) console.log(
                     `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
                 );
             }
             catch (error) {
-                roundSpan.setStatus({code: SpanStatusCode.ERROR });
-                console.log("\x1b[31m%s\x1b[0m", `An error occured during round ${i}:`);
-                console.log(error);
+                roundSpan.setAttribute("didClear", false);
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
             }
             if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
             else rpcTurn++;
