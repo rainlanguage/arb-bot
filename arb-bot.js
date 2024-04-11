@@ -9,7 +9,7 @@ const { Resource } = require("@opentelemetry/resources");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
+const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 
 
 /**
@@ -241,6 +241,9 @@ const arbRound = async (tracer, roundCtx, options) => {
 };
 
 const main = async argv => {
+    // diag otel
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
+
     const exporter = new OTLPTraceExporter((
         process?.env?.HYPERDX_API_KEY
             ? {
