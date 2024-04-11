@@ -6,7 +6,6 @@ const { getQuery } = require("./query");
 const { versions } = require("process");
 const CONFIG = require("../config.json");
 const { curveClear } = require("./modes/curve");
-const { zeroExClear } = require("./modes/zeroex");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
@@ -17,10 +16,6 @@ const { getOrderDetailsFromJson, appGlobalLogger } = require("./utils");
  * Options for getConfig()
  */
 const configOptions = {
-    /**
-     * The 0x API key
-     */
-    zeroExApiKey: undefined,
     /**
      * Seconds to wait for the transaction to mine before disregarding it
      */
@@ -33,10 +28,6 @@ const configOptions = {
      * Flashbot rpc url
      */
     flashbotRpc: undefined,
-    /**
-     * 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
-     */
-    monthlyRatelimit: undefined,
     /**
      * Hides sensitive data such as rpc url and wallet private key from apearing in logs
      */
@@ -164,7 +155,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters) => {
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
- * @param {configOptions} options - (optional) Optional parameters, 0x API key, liquidity providers and monthly ratelimit
+ * @param {configOptions} options - (optional) Optional parameters, liquidity providers
  * @returns The configuration object
  */
 const getConfig = async(
@@ -179,8 +170,7 @@ const getConfig = async(
     if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
         !!options.hideSensitiveData,
         rpcUrl,
-        walletPrivateKey,
-        options?.zeroExApiKey
+        walletPrivateKey
     );
 
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
@@ -226,8 +216,6 @@ const getConfig = async(
     config.arbAddress       = arbAddress;
     config.arbType          = arbType?.toLowerCase();
     config.lps              = options?.liquidityProviders;
-    config.apiKey           = options?.zeroExApiKey;
-    config.monthlyRatelimit = options?.monthlyRatelimit;
     config.timeout          = options?.timeout;
     config.flashbotRpc      = options?.flashbotRpc;
     config.maxProfit        = !!options?.maxProfit;
@@ -242,7 +230,7 @@ const getConfig = async(
 /**
  * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
  *
- * @param {string} mode - The mode for clearing, either "0x" or "curve" or "router"
+ * @param {string} mode - The mode for clearing, either "curve" or "router" or "crouter" or "srouter"
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
@@ -273,14 +261,7 @@ const clear = async(
     }
     if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
 
-    if (_mode === "0x") return await zeroExClear(
-        config,
-        ordersDetails,
-        gasCoveragePercentage,
-        tracer,
-        ctx
-    );
-    else if (_mode === "curve") {
+    if (_mode === "curve") {
         if (majorVersion >= 18) return await curveClear(
             config,
             ordersDetails,
@@ -320,7 +301,7 @@ const clear = async(
         );
         else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
     }
-    else throw "unknown mode, must be either of '0x' or 'curve' or 'router' or 'srouter'";
+    else throw "unknown mode, must be either of 'crouter' 'curve' or 'router' or 'srouter'";
 };
 
 module.exports = {

@@ -34,7 +34,7 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
+- `-m` or `--mode`, Running mode of the bot, must be one of: `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--arb-contract-type`, Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
@@ -46,13 +46,11 @@ as well as at least one or both of below arguments:
 
 Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
-- `-a` or `--api-key`, 0x API key, can be set in env variables, Will override the 'API_KEY' env variable
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-- `--monthly-ratelimit`, 0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `--max-ratio`, Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
@@ -108,20 +106,18 @@ which will show:
     Options:
       -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
       -r, --rpc <url...>             RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `0x` or `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
+      -m, --mode <string>            Running mode of the bot, must be one of: `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
       -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
       -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
       --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
       --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
       --arb-contract-type <string>   Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
       -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
-      -a, --api-key <key>            0x API key, can be set in env variables, Will override the 'API_KEY' env variable
       -g, --gas-coverage <integer>   The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
       --repetitions <integer>        Option to run `number` of times, if unset will run for infinte number of times
       --order-hash <hash>            Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
       --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
       --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-      --monthly-ratelimit <integer>  0x monthly rate limit, if not specified will not respect any 0x monthly ratelimit, Will override the 'MONTHLY_RATELIMIT' in env variables
       --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
       --flashbot-rpc <url>           Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
       --timeout <integer>            Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
@@ -147,7 +143,7 @@ RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.co
 # Option to submit transactions using the flashbot RPC. 
 FLASHBOT_RPC=""
 
-# bot running mode, one of "router", "0x", "curve", "crouter", "srouter"
+# bot running mode, one of "router", "curve", "crouter", "srouter"
 MODE="router"
 
 # arb contract address
@@ -164,17 +160,11 @@ SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph
 # OR e.g. the path to the volume mounted by docker compose
 ORDERS="/etc/rainprotocol/arb-bot/orders.json"
 
-# 0x API key
-API_KEY=
-
 # list of liquidity providers names seperated by a comma for each
 LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
 
 # gas coverage percentage for each transaction to be considered profitable to be submitted
 GAS_COVER="100"
-
-# 0x monthly rate limit number, if not specified will not respect 0x monthly rate limit
-MONTHLY_RATELIMIT=200000
 
 # an integer used for specifiying the number repetitions for the app to run, if not set will run for infinite number of times
 REPETITIONS=1
@@ -239,8 +229,6 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 // to run the app:
 // options (all properties are optional)
 const configOptions = {
-  zeroExApiKey          : "...",   // required for '0x' mode
-  monthlyRatelimit      : 1000000, // 0x monthly rate limit, only used for 0x mode
   hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
   maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
@@ -275,7 +263,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const mode = "srouter" // mode can be one of "router" or "0x" or "curve" or "crouter" or "srouter"
+const mode = "srouter" // mode can be one of "router" or "curve" or "crouter" or "srouter"
 const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
 ```
 <br>
@@ -294,7 +282,7 @@ for nix users:
 ```bash
 ci-test
 ```
-which runs on hardhat forked polygon network while using the 0x live price quotes.
+which runs on hardhat forked polygon network.
 
 To run doc generation:
 ```bash
