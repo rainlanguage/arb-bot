@@ -10,6 +10,7 @@ const {
     getActualPrice,
     visualizeRoute,
     promiseTimeout,
+    createViemClient,
     bundleTakeOrders,
     getSpanException
 } = require("../utils");
@@ -39,7 +40,8 @@ const routerClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps);
-    const dataFetcher       = getDataFetcher(config, lps, false);
+    const viemClient        = createViemClient(config.chainId, [config.rpc], false);
+    const dataFetcher       = getDataFetcher(viemClient, lps);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -65,6 +67,7 @@ const routerClear = async(
         });
         try {
             const result = await bundleTakeOrders(
+                viemClient,
                 ordersDetails,
                 orderbook,
                 arb,
@@ -73,7 +76,8 @@ const routerClear = async(
                 config.interpreterv2,
                 config.bundle,
                 tracer,
-                trace.setSpan(context.active(), span)
+                trace.setSpan(context.active(), span),
+                config.multicallAddress
             );
             const status = {code: SpanStatusCode.OK};
             if (!result.length) status.message = "could not find any orders for current market price or with vault balance";

@@ -1,7 +1,8 @@
 const { ethers, BigNumber } = require("ethers");
-const { createPublicClient, http, fallback } = require("viem");
-const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi } = require("./abis");
-const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = require("sushiswap-router");
+const { createPublicClient, http, fallback, parseAbi } = require("viem");
+const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi, orderbookAbi } = require("./abis");
+const { DataFetcher, Router, LiquidityProviders, ChainId, Token } = require("sushiswap-router");
+const viemChains = require("viem/chains");
 
 
 /**
@@ -725,18 +726,21 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
 /**
  * Builds and bundles orders which their details are queried from a orderbook subgraph by checking the vault balances and evaling
  *
+ * @param {import("viem").PublicClient} client - viem publicClient
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {ethers.Contract} orderbook - The Orderbook EthersJS contract instance with signer
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @param {boolean} _eval - To eval() the orders and filter them based on the eval result
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @param {boolean} _interpreterv2 - If should use eval2 of interpreter v2 for evaling
- * @param {boolean} _bundle = If orders should be bundled based on token pair
+ * @param {boolean} _bundle - If orders should be bundled based on token pair
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
+ * @param {string} multicallAddress - multicall contract address, used in case the viem chain doesnt already have it
  * @returns Array of bundled take orders
  */
 const bundleTakeOrders = async(
+    client,
     ordersDetails,
     orderbook,
     arb,
@@ -745,74 +749,82 @@ const bundleTakeOrders = async(
     _interpreterv2 = false,
     _bundle = true,
     tracer,
-    ctx
+    ctx,
+    multicallAddress
 ) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
         orderbook.address,
         orderbook.signer.provider
     );
+    const obAbi = parseAbi(orderbookAbi);
 
-    const vaultsCache = [];
+    const vaultBalanceCalls = [];
+    if (_eval) ordersDetails.forEach(
+        (order) => {
+            order.validOutputs.forEach(v => {
+                const owner = order.owner.id.toLowerCase();
+                const vaultId = v.vault.id.split("-")[0].toLowerCase();
+                const tokenId = v.token.id.toLowerCase();
+                if (vaultBalanceCalls.every(e =>
+                    e.args[0] !== owner || e.args[1] !== tokenId || e.args[2] !== vaultId
+                )) {
+                    vaultBalanceCalls.push({
+                        address: orderbook.address,
+                        chainId: client.chain.id,
+                        abi: obAbi,
+                        functionName: "vaultBalance",
+                        args: [ owner, tokenId, vaultId ]
+                    });
+                }
+            });
+            order.validInputs.forEach(v => {
+                const owner = order.owner.id.toLowerCase();
+                const vaultId = v.vault.id.split("-")[0].toLowerCase();
+                const tokenId = v.token.id.toLowerCase();
+                if (vaultBalanceCalls.every(e =>
+                    e.args[0] !== owner || e.args[1] !== tokenId || e.args[2] !== vaultId
+                )) {
+                    vaultBalanceCalls.push({
+                        address: orderbook.address,
+                        chainId: client.chain.id,
+                        abi: obAbi,
+                        functionName: "vaultBalance",
+                        args: [ owner, tokenId, vaultId ]
+                    });
+                }
+            });
+        }
+    );
+    const vaultBalances = _eval
+        ? await client.multicall({
+            multicallAddress: client?.chain?.contracts?.multicall3?.address ?? multicallAddress,
+            allowFailure: true,
+            contracts: vaultBalanceCalls
+        })
+        : [];
+
     for (let i = 0; i < ordersDetails.length; i++) {
         const order = ordersDetails[i];
         for (let j = 0; j < order.validOutputs.length; j++) {
+            let quoteAmount, ratio, maxOutput, _outputBalance, _inputBalance;
             const _output = order.validOutputs[j];
-            let quoteAmount, ratio, maxOutput;
-            let _outputBalance, _outputBalanceFixed;
-            let _hasVaultBalances = false;
+
             if (_eval) {
-                if (_output?.tokenVault?.balance) {
-                    _hasVaultBalances = true;
-                }
-                if (_hasVaultBalances) {
-                    _outputBalance = _output.tokenVault.balance;
-                    _outputBalanceFixed = ethers.utils.parseUnits(
-                        ethers.utils.formatUnits(
-                            _output.tokenVault.balance,
-                            _output.token.decimals
-                        )
-                    );
-                    if (!vaultsCache.find(e =>
-                        e.owner === order.owner.id &&
-                        e.token === _output.token.id &&
-                        e.vaultId === _output.vault.id.split("-")[0]
-                    )) vaultsCache.push({
-                        owner: order.owner.id,
-                        token: _output.token.id,
-                        vaultId: _output.vault.id.split("-")[0],
-                        balance: _output.tokenVault.balance
-                    });
-                }
-                else {
-                    let _ov = vaultsCache.find(e =>
-                        e.owner === order.owner.id &&
-                        e.token === _output.token.id &&
-                        e.vaultId === _output.vault.id.split("-")[0]
-                    );
-                    if (!_ov) {
-                        const balance = await orderbook.vaultBalance(
-                            order.owner.id,
-                            _output.token.id,
-                            _output.vault.id.split("-")[0]
-                        );
-                        _ov = {
-                            owner: order.owner.id,
-                            token: _output.token.id,
-                            vaultId: _output.vault.id.split("-")[0],
-                            balance
-                        };
-                        vaultsCache.push(_ov);
-                    }
-                    _outputBalance = _ov.balance;
-                    _outputBalanceFixed = ethers.utils.parseUnits(
+                const index = vaultBalanceCalls.findIndex(
+                    v => v.args[0].toLowerCase() === order.owner.id.toLowerCase()
+                    && v.args[1].toLowerCase() === _output.token.id.toLowerCase()
+                    && v.args[2].toLowerCase() === _output.vault.id.split("-")[0].toLowerCase()
+                );
+                if (index > -1 && vaultBalances[index].status === "success") {
+                    _outputBalance = BigNumber.from(vaultBalances[index].result);
+                    quoteAmount = ethers.utils.parseUnits(
                         ethers.utils.formatUnits(
                             _outputBalance,
                             _output.token.decimals
                         )
                     );
                 }
-                quoteAmount = _outputBalanceFixed;
             }
 
             if (quoteAmount === undefined || !quoteAmount.isZero()) {
@@ -821,42 +833,15 @@ const bundleTakeOrders = async(
                         const _input = order.validInputs[k];
 
                         if (_eval) {
-                            let _inputBalance;
-                            if (_hasVaultBalances) {
-                                _inputBalance = _input.tokenVault.balance;
-                                if (!vaultsCache.find(e =>
-                                    e.owner === order.owner.id &&
-                                    e.token === _input.token.id &&
-                                    e.vaultId === _input.vault.id.split("-")[0]
-                                )) vaultsCache.push({
-                                    owner: order.owner.id,
-                                    token: _input.token.id,
-                                    vaultId: _input.vault.id.split("-")[0],
-                                    balance: _input.tokenVault.balance
-                                });
+                            const index = vaultBalanceCalls.findIndex(
+                                v => v.args[0].toLowerCase() === order.owner.id.toLowerCase()
+                                && v.args[1].toLowerCase() === _input.token.id.toLowerCase()
+                                && v.args[2].toLowerCase() === _input.vault.id.split("-")[0].toLowerCase()
+                            );
+                            if (index > -1 && vaultBalances[index].status === "success") {
+                                _inputBalance = BigNumber.from(vaultBalances[index].result);
                             }
-                            else {
-                                let _iv = vaultsCache.find(e =>
-                                    e.owner === order.owner.id &&
-                                    e.token === _input.token.id &&
-                                    e.vaultId === _input.vault.id.split("-")[0]
-                                );
-                                if (!_iv) {
-                                    const balance = await orderbook.vaultBalance(
-                                        order.owner.id,
-                                        _input.token.id,
-                                        _input.vault.id.split("-")[0]
-                                    );
-                                    _iv = {
-                                        owner: order.owner.id,
-                                        token: _input.token.id,
-                                        vaultId: _input.vault.id.split("-")[0],
-                                        balance
-                                    };
-                                    vaultsCache.push(_iv);
-                                }
-                                _inputBalance = _iv.balance;
-                            }
+
                             ({ maxOutput, ratio } = _interpreterv2
                                 ? await interpreterV2Eval(
                                     new ethers.Contract(
@@ -971,7 +956,7 @@ const createViemClient = (chainId, rpcs, useFallbacs = false) => {
             : fallback(rpcs.map(v => http(v)));
 
     return createPublicClient({
-        chain: viemConfig[chainId]?.chain,
+        chain: Object.values(viemChains).find(v => v.id === chainId),
         transport
         // batch: {
         //     multicall: {
@@ -1011,7 +996,7 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
         dataFetcher.stopDataFetching();
         return dataFetcher;
     }
-    catch(error) {
+    catch {
         throw "cannot instantiate DataFetcher for this network";
     }
 };
@@ -1746,3 +1731,54 @@ module.exports = {
     getUniV2RouteData,
     getSpanException
 };
+
+// const obAbi = parseAbi(orderbookAbi);
+// getOrderDetails(["https://subgraphs.h20liquidity.tech/subgraphs/name/flare-0xb06202aA"], undefined, undefined, {orderHash: "0xbeef85ea9bdd57b7fe58fcd30b19b665aad2850befa846cc357cb0bfe9605b13"}).then(ordersDetails => {
+//     const c = createPublicClient({
+//         chain: require("viem/chains").flare,
+//         transport: http("https://rpc.ankr.com/flare"),
+//     });
+//     const allcalls = [];
+//     ordersDetails.forEach(
+//         (order) => {
+//             order.validOutputs.forEach(v => {
+//                 const owner = order.owner.id.toLowerCase();
+//                 const vaultId = v.vault.id.split("-")[0].toLowerCase();
+//                 const tokenId = v.token.id.toLowerCase();
+//                 if (allcalls.every(e =>
+//                     e.args[0] !== owner || e.args[1] !== tokenId || e.args[2] !== vaultId
+//                 )) {
+//                     allcalls.push({
+//                         address: "0xb06202aA3Fe7d85171fB7aA5f17011d17E63f382",
+//                         chainId: 14,
+//                         abi: obAbi,
+//                         functionName: "vaultBalance",
+//                         args: [ owner, tokenId, vaultId ]
+//                     });
+//                 }
+//             });
+//             order.validInputs.forEach(v => {
+//                 const owner = order.owner.id.toLowerCase();
+//                 const vaultId = v.vault.id.split("-")[0].toLowerCase();
+//                 const tokenId = v.token.id.toLowerCase();
+//                 if (allcalls.every(e =>
+//                     e.args[0] !== owner || e.args[1] !== tokenId || e.args[2] !== vaultId
+//                 )) {
+//                     allcalls.push({
+//                         address: "0xb06202aA3Fe7d85171fB7aA5f17011d17E63f382",
+//                         chainId: 14,
+//                         abi: obAbi,
+//                         functionName: "vaultBalance",
+//                         args: [ owner, tokenId, vaultId ]
+//                     });
+//                 }
+//             });
+//         }
+//     );
+//     c.multicall({
+//         multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
+//         allowFailure: true,
+//         account: "0x9B3F1D56D9004e6C69d8247d402F38DE5F87A27c",
+//         contracts: allcalls
+//     }).then(v => console.log(v));
+// });

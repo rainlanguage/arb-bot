@@ -190,6 +190,7 @@ const crouterClear = async(
         });
         try {
             const result = await bundleTakeOrders(
+                viemClient,
                 ordersDetails,
                 orderbook,
                 arb,
@@ -198,7 +199,8 @@ const crouterClear = async(
                 config.interpreterv2,
                 config.bundle,
                 tracer,
-                trace.setSpan(context.active(), span)
+                trace.setSpan(context.active(), span),
+                config.multicallAddress
             );
             const status = {code: SpanStatusCode.OK};
             if (!result.length) status.message = "could not find any orders for current market price or with vault balance";

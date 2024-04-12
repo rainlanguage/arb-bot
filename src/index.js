@@ -9,7 +9,7 @@ const { curveClear } = require("./modes/curve");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
-const { getOrderDetailsFromJson, appGlobalLogger, getSpanException } = require("./utils");
+const { getOrderDetailsFromJson, getSpanException } = require("./utils");
 const { SpanStatusCode } = require("@opentelemetry/api");
 
 
@@ -183,13 +183,6 @@ const getConfig = async(
     arbType,
     options = configOptions
 ) => {
-    // applied for API mode
-    if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
-        !!options.hideSensitiveData,
-        rpcUrl,
-        walletPrivateKey
-    );
-
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
     if (options.timeout !== undefined){
