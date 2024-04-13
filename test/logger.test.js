@@ -40,5 +40,9 @@ describe("Test logger", async function () {
         // should not include any errors
         assert.notInclude(stdoutText, "Maximum call stack size exceeded");
         assert.notInclude(stdoutText, "Error");
+        assert.include(stdoutText, "@opentelemetry/api: Registered a global for diag v1.8.0.");
+        assert.include(stdoutText, "some text");
+        // 123 is colored
+        assert.include(stdoutText, "{ someObj: \u001b[33m123\u001b[39m }");
     });
 });
