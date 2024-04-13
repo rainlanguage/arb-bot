@@ -249,7 +249,7 @@ const arbRound = async (tracer, roundCtx, options) => {
 
 const main = async argv => {
     // diag otel
-    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
 
     const exporter = new OTLPTraceExporter((
         process?.env?.HYPERDX_API_KEY
