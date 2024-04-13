@@ -30,4 +30,7 @@ module.exports = {
         parallel: false,
         timeout: 500000,
     },
+    paths: {
+        tests: "./test/modeTests"
+    }
 };

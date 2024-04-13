@@ -3,7 +3,7 @@
 require("dotenv").config();
 const { Command } = require("commander");
 const { version } = require("./package.json");
-const { sleep, appGlobalLogger, getSpanException } = require("./src/utils");
+const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { Resource } = require("@opentelemetry/resources");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
@@ -136,8 +136,6 @@ const arbRound = async (tracer, roundCtx, options) => {
                     maxProfit           : options.maxProfit,
                     maxRatio            : options.maxRatio,
                     flashbotRpc         : options.flashbotRpc,
-                    hideSensitiveData   : false,
-                    shortenLargeLogs    : false,
                     timeout             : options.timeout,
                     interpreterv2       : options.interpreterv2,
                     bundle              : options.bundle,
@@ -251,7 +249,7 @@ const arbRound = async (tracer, roundCtx, options) => {
 
 const main = async argv => {
     // diag otel
-    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
     const exporter = new OTLPTraceExporter((
         process?.env?.HYPERDX_API_KEY
@@ -294,12 +292,6 @@ const main = async argv => {
         if (/^\d+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
         else throw "invalid sleep value, must be an integer greater than equal 0";
     }
-
-    appGlobalLogger(
-        true,
-        // ...rpcs,
-        options.key
-    );
 
     let counter = 0;
     // eslint-disable-next-line no-constant-condition
