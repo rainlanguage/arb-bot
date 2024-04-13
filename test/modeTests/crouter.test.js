@@ -1,15 +1,15 @@
 require("dotenv").config();
 const { assert } = require("chai");
-const { clear } = require("../src");
+const { clear } = require("../../src");
 const { ethers } = require("hardhat");
-const CONFIG = require("../config.json");
-const { arbDeploy } = require("./deploy/arbDeploy");
-const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
+const CONFIG = require("../../config.json");
+const { arbDeploy } = require("../deploy/arbDeploy");
+const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
-const { deployOrderBook, deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
-const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfig } = require("./utils");
-const { rainterpreterExpressionDeployerDeploy, rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
-const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const { deployOrderBook, deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
+const { randomUint256, prepareOrders, AddressWithBalance, generateEvaluableConfig } = require("../utils");
+const { rainterpreterExpressionDeployerDeploy, rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
+const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
 const { Resource } = require("@opentelemetry/resources");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
@@ -17,7 +17,7 @@ const { trace, context } = require("@opentelemetry/api");
 
 
 // This test runs on hardhat forked network of polygon
-describe("Rain Arb Bot 'curve' Mode Tests", async function () {
+describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
     let turn = 0;
     let interpreter,
         store,
@@ -162,7 +162,6 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
             value: ethers.utils.parseEther("5.0"),
             to: FRAXHolder.address
         });
-
         for (let i = 0; i < 3; i++) {
             await USDT.connect(USDTHolder).transfer(owners[i].address, "1000" + "0".repeat(USDTDecimals));
             await USDC.connect(USDCHolder).transfer(owners[i].address, "1000" + "0".repeat(USDCDecimals));
@@ -174,7 +173,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     });
 
     it("should clear orders in 'flash-loan-v2' mode", async function () {
-        const testSpan = tracer.startSpan("test-curve-flash-loan-v2");
+        const testSpan = tracer.startSpan("test-crouter-flash-loan-v2");
         const ctx = trace.setSpan(context.active(), testSpan);
 
         // set up vault ids
@@ -212,8 +211,9 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v2";
+        config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("curve", config, sgOrders, undefined, tracer, ctx);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -299,7 +299,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     });
 
     it("should clear orders in 'flash-loan-v3' mode", async function () {
-        const testSpan = tracer.startSpan("test-curve-flash-loan-v3");
+        const testSpan = tracer.startSpan("test-crouter-flash-loan-v3");
         const ctx = trace.setSpan(context.active(), testSpan);
 
         // set up vault ids
@@ -338,8 +338,9 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "flash-loan-v3";
+        config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("curve", config, sgOrders, undefined, tracer, ctx);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -425,7 +426,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     });
 
     it("should clear orders in 'order-taker' mode", async function () {
-        const testSpan = tracer.startSpan("test-curve-order-taker");
+        const testSpan = tracer.startSpan("test-crouter-order-taker");
         const ctx = trace.setSpan(context.active(), testSpan);
 
         // set up vault ids
@@ -464,8 +465,9 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         config.signer = bot;
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
+        config.apiKey = process?.env?.API_KEY;
         config.interpreterv2 = false;
-        const reports = await clear("curve", config, sgOrders, undefined, tracer, ctx);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);
@@ -583,13 +585,13 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     //     );
 
     //     // run the clearing process
-    //     //     //     config.rpc = process?.env?.TEST_POLYGON_RPC;
+    //     config.rpc = process?.env?.TEST_POLYGON_RPC;
     config.shuffle = false;
     //     config.signer = bot;
     //     config.lps = ["SushiSwapV2"];
     //     config.arbType = "flash-loan-v3";
     //     config.interpreterv2 = true;
-    //     const reports = await clear("curve", config, sgOrders, undefined, tracer, ctx);
+    //     const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
     //     // should have cleared 2 toke pairs bundled orders
     //     assert.ok(reports.length == 2);
@@ -674,7 +676,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
     // });
 
     it("should clear orders in 'order-taker' mode using interpreter v2", async function () {
-        const testSpan = tracer.startSpan("test-curve-order-taker-int-v2");
+        const testSpan = tracer.startSpan("test-crouter-order-taker-int-v2");
         const ctx = trace.setSpan(context.active(), testSpan);
 
         // set up vault ids
@@ -714,7 +716,7 @@ describe("Rain Arb Bot 'curve' Mode Tests", async function () {
         config.lps = ["SushiSwapV2"];
         config.arbType = "order-taker";
         config.interpreterv2 = true;
-        const reports = await clear("curve", config, sgOrders, undefined, tracer, ctx);
+        const reports = await clear("crouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
         assert.ok(reports.length == 2);

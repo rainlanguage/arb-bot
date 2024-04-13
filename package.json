@@ -32,7 +32,7 @@
         "docker:start": "cd ./otel && docker-compose down && docker-compose up",
         "docker:stop": "cd ./otel && docker-compose down",
         "start:tracing": "node arb-bot.js",
-        "test": "hardhat test",
+        "test": "hardhat test ./test/logger.test.js && hardhat test --bail",
         "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",
         "lint": "eslint ./src ./test ./arb-bot.js",
         "lint-fix": "eslint ./src ./test ./arb-bot.js --fix"
