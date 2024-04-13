@@ -13,10 +13,8 @@ const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, 
 const { Resource } = require("@opentelemetry/resources");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
-const { trace, context, diag, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
+const { trace, context } = require("@opentelemetry/api");
 
-// otel diag
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
 // This test runs on hardhat forked network of polygon
 describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
@@ -48,6 +46,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         }),
     });
     provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
     const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {

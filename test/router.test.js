@@ -46,6 +46,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         }),
     });
     provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.register();
     const tracer = provider.getTracer("arb-bot-tracer");
 
     beforeEach(async() => {
