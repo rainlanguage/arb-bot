@@ -9,7 +9,7 @@ const { curveClear } = require("./modes/curve");
 const { routerClear } = require("./modes/router");
 const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
-const { getOrderDetailsFromJson, appGlobalLogger, getSpanException } = require("./utils");
+const { getOrderDetailsFromJson, getSpanException } = require("./utils");
 const { SpanStatusCode } = require("@opentelemetry/api");
 
 
@@ -29,14 +29,6 @@ const configOptions = {
      * Flashbot rpc url
      */
     flashbotRpc: undefined,
-    /**
-     * Hides sensitive data such as rpc url and wallet private key from apearing in logs
-     */
-    hideSensitiveData: true,
-    /**
-     * Option to shorten large data fields in logs
-     */
-    shortenLargeLogs: true,
     /**
      * Maximize profit for "srouter" mode, comes at the cost of RPC calls
      */
@@ -72,10 +64,6 @@ const clearOptions = {
      * for it to be considered profitable and get submitted
      */
     gasCoveragePercentage: "100",
-    // /**
-    //  * Prioritize better deals to get cleared first, default is true
-    //  */
-    // prioritization: true
 };
 
 /**
@@ -183,13 +171,6 @@ const getConfig = async(
     arbType,
     options = configOptions
 ) => {
-    // applied for API mode
-    if (!!options.hideSensitiveData || !!options.shortenLargeLogs) appGlobalLogger(
-        !!options.hideSensitiveData,
-        rpcUrl,
-        walletPrivateKey
-    );
-
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
     if (options.timeout !== undefined){

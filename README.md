@@ -229,7 +229,6 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 // to run the app:
 // options (all properties are optional)
 const configOptions = {
-  hideSensitiveData     : true,    // set to true to hide sensitive data such as wallet private key or rpc url from apearing in logs
   maxProfit             : true,    // option to maximize profit for 'srouter' mode
   maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
