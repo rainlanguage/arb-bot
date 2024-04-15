@@ -258,12 +258,14 @@ const main = async argv => {
                 headers: {
                     authorization: process?.env?.HYPERDX_API_KEY,
                 },
+                concurrencyLimit: 5,
                 compression: "gzip",
-                keepAlive: true,
+                // keepAlive: true,
             }
             : {
+                concurrencyLimit: 5,
                 compression: "gzip",
-                keepAlive: true,
+                // keepAlive: true,
             }
     ));
     const provider = new BasicTracerProvider({
