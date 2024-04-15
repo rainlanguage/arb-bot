@@ -190,7 +190,7 @@ const arbRound = async (tracer, roundCtx, options) => {
 
     if (!ordersDetails.length) return;
 
-    await tracer.startActiveSpan("take-orders", {}, roundCtx, async (span) => {
+    return await tracer.startActiveSpan("take-orders", {}, roundCtx, async (span) => {
         span.setAttributes({
             "details.config.chainid": options.chainId,
             "details.config.network": options.network,
@@ -236,7 +236,7 @@ const arbRound = async (tracer, roundCtx, options) => {
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
-            return;
+            return txs;
         } catch(e) {
             span.setAttribute("details.didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR });
