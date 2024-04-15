@@ -257,9 +257,12 @@ const main = async argv => {
                 url: "https://in-otel.hyperdx.io/v1/traces",
                 headers: {
                     authorization: process?.env?.HYPERDX_API_KEY,
-                }
+                },
+                compression: "gzip",
             }
-            : {}
+            : {
+                compression: "gzip",
+            }
     ));
     const provider = new BasicTracerProvider({
         resource: new Resource({
