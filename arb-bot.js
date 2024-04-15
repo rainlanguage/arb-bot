@@ -266,7 +266,16 @@ const main = async argv => {
             [SEMRESATTRS_SERVICE_NAME]: process?.env?.TRACER_SERVICE_NAME ?? "arb-bot"
         }),
     });
-    provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+    provider.addSpanProcessor(new BatchSpanProcessor(exporter, {
+        // // The maximum queue size. After the size is reached spans are dropped.
+        // maxQueueSize: 200000,
+        // // The maximum batch size of every export. It must be smaller or equal to maxQueueSize.
+        // maxExportBatchSize: 100000,
+        // The interval between two consecutive exports
+        // scheduledDelayMillis: 10000,
+        // How long the export can run before it is cancelled
+        exportTimeoutMillis: 30000,
+    }));
 
     // console spans in case hyperdx api is not defined
     if (!process?.env?.HYPERDX_API_KEY) {
