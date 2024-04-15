@@ -13,17 +13,21 @@ Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as th
 
 ## Tutorial
 ### CLI
-Start by cloning the repo and then install the dependencies:
+Start by cloning the repo and then install the dependencies, requires `>= nodejs v18`:
+```bash
+npm install
+```
+If you have Nix installed on your machine you can run the app on nix environment:
+```bash
+nix develop
+```
+and then
 ```bash
 npm install
 ```
 or
 ```bash
-yarn install
-```
-If you have Nix installed on your machine you can run the app on nix environment:
-```bash
-nix-shell
+nix develop -c npm install
 ```
 <br>
 
@@ -277,34 +281,14 @@ To run the tests:
 ```bash
 npm test
 ```
-for nix users:
-```bash
-ci-test
-```
 which runs on hardhat forked polygon network.
 
-To run doc generation:
-```bash
-npm run docgen
-```
-for nix users:
-```bash
-docgen
-```
-
-To lint/lint and fix:
+To lint or lint and fix:
 ```bash
 npm run lint
 ```
 ```bash
 npm run lint-fix
-```
-for nix users:
-```bash
-lint
-```
-```bash
-lint-fix
 ```
 
 ## Docker
