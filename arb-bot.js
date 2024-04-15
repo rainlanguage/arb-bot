@@ -260,12 +260,12 @@ const main = async argv => {
                 },
                 concurrencyLimit: 5,
                 // compression: "gzip",
-                // keepAlive: true,
+                keepAlive: true,
             }
             : {
                 concurrencyLimit: 5,
                 // compression: "gzip",
-                // keepAlive: true,
+                keepAlive: true,
             }
     ));
     const provider = new BasicTracerProvider({
