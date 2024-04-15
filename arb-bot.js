@@ -329,7 +329,8 @@ const main = async argv => {
             else rpcTurn++;
             roundSpan.end();
             await sleep(roundGap);
-            await sleep(2000);
+            // give otel some time to export
+            await sleep(3000);
         });
         counter++;
     }
@@ -366,7 +367,8 @@ const main = async argv => {
             else rpcTurn++;
             roundSpan.end();
             await sleep(roundGap);
-            await sleep(2000);
+            // give otel some time to export
+            await sleep(3000);
         });
     }
 
