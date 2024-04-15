@@ -6,7 +6,7 @@ const { version } = require("./package.json");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { Resource } = require("@opentelemetry/resources");
-const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-grpc");
+const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
@@ -257,9 +257,14 @@ const main = async argv => {
                 url: "https://in-otel.hyperdx.io/v1/traces",
                 headers: {
                     authorization: process?.env?.HYPERDX_API_KEY,
-                }
+                },
+                compression: "gzip",
+                keepAlive: true,
             }
-            : {}
+            : {
+                compression: "gzip",
+                keepAlive: true,
+            }
     ));
     const provider = new BasicTracerProvider({
         resource: new Resource({
@@ -273,7 +278,7 @@ const main = async argv => {
         //     // // The maximum batch size of every export. It must be smaller or equal to maxQueueSize.
         //     // maxExportBatchSize: 100000,
         //     // The interval between two consecutive exports
-        //     // scheduledDelayMillis: 10000,
+        // scheduledDelayMillis: 2000,
         //     // How long the export can run before it is cancelled
         //     // exportTimeoutMillis: 30000,
         // }
