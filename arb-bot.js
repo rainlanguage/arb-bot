@@ -259,12 +259,12 @@ const main = async argv => {
                     authorization: process?.env?.HYPERDX_API_KEY,
                 },
                 concurrencyLimit: 5,
-                compression: "gzip",
+                // compression: "gzip",
                 // keepAlive: true,
             }
             : {
                 concurrencyLimit: 5,
-                compression: "gzip",
+                // compression: "gzip",
                 // keepAlive: true,
             }
     ));
