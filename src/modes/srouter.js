@@ -46,6 +46,7 @@ const srouterClear = async(
     const maxProfit         = config.maxProfit;
     const maxRatio          = config.maxRatio;
     const hops              = config.hops;
+    const retries           = config.retries;
     const flashbotSigner    = config.flashbotRpc
         ? new ethers.Wallet(
             signer.privateKey,
@@ -238,7 +239,7 @@ const srouterClear = async(
                 }
             } else {
                 const promises = [];
-                for (let j = 1; j < 4; j++) {
+                for (let j = 1; j < retries + 1; j++) {
                     promises.push(
                         dryrun(
                             j,

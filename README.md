@@ -63,6 +63,7 @@ Other optional arguments are:
 - `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `--hops`, Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
+- `--retries`, Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--rp32`, Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -131,6 +132,7 @@ which will show:
       --no-bundle                    Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
       --hops <integer>               Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
       --rp32                         Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
+      --retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -215,6 +217,9 @@ HYPERDX_API_KEY=""
 
 # trace/spans service name, defaults to "arb-bot" if not set
 TRACER_SERVICE_NAME=""
+
+# The amount of retries for the same order in sorouter mode, max is 3, default is 1
+RETRIES=1
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -240,6 +245,7 @@ const configOptions = {
   interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
   hops                  : 6,       // The amount of hops of binary search for sorouter mode
+  retries               : 1,       // The amount of retries for the same order in sorouter mode
   rp32                  : true,    // Option to use sushi RouteProcessorv3.2, default is v3
   liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
     "sushiswapv2",
