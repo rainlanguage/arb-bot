@@ -1022,6 +1022,7 @@
         "chainId": 14,
         "explorer": "https://flarescan.com/",
         "routeProcessor3Address": "0x9B3F1D56D9004e6C69d8247d402F38DE5F87A27c",
+        "routeProcessor3_2Address": "0x5CeEe9F4F49C106D5Bc049C8D649C332E6d365ad",
         "uniV2Router02Address": "0x088EeCB467B3968Da36c71F05023A1d3133B2B83",
         "zeroEx": {
         },
