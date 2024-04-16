@@ -205,6 +205,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.interpreterv2 = false;
         config.hops = 5;
         config.bundle = true;
+        config.retries = 1;
         const reports = await clear("srouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders
@@ -332,6 +333,7 @@ describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
         config.interpreterv2 = true;
         config.hops = 5;
         config.bundle = true;
+        config.retries = 1;
         const reports = await clear("srouter", config, sgOrders, undefined, tracer, ctx);
 
         // should have cleared 2 toke pairs bundled orders

@@ -36,6 +36,7 @@ const ENV_OPTIONS = {
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     hops                : process?.env?.HOPS,
+    retries             : process?.env?.RETRIES,
     rp32                : process?.env?.RP3_2?.toLowerCase() === "true" ? true : false,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -70,6 +71,7 @@ const getOptions = async argv => {
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
+        .option("--retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -102,6 +104,7 @@ const getOptions = async argv => {
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
     cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
+    cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
@@ -140,6 +143,7 @@ const arbRound = async (tracer, roundCtx, options) => {
                     interpreterv2       : options.interpreterv2,
                     bundle              : options.bundle,
                     hops                : options.hops,
+                    retries             : options.retries,
                     rp32                : options.rp32,
                     liquidityProviders  : options.lps
                         ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])

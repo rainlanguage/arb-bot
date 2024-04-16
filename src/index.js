@@ -50,6 +50,10 @@ const configOptions = {
      */
     hops: 11,
     /**
+     * The amount of retries for the same order in sorouter mode
+     */
+    retries: 1,
+    /**
      * Option to use sushi RouteProcessorv3.2, default is v3
      */
     rp32: false
@@ -200,11 +204,27 @@ const getConfig = async(
 
     let hops = 11;
     if (options.hops) {
-        if (/^\d+$/.test(options.hops)) {
+        if (typeof options.hops === "number") {
+            hops = options.hops;
+            if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
+        }
+        else if (typeof options.hops === "string" && /^\d+$/.test(options.hops)) {
             hops = Number(options.hops);
             if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
         }
         else throw "invalid hops value, must be an integer greater than 0";
+    }
+    let retries = 1;
+    if (options.retries) {
+        if (typeof options.retries === "number") {
+            retries = options.retries;
+            if (retries < 1 || retries > 3) throw "invalid retries value, must be an integer between 1 - 3";
+        }
+        else if (typeof options.retries === "string" && /^\d+$/.test(options.retries)) {
+            retries = Number(options.retries);
+            if (retries < 1 || retries > 3) throw "invalid retries value, must be an integer between 1 - 3";
+        }
+        else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
     config.rpc              = rpcUrl;
@@ -219,6 +239,7 @@ const getConfig = async(
     config.maxRatio         = !!options?.maxRatio;
     config.interpreterv2    = !!options?.interpreterv2;
     config.hops             = hops;
+    config.retries          = retries;
     config.rp32             = !!options?.rp32;
 
     return config;
