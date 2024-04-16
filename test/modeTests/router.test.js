@@ -12,8 +12,9 @@ const { rainterpreterExpressionDeployerDeploy, rainterpreterExpressionDeployerNP
 const { rainterpreterDeploy, rainterpreterStoreDeploy, rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
 const { Resource } = require("@opentelemetry/resources");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-base");
+const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { trace, context } = require("@opentelemetry/api");
+const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 
 
 // This test runs on hardhat forked network of polygon
@@ -39,7 +40,7 @@ describe("Rain Arb Bot 'router' Mode Tests", async function () {
         owners,
         config;
 
-    const exporter = new ConsoleSpanExporter();
+    const exporter = new OTLPTraceExporter();
     const provider = new BasicTracerProvider({
         resource: new Resource({
             [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
