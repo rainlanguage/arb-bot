@@ -1,4 +1,5 @@
 const { ethers } = require("hardhat");
+const { assert } = require("chai");
 
 
 /**
@@ -418,4 +419,18 @@ exports.prepareOrders = async(
     ));
 
     return sgOrders;
+};
+
+exports.assertError = async function (f, s, e) {
+    let didError = false;
+    try {
+        await f();
+    } catch (e) {
+        assert.ok(
+            JSON.stringify(e).includes(s),
+            `error string ${JSON.stringify(e)} does not include ${s}`,
+        );
+        didError = true;
+    }
+    assert.ok(didError, e);
 };
