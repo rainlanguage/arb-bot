@@ -17,7 +17,7 @@ const { trace, context } = require("@opentelemetry/api");
 
 
 // This test runs on hardhat forked network of polygon
-describe.only("Rain Arb Bot 'srouter' Mode Tests", async function () {
+describe("Rain Arb Bot 'srouter' Mode Tests", async function () {
     let turn = 0;
     let interpreter,
         store,
