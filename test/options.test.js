@@ -5,10 +5,10 @@ const { assertError } = require("./utils");
 describe("Test app options", async function () {
     it("should use defaults", async function () {
         const config = await getConfig(
-            "https://rpc.ankr.com/polygon",
-            "0x" + "1".repeat(64),
-            "0x" + "2".repeat(40),
-            "0x" + "3".repeat(40),
+            "https://rpc.ankr.com/polygon", //rpc
+            "0x" + "1".repeat(64), // wallet key
+            "0x" + "2".repeat(40), // ob address
+            "0x" + "3".repeat(40), // arb address
             undefined,
             {}
         );
