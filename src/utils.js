@@ -264,7 +264,8 @@ const fallbacks = {
             http("https://flare.rpc.thirdweb.com")
         ],
         liquidityProviders: [
-            "enosys"
+            "enosys",
+            "blazeswap"
         ]
     },
 };
