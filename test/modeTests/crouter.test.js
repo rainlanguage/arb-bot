@@ -58,8 +58,7 @@ describe("Rain Arb Bot 'crouter' Mode Tests", async function () {
         );
 
         [bot, ...owners] = await ethers.getSigners();
-        const chainId = await bot.getChainId();
-        config = CONFIG.find(async(v) => v.chainId === chainId);
+        config = CONFIG.find((v) => v.chainId === 137);
 
         // deploy contracts
         interpreter = turn < 3
