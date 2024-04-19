@@ -183,7 +183,7 @@ const main = async argv => {
     }
 
     appGlobalLogger(
-        true,
+        false,
         // ...rpcs,
         options.key,
         options.apiKey
