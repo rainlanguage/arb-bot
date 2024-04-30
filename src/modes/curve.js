@@ -292,7 +292,7 @@ const curveClear = async(
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
-            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair
         });
 
@@ -607,7 +607,6 @@ const curveClear = async(
                             }
 
                             try {
-                                pairSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"

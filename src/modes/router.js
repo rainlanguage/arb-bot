@@ -107,7 +107,7 @@ const routerClear = async(
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
-            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair
         });
 
@@ -250,7 +250,6 @@ const routerClear = async(
                     );
 
                     pairSpan.setAttributes({
-                        "details.bundledQuoteAmount": bundledQuoteAmount.toString(),
                         "details.bundledQuoteAmountFixed": cumulativeAmountFixed.toString()
                     });
 
@@ -272,7 +271,6 @@ const routerClear = async(
                         v => {routeVisual.push(v);}
                     );
                     pairSpan.setAttributes({
-                        "details.route.legs": JSON.stringify(route.legs),
                         "details.route.visual": routeVisual,
                     });
 
@@ -447,7 +445,6 @@ const routerClear = async(
                             }
 
                             try {
-                                pairSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"

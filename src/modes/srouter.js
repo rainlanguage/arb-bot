@@ -110,7 +110,7 @@ const srouterClear = async(
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
-            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair
         });
 
@@ -528,7 +528,6 @@ async function dryrun(
                 v => {routeVisual.push(v);}
             );
             hopSpan.setAttributes({
-                "details.route.legs": JSON.stringify(route.legs),
                 "details.route.visual": routeVisual,
             });
 
@@ -568,10 +567,6 @@ async function dryrun(
                     [rpParams.routeCode]
                 )
             };
-            hopSpan.setAttributes({
-                "details.route.data": rpParams.routeCode,
-                "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
-            });
 
             // building and submit the transaction
             try {
@@ -590,7 +585,14 @@ async function dryrun(
                     hopSpan.setAttribute("details.estimateGas.value", gasLimit.toString());
                 }
                 catch(e) {
-                    hopSpan.recordException(getSpanException(e));
+                    // only record the last error for traces
+                    if (j === hops) {
+                        hopSpan.recordException(getSpanException(e));
+                        hopSpan.setAttributes({
+                            "details.route.data": rpParams.routeCode,
+                            "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
+                        });
+                    }
                     throw "nomatch";
                 }
                 gasLimit = gasLimit.mul("103").div("100");
@@ -623,12 +625,15 @@ async function dryrun(
                         hopSpan.setStatus({ code: SpanStatusCode.OK });
                     }
                     catch(e) {
-                        hopSpan.recordException(getSpanException(e));
+                        if (j === hops) hopSpan.recordException(getSpanException(e));
                         throw "dryrun";
                     }
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
+                    hopSpan.setAttributes({
+                        "details.route.data": rpParams.routeCode,
+                    });
                     hopSpan.end();
                     dryrunSpan.setStatus({ code: SpanStatusCode.OK });
                     dryrunSpan.end();

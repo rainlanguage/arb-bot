@@ -176,7 +176,7 @@ const arbRound = async (tracer, roundCtx, options) => {
                 trace.setSpan(context.active(), span)
             );
             if (result.length) {
-                span.setAttribute("details.orders.json", JSON.stringify(result));
+                span.setAttribute("details.orders.json", result.map(v => v.id));
                 span.setStatus({ code: SpanStatusCode.OK });
             }
             else {
