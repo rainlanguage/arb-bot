@@ -79,7 +79,7 @@ const srouterClear = async(
                 trace.setSpan(context.active(), span)
             );
             const status = {code: SpanStatusCode.OK};
-            if (!result.length) status.message = "could not find any orders for current market price or with vault balance";
+            if (!result.length) status.message = "found no clearable orders";
             span.setStatus(status);
             span.end();
             return result;
@@ -110,13 +110,13 @@ const srouterClear = async(
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
-            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair
         });
 
         try {
             if (!bundledOrders[i].takeOrders.length) {
-                pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault balance"});
+                pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault"});
                 pairSpan.end();
                 continue;
             }
@@ -142,7 +142,7 @@ const srouterClear = async(
             if (obSellTokenBalance.isZero()) {
                 pairSpan.setStatus({
                     code: SpanStatusCode.OK,
-                    message: `Orderbook has no ${bundledOrders[i].sellTokenSymbol} balance`
+                    message: `Orderbook has no ${bundledOrders[i].sellTokenSymbol}`
                 });
                 pairSpan.end();
                 continue;
@@ -175,7 +175,7 @@ const srouterClear = async(
                         );
                         if (!ethPrice) {
                             span.setStatus({code: SpanStatusCode.ERROR });
-                            span.recordException(new Error("could not get ETH price"));
+                            span.recordException("could not get ETH price");
                             span.end();
                             return Promise.reject("could not get ETH price");
                         } else {
@@ -280,7 +280,7 @@ const srouterClear = async(
             if (!rawtx) {
                 pairSpan.setStatus({
                     code: SpanStatusCode.OK,
-                    message: "could not find any opportunity to clear"
+                    message: "no opportunity to clear"
                 });
                 pairSpan.end();
                 continue;
@@ -475,8 +475,8 @@ async function dryrun(
         );
 
         hopSpan.setAttributes({
-            "details.maximumInput": maximumInput.toString(),
-            "details.maximumInputFixed": maximumInputFixed.toString()
+            "details.maxInput": maximumInput.toString(),
+            "details.maxInputFixed": maximumInputFixed.toString()
         });
 
         const pcMap = dataFetcher.getCurrentPoolCodeMap(
@@ -513,11 +513,14 @@ async function dryrun(
                 bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
                     v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
                 );
-                hopSpan.addEvent("filtered out orders with lower ratio than current market price");
+                hopSpan.addEvent("filtered orders with lower ratio than market price");
             }
 
             if (bundledOrder.takeOrders.length === 0) {
-                hopSpan.addEvent("all orders had lower ratio than current market price");
+                hopSpan.setStatus({
+                    code: SpanStatusCode.OK,
+                    message: "all orders had lower ratio than market price"
+                });
                 hopSpan.end();
                 maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
                 continue;
@@ -528,8 +531,7 @@ async function dryrun(
                 v => {routeVisual.push(v);}
             );
             hopSpan.setAttributes({
-                "details.route.legs": JSON.stringify(route.legs),
-                "details.route.visual": routeVisual,
+                "details.route": routeVisual,
             });
 
             const rpParams = Router.routeProcessor2Params(
@@ -568,10 +570,6 @@ async function dryrun(
                     [rpParams.routeCode]
                 )
             };
-            hopSpan.setAttributes({
-                "details.route.data": rpParams.routeCode,
-                "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
-            });
 
             // building and submit the transaction
             try {
@@ -590,7 +588,14 @@ async function dryrun(
                     hopSpan.setAttribute("details.estimateGas.value", gasLimit.toString());
                 }
                 catch(e) {
-                    hopSpan.recordException(getSpanException(e));
+                    // only record the last error for traces
+                    if (j === hops) {
+                        hopSpan.recordException(getSpanException(e));
+                        hopSpan.setAttributes({
+                            "details.route.data": rpParams.routeCode,
+                            "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
+                        });
+                    }
                     throw "nomatch";
                 }
                 gasLimit = gasLimit.mul("103").div("100");
@@ -617,19 +622,22 @@ async function dryrun(
                             gasCostInToken.mul(headroom).div("100")
                         ]
                     );
-                    hopSpan.setAttribute("details.headroom", gasCostInToken.mul(headroom).div("100").toString());
                     try {
                         await signer.estimateGas(rawtx);
                         hopSpan.setStatus({ code: SpanStatusCode.OK });
                     }
                     catch(e) {
-                        hopSpan.recordException(getSpanException(e));
+                        if (j === hops) hopSpan.recordException(getSpanException(e));
                         throw "dryrun";
                     }
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
+                    hopSpan.setStatus({ code: SpanStatusCode.OK });
                     hopSpan.end();
+                    dryrunSpan.setAttributes({
+                        "details.route.data": rpParams.routeCode,
+                    });
                     dryrunSpan.setStatus({ code: SpanStatusCode.OK });
                     dryrunSpan.end();
                     return {rawtx, maximumInput, gasCostInToken, takeOrdersConfigStruct, price};

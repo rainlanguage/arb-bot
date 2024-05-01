@@ -201,7 +201,7 @@ const crouterClear = async(
                 trace.setSpan(context.active(), span)
             );
             const status = {code: SpanStatusCode.OK};
-            if (!result.length) status.message = "could not find any orders for current market price or with vault balance";
+            if (!result.length) status.message = "found no clearable orders";
             span.setStatus(status);
             span.end();
             return result;
@@ -239,7 +239,7 @@ const crouterClear = async(
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
-            "details.orders": JSON.stringify(bundledOrders[i]),
+            "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair
         });
 
@@ -280,7 +280,7 @@ const crouterClear = async(
             );
 
             if (!bundledOrders[i].takeOrders.length) {
-                pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault balance"});
+                pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault"});
             }
             else {
                 let cumulativeAmountFixed = ethers.constants.Zero;
@@ -375,7 +375,7 @@ const crouterClear = async(
                 if (route.status == "NoWay" && topCurveDealPoolIndex === -1) {
                     pairSpan.setStatus({
                         code: SpanStatusCode.OK,
-                        message: "could not find any routes or quote form curve for this token pair"
+                        message: "could not find any routes or quote form curve"
                     });
                     pairSpan.end();
                     continue;
@@ -579,7 +579,7 @@ const crouterClear = async(
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });
-                                        span.recordException(new Error("could not get ETH price"));
+                                        span.recordException("could not get ETH price");
                                         span.end();
                                     } else {
                                         span.setAttribute("details.price", ethPrice);
@@ -596,7 +596,7 @@ const crouterClear = async(
                         else ethPrice = "0";
 
                         if (ethPrice === undefined) {
-                            pairSpan.recordException(new Error("could not get ETH price"));
+                            pairSpan.recordException("could not get ETH price");
                         }
                         else {
                             dryrunSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
@@ -649,7 +649,6 @@ const crouterClear = async(
                                 const headroom = (
                                     Number(gasCoveragePercentage) * 1.05
                                 ).toFixed();
-                                dryrunSpan.setAttribute("details.headroom", gasCostInToken.mul(headroom).div("100").toString());
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"
@@ -674,7 +673,6 @@ const crouterClear = async(
                             }
 
                             try {
-                                pairSpan.setAttribute("details.takeOrdersConfigStruct", JSON.stringify(takeOrdersConfigStruct));
                                 rawtx.data = arb.interface.encodeFunctionData(
                                     "arb",
                                     arbType === "order-taker"

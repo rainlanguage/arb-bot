@@ -138,7 +138,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
             for (let i = 0; i < responses.length; i++) {
                 tracer.startActiveSpan("read-sg-orders", {}, ctx, async (span) => {
                     span.setAttribute("details.sgUrl", sgs[i]);
-                    if (responses[i].status === "fulfilled") {
+                    if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
                         ordersDetails.push(
                             ...responses[i].value.data.data.orders
                         );
@@ -146,7 +146,11 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
                     }
                     else {
                         span.setStatus({code: SpanStatusCode.ERROR});
-                        span.recordException(getSpanException(responses[i].reason));
+                        span.recordException(getSpanException(
+                            responses[i].status === "fulfilled"
+                                ? "bad url"
+                                : responses[i].reason
+                        ));
                     }
                     span.end();
                 });

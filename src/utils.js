@@ -360,15 +360,6 @@ const interpreterEval = async(
     const span = tracer.startSpan("eval-order", undefined, ctx);
     span.setAttributes({
         "details.order.id": order.id,
-        "details.order.owner": order.owner.id,
-        "details.input.token.address": order.validInputs[inputIndex].token.id,
-        "details.input.token.decimals": order.validInputs[inputIndex].token.decimals,
-        "details.input.token.vaultId": order.validInputs[inputIndex].vault.id.split("-")[0],
-        "details.input.token.balance": inputBalance,
-        "details.output.token.address": order.validOutputs[outputIndex].token.id,
-        "details.output.token.decimals": order.validOutputs[outputIndex].token.decimals,
-        "details.output.token.vaultId": order.validOutputs[outputIndex].vault.id.split("-")[0],
-        "details.output.token.balance": outputBalance,
     });
     try {
         const { stack: [ maxOutput, ratio ] } = await interpreter.eval(
@@ -462,15 +453,6 @@ const interpreterV2Eval = async(
     const span = tracer.startSpan("eval-order", undefined, ctx);
     span.setAttributes({
         "details.order.id": order.id,
-        "details.order.owner": order.owner.id,
-        "details.input.token.address": order.validInputs[inputIndex].token.id,
-        "details.input.token.decimals": order.validInputs[inputIndex].token.decimals,
-        "details.input.token.vaultId": order.validInputs[inputIndex].vault.id.split("-")[0],
-        "details.input.token.balance": inputBalance,
-        "details.output.token.address": order.validOutputs[outputIndex].token.id,
-        "details.output.token.decimals": order.validOutputs[outputIndex].token.decimals,
-        "details.output.token.vaultId": order.validOutputs[outputIndex].vault.id.split("-")[0],
-        "details.output.token.balance": outputBalance,
     });
     // const clearProcCtx = trace.setSpan(context.active(), span);
     try {
@@ -1711,6 +1693,7 @@ const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
 function getSpanException(error) {
     if (error instanceof Error && Object.keys(error).length && error.message.includes("providers/5.7.0")) {
         error.message = JSON.stringify(error);
+        error.stack = undefined;
     }
     return error;
 }
