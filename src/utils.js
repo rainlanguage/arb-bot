@@ -1693,6 +1693,7 @@ const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
 function getSpanException(error) {
     if (error instanceof Error && Object.keys(error).length && error.message.includes("providers/5.7.0")) {
         error.message = JSON.stringify(error);
+        error.stack = undefined;
     }
     return error;
 }
