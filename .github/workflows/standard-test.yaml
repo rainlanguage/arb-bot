@@ -15,7 +15,7 @@ jobs:
         run: ./prep-sushi.sh
 
       - name: Install Dependencies
-        run:  nix develop -c npm install --no-audit
+        run:  nix develop -c npm install
 
       - name: Lint
         run:  nix develop -c npm run lint
