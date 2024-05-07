@@ -13,7 +13,11 @@ Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as th
 
 ## Tutorial
 ### CLI
-Start by cloning the repo and then install the dependencies, requires `>= nodejs v18`:
+Start by cloning the repo, first you need to run `./prep-sushi.sh` which would need nix package manager installed on your system:
+```bash
+./prep-sushi.sh
+```
+and then install the dependencies, requires `>= nodejs v18`:
 ```bash
 npm install
 ```
@@ -283,6 +287,10 @@ In order to run this app periodically to clear orders in Github Actions, first y
 Please be aware that schediled Github Actions can only be run at minimum once every 5 minutes and even that is not guarateed because it depends on Github resource availability at that time, so it is recommended to run the app on personal/reliable host if there is sensitivity with running on a schedule.
 
 ## Developers Guide
+First you need to run `./prep-sushi.sh` which would need nix package manager installed on your system:
+```bash
+./prep-sushi.sh
+```
 To run the tests:
 ```bash
 npm test

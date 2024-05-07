@@ -1,5 +1,6 @@
 const ethers = require("ethers");
-const { Router, Token } = require("sushiswap-router");
+const { Router } = require("sushi/router");
+const { Token } = require("sushi/currency");
 const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("../abis");
 const {
@@ -211,7 +212,7 @@ const routerClear = async(
                     pcMap,
                     config.chainId,
                     fromToken,
-                    cumulativeAmount,
+                    cumulativeAmount.toBigInt(),
                     toToken,
                     gasPrice.toNumber(),
                     // 30e9,
@@ -225,7 +226,7 @@ const routerClear = async(
                     continue;
                 }
 
-                const rateFixed = route.amountOutBN.mul(
+                const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                 );
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);

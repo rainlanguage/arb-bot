@@ -49,8 +49,7 @@
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
         "sushi": "file:sushi-3.0.0.tgz",
-        "sushiswap-router": "github:rouzwelt/sushiswap-router#69bd455c4e08158c4fb9b562c5b6e6d8acbb101e",
-        "viem": "^1.6.0"
+        "viem": "^2.10.1"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

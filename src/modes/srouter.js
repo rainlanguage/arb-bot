@@ -1,6 +1,7 @@
 const ethers = require("ethers");
+const { Router } = require("sushi/router");
+const { Token } = require("sushi/currency");
 const { arbAbis, orderbookAbi } = require("../abis");
-const { Router, Token } = require("sushiswap-router");
 const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 const {
     getIncome,
@@ -487,7 +488,7 @@ async function dryrun(
             pcMap,
             config.chainId,
             fromToken,
-            maximumInput,
+            maximumInput.toBigInt(),
             toToken,
             gasPrice.toNumber(),
             // 30e9,
@@ -501,7 +502,7 @@ async function dryrun(
             succesOrFailure = false;
         }
         else {
-            const rateFixed = route.amountOutBN.mul(
+            const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
                 "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
             );
             const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
