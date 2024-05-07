@@ -24,7 +24,7 @@
         "./arb-bot.js",
         "./example.env",
         "./config.json",
-        "./sushi-3.0.0.tgz"
+        "./sushi"
     ],
     "bin": {
         "arb-bot": "./arb-bot.js"
@@ -48,7 +48,7 @@
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "sushi": "file:sushi-3.0.0.tgz",
+        "sushi": "file:sushi",
         "viem": "=2.8.14"
     },
     "devDependencies": {
