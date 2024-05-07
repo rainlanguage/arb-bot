@@ -1,0 +1,3 @@
+[submodule "lib/sushiswap"]
+	path = lib/sushiswap
+	url = https://github.com/rainlanguage/sushiswap.git
