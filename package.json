@@ -49,7 +49,7 @@
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
         "sushi": "file:sushi-3.0.0.tgz",
-        "viem": "^2.10.1"
+        "viem": "=2.8.14"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
