@@ -24,7 +24,7 @@
         "./arb-bot.js",
         "./example.env",
         "./config.json",
-        "./lib/sushiswap/sushi-3.0.0.tgz"
+        "./sushi-3.0.0.tgz"
     ],
     "bin": {
         "arb-bot": "./arb-bot.js"
@@ -48,7 +48,7 @@
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "sushi": "file:lib/sushiswap/sushi-3.0.0.tgz",
+        "sushi": "file:sushi-3.0.0.tgz",
         "sushiswap-router": "github:rouzwelt/sushiswap-router#69bd455c4e08158c4fb9b562c5b6e6d8acbb101e",
         "viem": "^1.6.0"
     },
