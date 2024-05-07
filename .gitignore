@@ -16,3 +16,5 @@ logs
 docs
 mem-cache
 *.tgz
+dist
+/sushi
