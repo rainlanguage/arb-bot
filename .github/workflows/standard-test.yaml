@@ -11,6 +11,9 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v4
       - uses: DeterminateSystems/magic-nix-cache-action@v2
 
+      - name: Prepare Sushi Lib
+        run: ./prep-sushi.sh
+
       - name: Install Dependencies
         run:  nix develop -c npm install
 

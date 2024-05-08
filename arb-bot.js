@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 require("dotenv").config();
+const fs = require("fs");
 const { Command } = require("commander");
 const { version } = require("./package.json");
 const { sleep, getSpanException } = require("./src/utils");
@@ -37,6 +38,7 @@ const ENV_OPTIONS = {
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     hops                : process?.env?.HOPS,
     retries             : process?.env?.RETRIES,
+    poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
     rp32                : process?.env?.RP3_2?.toLowerCase() === "true" ? true : false,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -72,6 +74,7 @@ const getOptions = async argv => {
         .option("--hops <integer>", "Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
+        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -107,6 +110,7 @@ const getOptions = async argv => {
     cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
 
     return cmdOptions;
 };
@@ -144,6 +148,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     bundle              : options.bundle,
                     hops                : options.hops,
                     retries             : options.retries,
+                    poolUpdateInterval  : options.poolUpdateInterval,
                     rp32                : options.rp32,
                     liquidityProviders  : options.lps
                         ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -309,6 +314,21 @@ const main = async argv => {
         if (/^\d+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
         else throw "invalid sleep value, must be an integer greater than equal 0";
     }
+    let _poolUpdateInterval = 15;
+    if (options.poolUpdateInterval) {
+        if (typeof options.poolUpdateInterval === "number") {
+            _poolUpdateInterval = options.poolUpdateInterval;
+            if (_poolUpdateInterval === 0 || !Number.isInteger(_poolUpdateInterval))
+                throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+        }
+        else if (typeof options.poolUpdateInterval === "string" && /^\d+$/.test(options.poolUpdateInterval)) {
+            _poolUpdateInterval = Number(options.poolUpdateInterval);
+            if (_poolUpdateInterval === 0) throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+        }
+        else throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+    }
+    const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
+    let lastInterval = Date.now() + poolUpdateInterval;
 
     let counter = 0;
     let lastError;
@@ -316,6 +336,17 @@ const main = async argv => {
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
+            // remove pool memoizer cache on each interval
+            const now = Date.now();
+            if (lastInterval <= now) {
+                lastInterval = now + poolUpdateInterval;
+                try {
+                    fs.rmSync("./mem-cache", { recursive: true });
+                    fs.mkdirSync("./mem-cache", { recursive: true });
+                } catch {
+                    /**/
+                }
+            }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
@@ -356,6 +387,17 @@ const main = async argv => {
     }
     else for (let i = 1; i <= repetitions; i++) {
         await tracer.startActiveSpan(`round-${i}`, async (roundSpan) => {
+            // remove pool memoizer cache on each interval
+            const now = Date.now();
+            if (lastInterval <= now) {
+                lastInterval = now + poolUpdateInterval;
+                try {
+                    fs.rmSync("./mem-cache", { recursive: true });
+                    fs.mkdirSync("./mem-cache", { recursive: true });
+                } catch {
+                    /**/
+                }
+            }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {

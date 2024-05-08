@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { parseAbi } = require("viem");
-const { Router, Token } = require("sushiswap-router");
+const { Router } = require("sushi/router");
+const { Token } = require("sushi/currency");
 const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, routeProcessor3Abi, CURVE_POOLS_FNS, CURVE_ZAP_FNS } = require("../abis");
 const {
@@ -319,7 +320,15 @@ const crouterClear = async(
                     }
                 });
                 const pricePromises = [
-                    dataFetcher.fetchPoolsForToken(fromToken, toToken)
+                    dataFetcher.fetchPoolsForToken(
+                        fromToken,
+                        toToken,
+                        undefined,
+                        {
+                            fetchPoolsTimeout: 60000,
+                            memoize: true,
+                        }
+                    )
                 ];
                 if (bundledOrders[i].curve) pricePromises.push(viemClient.multicall({
                     multicallAddress: viemClient.chain?.contracts?.multicall3?.address,
@@ -362,7 +371,7 @@ const crouterClear = async(
                     pcMap,
                     config.chainId,
                     fromToken,
-                    cumulativeAmount,
+                    cumulativeAmount.toBigInt(),
                     toToken,
                     gasPrice.toNumber(),
                     // 30e9,
@@ -381,15 +390,18 @@ const crouterClear = async(
                     continue;
                 }
                 else if (route.status !== "NoWay" && topCurveDealPoolIndex !== -1) {
-                    if (route.amountOutBN.lt(_res[1].value[topCurveDealPoolIndex].result)) {
+                    if (
+                        ethers.BigNumber.from(route.amountOutBI).lt(
+                            _res[1].value[topCurveDealPoolIndex].result)
+                    ) {
                         useCurve = true;
                     }
                     rate = useCurve
                         ? ethers.BigNumber.from(_res[1].value[topCurveDealPoolIndex].result)
-                        : route.amountOutBN;
+                        : ethers.BigNumber.from(route.amountOutBI);
                 }
                 else if (route.status !== "NoWay" && topCurveDealPoolIndex === -1) {
-                    rate = route.amountOutBN;
+                    rate = ethers.BigNumber.from(route.amountOutBI);
                 }
                 else {
                     rate = ethers.BigNumber.from(_res[1].value[topCurveDealPoolIndex].result);
@@ -575,7 +587,11 @@ const crouterClear = async(
                                         bundledOrders[i].buyToken,
                                         bundledOrders[i].buyTokenDecimals,
                                         gasPrice,
-                                        dataFetcher
+                                        dataFetcher,
+                                        {
+                                            fetchPoolsTimeout: 10000,
+                                            memoize: true,
+                                        }
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });

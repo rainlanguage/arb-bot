@@ -1,5 +1,6 @@
 const ethers = require("ethers");
-const { Router, Token } = require("sushiswap-router");
+const { Router } = require("sushi/router");
+const { Token } = require("sushi/currency");
 const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, routeProcessor3Abi } = require("../abis");
 const {
@@ -194,7 +195,15 @@ const routerClear = async(
                     pairCtx,
                     async (span) => {
                         try {
-                            await dataFetcher.fetchPoolsForToken(fromToken, toToken);
+                            await dataFetcher.fetchPoolsForToken(
+                                fromToken,
+                                toToken,
+                                undefined,
+                                {
+                                    fetchPoolsTimeout: 60000,
+                                    memoize: true,
+                                }
+                            );
                             span.setStatus({code: SpanStatusCode.OK});
                             span.end();
                             return;
@@ -211,7 +220,7 @@ const routerClear = async(
                     pcMap,
                     config.chainId,
                     fromToken,
-                    cumulativeAmount,
+                    cumulativeAmount.toBigInt(),
                     toToken,
                     gasPrice.toNumber(),
                     // 30e9,
@@ -225,7 +234,7 @@ const routerClear = async(
                     continue;
                 }
 
-                const rateFixed = route.amountOutBN.mul(
+                const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
                     "1" + "0".repeat(18 - bundledOrders[i].buyTokenDecimals)
                 );
                 const price = rateFixed.mul("1" + "0".repeat(18)).div(cumulativeAmountFixed);
@@ -346,7 +355,11 @@ const routerClear = async(
                                         bundledOrders[i].buyToken,
                                         bundledOrders[i].buyTokenDecimals,
                                         gasPrice,
-                                        dataFetcher
+                                        dataFetcher,
+                                        {
+                                            fetchPoolsTimeout: 10000,
+                                            memoize: true,
+                                        }
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });

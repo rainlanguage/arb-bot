@@ -23,7 +23,8 @@
         "docs",
         "./arb-bot.js",
         "./example.env",
-        "./config.json"
+        "./config.json",
+        "./lib/sushiswap/packages/sushi"
     ],
     "bin": {
         "arb-bot": "./arb-bot.js"
@@ -47,8 +48,8 @@
         "commander": "^11.0.0",
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
-        "sushiswap-router": "github:rouzwelt/sushiswap-router#69bd455c4e08158c4fb9b562c5b6e6d8acbb101e",
-        "viem": "^1.6.0"
+        "sushi": "./lib/sushiswap/packages/sushi",
+        "viem": "=2.8.14"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

@@ -1,7 +1,10 @@
+const { ChainId } = require("sushi/chain");
+const { Token } = require("sushi/currency");
 const { ethers, BigNumber } = require("ethers");
+const { publicClientConfig } = require("sushi/config");
 const { createPublicClient, http, fallback } = require("viem");
+const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi } = require("./abis");
-const { DataFetcher, Router, LiquidityProviders, ChainId, Token, viemConfig } = require("sushiswap-router");
 
 
 /**
@@ -954,7 +957,7 @@ const createViemClient = (chainId, rpcs, useFallbacs = false) => {
             : fallback(rpcs.map(v => http(v)));
 
     return createPublicClient({
-        chain: viemConfig[chainId]?.chain,
+        chain: publicClientConfig[chainId]?.chain,
         transport
         // batch: {
         //     multicall: {
@@ -1007,13 +1010,15 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
  * @param {number} targetTokenDecimals - The target token decimals
  * @param {BigNumber} gasPrice - The network gas price
  * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
+ * @param {import("sushi/router").DataFetcherOptions} options - (optional) The DataFetcher options
  */
 const getEthPrice = async(
     config,
     targetTokenAddress,
     targetTokenDecimals,
     gasPrice,
-    dataFetcher = undefined
+    dataFetcher = undefined,
+    options = undefined,
 ) => {
     if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
@@ -1033,13 +1038,13 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken, undefined, options);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
         config.chainId,
         fromToken,
-        amountIn,
+        amountIn.toBigInt(),
         toToken,
         gasPrice.toNumber()
         // 30e9,
@@ -1047,7 +1052,7 @@ const getEthPrice = async(
         // poolFilter
     );
     if (route.status == "NoWay") return undefined;
-    else return ethers.utils.formatUnits(route.amountOutBN, targetTokenDecimals);
+    else return ethers.utils.formatUnits(route.amountOutBI, targetTokenDecimals);
 };
 
 // /**
@@ -1432,7 +1437,7 @@ const getRouteForTokens = async(
     routeProcessorAddress,
     abiEncoded
 ) => {
-    const amountIn = sellAmount;
+    const amountIn = sellAmount.toBigInt();
     const fromToken = new Token({
         chainId: chainId,
         decimals: fromTokenDecimals,
