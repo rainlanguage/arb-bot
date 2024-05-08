@@ -336,11 +336,15 @@ const main = async argv => {
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
-            // remove cache on each interval
+            // remove pool memoizer cache on each interval
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                fs.rmSync("./mem-cache", { recursive: true });
+                try {
+                    fs.rmSync("./mem-cache", { recursive: true });
+                } catch {
+                    /**/
+                }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
@@ -382,11 +386,15 @@ const main = async argv => {
     }
     else for (let i = 1; i <= repetitions; i++) {
         await tracer.startActiveSpan(`round-${i}`, async (roundSpan) => {
-            // remove cache on each interval
+            // remove pool memoizer cache on each interval
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                fs.rmSync("./mem-cache", { recursive: true });
+                try {
+                    fs.rmSync("./mem-cache", { recursive: true });
+                } catch {
+                    /**/
+                }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
