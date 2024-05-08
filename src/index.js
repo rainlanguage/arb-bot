@@ -35,10 +35,6 @@ const configOptions = {
      */
     maxRatio: false,
     /**
-     * Option for operating with interpreter v2
-     */
-    interpreterv2: false,
-    /**
      * Flag for not bundling orders based on pairs and clear each order individually
      */
     bundle: true,
@@ -236,7 +232,6 @@ const getConfig = async(
     config.flashbotRpc      = options?.flashbotRpc;
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
-    config.interpreterv2    = !!options?.interpreterv2;
     config.hops             = hops;
     config.retries          = retries;
     config.rp32             = !!options?.rp32;

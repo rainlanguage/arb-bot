@@ -30,7 +30,6 @@ const ENV_OPTIONS = {
     sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
-    interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
@@ -65,7 +64,6 @@ const getOptions = async argv => {
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
         .option("--max-profit", "Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
-        .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
@@ -99,7 +97,6 @@ const getOptions = async argv => {
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
-    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
     cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
@@ -133,7 +130,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     maxRatio            : options.maxRatio,
                     flashbotRpc         : options.flashbotRpc,
                     timeout             : options.timeout,
-                    interpreterv2       : options.interpreterv2,
                     bundle              : options.bundle,
                     hops                : options.hops,
                     retries             : options.retries,
@@ -203,7 +199,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             "details.config.arbAddress": config.arbAddress,
             "details.config.maxProfit": config.maxProfit,
             "details.config.maxRatio": config.maxRatio,
-            "details.config.interpreterV2": config.interpreterv2,
             "details.config.usesFlashbots": config.flashbotRpc ? true : false,
             "details.config.sushiRouteProcessorVersion": config.rp32 ? "3.2" : "3.0",
             "details.config.amountDiscoveryHops": config.hops

@@ -218,8 +218,7 @@ exports.prepareOrders = async(
     tokensDecimals,
     vaultIds,
     orderbook,
-    expressionDeployer,
-    np = false
+    expressionDeployer
 ) => {
     // topping up owners 1 2 3 vaults with 100 of each token
     for (let i = 0; i < 3; i++) {
@@ -231,17 +230,13 @@ exports.prepareOrders = async(
         await tokens[0]
             .connect(owners[i])
             .approve(orderbook.address, depositConfigStruct.amount);
-        np
-            ? await orderbook
-                .connect(owners[i])
-                .deposit(
-                    depositConfigStruct.token,
-                    depositConfigStruct.vaultId,
-                    depositConfigStruct.amount
-                )
-            : await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
+        await orderbook
+            .connect(owners[i])
+            .deposit(
+                depositConfigStruct.token,
+                depositConfigStruct.vaultId,
+                depositConfigStruct.amount
+            );
     }
     for (let i = 0; i < 3; i++) {
         const depositConfigStruct = {
@@ -252,17 +247,13 @@ exports.prepareOrders = async(
         await tokens[1]
             .connect(owners[i])
             .approve(orderbook.address, depositConfigStruct.amount);
-        np
-            ? await orderbook
-                .connect(owners[i])
-                .deposit(
-                    depositConfigStruct.token,
-                    depositConfigStruct.vaultId,
-                    depositConfigStruct.amount
-                )
-            : await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
+        await orderbook
+            .connect(owners[i])
+            .deposit(
+                depositConfigStruct.token,
+                depositConfigStruct.vaultId,
+                depositConfigStruct.amount
+            );
     }
     for (let i = 0; i < 3; i++) {
         const depositConfigStruct = {
@@ -273,17 +264,13 @@ exports.prepareOrders = async(
         await tokens[2]
             .connect(owners[i])
             .approve(orderbook.address, depositConfigStruct.amount);
-        np
-            ? await orderbook
-                .connect(owners[i])
-                .deposit(
-                    depositConfigStruct.token,
-                    depositConfigStruct.vaultId,
-                    depositConfigStruct.amount
-                )
-            : await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
+        await orderbook
+            .connect(owners[i])
+            .deposit(
+                depositConfigStruct.token,
+                depositConfigStruct.vaultId,
+                depositConfigStruct.amount
+            );
     }
     for (let i = 0; i < 3; i++) {
         const depositConfigStruct = {
@@ -294,36 +281,24 @@ exports.prepareOrders = async(
         await tokens[3]
             .connect(owners[i])
             .approve(orderbook.address, depositConfigStruct.amount);
-        np
-            ? await orderbook
-                .connect(owners[i])
-                .deposit(
-                    depositConfigStruct.token,
-                    depositConfigStruct.vaultId,
-                    depositConfigStruct.amount
-                )
-            : await orderbook
-                .connect(owners[i])
-                .deposit(depositConfigStruct);
+        await orderbook
+            .connect(owners[i])
+            .deposit(
+                depositConfigStruct.token,
+                depositConfigStruct.vaultId,
+                depositConfigStruct.amount
+            );
     }
 
     const sgOrders = [];
     // order expression config
-    const expConfig = np
-        ? {
-            constants: [
-                ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-            ],
-            bytecode: "0x020000000c02020002010000000100000100000000"
-        }
-        : {
-            constants: [
-                ethers.constants.MaxUint256.toHexString(),  // max output
-                "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
-            ],
-            sources: ["0x000c0001000c0003", "0x"]
-        };
+    const expConfig = {
+        constants: [
+            ethers.constants.MaxUint256.toHexString(),  // max output
+            "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+        ],
+        bytecode: "0x020000000c02020002010000000100000100000000"
+    };
 
     const EvaluableConfig = this.generateEvaluableConfig(
         expressionDeployer,

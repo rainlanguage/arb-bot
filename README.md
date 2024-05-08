@@ -77,7 +77,6 @@ Other optional arguments are:
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
-- `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
@@ -198,10 +197,6 @@ MAX_RATIO="true"
 # Optional seconds to wait for the transaction to mine before disregarding it
 TIMEOUT=""
 
-# Flag for operating with with interpreter V2. false will result in operating under interpreter v1
-# note that 'flash-loan-v2' is NOT compatible with interpreter v2
-INTERPRETERV2="true"
-
 # Flag for not bundling orders based on pairs and clear each order individually
 NO_BUNDLE="false"
 
@@ -244,7 +239,6 @@ const configOptions = {
   maxRatio              : true,    // option to maximize the maxIORatio
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
   hops                  : 6,       // The amount of hops of binary search
   retries               : 1,       // The amount of retries for the same order
