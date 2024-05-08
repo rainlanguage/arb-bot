@@ -320,7 +320,14 @@ const crouterClear = async(
                     }
                 });
                 const pricePromises = [
-                    dataFetcher.fetchPoolsForToken(fromToken, toToken)
+                    dataFetcher.fetchPoolsForToken(
+                        fromToken,
+                        toToken,
+                        {
+                            fetchPoolsTimeout: 60000,
+                            memoize: true,
+                        }
+                    )
                 ];
                 if (bundledOrders[i].curve) pricePromises.push(viemClient.multicall({
                     multicallAddress: viemClient.chain?.contracts?.multicall3?.address,
@@ -579,7 +586,11 @@ const crouterClear = async(
                                         bundledOrders[i].buyToken,
                                         bundledOrders[i].buyTokenDecimals,
                                         gasPrice,
-                                        dataFetcher
+                                        dataFetcher,
+                                        {
+                                            fetchPoolsTimeout: 10000,
+                                            memoize: true,
+                                        }
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });

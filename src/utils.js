@@ -1010,13 +1010,15 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
  * @param {number} targetTokenDecimals - The target token decimals
  * @param {BigNumber} gasPrice - The network gas price
  * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
+ * @param {import("sushi/router").DataFetcherOptions} options - (optional) The DataFetcher options
  */
 const getEthPrice = async(
     config,
     targetTokenAddress,
     targetTokenDecimals,
     gasPrice,
-    dataFetcher = undefined
+    dataFetcher = undefined,
+    options = undefined,
 ) => {
     if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
@@ -1036,7 +1038,7 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken);
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken, options);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,

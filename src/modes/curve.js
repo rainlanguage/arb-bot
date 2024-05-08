@@ -508,7 +508,11 @@ const curveClear = async(
                                         bundledOrders[i].buyToken,
                                         bundledOrders[i].buyTokenDecimals,
                                         gasPrice,
-                                        dataFetcher
+                                        dataFetcher,
+                                        {
+                                            fetchPoolsTimeout: 10000,
+                                            memoize: true,
+                                        }
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });

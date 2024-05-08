@@ -12,29 +12,44 @@ Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as th
 - If set to 0, profitablity becomes irrevelant meaning any match will be submitted irrespective of whether or not the transaction will be profitable. 
 
 ## Tutorial
-### CLI
-Start by cloning the repo, first you need to run `./prep-sushi.sh` which would need nix package manager installed on your system:
+### Setup
+Start by cloning the repo and then:
+- with nix package manager (recommended way):
+
+first you need to run `./prep-sushi.sh` which would need nix package manager installed on your system:
 ```bash
 ./prep-sushi.sh
+```
+  next enter nix shell or just run from shell:
+```bash
+nix develop
+```
+  and then
+```bash
+npm install
+```
+  or
+```bash
+nix develop -c npm install
+```
+
+<br>
+- without nix package manager:
+
+you need to have pnpm `>= v8.15.3` and then run the following:
+```bash
+git submodule update --init --recursive
+cd lib/sushiswap
+pnpm install --frozen-lockfile
+pnpm exec turbo run build --filter=./packages/sushi
 ```
 and then install the dependencies, requires `>= nodejs v18`:
 ```bash
 npm install
 ```
-If you have Nix installed on your machine you can run the app on nix environment:
-```bash
-nix develop
-```
-and then
-```bash
-npm install
-```
-or
-```bash
-nix develop -c npm install
-```
 <br>
 
+### CLI
 For starting the app:
 ```bash
 node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
@@ -69,6 +84,7 @@ Other optional arguments are:
 - `--hops`, Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--rp32`, Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
+- `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -76,27 +92,49 @@ Other optional arguments are:
 
 ### List of available liquidity providers (decentralized exchanges)
 - all of the below names are case INSENSITIVE:
-`SushiSwapV2`
-`SushiSwapV3`
-`UniswapV2`
-`UniswapV3`
-`Trident`
-`QuickSwap`
-`ApeSwap`
-`PancakeSwap`
-`TraderJoe`
-`Dfyn`
-`Elk`
-`JetSwap`
-`SpookySwap`
-`NetSwap`
-`NativeWrap`
-`HoneySwap`
-`UbeSwap`
-`Biswap`
-`CurveSwap`
-`DovishV3`
-`LaserSwap`
+`SushiSwapV2`,
+`SushiSwapV3`,
+`UniswapV2`,
+`UniswapV3`,
+`Trident`,
+`QuickSwap`,
+`ApeSwap`,
+`PancakeSwapV2`,
+`PancakeSwapV3`,
+`TraderJoe`,
+`Dfyn`,
+`Elk`,
+`JetSwap`,
+`SpookySwapV2`,
+`SpookySwapV3`,
+`NetSwap`,
+`NativeWrap`,
+`HoneySwap`,
+`UbeSwap`,
+`Biswap`,
+`CurveSwap`,
+`DovishV3`,
+`Wagmi`,
+`LaserSwap`,
+`BaseSwap`,
+`AlgebraIntegral`,
+`Solarbeam`,
+`Swapsicle`,
+`VVSStandard`,
+`Fraxswap`,
+`SwapBlast`,
+`BlastDEX`,
+`MonoswapV2`,
+`MonoswapV3`,
+`ThrusterV2`,
+`ThrusterV3`,
+`DyorV2`,
+`HyperBlast`,
+`KinetixV2`,
+`KinetixV3`,
+`Camelot`,
+`Enosys`,
+`BlazeSwap`,
 
 <br>
 
@@ -137,6 +175,7 @@ which will show:
       --hops <integer>               Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
       --rp32                         Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
       --retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
+      --pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
       -V, --version                  output the version number
       -h, --help                     display help for command
 <br>
@@ -224,6 +263,9 @@ TRACER_SERVICE_NAME=""
 
 # The amount of retries for the same order in sorouter mode, max is 3, default is 1
 RETRIES=1
+
+# Option to specify time (in minutes) between pools updates, default is 15 minutes
+POOL_UPDATE_INTERVAL=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -287,10 +329,7 @@ In order to run this app periodically to clear orders in Github Actions, first y
 Please be aware that schediled Github Actions can only be run at minimum once every 5 minutes and even that is not guarateed because it depends on Github resource availability at that time, so it is recommended to run the app on personal/reliable host if there is sensitivity with running on a schedule.
 
 ## Developers Guide
-First you need to run `./prep-sushi.sh` which would need nix package manager installed on your system:
-```bash
-./prep-sushi.sh
-```
+First run the [setup](#setup) section and then you can use following commands either from nix shell (`nix develop -c <COMMAND>`) or normally from your commandline.
 To run the tests:
 ```bash
 npm test

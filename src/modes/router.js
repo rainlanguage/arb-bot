@@ -195,7 +195,14 @@ const routerClear = async(
                     pairCtx,
                     async (span) => {
                         try {
-                            await dataFetcher.fetchPoolsForToken(fromToken, toToken);
+                            await dataFetcher.fetchPoolsForToken(
+                                fromToken,
+                                toToken,
+                                {
+                                    fetchPoolsTimeout: 60000,
+                                    memoize: true,
+                                }
+                            );
                             span.setStatus({code: SpanStatusCode.OK});
                             span.end();
                             return;
@@ -347,7 +354,11 @@ const routerClear = async(
                                         bundledOrders[i].buyToken,
                                         bundledOrders[i].buyTokenDecimals,
                                         gasPrice,
-                                        dataFetcher
+                                        dataFetcher,
+                                        {
+                                            fetchPoolsTimeout: 10000,
+                                            memoize: true,
+                                        }
                                     );
                                     if (!ethPrice) {
                                         span.setStatus({code: SpanStatusCode.ERROR });
