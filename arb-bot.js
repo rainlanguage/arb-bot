@@ -342,6 +342,7 @@ const main = async argv => {
                 lastInterval = now + poolUpdateInterval;
                 try {
                     fs.rmSync("./mem-cache", { recursive: true });
+                    fs.mkdirSync("./mem-cache", { recursive: true });
                 } catch {
                     /**/
                 }
@@ -392,6 +393,7 @@ const main = async argv => {
                 lastInterval = now + poolUpdateInterval;
                 try {
                     fs.rmSync("./mem-cache", { recursive: true });
+                    fs.mkdirSync("./mem-cache", { recursive: true });
                 } catch {
                     /**/
                 }
