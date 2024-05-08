@@ -198,6 +198,7 @@ const routerClear = async(
                             await dataFetcher.fetchPoolsForToken(
                                 fromToken,
                                 toToken,
+                                undefined,
                                 {
                                     fetchPoolsTimeout: 60000,
                                     memoize: true,
