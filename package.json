@@ -23,7 +23,8 @@
         "docs",
         "./arb-bot.js",
         "./example.env",
-        "./config.json"
+        "./config.json",
+        "./lib/sushiswap/packages/sushi"
     ],
     "bin": {
         "arb-bot": "./arb-bot.js"
