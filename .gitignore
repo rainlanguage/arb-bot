@@ -15,6 +15,3 @@ logs.txt
 logs
 docs
 mem-cache
-*.tgz
-dist
-/sushi
