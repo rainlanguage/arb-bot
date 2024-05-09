@@ -20,7 +20,7 @@ describe("Test app options", async function () {
         assert.equal(config.retries, 1);
         assert.equal(config.rp32, false);
         assert.equal(config.bundle, true);
-        assert.equal(config.chainId, 137);
+        assert.equal(config.chain.id, 137);
     });
 
     it("should error if retries is not between 1-3", async function () {

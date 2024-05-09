@@ -1,11 +1,39 @@
 const { ChainId } = require("sushi/chain");
-const { Token } = require("sushi/currency");
+const { Token, WNATIVE } = require("sushi/currency");
 const { ethers, BigNumber } = require("ethers");
-const { publicClientConfig } = require("sushi/config");
+const { publicClientConfig, STABLES, ROUTE_PROCESSOR_4_ADDRESS, ROUTE_PROCESSOR_3_2_ADDRESS, ROUTE_PROCESSOR_3_1_ADDRESS, ROUTE_PROCESSOR_3_ADDRESS } = require("sushi/config");
 const { createPublicClient, http, fallback } = require("viem");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi } = require("./abis");
 
+/**
+ * @param {ChainId} chainId - The network chain id
+ */
+function getChainConfig(chainId) {
+    const chain = publicClientConfig[chainId].chain;
+    if (!chain) throw new Error("network not supported");
+    const nativeWrappedToken = WNATIVE[chainId];
+    if (!nativeWrappedToken) throw new Error("network not supported");
+    const routeProcessors = {};
+    [
+        ["3", ROUTE_PROCESSOR_3_ADDRESS],
+        ["3.1", ROUTE_PROCESSOR_3_1_ADDRESS],
+        ["3.2", ROUTE_PROCESSOR_3_2_ADDRESS],
+        ["4", ROUTE_PROCESSOR_4_ADDRESS],
+    ].forEach(([key, addresses]) => {
+        const address = addresses[chainId];
+        if (address) {
+            routeProcessors[key] = address;
+        }
+    });
+    const stableTokens = STABLES[chainId];
+    return {
+        chain,
+        nativeWrappedToken,
+        routeProcessors,
+        stableTokens
+    };
+}
 
 /**
  * Chain specific fallback data
@@ -978,12 +1006,12 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
         const dataFetcher = new DataFetcher(
             ("transport" in configOrViemClient
                 ? configOrViemClient.chain.id
-                : configOrViemClient.chainId
+                : configOrViemClient.chain.id
             ),
             ("transport" in configOrViemClient
                 ? configOrViemClient
                 : createViemClient(
-                    configOrViemClient.chainId,
+                    configOrViemClient.chain.id,
                     [configOrViemClient.rpc],
                     useFallbacks
                 )
@@ -1027,13 +1055,13 @@ const getEthPrice = async(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
     );
     const fromToken = new Token({
-        chainId: config.chainId,
+        chainId: config.chain.id,
         decimals: config.nativeWrappedToken.decimals,
         address: config.nativeWrappedToken.address,
         symbol: config.nativeWrappedToken.symbol
     });
     const toToken = new Token({
-        chainId: config.chainId,
+        chainId: config.chain.id,
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
@@ -1042,7 +1070,7 @@ const getEthPrice = async(
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
-        config.chainId,
+        config.chain.id,
         fromToken,
         amountIn.toBigInt(),
         toToken,
@@ -1733,5 +1761,6 @@ module.exports = {
     getAmountOutFlareSwap,
     getUniV2Route,
     getUniV2RouteData,
-    getSpanException
+    getSpanException,
+    getChainConfig,
 };

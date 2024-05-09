@@ -4,9 +4,8 @@ const axios = require("axios");
 const { ethers } = require("ethers");
 const { getQuery } = require("./query");
 const { versions } = require("process");
-const CONFIG = require("../config.json");
 const { srouterClear } = require("./modes/srouter");
-const { getOrderDetailsFromJson, getSpanException } = require("./utils");
+const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
 const { SpanStatusCode } = require("@opentelemetry/api");
 
 
@@ -189,7 +188,7 @@ const getConfig = async(
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
-    const config    = CONFIG.find(v => v.chainId === chainId);
+    const config    = getChainConfig(chainId);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
