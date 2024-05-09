@@ -467,6 +467,12 @@ async function dryrun(
     tracer,
     ctx
 ) {
+    const getRouteProcessorParamsVersion = {
+        "3": Router.routeProcessor3Params,
+        "3.1": Router.routeProcessor3_1Params,
+        "3.2": Router.routeProcessor3_2Params,
+        "4": Router.routeProcessor4Params,
+    };
     let succesOrFailure = true;
     let maximumInput = obSellTokenBalance;
     const modeText = mode === 0
@@ -550,7 +556,7 @@ async function dryrun(
                 "details.route": routeVisual,
             });
 
-            const rpParams = Router.routeProcessor2Params(
+            const rpParams = getRouteProcessorParamsVersion[config.rpVersion](
                 pcMap,
                 route,
                 fromToken,

@@ -3,29 +3,35 @@ const { assert } = require("chai");
 const { clear } = require("../../src");
 const { ethers } = require("hardhat");
 const { arbDeploy } = require("../deploy/arbDeploy");
+const { getChainConfig } = require("../../src/utils");
+const { Resource } = require("@opentelemetry/resources");
+const { trace, context } = require("@opentelemetry/api");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
+const { ChainId, LiquidityProviders, ChainKey } = require("sushi");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
-const { randomUint256, prepareOrders, generateEvaluableConfig } = require("../utils");
-const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
-const { Resource } = require("@opentelemetry/resources");
-const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { trace, context } = require("@opentelemetry/api");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
+const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { randomUint256, prepareOrders, generateEvaluableConfig } = require("../utils");
+const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
 const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSDC } = require("sushi/currency");
-const { ChainId, LiquidityProviders, ChainKey } = require("sushi");
-const { getChainConfig } = require("../../src/utils");
+const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
 
 const testChains = [
     [
+        // chain id
         ChainId.POLYGON,
+
+        // chain name
         ChainKey[ChainId.POLYGON],
+
         // fork rpc url
         process?.env?.TEST_POLYGON_RPC,
+
         // block number of fork network
         56738134,
+
         // tokens to test with
         [
             WNATIVE[ChainId.POLYGON],
@@ -33,6 +39,7 @@ const testChains = [
             USDC[ChainId.POLYGON],
             DAI[ChainId.POLYGON]
         ],
+
         // addresses with balance, in order with specified tokens
         [
             "0xdF906eA18C6537C6379aC83157047F507FB37263",
@@ -40,6 +47,7 @@ const testChains = [
             "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
             "0x4aac95EBE2eA6038982566741d1860556e265F8B",
         ],
+
         // liq providers to use for test
         [
             LiquidityProviders.SushiSwapV2
@@ -91,7 +99,7 @@ const testChains = [
         ChainId.ARBITRUM,
         ChainKey[ChainId.ARBITRUM],
         process?.env?.TEST_ARBITRUM_RPC,
-        209250803,
+        209616137,
         [
             WNATIVE[ChainId.ARBITRUM],
             USDT[ChainId.ARBITRUM],
@@ -156,6 +164,7 @@ const testChains = [
 
 // run tests on each network with provided data
 for (let i = 0; i < testChains.length; i++) {
+    const rpVersions = ["3", "3.1", "3.2", "4"];
     const [
         chainId,
         chainName,
@@ -170,22 +179,8 @@ for (let i = 0; i < testChains.length; i++) {
     if (!rpc) continue;
 
     describe(`Rain Arb Bot Tests on "${chainName}" Network`, async function () {
-        let interpreter,
-            store,
-            expressionDeployer,
-            orderbook,
-            arb,
-            Token1,
-            Token1Decimals,
-            Token2,
-            Token2Decimals,
-            Token3,
-            Token3Decimals,
-            Token4,
-            Token4Decimals,
-            bot,
-            owners,
-            config;
+        // get config for the chain
+        const config = getChainConfig(chainId);
 
         const exporter = new OTLPTraceExporter();
         const provider = new BasicTracerProvider({
@@ -197,197 +192,216 @@ for (let i = 0; i < testChains.length; i++) {
         provider.register();
         const tracer = provider.getTracer("arb-bot-tracer");
 
-        beforeEach(async() => {
-            // reset network before each test
-            await helpers.reset(
-                rpc,
-                blockNumber
-            );
+        // run tests on each rp version
+        for (let j = 0; j < rpVersions.length; j++) {
 
-            [bot, ...owners] = await ethers.getSigners();
-            config = getChainConfig(chainId);
-            // deploy contracts
-            interpreter = await rainterpreterNPE2Deploy();
-            store = await rainterpreterStoreNPE2Deploy();
-            parser = await rainterpreterParserNPE2Deploy();
-            expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                interpreter,
-                store,
-                parser
-            );
-            orderbook = await deployOrderBookNPE2(expressionDeployer);
-            arb = await arbDeploy(
-                expressionDeployer,
-                orderbook.address,
-                generateEvaluableConfig(
+            // if specified route processor version address is not
+            // available for the current network skip the test
+            if (!config.routeProcessors[rpVersions[j]]) continue;
+
+            it(`should clear orders successfully using route processor v${rpVersions[j]}`, async function () {
+                // reset network before each test
+                await helpers.reset(rpc, blockNumber);
+
+                const [bot, ...owners] = await ethers.getSigners();
+
+                // deploy contracts
+                const interpreter = await rainterpreterNPE2Deploy();
+                const store = await rainterpreterStoreNPE2Deploy();
+                const parser = await rainterpreterParserNPE2Deploy();
+                const expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
+                    interpreter,
+                    store,
+                    parser
+                );
+                const orderbook = await deployOrderBookNPE2(expressionDeployer);
+                const arb = await arbDeploy(
                     expressionDeployer,
-                    {
-                        constants: [],
-                        bytecode: "0x01000000000000"
-                    }
-                ),
-                config.routeProcessors["3"],
-            );
+                    orderbook.address,
+                    generateEvaluableConfig(
+                        expressionDeployer,
+                        {
+                            constants: [],
+                            bytecode: "0x01000000000000"
+                        }
+                    ),
+                    config.routeProcessors[rpVersions[j]],
+                );
 
-            // update config with new addresses
-            config.arbAddress = arb.address;
-            config.orderbookAddress = orderbook.address;
+                // update config with new addresses
+                config.arbAddress = arb.address;
+                config.orderbookAddress = orderbook.address;
 
-            // get token contract instances
-            Token1 = await ethers.getContractAt(
-                ERC20Artifact.abi,
-                tokens[0].address
-            );
-            Token1Decimals = tokens[0].decimals;
-            Token2 = await ethers.getContractAt(
-                ERC20Artifact.abi,
-                tokens[1].address
-            );
-            Token2Decimals = tokens[1].decimals;
-            Token3 = await ethers.getContractAt(
-                ERC20Artifact.abi,
-                tokens[2].address
-            );
-            Token3Decimals = tokens[2].decimals;
-            Token4 = await ethers.getContractAt(
-                ERC20Artifact.abi,
-                tokens[3].address
-            );
-            Token4Decimals = tokens[3].decimals;
+                // get token contract instances
+                const Token1 = await ethers.getContractAt(
+                    ERC20Artifact.abi,
+                    tokens[0].address
+                );
+                const Token1Decimals = tokens[0].decimals;
+                const Token2 = await ethers.getContractAt(
+                    ERC20Artifact.abi,
+                    tokens[1].address
+                );
+                const Token2Decimals = tokens[1].decimals;
+                const Token3 = await ethers.getContractAt(
+                    ERC20Artifact.abi,
+                    tokens[2].address
+                );
+                const Token3Decimals = tokens[2].decimals;
+                const Token4 = await ethers.getContractAt(
+                    ERC20Artifact.abi,
+                    tokens[3].address
+                );
+                const Token4Decimals = tokens[3].decimals;
 
-            // impersonate addresses with large token balances to fund the owners 1 2 3
-            // accounts with 1000 tokens each used for topping up the order vaults
-            const Token1Holder = await ethers.getImpersonatedSigner(addressesWithBalance[0]);
-            const Token2Holder = await ethers.getImpersonatedSigner(addressesWithBalance[1]);
-            const Token3Holder = await ethers.getImpersonatedSigner(addressesWithBalance[2]);
-            const Token4Holder = await ethers.getImpersonatedSigner(addressesWithBalance[3]);
-            await bot.sendTransaction({
-                value: ethers.utils.parseEther("5.0"),
-                to: Token1Holder.address
+                // impersonate addresses with large token balances to fund the owners 1 2 3
+                // accounts with 1000 tokens each used for topping up the order vaults
+                const Token1Holder = await ethers.getImpersonatedSigner(addressesWithBalance[0]);
+                const Token2Holder = await ethers.getImpersonatedSigner(addressesWithBalance[1]);
+                const Token3Holder = await ethers.getImpersonatedSigner(addressesWithBalance[2]);
+                const Token4Holder = await ethers.getImpersonatedSigner(addressesWithBalance[3]);
+                await bot.sendTransaction({
+                    value: ethers.utils.parseEther("5.0"),
+                    to: Token1Holder.address
+                });
+                await bot.sendTransaction({
+                    value: ethers.utils.parseEther("5.0"),
+                    to: Token2Holder.address
+                });
+                await bot.sendTransaction({
+                    value: ethers.utils.parseEther("5.0"),
+                    to: Token3Holder.address
+                });
+                await bot.sendTransaction({
+                    value: ethers.utils.parseEther("5.0"),
+                    to: Token4Holder.address
+                });
+                for (let i = 0; i < 3; i++) {
+                    await Token1.connect(Token1Holder).transfer(owners[i].address, "110" + "0".repeat(Token1Decimals));
+                    await Token2.connect(Token2Holder).transfer(owners[i].address, "110" + "0".repeat(Token2Decimals));
+                    await Token3.connect(Token3Holder).transfer(owners[i].address, "110" + "0".repeat(Token3Decimals));
+                    await Token4.connect(Token4Holder).transfer(owners[i].address, "110" + "0".repeat(Token4Decimals));
+                }
+
+                // bot original token balances
+                const BotToken1Balance = await Token1.balanceOf(bot.address);
+                const BotToken2Balance = await Token2.balanceOf(bot.address);
+                const BotToken3Balance = await Token3.balanceOf(bot.address);
+                const BotToken4Balance = await Token4.balanceOf(bot.address);
+
+                const testSpan = tracer.startSpan("test-clearing");
+                const ctx = trace.setSpan(context.active(), testSpan);
+
+                // set up vault ids
+                const Token1VaultId = ethers.BigNumber.from(randomUint256());
+                const Token2VaultId = ethers.BigNumber.from(randomUint256());
+                const Token3VaultId = ethers.BigNumber.from(randomUint256());
+                const Token4VaultId = ethers.BigNumber.from(randomUint256());
+
+                const sgOrders = await prepareOrders(
+                    owners,
+                    [Token1, Token2, Token4, Token3],
+                    [Token1Decimals, Token2Decimals, Token4Decimals, Token3Decimals],
+                    [Token1VaultId, Token2VaultId, Token4VaultId, Token3VaultId],
+                    orderbook,
+                    expressionDeployer
+                );
+
+                // run the clearing process
+                config.rpc = rpc;
+                config.shuffle = false;
+                config.signer = bot;
+                config.hops = 2;
+                config.bundle = true;
+                config.retries = 1;
+                config.lps = liquidityProviders;
+                config.rpVersion = rpVersions[j];
+                const reports = await clear(config, sgOrders, undefined, tracer, ctx);
+
+                // should have cleared 2 token pairs bundled orders
+                assert.ok(reports.length == 2);
+
+                // validate first cleared token pair orders
+                assert.equal(reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
+                assert.equal(reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
+                assert.equal(reports[0].clearedOrders.length, 2);
+
+                // check vault balances for orders in cleared token pair
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[0].address,
+                        Token1.address,
+                        Token3VaultId
+                    )).toString(),
+                    "0"
+                );
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[0].address,
+                        Token2.address,
+                        Token2VaultId
+                    )).toString(),
+                    "100" + "0".repeat(tokens[1].decimals)
+                );
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[2].address,
+                        Token1.address,
+                        Token1VaultId
+                    )).toString(),
+                    "0"
+                );
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[2].address,
+                        Token2.address,
+                        Token2VaultId
+                    )).toString(),
+                    "100" + "0".repeat(tokens[1].decimals)
+                );
+
+                // validate second cleared token pair orders
+                assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
+                assert.equal(reports[1].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
+
+                // check vault balances for orders in cleared token pair
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[1].address,
+                        Token1.address,
+                        Token1VaultId
+                    )).toString(),
+                    "0"
+                );
+                assert.equal(
+                    (await orderbook.vaultBalance(
+                        owners[1].address,
+                        Token4.address,
+                        Token4VaultId
+                    )).toString(),
+                    "100" + "0".repeat(tokens[3].decimals)
+                );
+
+                // bot should have received the bounty for cleared orders,
+                // so its token 2 and 4 balances should have increased
+                assert.ok(
+                    (await Token2.connect(bot).balanceOf(bot.address)).gt(BotToken2Balance)
+                );
+                assert.ok(
+                    (await Token4.connect(bot).balanceOf(bot.address)).gt(BotToken4Balance)
+                );
+
+                // bot should not have recieved any reward
+                // so its token 1 and 3 balances should have been equal to before
+                assert.ok(
+                    (await Token1.connect(bot).balanceOf(bot.address)).eq(BotToken1Balance)
+                );
+                assert.ok(
+                    (await Token3.connect(bot).balanceOf(bot.address)).eq(BotToken3Balance)
+                );
+
+                testSpan.end();
             });
-            await bot.sendTransaction({
-                value: ethers.utils.parseEther("5.0"),
-                to: Token2Holder.address
-            });
-            await bot.sendTransaction({
-                value: ethers.utils.parseEther("5.0"),
-                to: Token3Holder.address
-            });
-            await bot.sendTransaction({
-                value: ethers.utils.parseEther("5.0"),
-                to: Token4Holder.address
-            });
-            for (let i = 0; i < 3; i++) {
-                await Token1.connect(Token1Holder).transfer(owners[i].address, "110" + "0".repeat(Token1Decimals));
-                await Token2.connect(Token2Holder).transfer(owners[i].address, "110" + "0".repeat(Token2Decimals));
-                await Token3.connect(Token3Holder).transfer(owners[i].address, "110" + "0".repeat(Token3Decimals));
-                await Token4.connect(Token4Holder).transfer(owners[i].address, "110" + "0".repeat(Token4Decimals));
-            }
-        });
-
-        it("should clear orders successfully", async function () {
-            const testSpan = tracer.startSpan("test-srouter-int-v2");
-            const ctx = trace.setSpan(context.active(), testSpan);
-
-            // set up vault ids
-            const Token1VaultId = ethers.BigNumber.from(randomUint256());
-            const Token2VaultId = ethers.BigNumber.from(randomUint256());
-            const Token3VaultId = ethers.BigNumber.from(randomUint256());
-            const Token4VaultId = ethers.BigNumber.from(randomUint256());
-
-            const sgOrders = await prepareOrders(
-                owners,
-                [Token1, Token2, Token4, Token3],
-                [Token1Decimals, Token2Decimals, Token4Decimals, Token3Decimals],
-                [Token1VaultId, Token2VaultId, Token4VaultId, Token3VaultId],
-                orderbook,
-                expressionDeployer
-            );
-
-            // run the clearing process
-            config.rpc = rpc;
-            config.shuffle = false;
-            config.signer = bot;
-            config.hops = 2;
-            config.bundle = true;
-            config.retries = 1;
-            config.lps = liquidityProviders;
-            config.rpVersion = "3";
-            const reports = await clear(config, sgOrders, undefined, tracer, ctx);
-
-            // should have cleared 2 toke pairs bundled orders
-            assert.ok(reports.length == 2);
-
-            // validate first cleared token pair orders
-            assert.equal(reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
-            assert.equal(reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
-            assert.equal(reports[0].clearedOrders.length, 2);
-
-            // check vault balances for orders in cleared token pair
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[0].address,
-                    Token1.address,
-                    Token3VaultId
-                )).toString(),
-                "0"
-            );
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[0].address,
-                    Token2.address,
-                    Token2VaultId
-                )).toString(),
-                "100" + "0".repeat(tokens[1].decimals)
-            );
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[2].address,
-                    Token1.address,
-                    Token1VaultId
-                )).toString(),
-                "0"
-            );
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[2].address,
-                    Token2.address,
-                    Token2VaultId
-                )).toString(),
-                "100" + "0".repeat(tokens[1].decimals)
-            );
-
-            // validate second cleared token pair orders
-            assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
-            assert.equal(reports[1].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
-
-            // check vault balances for orders in cleared token pair
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[1].address,
-                    Token1.address,
-                    Token1VaultId
-                )).toString(),
-                "0"
-            );
-            assert.equal(
-                (await orderbook.vaultBalance(
-                    owners[1].address,
-                    Token4.address,
-                    Token4VaultId
-                )).toString(),
-                "100" + "0".repeat(tokens[3].decimals)
-            );
-
-            // bot should have received the bounty for cleared orders input token
-            assert.ok(
-                (await Token2.connect(bot).balanceOf(bot.address)).gt("0")
-            );
-            assert.ok(
-                (await Token4.connect(bot).balanceOf(bot.address)).gt("0")
-            );
-
-            testSpan.end();
-        });
+        }
     });
 }
