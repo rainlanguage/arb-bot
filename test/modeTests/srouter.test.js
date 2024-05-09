@@ -18,7 +18,7 @@ const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSD
 const { ChainId, LiquidityProviders, ChainKey } = require("sushi");
 const { getChainConfig } = require("../../src/utils");
 
-const tests = [
+const testChains = [
     [
         ChainId.POLYGON,
         ChainKey[ChainId.POLYGON],
@@ -121,7 +121,7 @@ const tests = [
             "0x898137400867603E6D713CBD40881dd0c79E47cB",
         ],
         [
-            LiquidityProviders.SushiSwapV2,
+            LiquidityProviders.UniswapV3,
             LiquidityProviders.BaseSwap,
         ]
     ],
@@ -150,7 +150,7 @@ const tests = [
 ];
 
 // run tests on each network with provided data
-for (let i = 0; i < tests.length; i++) {
+for (let i = 0; i < testChains.length; i++) {
     const [
         chainId,
         chainName,
@@ -159,7 +159,7 @@ for (let i = 0; i < tests.length; i++) {
         tokens,
         addressesWithBalance,
         liquidityProviders,
-    ] = tests[i];
+    ] = testChains[i];
 
     describe(`Rain Arb Bot Tests on "${chainName}" Network`, async function () {
         let interpreter,
