@@ -22,20 +22,25 @@ const testChains = [
     [
         ChainId.POLYGON,
         ChainKey[ChainId.POLYGON],
-        process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon",
+        // fork rpc url
+        process?.env?.TEST_POLYGON_RPC,
+        // block number of fork network
         56738134,
+        // tokens to test with
         [
             WNATIVE[ChainId.POLYGON],
             USDT[ChainId.POLYGON],
             USDC[ChainId.POLYGON],
             DAI[ChainId.POLYGON]
         ],
+        // addresses with balance, in order with specified tokens
         [
             "0xdF906eA18C6537C6379aC83157047F507FB37263",
             "0xF977814e90dA44bFA03b6295A0616a897441aceC",
             "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
             "0x4aac95EBE2eA6038982566741d1860556e265F8B",
         ],
+        // liq providers to use for test
         [
             LiquidityProviders.SushiSwapV2
         ]
@@ -43,7 +48,7 @@ const testChains = [
     [
         ChainId.FLARE,
         ChainKey[ChainId.FLARE],
-        process?.env?.TEST_FLARE_RPC ?? "https://rpc.ankr.com/flare",
+        process?.env?.TEST_FLARE_RPC,
         23676999,
         [
             WNATIVE[ChainId.FLARE],
@@ -64,7 +69,7 @@ const testChains = [
     [
         ChainId.ETHEREUM,
         ChainKey[ChainId.ETHEREUM],
-        process?.env?.TEST_ETH_RPC ?? "https://rpc.ankr.com/eth",
+        process?.env?.TEST_ETH_RPC,
         19829125,
         [
             WNATIVE[ChainId.ETHEREUM],
@@ -85,7 +90,7 @@ const testChains = [
     [
         ChainId.ARBITRUM,
         ChainKey[ChainId.ARBITRUM],
-        process?.env?.TEST_ARBITRUM_RPC ?? "https://rpc.ankr.com/arbitrum",
+        process?.env?.TEST_ARBITRUM_RPC,
         209250803,
         [
             WNATIVE[ChainId.ARBITRUM],
@@ -106,7 +111,7 @@ const testChains = [
     [
         ChainId.BASE,
         ChainKey[ChainId.BASE],
-        process?.env?.TEST_BASE_RPC ?? "https://rpc.ankr.com/base",
+        process?.env?.TEST_BASE_RPC,
         14207369,
         [
             axlUSDC[ChainId.BASE],
@@ -128,7 +133,7 @@ const testChains = [
     [
         ChainId.BSC,
         ChainKey[ChainId.BSC],
-        process?.env?.TEST_BSC_RPC ?? "https://rpc.ankr.com/bsc",
+        process?.env?.TEST_BSC_RPC,
         38553419,
         [
             WNATIVE[ChainId.BSC],
@@ -161,20 +166,23 @@ for (let i = 0; i < testChains.length; i++) {
         liquidityProviders,
     ] = testChains[i];
 
+    // if rpc is not defined for a network go to next test
+    if (!rpc) continue;
+
     describe(`Rain Arb Bot Tests on "${chainName}" Network`, async function () {
         let interpreter,
             store,
             expressionDeployer,
             orderbook,
             arb,
-            Token2,
-            Token2Decimals,
             Token1,
             Token1Decimals,
-            Token4,
-            Token4Decimals,
+            Token2,
+            Token2Decimals,
             Token3,
             Token3Decimals,
+            Token4,
+            Token4Decimals,
             bot,
             owners,
             config;
@@ -282,16 +290,16 @@ for (let i = 0; i < testChains.length; i++) {
             const ctx = trace.setSpan(context.active(), testSpan);
 
             // set up vault ids
-            const USDC_vaultId = ethers.BigNumber.from(randomUint256());
-            const USDT_vaultId = ethers.BigNumber.from(randomUint256());
-            const DAI_vaultId = ethers.BigNumber.from(randomUint256());
-            const WNATIVE_vaultid = ethers.BigNumber.from(randomUint256());
+            const Token1VaultId = ethers.BigNumber.from(randomUint256());
+            const Token2VaultId = ethers.BigNumber.from(randomUint256());
+            const Token3VaultId = ethers.BigNumber.from(randomUint256());
+            const Token4VaultId = ethers.BigNumber.from(randomUint256());
 
             const sgOrders = await prepareOrders(
                 owners,
                 [Token1, Token2, Token4, Token3],
                 [Token1Decimals, Token2Decimals, Token4Decimals, Token3Decimals],
-                [WNATIVE_vaultid, USDT_vaultId, DAI_vaultId, USDC_vaultId],
+                [Token1VaultId, Token2VaultId, Token4VaultId, Token3VaultId],
                 orderbook,
                 expressionDeployer
             );
@@ -314,12 +322,12 @@ for (let i = 0; i < testChains.length; i++) {
             assert.equal(reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
             assert.equal(reports[0].clearedOrders.length, 2);
 
-            // check vault balances for orders in cleared token pair USDT/USDC
+            // check vault balances for orders in cleared token pair
             assert.equal(
                 (await orderbook.vaultBalance(
                     owners[0].address,
                     Token1.address,
-                    USDC_vaultId
+                    Token3VaultId
                 )).toString(),
                 "0"
             );
@@ -327,7 +335,7 @@ for (let i = 0; i < testChains.length; i++) {
                 (await orderbook.vaultBalance(
                     owners[0].address,
                     Token2.address,
-                    USDT_vaultId
+                    Token2VaultId
                 )).toString(),
                 "100" + "0".repeat(tokens[1].decimals)
             );
@@ -335,7 +343,7 @@ for (let i = 0; i < testChains.length; i++) {
                 (await orderbook.vaultBalance(
                     owners[2].address,
                     Token1.address,
-                    WNATIVE_vaultid
+                    Token1VaultId
                 )).toString(),
                 "0"
             );
@@ -343,7 +351,7 @@ for (let i = 0; i < testChains.length; i++) {
                 (await orderbook.vaultBalance(
                     owners[2].address,
                     Token2.address,
-                    USDT_vaultId
+                    Token2VaultId
                 )).toString(),
                 "100" + "0".repeat(tokens[1].decimals)
             );
@@ -351,14 +359,13 @@ for (let i = 0; i < testChains.length; i++) {
             // validate second cleared token pair orders
             assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
             assert.equal(reports[1].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
-            // assert.equal(reports[1].clearedOrders.length, 1);
 
-            // check vault balances for orders in cleared token pair FRAX/USDC
+            // check vault balances for orders in cleared token pair
             assert.equal(
                 (await orderbook.vaultBalance(
                     owners[1].address,
                     Token1.address,
-                    WNATIVE_vaultid
+                    Token1VaultId
                 )).toString(),
                 "0"
             );
@@ -366,7 +373,7 @@ for (let i = 0; i < testChains.length; i++) {
                 (await orderbook.vaultBalance(
                     owners[1].address,
                     Token4.address,
-                    DAI_vaultId
+                    Token4VaultId
                 )).toString(),
                 "100" + "0".repeat(tokens[3].decimals)
             );
