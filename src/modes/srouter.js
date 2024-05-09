@@ -556,7 +556,7 @@ async function dryrun(
                 fromToken,
                 toToken,
                 arb.address,
-                config.rp32 ? config.routeProcessors["3.2"] : config.routeProcessors["3"],
+                config.routeProcessors[config.rpVersion],
                 // permits
                 // "0.005"
             );

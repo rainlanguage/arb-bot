@@ -312,6 +312,7 @@ for (let i = 0; i < testChains.length; i++) {
             config.bundle = true;
             config.retries = 1;
             config.lps = liquidityProviders;
+            config.rpVersion = "3";
             const reports = await clear(config, sgOrders, undefined, tracer, ctx);
 
             // should have cleared 2 toke pairs bundled orders

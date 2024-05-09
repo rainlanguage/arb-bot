@@ -18,7 +18,7 @@ describe("Test app options", async function () {
         assert.equal(config.maxRatio, false);
         assert.equal(config.hops, 11);
         assert.equal(config.retries, 1);
-        assert.equal(config.rp32, false);
+        assert.equal(config.rpVersion, "3");
         assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);
     });

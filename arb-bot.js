@@ -36,7 +36,7 @@ const ENV_OPTIONS = {
     hops                : process?.env?.HOPS,
     retries             : process?.env?.RETRIES,
     poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
-    rp32                : process?.env?.RP3_2?.toLowerCase() === "true" ? true : false,
+    rpVersion           : process?.env?.RP_VERSION,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -66,7 +66,7 @@ const getOptions = async argv => {
         .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
-        .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
+        .option("--rp-version", "Option to use sushi RouteProcessor given version, possible version are: 3, 3.1, 3.2, 4, defaults to v3 if not passed, Will override the 'RP_VERSION' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .description([
@@ -99,7 +99,7 @@ const getOptions = async argv => {
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
-    cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
+    cmdOptions.rpVersion        = cmdOptions.rpVersion          || ENV_OPTIONS.rpVersion;
     cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
 
@@ -134,7 +134,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     hops                : options.hops,
                     retries             : options.retries,
                     poolUpdateInterval  : options.poolUpdateInterval,
-                    rp32                : options.rp32,
+                    rpVersion           : options.rpVersion,
                     liquidityProviders  : options.lps
                         ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                         : undefined,
@@ -200,7 +200,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             "details.config.maxProfit": config.maxProfit,
             "details.config.maxRatio": config.maxRatio,
             "details.config.usesFlashbots": config.flashbotRpc ? true : false,
-            "details.config.sushiRouteProcessorVersion": config.rp32 ? "3.2" : "3.0",
+            "details.config.sushiRouteProcessorVersion": config.rpVersion,
             "details.config.amountDiscoveryHops": config.hops
         });
         const ctx = trace.setSpan(context.active(), span);

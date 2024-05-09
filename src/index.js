@@ -46,9 +46,10 @@ const configOptions = {
      */
     retries: 1,
     /**
-     * Option to use sushi RouteProcessorv3.2, default is v3
+     * Option to use sushi RouteProcessor given version, possible version
+     * are: '3', '3.1', '3.2', '4' as string, defaults to '3' if not passed
      */
-    rp32: false
+    rpVersion: "3"
 };
 
 /**
@@ -221,6 +222,19 @@ const getConfig = async(
         }
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
+    let rpVersion = "3";
+    if (options.rpVersion) {
+        if (typeof options.rpVersion === "string") {
+            if (
+                options.rpVersion !== "3"
+                && options.rpVersion !== "3.1"
+                && options.rpVersion !== "3.2"
+                && options.rpVersion !== "4"
+            ) throw "invalid rpVersion value, must be either '3', '3.1', '3.2' or '4'";
+            else rpVersion = options.rpVersion;
+        }
+        else throw "invalid rpVersion value, must be either '3', '3.1', '3.2' or '4'";
+    }
 
     config.rpc              = rpcUrl;
     config.signer           = signer;
@@ -233,7 +247,7 @@ const getConfig = async(
     config.maxRatio         = !!options?.maxRatio;
     config.hops             = hops;
     config.retries          = retries;
-    config.rp32             = !!options?.rp32;
+    config.rpVersion        = rpVersion;
 
     return config;
 };
