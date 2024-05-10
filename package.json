@@ -30,7 +30,7 @@
         "arb-bot": "./arb-bot.js"
     },
     "scripts": {
-        "test": "hardhat test ./test/*.test.js && hardhat test --bail",
+        "test": "hardhat test ./test/*.test.js && hardhat test",
         "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",
         "lint": "eslint ./src ./test ./arb-bot.js",
         "lint-fix": "eslint ./src ./test ./arb-bot.js --fix"

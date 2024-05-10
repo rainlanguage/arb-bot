@@ -164,7 +164,6 @@ const testChains = [
 
 // run tests on each network with provided data
 for (let i = 0; i < testChains.length; i++) {
-    const rpVersions = ["3", "3.1", "3.2", "4"];
     const [
         chainId,
         chainName,
@@ -182,6 +181,9 @@ for (let i = 0; i < testChains.length; i++) {
         // get config for the chain
         const config = getChainConfig(chainId);
 
+        // get available rpVersion for chain
+        const rpVersions = Object.keys(config.routeProcessors);
+
         const exporter = new OTLPTraceExporter();
         const provider = new BasicTracerProvider({
             resource: new Resource({
@@ -194,10 +196,6 @@ for (let i = 0; i < testChains.length; i++) {
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {
-
-            // if specified route processor version address is not
-            // available for the current network skip the test
-            if (!config.routeProcessors[rpVersions[j]]) continue;
 
             it(`should clear orders successfully using route processor v${rpVersions[j]}`, async function () {
                 // reset network before each test
