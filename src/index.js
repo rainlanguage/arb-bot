@@ -4,9 +4,8 @@ const axios = require("axios");
 const { ethers } = require("ethers");
 const { getQuery } = require("./query");
 const { versions } = require("process");
-const CONFIG = require("../config.json");
 const { srouterClear } = require("./modes/srouter");
-const { getOrderDetailsFromJson, getSpanException } = require("./utils");
+const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
 const { SpanStatusCode } = require("@opentelemetry/api");
 
 
@@ -46,10 +45,6 @@ const configOptions = {
      * The amount of retries for the same order
      */
     retries: 1,
-    /**
-     * Option to use sushi RouteProcessorv3.2, default is v3
-     */
-    rp32: false
 };
 
 /**
@@ -189,7 +184,7 @@ const getConfig = async(
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
-    const config    = CONFIG.find(v => v.chainId === chainId);
+    const config    = getChainConfig(chainId);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
@@ -234,7 +229,6 @@ const getConfig = async(
     config.maxRatio         = !!options?.maxRatio;
     config.hops             = hops;
     config.retries          = retries;
-    config.rp32             = !!options?.rp32;
 
     return config;
 };

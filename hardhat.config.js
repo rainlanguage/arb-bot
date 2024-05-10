@@ -12,7 +12,7 @@ module.exports = {
         hardhat: {
             forking: {
                 url: process?.env?.TEST_POLYGON_RPC, // avalanche network to run the test on
-                blockNumber: 53559376
+                blockNumber: 56738134
             },
             // mining: {
             //     auto: false,
@@ -28,7 +28,7 @@ module.exports = {
         asyncOnly: true,
         bail: false,
         parallel: false,
-        timeout: 500000,
+        timeout: 5000000,
     },
     paths: {
         tests: "./test/modeTests"

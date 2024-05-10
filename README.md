@@ -80,7 +80,6 @@ Other optional arguments are:
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
-- `--rp32`, Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -203,9 +202,6 @@ NO_BUNDLE="false"
 # number of hops of binary search, if left unspecified will be 11 by default
 HOPS=11
 
-# Option to use sushi RouteProcessorv3.2, default is v3
-RP3_2="true"
-
 # api key for heyperDx platfomr to send spans to, if not set will send traces to localhost
 HYPERDX_API_KEY=""
 
@@ -242,7 +238,6 @@ const configOptions = {
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
   hops                  : 6,       // The amount of hops of binary search
   retries               : 1,       // The amount of retries for the same order
-  rp32                  : true,    // Option to use sushi RouteProcessorv3.2, default is v3
   liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"

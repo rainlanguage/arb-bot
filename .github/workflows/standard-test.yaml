@@ -24,3 +24,8 @@ jobs:
         run:  nix develop -c npm test
         env:
           TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}
+          TEST_BASE_RPC: ${{ secrets.CI_DEPLOY_BASE_RPC_URL }}
+          TEST_FLARE_RPC: ${{ secrets.RPC_URL_FLARE_FORK }}
+          TEST_ETH_RPC: ${{ secrets.RPC_URL_ETHEREUM_FORK }}
+          TEST_BSC_RPC: ${{ secrets.CI_DEPLOY_BSC_RPC_URL }}
+          TEST_ARBITRUM_RPC: ${{ secrets.CI_DEPLOY_ARBITRUM_RPC_URL }}

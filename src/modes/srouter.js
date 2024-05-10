@@ -123,13 +123,13 @@ const srouterClear = async(
             }
 
             const fromToken = new Token({
-                chainId: config.chainId,
+                chainId: config.chain.id,
                 decimals: bundledOrders[i].sellTokenDecimals,
                 address: bundledOrders[i].sellToken,
                 symbol: bundledOrders[i].sellTokenSymbol
             });
             const toToken = new Token({
-                chainId: config.chainId,
+                chainId: config.chain.id,
                 decimals: bundledOrders[i].buyTokenDecimals,
                 address: bundledOrders[i].buyToken,
                 symbol: bundledOrders[i].buyTokenSymbol
@@ -209,7 +209,7 @@ const srouterClear = async(
                             toToken,
                             undefined,
                             {
-                                fetchPoolsTimeout: 60000,
+                                fetchPoolsTimeout: 30000,
                                 memoize: true,
                             }
                         );
@@ -333,7 +333,7 @@ const srouterClear = async(
                         ? await flashbotSigner.sendTransaction(rawtx)
                         : await signer.sendTransaction(rawtx);
 
-                const txUrl = config.explorer + "tx/" + tx.hash;
+                const txUrl = config.chain.blockExplorers.default.url + "/tx/" + tx.hash;
                 console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
                 pairSpan.setAttributes({
                     "details.txUrl": txUrl,
@@ -467,6 +467,12 @@ async function dryrun(
     tracer,
     ctx
 ) {
+    const getRouteProcessorParamsVersion = {
+        "3": Router.routeProcessor3Params,
+        "3.1": Router.routeProcessor3_1Params,
+        "3.2": Router.routeProcessor3_2Params,
+        "4": Router.routeProcessor4Params,
+    };
     let succesOrFailure = true;
     let maximumInput = obSellTokenBalance;
     const modeText = mode === 0
@@ -498,7 +504,7 @@ async function dryrun(
         );
         const route = Router.findBestRoute(
             pcMap,
-            config.chainId,
+            config.chain.id,
             fromToken,
             maximumInput.toBigInt(),
             toToken,
@@ -528,7 +534,6 @@ async function dryrun(
                 );
                 hopSpan.addEvent("filtered orders with lower ratio than market price");
             }
-
             if (bundledOrder.takeOrders.length === 0) {
                 hopSpan.setStatus({
                     code: SpanStatusCode.OK,
@@ -540,20 +545,24 @@ async function dryrun(
             }
 
             const routeVisual = [];
-            visualizeRoute(fromToken, toToken, route.legs).forEach(
-                v => {routeVisual.push(v);}
-            );
+            try {
+                visualizeRoute(fromToken, toToken, route.legs).forEach(
+                    v => {routeVisual.push(v);}
+                );
+            } catch {
+                /**/
+            }
             hopSpan.setAttributes({
                 "details.route": routeVisual,
             });
 
-            const rpParams = Router.routeProcessor2Params(
+            const rpParams = getRouteProcessorParamsVersion["3.2"](
                 pcMap,
                 route,
                 fromToken,
                 toToken,
                 arb.address,
-                config.rp32 ? config.routeProcessor3_2Address : config.routeProcessor3Address,
+                config.routeProcessors["3.2"],
                 // permits
                 // "0.005"
             );

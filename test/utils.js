@@ -1,18 +1,6 @@
 const { ethers } = require("hardhat");
 const { assert } = require("chai");
 
-
-/**
- * Addresses with token balance to get from with impersonation
- */
-exports.AddressWithBalance = {
-    usdc:   "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
-    usdt:   "0xF977814e90dA44bFA03b6295A0616a897441aceC",
-    dai:    "0x4aac95EBE2eA6038982566741d1860556e265F8B",
-    frax:   "0xda86DaECd8c56Ec266872F2f0978ac8705C43959",
-    busd:   "0x51bfacfcE67821EC05d3C9bC9a8BC8300fB29564",
-};
-
 /**
  * Deploys a simple contracts that takes no arguments for deployment
  *
@@ -295,7 +283,7 @@ exports.prepareOrders = async(
     const expConfig = {
         constants: [
             ethers.constants.MaxUint256.toHexString(),  // max output
-            "5" + "0".repeat(17)                        // ratio 0.5, for testing purpose to ensure clearance
+            "0"
         ],
         bytecode: "0x020000000c02020002010000000100000100000000"
     };

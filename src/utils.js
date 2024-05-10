@@ -1,11 +1,46 @@
 const { ChainId } = require("sushi/chain");
-const { Token } = require("sushi/currency");
+const { Token, WNATIVE } = require("sushi/currency");
 const { ethers, BigNumber } = require("ethers");
-const { publicClientConfig } = require("sushi/config");
 const { createPublicClient, http, fallback } = require("viem");
+const { erc20Abi, interpreterAbi, interpreterV2Abi } = require("./abis");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
-const { erc20Abi, interpreterAbi, interpreterV2Abi, uniswapV2Route02Abi } = require("./abis");
+const {
+    STABLES,
+    publicClientConfig,
+    ROUTE_PROCESSOR_3_ADDRESS,
+    ROUTE_PROCESSOR_4_ADDRESS,
+    ROUTE_PROCESSOR_3_2_ADDRESS,
+    ROUTE_PROCESSOR_3_1_ADDRESS,
+} = require("sushi/config");
 
+/**
+ * @param {ChainId} chainId - The network chain id
+ */
+function getChainConfig(chainId) {
+    const chain = publicClientConfig[chainId].chain;
+    if (!chain) throw new Error("network not supported");
+    const nativeWrappedToken = WNATIVE[chainId];
+    if (!nativeWrappedToken) throw new Error("network not supported");
+    const routeProcessors = {};
+    [
+        ["3", ROUTE_PROCESSOR_3_ADDRESS],
+        ["3.1", ROUTE_PROCESSOR_3_1_ADDRESS],
+        ["3.2", ROUTE_PROCESSOR_3_2_ADDRESS],
+        ["4", ROUTE_PROCESSOR_4_ADDRESS],
+    ].forEach(([key, addresses]) => {
+        const address = addresses[chainId];
+        if (address) {
+            routeProcessors[key] = address;
+        }
+    });
+    const stableTokens = STABLES[chainId];
+    return {
+        chain,
+        nativeWrappedToken,
+        routeProcessors,
+        stableTokens
+    };
+}
 
 /**
  * Chain specific fallback data
@@ -978,12 +1013,12 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
         const dataFetcher = new DataFetcher(
             ("transport" in configOrViemClient
                 ? configOrViemClient.chain.id
-                : configOrViemClient.chainId
+                : configOrViemClient.chain.id
             ),
             ("transport" in configOrViemClient
                 ? configOrViemClient
                 : createViemClient(
-                    configOrViemClient.chainId,
+                    configOrViemClient.chain.id,
                     [configOrViemClient.rpc],
                     useFallbacks
                 )
@@ -1027,13 +1062,13 @@ const getEthPrice = async(
         "1" + "0".repeat(config.nativeWrappedToken.decimals)
     );
     const fromToken = new Token({
-        chainId: config.chainId,
+        chainId: config.chain.id,
         decimals: config.nativeWrappedToken.decimals,
         address: config.nativeWrappedToken.address,
         symbol: config.nativeWrappedToken.symbol
     });
     const toToken = new Token({
-        chainId: config.chainId,
+        chainId: config.chain.id,
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
@@ -1042,7 +1077,7 @@ const getEthPrice = async(
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
-        config.chainId,
+        config.chain.id,
         fromToken,
         amountIn.toBigInt(),
         toToken,
@@ -1055,57 +1090,14 @@ const getEthPrice = async(
     else return ethers.utils.formatUnits(route.amountOutBI, targetTokenDecimals);
 };
 
-// /**
-//  * A wrapper for DataFetcher fetchPoolsForToken() to avoid any errors for liquidity providers that are not available for target chain
-//  *
-//  * @param {DataFetcher} dataFetcher - DataFetcher instance
-//  * @param {Token} fromToken - The from token
-//  * @param {Token} toToken - The to token
-//  * @param {string[]} excludePools - Set of pools to exclude
-//  */
-// const fetchPoolsForTokenWrapper = async(dataFetcher, fromToken, toToken, excludePools) => {
-//     // ensure that we only fetch the native wrap pools if the
-//     // token is the native currency and wrapped native currency
-//     if (fromToken.wrapped.equals(toToken.wrapped)) {
-//         const provider = dataFetcher.providers.find(
-//             (p) => p.getType() === LiquidityProviders.NativeWrap
-//         );
-//         if (provider) {
-//             try {
-//                 await provider.fetchPoolsForToken(
-//                     fromToken.wrapped,
-//                     toToken.wrapped,
-//                     excludePools
-//                 );
-//             }
-//             catch {}
-//         }
-//     }
-//     else {
-//         const [token0, token1] =
-//             fromToken.wrapped.equals(toToken.wrapped) ||
-//             fromToken.wrapped.sortsBefore(toToken.wrapped)
-//                 ? [fromToken.wrapped, toToken.wrapped]
-//                 : [toToken.wrapped, fromToken.wrapped];
-//         await Promise.allSettled(
-//             dataFetcher.providers.map((p) => {
-//                 try {
-//                     return p.fetchPoolsForToken(token0, token1, excludePools);
-//                 }
-//                 catch {
-//                     return;
-//                 }
-//             })
-//         );
-//     }
-// };
-
 /**
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
-const processLps = (liquidityProviders) => {
+const processLps = (liquidityProviders, _isv4 = false) => {
+    let LP = Object.values(LiquidityProviders);
+    if (!_isv4) LP = LP.filter(v => v !== LiquidityProviders.CurveSwap);
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
@@ -1113,14 +1105,13 @@ const processLps = (liquidityProviders) => {
         !liquidityProviders.every(v => typeof v === "string")
     ) return undefined;
     const _lps = [];
-    const LP = Object.values(LiquidityProviders);
     for (let i = 0; i < liquidityProviders.length; i++) {
         const index = LP.findIndex(
             v => v.toLowerCase() === liquidityProviders[i].toLowerCase().trim()
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
-    return _lps.length ? _lps : undefined;
+    return _lps.length ? _lps : LP;
 };
 
 /**
@@ -1513,30 +1504,23 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     return [
         ...legs.filter(
             v => v.tokenTo.address.toLowerCase() === toToken.address.toLowerCase() &&
-            v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &&
-            v.tokenTo.symbol.toLowerCase() === toToken.symbol.toLowerCase() &&
-            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase()
+            v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase()
         ).map(v => [v]),
 
         ...legs.filter(
             v => v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &&
-            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase() &&
             (
-                v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
-                v.tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+                v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
             )
         ).map(v => {
             const portoin = [v];
             while(
-                portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
-                portoin.at(-1).tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+                portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
             ) {
                 portoin.push(
                     legs.find(e =>
                         e.tokenFrom.address.toLowerCase() ===
-                        portoin.at(-1).tokenTo.address.toLowerCase() &&
-                        e.tokenFrom.symbol.toLowerCase() ===
-                        portoin.at(-1).tokenTo.symbol.toLowerCase()
+                        portoin.at(-1).tokenTo.address.toLowerCase()
                     )
                 );
             }
@@ -1548,69 +1532,16 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     ).map(
         v => (v[0].absolutePortion * 100).toFixed(2).padStart(5, "0") + "%   --->   " +
         v.map(
-            e => e.tokenTo.symbol + "/" + e.tokenFrom.symbol + " (" + e.poolName + ")"
+            e => (e.tokenTo.symbol ?? (e.tokenTo.address.toLowerCase() === toToken.address.toLowerCase() ? toToken.symbol : "unknownSymbol"))
+                + "/"
+                + (e.tokenFrom.symbol ?? (e.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() ? fromToken.symbol : "unknownSymbol"))
+                + " ("
+                + e.poolName
+                + ")"
         ).join(
             " >> "
         )
     );
-};
-
-/**
- * Builds initial 0x requests bodies from token addresses that is required
- * for getting token prices with least amount of hits possible and that is
- * to pair up tokens in a way that each show up only once in a request body
- * so that the number of requests will be: "number-of-tokens / 2" at best or
- * "(number-of-tokens / 2) + 1" at worst if the number of tokens is an odd digit.
- * This way the responses will include the "rate" for sell/buy tokens to native
- * network token which will be used to estimate the initial price of all possible
- * token pair combinations.
- *
- * @param {string} api - The 0x API endpoint URL
- * @param {any[]} queries - The array that keeps the 0x query text
- * @param {string} tokenAddress - The token address
- * @param {number} tokenDecimals - The token decimals
- * @param {string} tokenSymbol - The token symbol
- */
-const build0xQueries = (api, queries, tokenAddress, tokenDecimals, tokenSymbol) => {
-    tokenAddress = tokenAddress.toLowerCase();
-    if (queries.length === 0) queries.push([
-        tokenAddress,
-        tokenDecimals,
-        tokenSymbol
-    ]);
-    else if (!Array.isArray(queries[queries.length - 1])) {
-        if(!queries.find(v => v.quote.includes(tokenAddress))) queries.push([
-            tokenAddress,
-            tokenDecimals,
-            tokenSymbol
-        ]);
-    }
-    else {
-        if(
-            queries[queries.length - 1][0] !== tokenAddress &&
-            !queries.slice(0, -1).find(v => v.quote.includes(tokenAddress))
-        ) {
-            queries[queries.length - 1] = {
-                quote: `${
-                    api
-                }swap/v1/price?buyToken=${
-                    queries[queries.length - 1][0]
-                }&sellToken=${
-                    tokenAddress
-                }&sellAmount=${
-                    "1" + "0".repeat(tokenDecimals)
-                }`,
-                tokens: [
-                    queries[queries.length - 1][2],
-                    tokenSymbol,
-                    queries[queries.length - 1][0],
-                    tokenAddress,
-                    queries[queries.length - 1][1],
-                    tokenDecimals
-                ]
-            };
-        }
-    }
 };
 
 const shuffleArray = (array) => {
@@ -1635,64 +1566,6 @@ const shuffleArray = (array) => {
     }
 
     return array;
-};
-
-// Get UniswapV2 pool amount out for token
-const getAmountOutFlareSwap = async(
-    signer,
-    uniswapV2Router,
-    fromToken,
-    amountIn,
-    toToken,
-    toTokenDecimals
-) => {
-    if(fromToken.toLowerCase() == toToken.toLowerCase()){
-        return "1";
-    }
-    const swapRouter = new ethers.Contract(uniswapV2Router, uniswapV2Route02Abi, signer);
-    const amountOutBN = await swapRouter.getAmountsOut(amountIn, [fromToken,toToken]);
-    if (amountOutBN[1]) return ethers.utils.formatUnits(amountOutBN[1], toTokenDecimals);
-    return undefined;
-};
-
-// Get UniswapV2 route for tokens.
-const getUniV2Route = (config,fromTokenAddress,toTokenAddress,toAddress) => {
-    const pool = config.enosys.pools.filter(e => {
-        if(
-            (
-                e.token0.toLowerCase() == fromTokenAddress.toLowerCase() &&
-                e.token1.toLowerCase() == toTokenAddress.toLowerCase()
-            )
-            ||
-            (
-                e.token0.toLowerCase() == toTokenAddress.toLowerCase() &&
-                e.token1.toLowerCase() == fromTokenAddress.toLowerCase()
-            )
-        ) return true;
-        else return false;
-    });
-    if(pool.length == 0) throw "UniswapV2 LP pool not found";
-
-    return getUniV2RouteData(pool[0],fromTokenAddress,toAddress);
-
-};
-
-const getUniV2RouteData = (uniV2Pool, fromTokenAddress, toAddress) => {
-
-    const offeringToken = ethers.BigNumber.from(fromTokenAddress);
-    const token0 = ethers.BigNumber.from(uniV2Pool.token0);
-    const token1 = ethers.BigNumber.from(uniV2Pool.token1);
-
-    const poolDirection = token0.lt(token1) ?
-        (offeringToken.eq(token0) ? "01" : "00") :
-        (offeringToken.eq(token1) ? "00" : "01");
-
-    return  "0x02"+
-            `${fromTokenAddress.toString().split("x")[1]}` +
-            "01ffff00" +
-            `${uniV2Pool.address.split("x")[1]}` +
-            `${poolDirection}` +
-            `${toAddress.toString().split("x")[1]}`;
 };
 
 function getSpanException(error) {
@@ -1726,12 +1599,9 @@ module.exports = {
     getActualClearAmount,
     getRouteForTokens,
     visualizeRoute,
-    build0xQueries,
     shuffleArray,
     createViemClient,
     interpreterV2Eval,
-    getAmountOutFlareSwap,
-    getUniV2Route,
-    getUniV2RouteData,
-    getSpanException
+    getSpanException,
+    getChainConfig,
 };
