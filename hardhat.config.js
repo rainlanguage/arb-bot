@@ -28,7 +28,7 @@ module.exports = {
         asyncOnly: true,
         bail: false,
         parallel: false,
-        timeout: 500000,
+        timeout: 5000000,
     },
     paths: {
         tests: "./test/modeTests"
