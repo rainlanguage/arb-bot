@@ -23,9 +23,6 @@ const testChains = [
         // chain id
         ChainId.POLYGON,
 
-        // chain name
-        ChainKey[ChainId.POLYGON],
-
         // fork rpc url
         process?.env?.TEST_POLYGON_RPC,
 
@@ -40,7 +37,7 @@ const testChains = [
             DAI[ChainId.POLYGON]
         ],
 
-        // addresses with balance, in order with specified tokens
+        // addresses with token balance, in order with specified tokens
         [
             "0xdF906eA18C6537C6379aC83157047F507FB37263",
             "0xF977814e90dA44bFA03b6295A0616a897441aceC",
@@ -49,13 +46,14 @@ const testChains = [
         ],
 
         // liq providers to use for test
+        // ideally specify at least one for each univ2 and univ3 protocols
         [
-            LiquidityProviders.SushiSwapV2
+            LiquidityProviders.QuickSwap,
+            LiquidityProviders.SushiSwapV3,
         ]
     ],
     [
         ChainId.FLARE,
-        ChainKey[ChainId.FLARE],
         process?.env?.TEST_FLARE_RPC,
         23676999,
         [
@@ -71,12 +69,12 @@ const testChains = [
             "0x311613c3339bBd4B91a0b498E43dc63ACC1f2740",
         ],
         [
-            LiquidityProviders.Enosys
+            LiquidityProviders.Enosys,
+            LiquidityProviders.BlazeSwap,
         ]
     ],
     [
         ChainId.ETHEREUM,
-        ChainKey[ChainId.ETHEREUM],
         process?.env?.TEST_ETH_RPC,
         19829125,
         [
@@ -92,14 +90,15 @@ const testChains = [
             "0x837c20D568Dfcd35E74E5CC0B8030f9Cebe10A28",
         ],
         [
-            LiquidityProviders.SushiSwapV2
+            LiquidityProviders.SushiSwapV2,
+            LiquidityProviders.UniswapV3,
+            LiquidityProviders.CurveSwap,
         ]
     ],
     [
         ChainId.ARBITRUM,
-        ChainKey[ChainId.ARBITRUM],
         process?.env?.TEST_ARBITRUM_RPC,
-        209616137,
+        209676550,
         [
             WNATIVE[ChainId.ARBITRUM],
             USDT[ChainId.ARBITRUM],
@@ -113,12 +112,12 @@ const testChains = [
             "0xc2995bbd284953e8ba0b01efe64535ac55cfcd9d"
         ],
         [
-            LiquidityProviders.SushiSwapV2
+            LiquidityProviders.SushiSwapV2,
+            LiquidityProviders.UniswapV3,
         ]
     ],
     [
         ChainId.BASE,
-        ChainKey[ChainId.BASE],
         process?.env?.TEST_BASE_RPC,
         14207369,
         [
@@ -140,7 +139,6 @@ const testChains = [
     ],
     [
         ChainId.BSC,
-        ChainKey[ChainId.BSC],
         process?.env?.TEST_BSC_RPC,
         38553419,
         [
@@ -156,8 +154,8 @@ const testChains = [
             "0x8b666FAD7B4209B080Cb5f02159A60c3Bf346ebA"
         ],
         [
-            LiquidityProviders.SushiSwapV2,
-            LiquidityProviders.PancakeSwapV2
+            LiquidityProviders.PancakeSwapV2,
+            LiquidityProviders.PancakeSwapV3
         ]
     ],
 ];
@@ -166,7 +164,6 @@ const testChains = [
 for (let i = 0; i < testChains.length; i++) {
     const [
         chainId,
-        chainName,
         rpc,
         blockNumber,
         tokens,
@@ -177,11 +174,11 @@ for (let i = 0; i < testChains.length; i++) {
     // if rpc is not defined for a network go to next test
     if (!rpc) continue;
 
-    describe(`Rain Arb Bot Tests on "${chainName}" Network`, async function () {
+    describe(`Rain Arb Bot Tests on "${ChainKey[chainId]}" Network`, async function () {
         // get config for the chain
         const config = getChainConfig(chainId);
 
-        // get available rpVersion for chain
+        // get available route processor versions for the chain
         const rpVersions = Object.keys(config.routeProcessors);
 
         const exporter = new OTLPTraceExporter();
@@ -196,12 +193,17 @@ for (let i = 0; i < testChains.length; i++) {
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {
+            const rpVersion = rpVersions[j];
 
-            it(`should clear orders successfully using route processor v${rpVersions[j]}`, async function () {
+            it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+                const testSpan = tracer.startSpan("test-clearing");
+                const ctx = trace.setSpan(context.active(), testSpan);
+
                 // reset network before each test
                 await helpers.reset(rpc, blockNumber);
 
-                const [bot, ...owners] = await ethers.getSigners();
+                // get signers
+                const [bot, ...orderOwners] = await ethers.getSigners();
 
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
@@ -223,37 +225,40 @@ for (let i = 0; i < testChains.length; i++) {
                             bytecode: "0x01000000000000"
                         }
                     ),
-                    config.routeProcessors[rpVersions[j]],
+                    config.routeProcessors[rpVersion],
                 );
 
-                // update config with new addresses
-                config.arbAddress = arb.address;
-                config.orderbookAddress = orderbook.address;
-
-                // get token contract instances
+                // set up tokens
                 const Token1 = await ethers.getContractAt(
                     ERC20Artifact.abi,
                     tokens[0].address
                 );
                 const Token1Decimals = tokens[0].decimals;
+                const Token1VaultId = ethers.BigNumber.from(randomUint256());
+
                 const Token2 = await ethers.getContractAt(
                     ERC20Artifact.abi,
                     tokens[1].address
                 );
                 const Token2Decimals = tokens[1].decimals;
+                const Token2VaultId = ethers.BigNumber.from(randomUint256());
+
                 const Token3 = await ethers.getContractAt(
                     ERC20Artifact.abi,
                     tokens[2].address
                 );
                 const Token3Decimals = tokens[2].decimals;
+                const Token3VaultId = ethers.BigNumber.from(randomUint256());
+
                 const Token4 = await ethers.getContractAt(
                     ERC20Artifact.abi,
                     tokens[3].address
                 );
                 const Token4Decimals = tokens[3].decimals;
+                const Token4VaultId = ethers.BigNumber.from(randomUint256());
 
-                // impersonate addresses with large token balances to fund the owners 1 2 3
-                // accounts with 1000 tokens each used for topping up the order vaults
+                // impersonate addresses with large token balances to fund the owner 1 2 3
+                // accounts with 110 tokens each used for topping up the order vaults
                 const Token1Holder = await ethers.getImpersonatedSigner(addressesWithBalance[0]);
                 const Token2Holder = await ethers.getImpersonatedSigner(addressesWithBalance[1]);
                 const Token3Holder = await ethers.getImpersonatedSigner(addressesWithBalance[2]);
@@ -275,10 +280,10 @@ for (let i = 0; i < testChains.length; i++) {
                     to: Token4Holder.address
                 });
                 for (let i = 0; i < 3; i++) {
-                    await Token1.connect(Token1Holder).transfer(owners[i].address, "110" + "0".repeat(Token1Decimals));
-                    await Token2.connect(Token2Holder).transfer(owners[i].address, "110" + "0".repeat(Token2Decimals));
-                    await Token3.connect(Token3Holder).transfer(owners[i].address, "110" + "0".repeat(Token3Decimals));
-                    await Token4.connect(Token4Holder).transfer(owners[i].address, "110" + "0".repeat(Token4Decimals));
+                    await Token1.connect(Token1Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token1Decimals));
+                    await Token2.connect(Token2Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token2Decimals));
+                    await Token3.connect(Token3Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token3Decimals));
+                    await Token4.connect(Token4Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token4Decimals));
                 }
 
                 // bot original token balances
@@ -287,17 +292,10 @@ for (let i = 0; i < testChains.length; i++) {
                 const BotToken3Balance = await Token3.balanceOf(bot.address);
                 const BotToken4Balance = await Token4.balanceOf(bot.address);
 
-                const testSpan = tracer.startSpan("test-clearing");
-                const ctx = trace.setSpan(context.active(), testSpan);
-
-                // set up vault ids
-                const Token1VaultId = ethers.BigNumber.from(randomUint256());
-                const Token2VaultId = ethers.BigNumber.from(randomUint256());
-                const Token3VaultId = ethers.BigNumber.from(randomUint256());
-                const Token4VaultId = ethers.BigNumber.from(randomUint256());
-
+                // dposit and add orders for each owner and return
+                // the deployed orders in format of a sg query
                 const sgOrders = await prepareOrders(
-                    owners,
+                    orderOwners,
                     [Token1, Token2, Token4, Token3],
                     [Token1Decimals, Token2Decimals, Token4Decimals, Token3Decimals],
                     [Token1VaultId, Token2VaultId, Token4VaultId, Token3VaultId],
@@ -313,7 +311,9 @@ for (let i = 0; i < testChains.length; i++) {
                 config.bundle = true;
                 config.retries = 1;
                 config.lps = liquidityProviders;
-                config.rpVersion = rpVersions[j];
+                config.rpVersion = rpVersion;
+                config.arbAddress = arb.address;
+                config.orderbookAddress = orderbook.address;
                 const reports = await clear(config, sgOrders, undefined, tracer, ctx);
 
                 // should have cleared 2 token pairs bundled orders
@@ -327,7 +327,7 @@ for (let i = 0; i < testChains.length; i++) {
                 // check vault balances for orders in cleared token pair
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[0].address,
+                        orderOwners[0].address,
                         Token1.address,
                         Token3VaultId
                     )).toString(),
@@ -335,7 +335,7 @@ for (let i = 0; i < testChains.length; i++) {
                 );
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[0].address,
+                        orderOwners[0].address,
                         Token2.address,
                         Token2VaultId
                     )).toString(),
@@ -343,7 +343,7 @@ for (let i = 0; i < testChains.length; i++) {
                 );
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[2].address,
+                        orderOwners[2].address,
                         Token1.address,
                         Token1VaultId
                     )).toString(),
@@ -351,7 +351,7 @@ for (let i = 0; i < testChains.length; i++) {
                 );
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[2].address,
+                        orderOwners[2].address,
                         Token2.address,
                         Token2VaultId
                     )).toString(),
@@ -365,7 +365,7 @@ for (let i = 0; i < testChains.length; i++) {
                 // check vault balances for orders in cleared token pair
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[1].address,
+                        orderOwners[1].address,
                         Token1.address,
                         Token1VaultId
                     )).toString(),
@@ -373,7 +373,7 @@ for (let i = 0; i < testChains.length; i++) {
                 );
                 assert.equal(
                     (await orderbook.vaultBalance(
-                        owners[1].address,
+                        orderOwners[1].address,
                         Token4.address,
                         Token4VaultId
                     )).toString(),
