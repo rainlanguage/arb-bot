@@ -1532,7 +1532,12 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     ).map(
         v => (v[0].absolutePortion * 100).toFixed(2).padStart(5, "0") + "%   --->   " +
         v.map(
-            e => (e.tokenTo.symbol ?? "unknownSymbol") + "/" + (e.tokenFrom.symbol ?? "unknownSymbol") + " (" + e.poolName + ")"
+            e => (e.tokenTo.symbol ?? (e.tokenTo.address.toLowerCase() === toToken.address.toLowerCase() ? toToken.symbol : "unknownSymbol"))
+                + "/"
+                + (e.tokenFrom.symbol ?? (e.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() ? fromToken.symbol : "unknownSymbol"))
+                + " ("
+                + e.poolName
+                + ")"
         ).join(
             " >> "
         )
