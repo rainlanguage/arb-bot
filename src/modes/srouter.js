@@ -39,7 +39,7 @@ const srouterClear = async(
         !Number.isInteger(Number(gasCoveragePercentage))
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
-    const lps               = processLps(config.lps, config.rpVersion === "4");
+    const lps               = processLps(config.lps);
     const dataFetcher       = getDataFetcher(config, lps, false);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
@@ -556,13 +556,13 @@ async function dryrun(
                 "details.route": routeVisual,
             });
 
-            const rpParams = getRouteProcessorParamsVersion[config.rpVersion](
+            const rpParams = getRouteProcessorParamsVersion["3.2"](
                 pcMap,
                 route,
                 fromToken,
                 toToken,
                 arb.address,
-                config.routeProcessors[config.rpVersion],
+                config.routeProcessors["3.2"],
                 // permits
                 // "0.005"
             );

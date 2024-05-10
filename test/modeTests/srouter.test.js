@@ -179,7 +179,7 @@ for (let i = 0; i < testChains.length; i++) {
         const config = getChainConfig(chainId);
 
         // get available route processor versions for the chain
-        const rpVersions = Object.keys(config.routeProcessors);
+        const rpVersions = Object.keys(config.routeProcessors).filter(v => v === "3.2");
 
         const exporter = new OTLPTraceExporter();
         const provider = new BasicTracerProvider({
