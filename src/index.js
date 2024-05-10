@@ -5,9 +5,6 @@ const { ethers } = require("ethers");
 const { getQuery } = require("./query");
 const { versions } = require("process");
 const CONFIG = require("../config.json");
-const { curveClear } = require("./modes/curve");
-const { routerClear } = require("./modes/router");
-const { crouterClear } = require("./modes/crouter");
 const { srouterClear } = require("./modes/srouter");
 const { getOrderDetailsFromJson, getSpanException } = require("./utils");
 const { SpanStatusCode } = require("@opentelemetry/api");
@@ -30,27 +27,23 @@ const configOptions = {
      */
     flashbotRpc: undefined,
     /**
-     * Maximize profit for "srouter" mode, comes at the cost of RPC calls
+     * Maximize profit, comes at the cost of RPC calls
      */
     maxProfit: false,
     /**
-     * Maximize maxIORatio for "srouter" mode
+     * Maximize maxIORatio
      */
     maxRatio: false,
-    /**
-     * Option for operating with interpreter v2
-     */
-    interpreterv2: false,
     /**
      * Flag for not bundling orders based on pairs and clear each order individually
      */
     bundle: true,
     /**
-     * The amount of hops of binary search for sorouter mode
+     * The amount of hops of binary search
      */
     hops: 11,
     /**
-     * The amount of retries for the same order in sorouter mode
+     * The amount of retries for the same order
      */
     retries: 1,
     /**
@@ -176,7 +169,6 @@ const getConfig = async(
     walletPrivateKey,
     orderbookAddress,
     arbAddress,
-    arbType,
     options = configOptions
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
@@ -235,13 +227,11 @@ const getConfig = async(
     config.signer           = signer;
     config.orderbookAddress = orderbookAddress;
     config.arbAddress       = arbAddress;
-    config.arbType          = arbType?.toLowerCase();
     config.lps              = options?.liquidityProviders;
     config.timeout          = options?.timeout;
     config.flashbotRpc      = options?.flashbotRpc;
     config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
-    config.interpreterv2    = !!options?.interpreterv2;
     config.hops             = hops;
     config.retries          = retries;
     config.rp32             = !!options?.rp32;
@@ -252,7 +242,6 @@ const getConfig = async(
 /**
  * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
  *
- * @param {string} mode - The mode for clearing, either "curve" or "router" or "crouter" or "srouter"
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
@@ -261,69 +250,26 @@ const getConfig = async(
  * @returns The report of details of cleared orders
  */
 const clear = async(
-    mode,
     config,
     ordersDetails,
     options = clearOptions,
     tracer,
     ctx
 ) => {
-    const _mode = mode.toLowerCase();
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
     const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
 
-    if (_mode !== "srouter") {
-        if (!config.arbType) throw "undefined arb contract type";
-        if (!/^flash-loan-v[23]$|^order-taker$/.test(config.arbType)) {
-            throw "invalid arb contract type, must be either of: 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker'";
-        }
-    }
-    if (config.arbType === "flash-loan-v2" && config.interpreterv2) throw "interpreter v2 is not compatible with flash-loan-v2";
-
-    if (_mode === "curve") {
-        if (majorVersion >= 18) return await curveClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            tracer,
-            ctx
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "curve" mode, current version: ${version}`;
-    }
-    else if (_mode === "router") {
-        if (majorVersion >= 18) return await routerClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            tracer,
-            ctx
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
-    }
-    else if (_mode === "crouter") {
-        if (majorVersion >= 18) return await crouterClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            tracer,
-            ctx
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
-    }
-    else if (_mode === "srouter") {
-        if (majorVersion >= 18) return await srouterClear(
-            config,
-            ordersDetails,
-            gasCoveragePercentage,
-            tracer,
-            ctx
-        );
-        else throw `NodeJS v18 or higher is required for running the app in "router" mode, current version: ${version}`;
-    }
-    else throw "unknown mode, must be either of 'crouter' 'curve' or 'router' or 'srouter'";
+    if (majorVersion >= 18) return await srouterClear(
+        config,
+        ordersDetails,
+        gasCoveragePercentage,
+        tracer,
+        ctx
+    );
+    else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 };
 
 module.exports = {

@@ -18,9 +18,7 @@ const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } 
  */
 const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
-    mode                : process?.env?.MODE ?? "srouter",
     arbAddress          : process?.env?.ARB_ADDRESS,
-    arbType             : process?.env?.ARB_TYPE,
     orderbookAddress    : process?.env?.ORDERBOOK_ADDRESS,
     orders              : process?.env?.ORDERS,
     lps                 : process?.env?.LIQUIDITY_PROVIDERS,
@@ -32,7 +30,6 @@ const ENV_OPTIONS = {
     sleep               : process?.env?.SLEEP,
     maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
-    interpreterv2       : process?.env?.INTERPRETERV2?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
@@ -52,12 +49,10 @@ const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
-        .option("-m, --mode <string>", "Running mode of the bot, must be one of: `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
-        .option("--arb-contract-type <string>", "Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--repetitions <integer>", "Option to run `number` of times, if unset will run for infinte number of times")
@@ -67,13 +62,12 @@ const getOptions = async argv => {
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
-        .option("--max-profit", "Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
-        .option("--max-ratio", "Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables")
-        .option("--interpreter-v2", "Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables")
+        .option("--max-profit", "Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
+        .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
-        .option("--hops <integer>", "Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
+        .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--rp32", "Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables")
-        .option("--retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
+        .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -88,9 +82,7 @@ const getOptions = async argv => {
     // assigning specified options from cli/env
     cmdOptions.key              = cmdOptions.key                || ENV_OPTIONS.key;
     cmdOptions.rpc              = cmdOptions.rpc                || ENV_OPTIONS.rpc;
-    cmdOptions.mode             = cmdOptions.mode               || ENV_OPTIONS.mode;
     cmdOptions.arbAddress       = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
-    cmdOptions.arbType          = cmdOptions.arbType            || ENV_OPTIONS.arbType;
     cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
     cmdOptions.orders           = cmdOptions.orders             || ENV_OPTIONS.orders;
     cmdOptions.subgraph         = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
@@ -105,7 +97,6 @@ const getOptions = async argv => {
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
-    cmdOptions.interpreterv2    = cmdOptions.interpreterv2      || ENV_OPTIONS.interpreterv2;
     cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.rp32             = cmdOptions.rp32               || ENV_OPTIONS.rp32;
@@ -126,10 +117,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.rpc)               throw "undefined RPC URL";
     if (!options.arbAddress)        throw "undefined arb contract address";
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
-    if (!options.mode)              throw "undefined operating mode";
-    if (options.mode !== "crouter" && options.mode !== "curve" && options.mode !== "router" && options.mode !== "srouter") {
-        throw "invalid mode, must be either of 'crouter', 'curve', 'router' or 'srouter'";
-    }
 
     const config = await tracer.startActiveSpan("get-config", {}, roundCtx, async (span) => {
         try {
@@ -138,13 +125,11 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 options.key,
                 options.orderbookAddress,
                 options.arbAddress,
-                options.arbType,
                 {
                     maxProfit           : options.maxProfit,
                     maxRatio            : options.maxRatio,
                     flashbotRpc         : options.flashbotRpc,
                     timeout             : options.timeout,
-                    interpreterv2       : options.interpreterv2,
                     bundle              : options.bundle,
                     hops                : options.hops,
                     retries             : options.retries,
@@ -208,28 +193,20 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
         span.setAttributes({
             "details.config.chainid": options.chainId,
             "details.config.network": options.network,
-            "details.config.mode": options.mode,
             "details.config.gasCoveragePercentage": options.gasCoverage ?? "100",
             "details.config.rpcUrl": config.rpc,
             "details.config.orderbookAddress": config.orderbookAddress,
             "details.config.arbAddress": config.arbAddress,
-            "details.config.arbType": config.arbType,
             "details.config.maxProfit": config.maxProfit,
             "details.config.maxRatio": config.maxRatio,
-            "details.config.interpreterV2": config.interpreterv2,
             "details.config.usesFlashbots": config.flashbotRpc ? true : false,
+            "details.config.sushiRouteProcessorVersion": config.rp32 ? "3.2" : "3.0",
+            "details.config.amountDiscoveryHops": config.hops
         });
-        if (config.mode !== "curve") {
-            span.setAttribute("details.config.sushiRouteProcessorVersion", config.rp32 ? "3.2" : "3.0");
-        }
-        if (config.mode === "srouter") {
-            span.setAttribute("details.config.amountDiscoveryHops", config.hops);
-        }
         const ctx = trace.setSpan(context.active(), span);
         try {
             let txs;
             const reports = await clear(
-                options.mode,
                 config,
                 ordersDetails,
                 {

@@ -74,7 +74,7 @@ const srouterClear = async(
                 arb,
                 maxProfit,
                 config.shuffle,
-                config.interpreterv2,
+                true,
                 config.bundle,
                 tracer,
                 trace.setSpan(context.active(), span)

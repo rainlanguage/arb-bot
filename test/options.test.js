@@ -9,16 +9,13 @@ describe("Test app options", async function () {
             "0x" + "1".repeat(64), // wallet key
             "0x" + "2".repeat(40), // ob address
             "0x" + "3".repeat(40), // arb address
-            undefined,
             {}
         );
 
-        assert.equal(config.arbType, undefined);
         assert.equal(config.lps, undefined);
         assert.equal(config.flashbotRpc, undefined);
         assert.equal(config.maxProfit, false);
         assert.equal(config.maxRatio, false);
-        assert.equal(config.interpreterv2, false);
         assert.equal(config.hops, 11);
         assert.equal(config.retries, 1);
         assert.equal(config.rp32, false);
@@ -32,8 +29,7 @@ describe("Test app options", async function () {
             "0x" + "1".repeat(64),
             "0x" + "2".repeat(40),
             "0x" + "3".repeat(40),
-            undefined,
-            { retries: 5}
+            { retries: 5 }
         );
         await assertError(
             configPromise,

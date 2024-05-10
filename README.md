@@ -57,10 +57,8 @@ node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-addre
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `-m` or `--mode`, Running mode of the bot, must be one of: `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-- `--arb-contract-type`, Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
 
 as well as at least one or both of below arguments:
 
@@ -75,14 +73,13 @@ Other optional arguments are:
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
-- `--max-profit`, Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
-- `--max-ratio`, Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
+- `--max-profit`, Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
+- `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
-- `--interpreter-v2`, Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
-- `--hops`, Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
-- `--retries`, Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
+- `--hops`, Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables
+- `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--rp32`, Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `-V` or `--version`, output the version number
@@ -142,42 +139,6 @@ CLI options can be viewed by running:
 ```bash
 node arb-bot -h
 ```
-which will show:
-
-    Usage: node arb-bot|arb-bot [options]
-
-    A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.
-    - Use "node arb-bot [options]" command alias for running the app from its repository workspace
-    - Use "arb-bot [options]" command alias when this app is installed as a dependency in another project
-
-    Options:
-      -k, --key <private-key>        Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-      -r, --rpc <url...>             RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-      -m, --mode <string>            Running mode of the bot, must be one of: `curve` or `router` or `crouter` or `srouter`, Will override the 'MODE' in env variables
-      -o, --orders <path>            The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
-      -s, --subgraph <url...>        Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
-      --orderbook-address <address>  Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
-      --arb-address <address>        Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-      --arb-contract-type <string>   Type of the Arb contract, can be either of `flash-loan-v2` or `flash-loan-v3` or `order-taker`, not availabe for `srouter` mode since it is a specialized mode, Will override the 'ARB_TYPE' in env variables
-      -l, --lps <string>             List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
-      -g, --gas-coverage <integer>   The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
-      --repetitions <integer>        Option to run `number` of times, if unset will run for infinte number of times
-      --order-hash <hash>            Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
-      --order-owner <address>        Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
-      --order-interpreter <address>  Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
-      --sleep <integer>              Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
-      --flashbot-rpc <url>           Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
-      --timeout <integer>            Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-      --max-profit                   Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
-      --max-ratio                    Option to maximize maxIORatio for 'srouter' mode, Will override the 'MAX_RATIO' in env variables
-      --interpreter-v2               Flag for operating with interpreter V2, note that 'flash-loan-v2' is NOT compatible with interpreter v2. Will override the 'INTERPRETERV2' in env variables
-      --no-bundle                    Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
-      --hops <integer>               Option to specify how many hops the binary search should do in srouter mode, default is 11 if left unspecified, Will override the 'HOPS' in env variables
-      --rp32                         Option to use sushi RouteProcessor v3.2, defaults to v3 if not passed, Will override the 'RP3_2' in env variables
-      --retries <integer>", "Option to specify how many retries should be done for the same order in srouter mode, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
-      --pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
-      -V, --version                  output the version number
-      -h, --help                     display help for command
 <br>
 
 Alternatively all variables can be specified in env variables with below keys:
@@ -191,9 +152,6 @@ RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.co
 
 # Option to submit transactions using the flashbot RPC. 
 FLASHBOT_RPC=""
-
-# bot running mode, one of "router", "curve", "crouter", "srouter"
-MODE="router"
 
 # arb contract address
 ARB_ADDRESS="0x123..."
@@ -227,29 +185,22 @@ ORDER_OWNER=""
 # Option to filter the subgraph query results with a specific order interpreter address
 ORDER_INTERPRETER=""
 
-# Type of the Arb contract, can be either of 'flash-loan-v2' or 'flash-loan-v3' or 'order-taker', not availabe for 'srouter' mode since it is a specialized mode
-ARB_TYPE="flash-loan-v2"
-
-# Option to maximize profit for 'srouter' mode, comes at the cost of more RPC calls
+# Option to maximize profit, comes at the cost of more RPC calls
 MAX_PROFIT="true"
 
 # Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 SLEEP=10
 
-# Option to maximize maxIORatio for 'srouter' mode
+# Option to maximize maxIORatio
 MAX_RATIO="true"
 
 # Optional seconds to wait for the transaction to mine before disregarding it
 TIMEOUT=""
 
-# Flag for operating with with interpreter V2. false will result in operating under interpreter v1
-# note that 'flash-loan-v2' is NOT compatible with interpreter v2
-INTERPRETERV2="true"
-
 # Flag for not bundling orders based on pairs and clear each order individually
 NO_BUNDLE="false"
 
-# number of hops of binary search in srouter mode, if left unspecified will be 11 by default
+# number of hops of binary search, if left unspecified will be 11 by default
 HOPS=11
 
 # Option to use sushi RouteProcessorv3.2, default is v3
@@ -261,7 +212,7 @@ HYPERDX_API_KEY=""
 # trace/spans service name, defaults to "arb-bot" if not set
 TRACER_SERVICE_NAME=""
 
-# The amount of retries for the same order in sorouter mode, max is 3, default is 1
+# The amount of retries for the same order, max is 3, default is 1
 RETRIES=1
 
 # Option to specify time (in minutes) between pools updates, default is 15 minutes
@@ -284,16 +235,15 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 // to run the app:
 // options (all properties are optional)
 const configOptions = {
-  maxProfit             : true,    // option to maximize profit for 'srouter' mode
-  maxRatio              : true,    // option to maximize the maxIORatio in "srouter" mode
+  maxProfit             : true,    // option to maximize profit
+  maxRatio              : true,    // option to maximize the maxIORatio
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  interpreterv2         : true,    // if interpreter v2 should be used, not compatible with flash-loan-v2 arb contract
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
-  hops                  : 6,       // The amount of hops of binary search for sorouter mode
-  retries               : 1,       // The amount of retries for the same order in sorouter mode
+  hops                  : 6,       // The amount of hops of binary search
+  retries               : 1,       // The amount of retries for the same order
   rp32                  : true,    // Option to use sushi RouteProcessorv3.2, default is v3
-  liquidityProviders    : [        // list of liquidity providers for "router" mode to get quotes from (optional)
+  liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
   ]
@@ -303,7 +253,7 @@ const clearOptions = {s
 }
 
 // to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, arbType, ...[configOptions]);
+const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 
@@ -318,8 +268,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const mode = "srouter" // mode can be one of "router" or "curve" or "crouter" or "srouter"
-const reports = await RainArbBot.clear(mode, config, orderDetails, ...[clearOptions])
+const reports = await RainArbBot.clear(config, orderDetails, ...[clearOptions])
 ```
 <br>
 
