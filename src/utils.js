@@ -1504,30 +1504,23 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     return [
         ...legs.filter(
             v => v.tokenTo.address.toLowerCase() === toToken.address.toLowerCase() &&
-            v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &&
-            v.tokenTo.symbol.toLowerCase() === toToken.symbol.toLowerCase() &&
-            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase()
+            v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase()
         ).map(v => [v]),
 
         ...legs.filter(
             v => v.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() &&
-            v.tokenFrom.symbol.toLowerCase() === fromToken.symbol.toLowerCase() &&
             (
-                v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
-                v.tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+                v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
             )
         ).map(v => {
             const portoin = [v];
             while(
-                portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.address.toLowerCase() ||
-                portoin.at(-1).tokenTo.symbol.toLowerCase() !== toToken.symbol.toLowerCase()
+                portoin.at(-1).tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
             ) {
                 portoin.push(
                     legs.find(e =>
                         e.tokenFrom.address.toLowerCase() ===
-                        portoin.at(-1).tokenTo.address.toLowerCase() &&
-                        e.tokenFrom.symbol.toLowerCase() ===
-                        portoin.at(-1).tokenTo.symbol.toLowerCase()
+                        portoin.at(-1).tokenTo.address.toLowerCase()
                     )
                 );
             }
@@ -1539,7 +1532,7 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     ).map(
         v => (v[0].absolutePortion * 100).toFixed(2).padStart(5, "0") + "%   --->   " +
         v.map(
-            e => e.tokenTo.symbol + "/" + e.tokenFrom.symbol + " (" + e.poolName + ")"
+            e => (e.tokenTo.symbol ?? "unknownSymbol") + "/" + (e.tokenFrom.symbol ?? "unknownSymbol") + " (" + e.poolName + ")"
         ).join(
             " >> "
         )
