@@ -53,6 +53,27 @@ const testChains = [
         ]
     ],
     [
+        ChainId.ARBITRUM,
+        process?.env?.TEST_ARBITRUM_RPC,
+        209928505,
+        [
+            WNATIVE[ChainId.ARBITRUM],
+            USDT[ChainId.ARBITRUM],
+            USDC[ChainId.ARBITRUM],
+            DAI[ChainId.ARBITRUM]
+        ],
+        [
+            "0xc3e5607cd4ca0d5fe51e09b60ed97a0ae6f874dd",
+            "0x8f9c79B9De8b0713dCAC3E535fc5A1A92DB6EA2D",
+            "0x5a52e96bacdabb82fd05763e25335261b270efcb",
+            "0xc2995bbd284953e8ba0b01efe64535ac55cfcd9d"
+        ],
+        [
+            LiquidityProviders.SushiSwapV2,
+            LiquidityProviders.UniswapV3,
+        ]
+    ],
+    [
         ChainId.FLARE,
         process?.env?.TEST_FLARE_RPC,
         23676999,
@@ -93,27 +114,6 @@ const testChains = [
             LiquidityProviders.SushiSwapV2,
             LiquidityProviders.UniswapV3,
             LiquidityProviders.CurveSwap,
-        ]
-    ],
-    [
-        ChainId.ARBITRUM,
-        process?.env?.TEST_ARBITRUM_RPC,
-        209676550,
-        [
-            WNATIVE[ChainId.ARBITRUM],
-            USDT[ChainId.ARBITRUM],
-            USDC[ChainId.ARBITRUM],
-            DAI[ChainId.ARBITRUM]
-        ],
-        [
-            "0xc3e5607cd4ca0d5fe51e09b60ed97a0ae6f874dd",
-            "0x8f9c79B9De8b0713dCAC3E535fc5A1A92DB6EA2D",
-            "0x5a52e96bacdabb82fd05763e25335261b270efcb",
-            "0xc2995bbd284953e8ba0b01efe64535ac55cfcd9d"
-        ],
-        [
-            LiquidityProviders.SushiSwapV2,
-            LiquidityProviders.UniswapV3,
         ]
     ],
     [
