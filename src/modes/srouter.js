@@ -25,6 +25,7 @@ const {
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").Span} span
  * @returns The report of details of cleared orders
  */
 const srouterClear = async(

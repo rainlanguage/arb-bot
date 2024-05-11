@@ -25,7 +25,7 @@ jobs:
       - name: Lint
         run:  nix develop -c npm run lint
 
-      - name: Set Chain RPC Key
+      - name: Set Chain Rpc Key
         run: echo "RPC=CI_DEPLOY_${{ matrix.chain }}_RPC_URL" >> $GITHUB_ENV
       
       - name: Run Tests
