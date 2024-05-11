@@ -26,4 +26,6 @@ jobs:
         run:  nix develop -c npm run lint
       
       - name: Run Tests
-        run:  TEST_${{ matrix.chain }}_RPC=${{ secrets.CI_DEPLOY_${matrix.chain}_RPC_URL }} nix develop -c npm test
+        run: |
+          chain=${{ matrix.chain }}
+          TEST_${{ matrix.chain }}_RPC=${{ secrets.CI_DEPLOY_${chain^^}_RPC_URL }} nix develop -c npm test
