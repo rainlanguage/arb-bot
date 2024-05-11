@@ -28,4 +28,4 @@ jobs:
       - name: Run Tests
         run: |
           chain=${{ matrix.chain }}
-          TEST_${{ matrix.chain }}_RPC=${{ secrets.CI_DEPLOY_${chain^^}_RPC_URL }} nix develop -c npm test
+          TEST_${{ matrix.chain }}_RPC=$secrets.CI_DEPLOY_${chain^^}_RPC_URL nix develop -c npm test
