@@ -16,7 +16,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@v2
 
       - name: Set RPC
-        run: echo "TEST_${{ matrix.chain }}_RPC=(${{ secrets.CI_DEPLOY_${{ matrix.chain }}_RPC_URL }})" >> $GITHUB_ENV
+        run: echo "TEST_${{ matrix.chain }}_RPC=CI_DEPLOY_${{ matrix.chain }}_RPC_URL" >> $GITHUB_ENV
 
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
