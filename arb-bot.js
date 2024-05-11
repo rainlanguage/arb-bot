@@ -168,7 +168,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             return Promise.reject(e);
         }
     });
-    console.log(ordersDetails.map(v => v.id));
+
     if (!ordersDetails.length) return;
 
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {

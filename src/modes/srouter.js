@@ -34,7 +34,6 @@ const srouterClear = async(
     tracer,
     ctx,
 ) => {
-    console.log("yo");
     if (
         gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
