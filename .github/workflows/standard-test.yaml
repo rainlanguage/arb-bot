@@ -19,7 +19,7 @@ jobs:
       - name: Set RPC
         run: |
           chain=${{ matrix.chain }}
-          echo "RPC=CI_DEPLOY_${chain^^}_ETHERSCAN_API_KEY" >> $GITHUB_ENV
+          echo "RPC=CI_DEPLOY_${chain^^}_RPC_URL" >> $GITHUB_ENV
 
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
