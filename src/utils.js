@@ -1446,8 +1446,16 @@ const shuffleArray = (array) => {
 
 function getSpanException(error) {
     if (error instanceof Error && Object.keys(error).length && error.message.includes("providers/5.7.0")) {
-        error.message = JSON.stringify(error);
+        const parsedError = JSON.parse(JSON.stringify(error));
+
+        // delete transaction key since it is already present in error key;
+        delete parsedError.transaction;
+        delete error.transaction;
+        error.message = JSON.stringify(parsedError);
+
+        // remove stack since it is already present in message
         error.stack = undefined;
+        return error;
     }
     return error;
 }
