@@ -34,6 +34,7 @@ const srouterClear = async(
     tracer,
     ctx,
 ) => {
+    console.log("yo");
     if (
         gasCoveragePercentage < 0 ||
         !Number.isInteger(Number(gasCoveragePercentage))
@@ -62,7 +63,7 @@ const srouterClear = async(
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
     let bundledOrders = [];
-    bundledOrders = await tracer.startActiveSpan("preparing-orders", {}, ctx, async (span) => {
+    bundledOrders = await tracer.startActiveSpan("check-orders-vaults", {}, ctx, async (span) => {
         span.setAttributes({
             "details.doesEval": maxProfit ?? true,
             "details.doesBundle": config.bundle
@@ -74,10 +75,8 @@ const srouterClear = async(
                 arb,
                 maxProfit,
                 config.shuffle,
-                true,
                 config.bundle,
-                tracer,
-                trace.setSpan(context.active(), span)
+                span
             );
             const status = {code: SpanStatusCode.OK};
             if (!result.length) status.message = "found no clearable orders";
@@ -94,9 +93,6 @@ const srouterClear = async(
 
     if (!bundledOrders.length) return;
 
-    const clearProcSpan = tracer.startSpan("clear-process", undefined, ctx);
-    const clearProcCtx = trace.setSpan(context.active(), clearProcSpan);
-
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
         const pair = `${
@@ -107,12 +103,12 @@ const srouterClear = async(
         const pairSpan = tracer.startSpan(
             (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
             undefined,
-            clearProcCtx
+            ctx
         );
         const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
             "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
-            "details.pair": pair
+            "details.pair": pair,
         });
 
         try {
@@ -149,21 +145,10 @@ const srouterClear = async(
                 continue;
             }
 
+            const gasPrice = await signer.provider.getGasPrice();
+            pairSpan.setAttribute("details.gasPrice", gasPrice.toString());
+
             let ethPrice;
-            const gasPrice = await tracer.startActiveSpan("getGasPrice", {}, pairCtx, async (span) => {
-                try {
-                    const result = await signer.provider.getGasPrice();
-                    span.setAttribute("details.price", result.toString());
-                    span.setStatus({code: SpanStatusCode.OK});
-                    span.end();
-                    return result;
-                } catch(e) {
-                    span.setStatus({code: SpanStatusCode.ERROR });
-                    span.recordException(getSpanException(e));
-                    span.end();
-                    return Promise.reject("could not get gas price");
-                }
-            });
             if (gasCoveragePercentage !== "0") {
                 await tracer.startActiveSpan("getEthPrice", {}, pairCtx, async (span) => {
                     try {
@@ -179,7 +164,7 @@ const srouterClear = async(
                             }
                         );
                         if (!ethPrice) {
-                            span.setStatus({code: SpanStatusCode.ERROR });
+                            span.setStatus({code: SpanStatusCode.ERROR});
                             span.recordException("could not get ETH price");
                             span.end();
                             return Promise.reject("could not get ETH price");
@@ -189,7 +174,7 @@ const srouterClear = async(
                             span.end();
                         }
                     } catch(e) {
-                        span.setStatus({code: SpanStatusCode.ERROR });
+                        span.setStatus({code: SpanStatusCode.ERROR});
                         span.recordException(getSpanException(e));
                         span.end();
                         return Promise.reject("could not get ETH price");
@@ -198,37 +183,33 @@ const srouterClear = async(
             }
             else ethPrice = "0";
 
-            await tracer.startActiveSpan(
-                "fecthPools",
-                { message: "getting pool details from sushi lib for token pair"},
-                pairCtx,
-                async (span) => {
-                    try {
-                        await dataFetcher.fetchPoolsForToken(
-                            fromToken,
-                            toToken,
-                            undefined,
-                            {
-                                fetchPoolsTimeout: 30000,
-                                memoize: true,
-                            }
-                        );
-                        span.setStatus({code: SpanStatusCode.OK});
-                        span.end();
-                        return;
-                    } catch(e) {
-                        span.setStatus({code: SpanStatusCode.ERROR });
-                        span.recordException(getSpanException(e));
-                        span.end();
-                        return Promise.reject("could not get pool details");
-                    }
-                }
-            );
 
-            let rawtx, gasCostInToken, takeOrdersConfigStruct, price;
+            try {
+                await dataFetcher.fetchPoolsForToken(
+                    fromToken,
+                    toToken,
+                    undefined,
+                    {
+                        fetchPoolsTimeout: 30000,
+                        memoize: true,
+                    }
+                );
+            } catch (error) {
+                pairSpan.addEvent("could not get pool details");
+                throw error;
+            }
+
+            let rawtx, gasCostInToken, takeOrdersConfigStruct, price, routeVisual, maximumInput;
             if (config.bundle) {
                 try {
-                    ({ rawtx, gasCostInToken, takeOrdersConfigStruct, price } = await dryrun(
+                    ({
+                        rawtx,
+                        gasCostInToken,
+                        takeOrdersConfigStruct,
+                        price,
+                        routeVisual,
+                        maximumInput,
+                    } = await dryrun(
                         0,
                         hops,
                         bundledOrders[i],
@@ -286,14 +267,21 @@ const srouterClear = async(
                     }
                 }
                 if (choice) {
-                    ({ rawtx, gasCostInToken, takeOrdersConfigStruct, price } = choice);
+                    ({
+                        rawtx,
+                        gasCostInToken,
+                        takeOrdersConfigStruct,
+                        price,
+                        routeVisual,
+                        maximumInput,
+                    } = choice);
                 }
             }
 
             if (!rawtx) {
                 pairSpan.setStatus({
                     code: SpanStatusCode.OK,
-                    message: "no opportunity to clear"
+                    message: "no opportunity"
                 });
                 pairSpan.end();
                 continue;
@@ -301,13 +289,10 @@ const srouterClear = async(
 
             try {
                 pairSpan.setAttributes({
+                    "details.route": routeVisual,
+                    "details.maxInput": maximumInput.toString(),
                     "details.marketPrice": ethers.utils.formatEther(price),
-                    "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
                     "details.gasCostInToken": ethers.utils.formatUnits(gasCostInToken, toToken.decimals),
-                    "details.minBotReceivingAmount": ethers.utils.formatUnits(
-                        gasCostInToken.mul(gasCoveragePercentage).div("100"),
-                        toToken.decimals
-                    ),
                 });
 
                 rawtx.data = arb.interface.encodeFunctionData(
@@ -340,96 +325,85 @@ const srouterClear = async(
                     "details.tx": JSON.stringify(tx)
                 });
 
-                const receipt = config.timeout
-                    ? await promiseTimeout(
-                        tx.wait(),
-                        config.timeout,
-                        `Transaction failed to mine after ${config.timeout}ms`
-                    )
-                    : await tx.wait();
-
-                if (receipt.status === 1) {
-                    const clearActualAmount = getActualClearAmount(
-                        arbAddress,
-                        orderbookAddress,
-                        receipt
-                    );
-                    const income = getIncome(signer, receipt);
-                    const clearActualPrice = getActualPrice(
-                        receipt,
-                        orderbookAddress,
-                        arbAddress,
-                        clearActualAmount.mul("1" + "0".repeat(
-                            18 - bundledOrders[i].sellTokenDecimals
-                        )),
-                        bundledOrders[i].buyTokenDecimals
-                    );
-                    const actualGasCost = ethers.BigNumber.from(
-                        receipt.effectiveGasPrice
-                    ).mul(receipt.gasUsed);
-                    const actualGasCostInToken = ethers.utils.parseUnits(
-                        ethPrice
-                    ).mul(
-                        actualGasCost
-                    ).div(
-                        "1" + "0".repeat(
-                            36 - bundledOrders[i].buyTokenDecimals
+                try {
+                    const receipt = config.timeout
+                        ? await promiseTimeout(
+                            tx.wait(),
+                            config.timeout,
+                            `Transaction failed to mine after ${config.timeout}ms`
                         )
-                    );
-                    const netProfit = income
-                        ? income.sub(actualGasCostInToken)
-                        : undefined;
+                        : await tx.wait();
 
-                    if (income) {
-                        const incomeFormated = ethers.utils.formatUnits(
+                    if (receipt.status === 1) {
+                        const clearActualAmount = getActualClearAmount(
+                            arbAddress,
+                            orderbookAddress,
+                            receipt
+                        );
+                        const income = getIncome(signer, receipt);
+                        const clearActualPrice = getActualPrice(
+                            receipt,
+                            orderbookAddress,
+                            arbAddress,
+                            clearActualAmount.mul("1" + "0".repeat(
+                                18 - bundledOrders[i].sellTokenDecimals
+                            )),
+                            bundledOrders[i].buyTokenDecimals
+                        );
+                        const actualGasCost = ethers.BigNumber.from(
+                            receipt.effectiveGasPrice
+                        ).mul(receipt.gasUsed);
+                        const actualGasCostInToken = ethers.utils.parseUnits(
+                            ethPrice
+                        ).mul(
+                            actualGasCost
+                        ).div(
+                            "1" + "0".repeat(
+                                36 - bundledOrders[i].buyTokenDecimals
+                            )
+                        );
+                        const netProfit = income
+                            ? income.sub(actualGasCostInToken)
+                            : undefined;
+
+                        pairSpan.setStatus({ code: SpanStatusCode.OK, message: "successfuly cleared" });
+
+                        report.push({
+                            txUrl,
+                            transactionHash: receipt.transactionHash,
+                            tokenPair:
+                                bundledOrders[i].buyTokenSymbol +
+                                "/" +
+                                bundledOrders[i].sellTokenSymbol,
+                            buyToken: bundledOrders[i].buyToken,
+                            buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
+                            sellToken: bundledOrders[i].sellToken,
+                            sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
+                            clearedAmount: clearActualAmount.toString(),
+                            clearPrice: ethers.utils.formatEther(price),
+                            clearActualPrice,
+                            gasUsed: receipt.gasUsed,
+                            gasCost: actualGasCost,
                             income,
-                            bundledOrders[i].buyTokenDecimals
-                        );
-                        const netProfitFormated = ethers.utils.formatUnits(
                             netProfit,
-                            bundledOrders[i].buyTokenDecimals
-                        );
-                        pairSpan.setAttributes({
-                            "details.income": incomeFormated,
-                            "details.netProfit": netProfitFormated
+                            clearedOrders: takeOrdersConfigStruct.orders.map(
+                                v => v.id
+                            ),
                         });
                     }
-                    pairSpan.setAttributes({
-                        "details.clearAmount": clearActualAmount.toString(),
-                        "details.clearPrice": ethers.utils.formatEther(price),
-                        "details.clearActualPrice": clearActualPrice,
-                    });
-                    pairSpan.setStatus({ code: SpanStatusCode.OK, message: "successfuly cleared" });
-
-                    report.push({
-                        txUrl,
-                        transactionHash: receipt.transactionHash,
-                        tokenPair:
-                            bundledOrders[i].buyTokenSymbol +
-                            "/" +
-                            bundledOrders[i].sellTokenSymbol,
-                        buyToken: bundledOrders[i].buyToken,
-                        buyTokenDecimals: bundledOrders[i].buyTokenDecimals,
-                        sellToken: bundledOrders[i].sellToken,
-                        sellTokenDecimals: bundledOrders[i].sellTokenDecimals,
-                        clearedAmount: clearActualAmount.toString(),
-                        clearPrice: ethers.utils.formatEther(price),
-                        clearActualPrice,
-                        gasUsed: receipt.gasUsed,
-                        gasCost: actualGasCost,
-                        income,
-                        netProfit,
-                        clearedOrders: takeOrdersConfigStruct.orders.map(
-                            v => v.id
-                        ),
-                    });
-                }
-                else {
-                    pairSpan.setAttribute("details.receipt", JSON.stringify(receipt));
+                    else {
+                        pairSpan.setAttribute("details.receipt", JSON.stringify(receipt));
+                        pairSpan.setStatus({ code: SpanStatusCode.ERROR });
+                    }
+                } catch (error) {
+                    pairSpan.recordException(getSpanException(error));
                     pairSpan.setStatus({ code: SpanStatusCode.ERROR });
                 }
             }
             catch (error) {
+                pairSpan.setAttributes({
+                    "details.rawTx": JSON.stringify(rawtx),
+                });
                 pairSpan.recordException(getSpanException(error));
                 pairSpan.setStatus({ code: SpanStatusCode.ERROR });
             }
@@ -440,7 +414,6 @@ const srouterClear = async(
         }
         pairSpan.end();
     }
-    clearProcSpan.end();
     return report;
 };
 
@@ -475,28 +448,25 @@ async function dryrun(
     };
     let succesOrFailure = true;
     let maximumInput = obSellTokenBalance;
-    const modeText = mode === 0
-        ? "bundled-orders"
+    const dryrunType = mode === 0
+        ? "bundle"
         : mode === 1
-            ? "single-order"
+            ? "single"
             : mode === 2
-                ? "double-orders"
-                : "triple-orders";
+                ? "double"
+                : "triple";
 
-    const dryrunSpan = tracer.startSpan(`find-max-input-for-${modeText}`, undefined, ctx);
-    const dryrunCtx = trace.setSpan(context.active(), dryrunSpan);
+    const hopsSpan = tracer.startSpan("hops", undefined, ctx);
+    hopsSpan.setAttribute("details.dryrunType", dryrunType);
+    const hopsDetails = {};
 
     for (let j = 1; j < hops + 1; j++) {
-        const hopSpan = tracer.startSpan(`hop-${j}`, undefined, dryrunCtx);
+        const hopAttrs = {};
+        hopAttrs["maxInput"] = maximumInput.toString();
 
         const maximumInputFixed = maximumInput.mul(
             "1" + "0".repeat(18 - bundledOrder.sellTokenDecimals)
         );
-
-        hopSpan.setAttributes({
-            "details.maxInput": maximumInput.toString(),
-            "details.maxInputFixed": maximumInputFixed.toString()
-        });
 
         const pcMap = dataFetcher.getCurrentPoolCodeMap(
             fromToken,
@@ -514,9 +484,7 @@ async function dryrun(
             // poolFilter
         );
         if (route.status == "NoWay") {
-            hopSpan.setAttribute("details.route", "no-way");
-            hopSpan.setStatus({ code: SpanStatusCode.ERROR });
-            hopSpan.end();
+            hopAttrs["route"] = "no-way";
             succesOrFailure = false;
         }
         else {
@@ -524,7 +492,7 @@ async function dryrun(
                 "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
             );
             const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
-            hopSpan.setAttribute("details.marketPrice", ethers.utils.formatEther(price));
+            hopAttrs["marketPrice"] = ethers.utils.formatEther(price);
 
             // filter out orders that are not price match or failed eval when --max-profit is enabled
             // price check is at +2% as a headroom for current block vs tx block
@@ -532,14 +500,11 @@ async function dryrun(
                 bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
                     v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
                 );
-                hopSpan.addEvent("filtered orders with lower ratio than market price");
+                hopAttrs["didRatioFilter"] = true;
             }
             if (bundledOrder.takeOrders.length === 0) {
-                hopSpan.setStatus({
-                    code: SpanStatusCode.OK,
-                    message: "all orders had lower ratio than market price"
-                });
-                hopSpan.end();
+                hopAttrs["status"] = "all orders had lower ratio than market price";
+                hopsDetails[`details.hop-${j}`] = JSON.stringify(hopAttrs);
                 maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
                 continue;
             }
@@ -552,9 +517,7 @@ async function dryrun(
             } catch {
                 /**/
             }
-            hopSpan.setAttributes({
-                "details.route": routeVisual,
-            });
+            hopAttrs["route"] = routeVisual;
 
             const rpParams = getRouteProcessorParamsVersion["3.2"](
                 pcMap,
@@ -602,21 +565,17 @@ async function dryrun(
                 };
 
                 const blockNumber = await signer.provider.getBlockNumber();
-                hopSpan.setAttribute("details.blockNumber", blockNumber);
+                hopAttrs["blockNumber"] = blockNumber;
 
                 let gasLimit;
                 try {
                     gasLimit = await signer.estimateGas(rawtx);
-                    hopSpan.setAttribute("details.estimateGas.value", gasLimit.toString());
+                    hopAttrs["estimateGas"] = gasLimit.toString();
                 }
                 catch(e) {
                     // only record the last error for traces
                     if (j === hops) {
-                        hopSpan.recordException(getSpanException(e));
-                        hopSpan.setAttributes({
-                            "details.route.data": rpParams.routeCode,
-                            "details.takeOrdersConfigStruct": JSON.stringify(takeOrdersConfigStruct),
-                        });
+                        hopAttrs["error"] = getSpanException(e);
                     }
                     throw "nomatch";
                 }
@@ -632,7 +591,10 @@ async function dryrun(
                         36 - bundledOrder.buyTokenDecimals
                     )
                 );
-                hopSpan.setAttribute("details.gasCostInToken", gasCostInToken.toString());
+                hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
+                    gasCostInToken,
+                    toToken.decimals
+                );
                 if (gasCoveragePercentage !== "0") {
                     const headroom = (
                         Number(gasCoveragePercentage) * 1.05
@@ -646,41 +608,44 @@ async function dryrun(
                     );
                     try {
                         await signer.estimateGas(rawtx);
-                        hopSpan.setStatus({ code: SpanStatusCode.OK });
                     }
                     catch(e) {
-                        if (j === hops) hopSpan.recordException(getSpanException(e));
+                        if (j === hops) {
+                            hopAttrs["error"] = getSpanException(e);
+                        }
                         throw "dryrun";
                     }
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
-                    hopSpan.setStatus({ code: SpanStatusCode.OK });
-                    hopSpan.end();
-                    dryrunSpan.setAttributes({
-                        "details.route.data": rpParams.routeCode,
-                    });
-                    dryrunSpan.setStatus({ code: SpanStatusCode.OK });
-                    dryrunSpan.end();
-                    return {rawtx, maximumInput, gasCostInToken, takeOrdersConfigStruct, price};
+                    hopsSpan.setStatus({ code: SpanStatusCode.OK });
+                    hopsSpan.end();
+                    return {
+                        rawtx,
+                        maximumInput,
+                        gasCostInToken,
+                        takeOrdersConfigStruct,
+                        price,
+                        routeVisual
+                    };
                 }
             }
             catch (error) {
                 succesOrFailure = false;
-                hopSpan.setStatus({ code: SpanStatusCode.ERROR });
                 if (error !== "nomatch" && error !== "dryrun") {
-                    hopSpan.recordException(getSpanException(error));
+                    hopAttrs["error"] = getSpanException(e);
                     // reason, code, method, transaction, error, stack, message
                 }
             }
-            hopSpan.end();
         }
+        hopsDetails[`details.hop-${j}`] = JSON.stringify(hopAttrs);
         maximumInput = succesOrFailure
             ? maximumInput.add(obSellTokenBalance.div(2 ** j))
             : maximumInput.sub(obSellTokenBalance.div(2 ** j));
     }
-    dryrunSpan.setStatus({ code: SpanStatusCode.ERROR });
-    dryrunSpan.end();
+    hopsSpan.setAttributes(hopsDetails);
+    hopsSpan.setStatus({ code: SpanStatusCode.ERROR });
+    hopsSpan.end();
     return Promise.reject();
 }
 

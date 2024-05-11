@@ -115,9 +115,9 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.arbAddress)        throw "undefined arb contract address";
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
-    const config = await tracer.startActiveSpan("get-config", {}, roundCtx, async (span) => {
+    const { ordersDetails, config } = await tracer.startActiveSpan("prepare", {}, roundCtx, async (span) => {
         try {
-            const result = await getConfig(
+            const config = await getConfig(
                 options.rpc,
                 options.key,
                 options.orderbookAddress,
@@ -136,25 +136,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                         : undefined,
                 }
             );
-            span.setStatus({ code: SpanStatusCode.OK });
-            span.end();
-            return result;
-        } catch(e) {
-            span.setStatus({ code: SpanStatusCode.ERROR });
-            const error = getSpanException(e);
-            if (lastError && lastError === error) {
-                span.recordException("same as previous round, see parent span links");
-            } else {
-                span.recordException(error);
-            }
-            span.end();
-            return Promise.reject(e);
-        }
-    });
-
-    const ordersDetails = await tracer.startActiveSpan("get-order-details", {}, roundCtx, async (span) => {
-        try {
-            const result = await getOrderDetails(
+            const ordersDetails = await getOrderDetails(
                 options.subgraph,
                 options.orders,
                 config.signer,
@@ -163,41 +145,33 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     orderOwner      : options.orderOwner,
                     orderInterpreter: options.orderInterpreter
                 },
-                tracer,
-                trace.setSpan(context.active(), span)
+                span
             );
-            if (result.length) {
-                span.setAttribute("details.orders.ids", result.map(v => v.id));
+            if (ordersDetails.length) {
+                span.setAttribute("details.orders.ids", ordersDetails.map(v => v.id));
                 span.setStatus({ code: SpanStatusCode.OK });
             }
             else {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders"});
             }
             span.end();
-            return result;
+            return { ordersDetails, config };
         } catch(e) {
             span.setStatus({ code: SpanStatusCode.ERROR });
-            span.recordException(getSpanException(e));
+            const error = getSpanException(e);
+            if (lastError && lastError === error) {
+                span.recordException("same as previous, see parent span links");
+            } else {
+                span.recordException(error);
+            }
             span.end();
             return Promise.reject(e);
         }
     });
-
+    console.log(ordersDetails.map(v => v.id));
     if (!ordersDetails.length) return;
 
-    return await tracer.startActiveSpan("take-orders", {}, roundCtx, async (span) => {
-        span.setAttributes({
-            "details.config.chainid": options.chainId,
-            "details.config.network": options.network,
-            "details.config.gasCoveragePercentage": options.gasCoverage ?? "100",
-            "details.config.rpcUrl": config.rpc,
-            "details.config.orderbookAddress": config.orderbookAddress,
-            "details.config.arbAddress": config.arbAddress,
-            "details.config.maxProfit": config.maxProfit,
-            "details.config.maxRatio": config.maxRatio,
-            "details.config.usesFlashbots": config.flashbotRpc ? true : false,
-            "details.config.amountDiscoveryHops": config.hops
-        });
+    return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
         try {
             let txs;
@@ -228,7 +202,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             span.setStatus({ code: SpanStatusCode.ERROR });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
-                span.recordException("same as previous round, see parent span links");
+                span.recordException("same as previous, see parent span links");
             } else {
                 span.recordException(error);
             }

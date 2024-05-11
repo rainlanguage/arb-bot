@@ -6,7 +6,6 @@ const { getQuery } = require("./query");
 const { versions } = require("process");
 const { srouterClear } = require("./modes/srouter");
 const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
-const { SpanStatusCode } = require("@opentelemetry/api");
 
 
 /**
@@ -65,11 +64,10 @@ const clearOptions = {
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
  * @param {any} sgFilters - The filters for subgraph query
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").Span} span
  * @returns An array of order details
  */
-const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
+const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
     const ordersDetails = [];
     const isInvalidJson = typeof json !== "string" || !json;
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
@@ -79,20 +77,15 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
         hasjson = false;
         const promises = [];
         if (!isInvalidJson) {
-            await tracer.startActiveSpan("read-json-orders", {}, ctx, async (span) => {
-                try {
-                    const content = fs.readFileSync(path.resolve(json)).toString();
-                    const orders = await getOrderDetailsFromJson(content, signer);
-                    ordersDetails.push(...orders);
-                    hasjson = true;
-                    span.setStatus({code: SpanStatusCode.OK});
-                }
-                catch (error) {
-                    span.setStatus({code: SpanStatusCode.ERROR});
-                    span.recordException(getSpanException(error));
-                }
-                span.end();
-            });
+            try {
+                const content = fs.readFileSync(path.resolve(json)).toString();
+                const orders = await getOrderDetailsFromJson(content, signer);
+                ordersDetails.push(...orders);
+                hasjson = true;
+            }
+            catch (error) {
+                span.setAttribute("details.jsonSourceError", JSON.stringify(getSpanException(error)));
+            }
         }
         if (!isInvalidSg) {
             sgs.forEach(v => {
@@ -112,37 +105,30 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, tracer, ctx) => {
 
         const responses = await Promise.allSettled(promises);
         if (responses.every((v) => v.status === "rejected")) {
+            const reasons = {};
             responses.forEach((v, i) => {
-                tracer.startActiveSpan("read-sg-orders", {}, ctx, async (span) => {
-                    span.setAttribute("details.sgUrl", sgs[i]);
-                    span.recordException(getSpanException(v.reason));
-                    span.setStatus({code: SpanStatusCode.ERROR});
-                    span.end();
-                });
+                reasons[sgs[i]] = v.reason;
             });
-            if (!hasjson) throw "could not read anything from provided sources";
+            if (!hasjson) throw new Error({
+                msg: "could not read anything from provided sources",
+                reasons
+            });
         }
         else {
+            const reasons = {};
             for (let i = 0; i < responses.length; i++) {
-                tracer.startActiveSpan("read-sg-orders", {}, ctx, async (span) => {
-                    span.setAttribute("details.sgUrl", sgs[i]);
-                    if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
-                        ordersDetails.push(
-                            ...responses[i].value.data.data.orders
-                        );
-                        span.setStatus({code: SpanStatusCode.OK});
-                    }
-                    else {
-                        span.setStatus({code: SpanStatusCode.ERROR});
-                        span.recordException(getSpanException(
-                            responses[i].status === "fulfilled"
-                                ? "bad url"
-                                : responses[i].reason
-                        ));
-                    }
-                    span.end();
-                });
+                if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
+                    ordersDetails.push(
+                        ...responses[i].value.data.data.orders
+                    );
+                }
+                else {
+                    reasons[sgs[i]] = responses[i].status === "fulfilled"
+                        ? "could not read from url"
+                        : responses[i].reason;
+                }
             }
+            if (Object.keys(reasons).length) span.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
         }
     }
     return ordersDetails;

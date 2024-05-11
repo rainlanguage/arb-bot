@@ -1,8 +1,8 @@
 const { ChainId } = require("sushi/chain");
-const { Token, WNATIVE } = require("sushi/currency");
 const { ethers, BigNumber } = require("ethers");
+const { Token, WNATIVE } = require("sushi/currency");
+const { erc20Abi, interpreterV2Abi } = require("./abis");
 const { createPublicClient, http, fallback } = require("viem");
-const { erc20Abi, interpreterAbi, interpreterV2Abi } = require("./abis");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const {
     STABLES,
@@ -373,97 +373,6 @@ const fromFixed18 = (bn, decimals) => {
 };
 
 /**
- * Calls eval for a specific order to get its max output and ratio
- *
- * @param {ethers.Contract} interpreter - The interpreter ethersjs contract instance with signer
- * @param {string} arbAddress - Arb contract address
- * @param {string} obAddress - OrderBook contract address
- * @param {object} order - The order details fetched from sg
- * @param {number} inputIndex - The input token index
- * @param {number} outputIndex - The ouput token index
- * @returns The ratio and maxOuput as BigNumber
-*/
-const interpreterEval = async(
-    interpreter,
-    arbAddress,
-    obAddress,
-    order,
-    inputIndex,
-    outputIndex,
-    inputBalance,
-    outputBalance,
-    tracer,
-    ctx
-) => {
-    const span = tracer.startSpan("eval-order", undefined, ctx);
-    span.setAttributes({
-        "details.order.id": order.id,
-    });
-    try {
-        const { stack: [ maxOutput, ratio ] } = await interpreter.eval(
-            order.interpreterStore,
-            order.owner.id,
-            order.expression + "00000002",
-            // construct the context for eval
-            [
-                [
-                    // base column
-                    arbAddress,
-                    obAddress
-                ],
-                [
-                    // calling context column
-                    order.id,
-                    order.owner.id,
-                    arbAddress
-                ],
-                [
-                    // calculateIO context column
-                ],
-                [
-                    // input context column
-                    order.validInputs[inputIndex].token.id,
-                    order.validInputs[inputIndex].token.decimals,
-                    order.validInputs[inputIndex].vault.id.split("-")[0],
-                    inputBalance,
-                    "0"
-                ],
-                [
-                    // output context column
-                    order.validOutputs[outputIndex].token.id,
-                    order.validOutputs[outputIndex].token.decimals,
-                    order.validOutputs[outputIndex].vault.id.split("-")[0],
-                    outputBalance,
-                    "0"
-                ],
-                [
-                    // empty context column
-                ],
-                [
-                    // signed context column
-                ]
-            ]
-        );
-        span.setAttributes({
-            "details.result.ratio": ratio.toString(),
-            "details.result.maxOutput": maxOutput.toString(),
-        });
-        span.setStatus({ code: 1 });
-        span.end();
-        return { ratio, maxOutput };
-    }
-    catch {
-        span.recordException(getSpanException(e));
-        span.setStatus({ code: 2 });
-        span.end();
-        return {
-            ratio: undefined,
-            maxOutput: undefined
-        };
-    }
-};
-
-/**
  * Calls eval2 on interpreter v2 for a specific order to get its max output and ratio
  *
  * @param {ethers.Contract} interpreter - The interpreter v2 ethersjs contract instance with signer
@@ -472,8 +381,7 @@ const interpreterEval = async(
  * @param {object} order - The order details fetched from sg
  * @param {number} inputIndex - The input token index
  * @param {number} outputIndex - The ouput token index
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").span} span
  * @returns The ratio and maxOuput as BigNumber
 */
 const interpreterV2Eval = async(
@@ -485,14 +393,8 @@ const interpreterV2Eval = async(
     outputIndex,
     inputBalance,
     outputBalance,
-    tracer,
-    ctx
+    span,
 ) => {
-    const span = tracer.startSpan("eval-order", undefined, ctx);
-    span.setAttributes({
-        "details.order.id": order.id,
-    });
-    // const clearProcCtx = trace.setSpan(context.active(), span);
     try {
         const { stack: [ ratio, maxOutput ] } = await interpreter.eval2(
             order.interpreterStore,
@@ -540,18 +442,15 @@ const interpreterV2Eval = async(
             // empty inputs
             []
         );
-        span.setAttributes({
-            "details.result.ratio": ratio.toString(),
-            "details.result.maxOutput": maxOutput.toString(),
-        });
-        span.setStatus({ code: 1 });
-        span.end();
+        const attr = {
+            ratio: ratio.toString(),
+            maxOutput: maxOutput.toString(),
+        };
+        span.setAttribute(`details.order.${order.id}`, JSON.stringify(attr));
         return { ratio, maxOutput };
     }
     catch(e) {
-        span.recordException(getSpanException(e));
-        span.setStatus({ code: 2 });
-        span.end();
+        span.setAttribute(`details.order.${order.id}`, JSON.stringify({error: getSpanException(e)}));
         return {
             ratio: undefined,
             maxOutput: undefined
@@ -751,10 +650,8 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {ethers.Contract} arb - The Arb EthersJS contract instance with signer
  * @param {boolean} _eval - To eval() the orders and filter them based on the eval result
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
- * @param {boolean} _interpreterv2 - If should use eval2 of interpreter v2 for evaling
  * @param {boolean} _bundle = If orders should be bundled based on token pair
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").span} span
  * @returns Array of bundled take orders
  */
 const bundleTakeOrders = async(
@@ -763,10 +660,8 @@ const bundleTakeOrders = async(
     arb,
     _eval = true,
     _shuffle = true,
-    _interpreterv2 = false,
     _bundle = true,
-    tracer,
-    ctx
+    span
 ) => {
     const bundledOrders = [];
     const obAsSigner = new ethers.VoidSigner(
@@ -878,40 +773,21 @@ const bundleTakeOrders = async(
                                 }
                                 _inputBalance = _iv.balance;
                             }
-                            ({ maxOutput, ratio } = _interpreterv2
-                                ? await interpreterV2Eval(
-                                    new ethers.Contract(
-                                        order.interpreter,
-                                        interpreterV2Abi,
-                                        obAsSigner
-                                    ),
-                                    arb.address,
-                                    orderbook.address,
-                                    order,
-                                    k,
-                                    j ,
-                                    _inputBalance.toString() ,
-                                    _outputBalance.toString(),
-                                    tracer,
-                                    ctx
-                                )
-                                : await interpreterEval(
-                                    new ethers.Contract(
-                                        order.interpreter,
-                                        interpreterAbi,
-                                        obAsSigner
-                                    ),
-                                    arb.address,
-                                    orderbook.address,
-                                    order,
-                                    k,
-                                    j ,
-                                    _inputBalance.toString() ,
-                                    _outputBalance.toString(),
-                                    tracer,
-                                    ctx
-                                )
-                            );
+                            ({ maxOutput, ratio } = await interpreterV2Eval(
+                                new ethers.Contract(
+                                    order.interpreter,
+                                    interpreterV2Abi,
+                                    obAsSigner
+                                ),
+                                arb.address,
+                                orderbook.address,
+                                order,
+                                k,
+                                j ,
+                                _inputBalance.toString() ,
+                                _outputBalance.toString(),
+                                span,
+                            ));
 
                             if (maxOutput && ratio && maxOutput.lt(quoteAmount)) {
                                 quoteAmount = maxOutput;
@@ -1581,7 +1457,6 @@ module.exports = {
     bnFromFloat,
     toFixed18,
     fromFixed18,
-    interpreterEval,
     getOrderStruct,
     sleep,
     getIncome,
