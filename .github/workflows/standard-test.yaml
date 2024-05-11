@@ -1,22 +1,20 @@
 name: Standard Test
 on: [push]
+
 jobs:
   build-lint-test:
-    name: Build, lint, test
+    name: e2e fork test
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         chain: [POLYGON, ARBITRUM, ETH, FLARE, BSC, BASE]
       fail-fast: false
-    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/nix-installer-action@v4
       - uses: DeterminateSystems/magic-nix-cache-action@v2
-
-      - name: Set RPC
-        run: echo "TEST_${{ matrix.chain }}_RPC=$(secrets.CI_DEPLOY_${{ matrix.chain }}_RPC_URL)" >> $GITHUB_ENV
 
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
@@ -28,4 +26,4 @@ jobs:
         run:  nix develop -c npm run lint
       
       - name: Run Tests
-        run:  nix develop -c npm test
+        run:  TEST_${{ matrix.chain }}_RPC=$(secrets.CI_DEPLOY_${{ matrix.chain }}_RPC_URL) && nix develop -c npm test
