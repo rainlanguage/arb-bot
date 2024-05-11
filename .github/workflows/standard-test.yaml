@@ -16,11 +16,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v4
       - uses: DeterminateSystems/magic-nix-cache-action@v2
 
-      - name: Set RPC
-        run: |
-          chain=${{ matrix.chain }}
-          echo "RPC=CI_DEPLOY_${chain^^}_RPC_URL" >> $GITHUB_ENV
-
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
 
@@ -31,4 +26,7 @@ jobs:
         run:  nix develop -c npm run lint
       
       - name: Run Tests
-        run: TEST_${{ matrix.chain }}_RPC=${{ secrets[env.RPC] }} nix develop -c npm test
+        run: |
+          chain=${{ matrix.chain }}
+          echo "RPC=CI_DEPLOY_${chain^^}_RPC_URL" >> $GITHUB_ENV
+          TEST_${{ matrix.chain }}_RPC=${{ secrets[env.RPC] }} nix develop -c npm test

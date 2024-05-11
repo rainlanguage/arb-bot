@@ -227,6 +227,7 @@ const getConfig = async(
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").Span} span
  * @returns The report of details of cleared orders
  */
 const clear = async(
@@ -234,7 +235,8 @@ const clear = async(
     ordersDetails,
     options = clearOptions,
     tracer,
-    ctx
+    ctx,
+    span
 ) => {
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
@@ -247,7 +249,8 @@ const clear = async(
         ordersDetails,
         gasCoveragePercentage,
         tracer,
-        ctx
+        ctx,
+        span
     );
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 };

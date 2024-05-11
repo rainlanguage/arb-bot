@@ -115,7 +115,8 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.arbAddress)        throw "undefined arb contract address";
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
-    const { ordersDetails, config } = await tracer.startActiveSpan("prepare", {}, roundCtx, async (span) => {
+    return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
+        const ctx = trace.setSpan(context.active(), span);
         try {
             const config = await getConfig(
                 options.rpc,
@@ -136,6 +137,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                         : undefined,
                 }
             );
+
             const ordersDetails = await getOrderDetails(
                 options.subgraph,
                 options.orders,
@@ -147,33 +149,12 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 },
                 span
             );
-            if (ordersDetails.length) {
-                span.setAttribute("details.orders.ids", ordersDetails.map(v => v.id));
-                span.setStatus({ code: SpanStatusCode.OK });
+            if (!ordersDetails.length) {
+                span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
+                span.end();
+                return;
             }
-            else {
-                span.setStatus({ code: SpanStatusCode.OK, message: "found no orders"});
-            }
-            span.end();
-            return { ordersDetails, config };
-        } catch(e) {
-            span.setStatus({ code: SpanStatusCode.ERROR });
-            const error = getSpanException(e);
-            if (lastError && lastError === error) {
-                span.recordException("same as previous, see parent span links");
-            } else {
-                span.recordException(error);
-            }
-            span.end();
-            return Promise.reject(e);
-        }
-    });
 
-    if (!ordersDetails.length) return;
-
-    return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
-        const ctx = trace.setSpan(context.active(), span);
-        try {
             let txs;
             const reports = await clear(
                 config,
@@ -182,7 +163,8 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     gasCoveragePercentage: options.gasCoverage
                 },
                 tracer,
-                ctx
+                ctx,
+                span
             );
             if (reports && reports.length) {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);

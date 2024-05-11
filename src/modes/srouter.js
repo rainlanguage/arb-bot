@@ -2,7 +2,7 @@ const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { Token } = require("sushi/currency");
 const { arbAbis, orderbookAbi } = require("../abis");
-const { trace, context, SpanStatusCode } = require("@opentelemetry/api");
+const { SpanStatusCode } = require("@opentelemetry/api");
 const {
     getIncome,
     processLps,
@@ -33,6 +33,7 @@ const srouterClear = async(
     gasCoveragePercentage = "100",
     tracer,
     ctx,
+    span,
 ) => {
     if (
         gasCoveragePercentage < 0 ||
@@ -61,35 +62,15 @@ const srouterClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    let bundledOrders = [];
-    bundledOrders = await tracer.startActiveSpan("check-orders-vaults", {}, ctx, async (span) => {
-        span.setAttributes({
-            "details.doesEval": maxProfit ?? true,
-            "details.doesBundle": config.bundle
-        });
-        try {
-            const result = await bundleTakeOrders(
-                ordersDetails,
-                orderbook,
-                arb,
-                maxProfit,
-                config.shuffle,
-                config.bundle,
-                span
-            );
-            const status = {code: SpanStatusCode.OK};
-            if (!result.length) status.message = "found no clearable orders";
-            span.setStatus(status);
-            span.end();
-            return result;
-        } catch (e) {
-            span.setStatus({code: SpanStatusCode.ERROR });
-            span.recordException(getSpanException(e));
-            span.end();
-            return Promise.reject(e);
-        }
-    });
-
+    const bundledOrders = await bundleTakeOrders(
+        ordersDetails,
+        orderbook,
+        arb,
+        maxProfit,
+        config.shuffle,
+        config.bundle,
+        span
+    );
     if (!bundledOrders.length) return;
 
     const report = [];
@@ -104,7 +85,6 @@ const srouterClear = async(
             undefined,
             ctx
         );
-        const pairCtx = trace.setSpan(context.active(), pairSpan);
         pairSpan.setAttributes({
             "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
             "details.pair": pair,
@@ -149,36 +129,24 @@ const srouterClear = async(
 
             let ethPrice;
             if (gasCoveragePercentage !== "0") {
-                await tracer.startActiveSpan("getEthPrice", {}, pairCtx, async (span) => {
-                    try {
-                        ethPrice = await getEthPrice(
-                            config,
-                            bundledOrders[i].buyToken,
-                            bundledOrders[i].buyTokenDecimals,
-                            gasPrice,
-                            dataFetcher,
-                            {
-                                fetchPoolsTimeout: 10000,
-                                memoize: true,
-                            }
-                        );
-                        if (!ethPrice) {
-                            span.setStatus({code: SpanStatusCode.ERROR});
-                            span.recordException("could not get ETH price");
-                            span.end();
-                            return Promise.reject("could not get ETH price");
-                        } else {
-                            span.setAttribute("details.price", ethPrice);
-                            span.setStatus({code: SpanStatusCode.OK});
-                            span.end();
+                try {
+                    ethPrice = await getEthPrice(
+                        config,
+                        bundledOrders[i].buyToken,
+                        bundledOrders[i].buyTokenDecimals,
+                        gasPrice,
+                        dataFetcher,
+                        {
+                            fetchPoolsTimeout: 10000,
+                            memoize: true,
                         }
-                    } catch(e) {
-                        span.setStatus({code: SpanStatusCode.ERROR});
-                        span.recordException(getSpanException(e));
-                        span.end();
-                        return Promise.reject("could not get ETH price");
-                    }
-                });
+                    );
+                    if (!ethPrice) throw "could not get ETH price";
+                    else pairSpan.setAttribute("details.ethPrice", ethPrice);
+                } catch(e) {
+                    pairSpan.addEvent("could not get ETH price");
+                    throw e;
+                }
             }
             else ethPrice = "0";
 
@@ -224,8 +192,7 @@ const srouterClear = async(
                         arb,
                         ethPrice,
                         config,
-                        tracer,
-                        pairCtx
+                        pairSpan
                     ));
                 } catch {
                     rawtx = undefined;
@@ -250,8 +217,7 @@ const srouterClear = async(
                             arb,
                             ethPrice,
                             config,
-                            tracer,
-                            pairCtx
+                            pairSpan
                         )
                     );
                 }
@@ -417,8 +383,7 @@ const srouterClear = async(
 };
 
 /**
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
+ * @param {import("@opentelemetry/api").Span} span
  */
 async function dryrun(
     mode,
@@ -436,8 +401,7 @@ async function dryrun(
     arb,
     ethPrice,
     config,
-    tracer,
-    ctx
+    span,
 ) {
     const getRouteProcessorParamsVersion = {
         "3": Router.routeProcessor3Params,
@@ -447,18 +411,8 @@ async function dryrun(
     };
     let succesOrFailure = true;
     let maximumInput = obSellTokenBalance;
-    const dryrunType = mode === 0
-        ? "bundle"
-        : mode === 1
-            ? "single"
-            : mode === 2
-                ? "double"
-                : "triple";
 
-    const hopsSpan = tracer.startSpan("hops", undefined, ctx);
-    hopsSpan.setAttribute("details.dryrunType", dryrunType);
     const hopsDetails = {};
-
     for (let j = 1; j < hops + 1; j++) {
         const hopAttrs = {};
         hopAttrs["maxInput"] = maximumInput.toString();
@@ -617,8 +571,6 @@ async function dryrun(
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
-                    hopsSpan.setStatus({ code: SpanStatusCode.OK });
-                    hopsSpan.end();
                     return {
                         rawtx,
                         maximumInput,
@@ -642,9 +594,7 @@ async function dryrun(
             ? maximumInput.add(obSellTokenBalance.div(2 ** j))
             : maximumInput.sub(obSellTokenBalance.div(2 ** j));
     }
-    hopsSpan.setAttributes(hopsDetails);
-    hopsSpan.setStatus({ code: SpanStatusCode.ERROR });
-    hopsSpan.end();
+    span.setAttributes(hopsDetails);
     return Promise.reject();
 }
 
