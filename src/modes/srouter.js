@@ -74,6 +74,7 @@ const srouterClear = async(
     );
     if (!bundledOrders.length) return;
 
+    let noFunds = false;
     const report = [];
     for (let i = 0; i < bundledOrders.length; i++) {
         const pair = `${
@@ -92,6 +93,12 @@ const srouterClear = async(
         });
 
         try {
+            if (noFunds) {
+                pairSpan.recordException("bot wallet ran out of funds");
+                pairSpan.setStatus({code: SpanStatusCode.ERROR});
+                pairSpan.end();
+                continue;
+            }
             if (!bundledOrders[i].takeOrders.length) {
                 pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault"});
                 pairSpan.end();
@@ -226,13 +233,20 @@ const srouterClear = async(
 
                 let choice;
                 for (let j = 0; j < allPromises.length; j++) {
-                    if (allPromises[j].status === "fulfilled") {
-                        if (!choice || choice.maximumInput.lt(allPromises[j].value.maximumInput)) {
-                            choice = allPromises[j].value;
+                    if (!noFunds) {
+                        if (allPromises[j].status === "fulfilled") {
+                            if (
+                                !choice ||
+                                choice.maximumInput.lt(allPromises[j].value.maximumInput)
+                            ) {
+                                choice = allPromises[j].value;
+                            }
+                        } else {
+                            if (allPromises[j].reason === "no-balance") noFunds = true;
                         }
                     }
                 }
-                if (choice) {
+                if (!noFunds && choice) {
                     ({
                         rawtx,
                         gasCostInToken,
@@ -245,10 +259,12 @@ const srouterClear = async(
             }
 
             if (!rawtx) {
-                pairSpan.setStatus({
-                    code: SpanStatusCode.OK,
-                    message: "no opportunity"
-                });
+                noFunds
+                    ? pairSpan.setStatus({ code: SpanStatusCode.ERROR })
+                    : pairSpan.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "no opportunity"
+                    });
                 pairSpan.end();
                 continue;
             }
@@ -527,9 +543,18 @@ async function dryrun(
                     hopAttrs["estimateGas"] = gasLimit.toString();
                 }
                 catch(e) {
+                    const spanError = getSpanException(e);
+                    const errorString = JSON.stringify(spanError);
+                    if (
+                        errorString.includes("gas required exceeds allowance")
+                        || errorString.includes("insufficient funds for gas")
+                    ) {
+                        span.recordException(spanError);
+                        return Promise.reject("no-balance");
+                    }
                     // only record the last error for traces
                     if (j === hops) {
-                        hopAttrs["error"] = getSpanException(e);
+                        hopAttrs["error"] = spanError;
                     }
                     throw "nomatch";
                 }
@@ -564,6 +589,15 @@ async function dryrun(
                         await signer.estimateGas(rawtx);
                     }
                     catch(e) {
+                        const spanError = getSpanException(e);
+                        const errorString = JSON.stringify(spanError);
+                        if (
+                            errorString.includes("gas required exceeds allowance")
+                            || errorString.includes("insufficient funds for gas")
+                        ) {
+                            span.recordException(spanError);
+                            return Promise.reject("no-balance");
+                        }
                         if (j === hops) {
                             hopAttrs["error"] = getSpanException(e);
                         }
