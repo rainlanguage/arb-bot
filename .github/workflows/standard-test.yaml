@@ -1,9 +1,14 @@
 name: Standard Test
 on: [push]
+
 jobs:
   build-lint-test:
-    name: Build, lint, test
+    name: e2e fork test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chain: [POLYGON, ARBITRUM, ETH, FLARE, BSC, BASE]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -19,13 +24,9 @@ jobs:
 
       - name: Lint
         run:  nix develop -c npm run lint
+
+      - name: Set Chain Rpc Key
+        run: echo "RPC=CI_DEPLOY_${{ matrix.chain }}_RPC_URL" >> $GITHUB_ENV
       
       - name: Run Tests
-        run:  nix develop -c npm test
-        env:
-          TEST_POLYGON_RPC: ${{ secrets.CI_DEPLOY_POLYGON_RPC_URL }}
-          TEST_BASE_RPC: ${{ secrets.CI_DEPLOY_BASE_RPC_URL }}
-          TEST_FLARE_RPC: ${{ secrets.RPC_URL_FLARE_FORK }}
-          TEST_ETH_RPC: ${{ secrets.RPC_URL_ETHEREUM_FORK }}
-          TEST_BSC_RPC: ${{ secrets.CI_DEPLOY_BSC_RPC_URL }}
-          TEST_ARBITRUM_RPC: ${{ secrets.CI_DEPLOY_ARBITRUM_RPC_URL }}
+        run: TEST_${{ matrix.chain }}_RPC=${{ secrets[env.RPC] }} nix develop -c npm test

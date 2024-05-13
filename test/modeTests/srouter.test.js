@@ -314,7 +314,7 @@ for (let i = 0; i < testChains.length; i++) {
                 config.rpVersion = rpVersion;
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
-                const reports = await clear(config, sgOrders, undefined, tracer, ctx);
+                const reports = await clear(config, sgOrders, undefined, tracer, ctx, testSpan);
 
                 // should have cleared 2 token pairs bundled orders
                 assert.ok(reports.length == 2);
