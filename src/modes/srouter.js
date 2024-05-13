@@ -92,13 +92,15 @@ const srouterClear = async(
             "details.pair": pair,
         });
 
+        // terminate if wallet has no funds
+        if (noFunds) {
+            pairSpan.recordException("bot wallet ran out of funds");
+            pairSpan.setStatus({code: SpanStatusCode.ERROR});
+            pairSpan.end();
+            throw "bot wallet ran out of funds";
+        }
+
         try {
-            if (noFunds) {
-                pairSpan.recordException("bot wallet ran out of funds");
-                pairSpan.setStatus({code: SpanStatusCode.ERROR});
-                pairSpan.end();
-                continue;
-            }
             if (!bundledOrders[i].takeOrders.length) {
                 pairSpan.setStatus({code: SpanStatusCode.OK, message: "all orders have empty vault"});
                 pairSpan.end();
@@ -241,12 +243,13 @@ const srouterClear = async(
                             ) {
                                 choice = allPromises[j].value;
                             }
-                        } else {
-                            if (allPromises[j].reason === "no-balance") noFunds = true;
+                        } else if (allPromises[j].reason === "no-balance") {
+                            noFunds = true;
+                            choice = undefined;
                         }
                     }
                 }
-                if (!noFunds && choice) {
+                if (choice) {
                     ({
                         rawtx,
                         gasCostInToken,
