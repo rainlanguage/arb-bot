@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
-const { getQuery } = require("./query");
+const { getQuery, statusCheckQuery } = require("./query");
 const { versions } = require("process");
 const { srouterClear } = require("./modes/srouter");
 const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
@@ -74,6 +74,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 
     if (isInvalidSg && isInvalidJson) throw "type of provided sources are invalid";
     else {
+        const availableSgs = [];
         hasjson = false;
         const promises = [];
         if (!isInvalidJson) {
@@ -88,7 +89,52 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
             }
         }
         if (!isInvalidSg) {
+            const validSgs = [];
+            const statusCheckPromises = [];
             sgs.forEach(v => {
+                if (v && typeof v === "string") {
+                    statusCheckPromises.push(axios.post(
+                        v,
+                        { query: statusCheckQuery },
+                        { headers: { "Content-Type": "application/json" } }
+                    ));
+                    validSgs.push(v);
+                }
+            });
+            statusCheckPromises.push(signer.provider.getBlockNumber());
+
+            const statusResult = await Promise.allSettled(statusCheckPromises);
+            const blockNumberResult = statusResult.pop();
+            if (blockNumberResult.status === "fulfilled") {
+                const blockNumber = blockNumberResult.value;
+                const reasons = {};
+                for (let i = 0; i < statusResult.length; i++) {
+                    if (statusResult[i].status === "fulfilled") {
+                        const sgStatus = statusResult[i]?.value?.data?.data?._meta;
+                        if (sgStatus) {
+                            if (sgStatus.hasIndexingErrors) {
+                                reasons[validSgs[i]] = "subgraph has indexing error";
+                            }
+                            else if (
+                                sgStatus.block.number < blockNumber &&
+                                (
+                                    blockNumber - sgStatus.block.number
+                                ).toString().length > 2
+                            ) {
+                                reasons[validSgs[i]] = "possibly out of sync";
+                            } else availableSgs.push(validSgs[i]);
+                        } else {
+                            reasons[validSgs[i]] = "did not receive valid status response";
+                        }
+                    } else {
+                        reasons[validSgs[i]] = statusResult[i].reason;
+                    }
+                }
+                if (Object.keys(reasons).length) span.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
+                if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
+            }
+
+            availableSgs.forEach(v => {
                 if (v && typeof v === "string") promises.push(axios.post(
                     v,
                     {
@@ -104,32 +150,21 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
         }
 
         const responses = await Promise.allSettled(promises);
-        if (responses.every((v) => v.status === "rejected")) {
-            const reasons = {};
-            responses.forEach((v, i) => {
-                reasons[sgs[i]] = v.reason;
-            });
-            if (!hasjson) throw new Error({
-                msg: "could not read anything from provided sources",
-                reasons
-            });
-        }
-        else {
-            const reasons = {};
-            for (let i = 0; i < responses.length; i++) {
-                if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
-                    ordersDetails.push(
-                        ...responses[i].value.data.data.orders
-                    );
-                }
-                else {
-                    reasons[sgs[i]] = responses[i].status === "fulfilled"
-                        ? "could not read from url"
-                        : responses[i].reason;
-                }
+        const reasons = {};
+        for (let i = 0; i < responses.length; i++) {
+            if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
+                ordersDetails.push(
+                    ...responses[i].value.data.data.orders
+                );
             }
-            if (Object.keys(reasons).length) span.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
+            else {
+                reasons[availableSgs[i]] = responses[i].status === "fulfilled"
+                    ? "could not read from url"
+                    : responses[i].reason;
+            }
         }
+        if (Object.keys(reasons).length) span.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
+        if (!hasjson && Object.keys(reasons).length === responses.length) throw "could not get order details from given sgs";
     }
     return ordersDetails;
 };
