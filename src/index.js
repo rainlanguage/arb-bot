@@ -74,7 +74,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 
     if (isInvalidSg && isInvalidJson) throw "type of provided sources are invalid";
     else {
-        const availableSgs = [];
+        let availableSgs = [];
         hasjson = false;
         const promises = [];
         if (!isInvalidJson) {
@@ -102,37 +102,15 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                 }
             });
             statusCheckPromises.push(signer.provider.getBlockNumber());
-
             const statusResult = await Promise.allSettled(statusCheckPromises);
             const blockNumberResult = statusResult.pop();
-            if (blockNumberResult.status === "fulfilled") {
-                const blockNumber = blockNumberResult.value;
-                const reasons = {};
-                for (let i = 0; i < statusResult.length; i++) {
-                    if (statusResult[i].status === "fulfilled") {
-                        const sgStatus = statusResult[i]?.value?.data?.data?._meta;
-                        if (sgStatus) {
-                            if (sgStatus.hasIndexingErrors) {
-                                reasons[validSgs[i]] = "subgraph has indexing error";
-                            }
-                            else if (
-                                sgStatus.block.number < blockNumber &&
-                                (
-                                    blockNumber - sgStatus.block.number
-                                ).toString().length > 2
-                            ) {
-                                reasons[validSgs[i]] = "possibly out of sync";
-                            } else availableSgs.push(validSgs[i]);
-                        } else {
-                            reasons[validSgs[i]] = "did not receive valid status response";
-                        }
-                    } else {
-                        reasons[validSgs[i]] = statusResult[i].reason;
-                    }
-                }
-                if (Object.keys(reasons).length) span.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
-                if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
-            }
+            ({ availableSgs } = checkSgStatus(
+                validSgs,
+                statusResult,
+                blockNumberResult,
+                span,
+                hasjson
+            ));
 
             availableSgs.forEach(v => {
                 if (v && typeof v === "string") promises.push(axios.post(
@@ -150,21 +128,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
         }
 
         const responses = await Promise.allSettled(promises);
-        const reasons = {};
-        for (let i = 0; i < responses.length; i++) {
-            if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
-                ordersDetails.push(
-                    ...responses[i].value.data.data.orders
-                );
-            }
-            else {
-                reasons[availableSgs[i]] = responses[i].status === "fulfilled"
-                    ? "could not read from url"
-                    : responses[i].reason;
-            }
-        }
-        if (Object.keys(reasons).length) span.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
-        if (!hasjson && Object.keys(reasons).length === responses.length) throw "could not get order details from given sgs";
+        ordersDetails.push(...handleSgResults(availableSgs, responses, span, hasjson));
     }
     return ordersDetails;
 };
@@ -290,8 +254,63 @@ const clear = async(
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 };
 
+function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson) {
+    const availableSgs = [];
+    const reasons = {};
+    if (blockNumberResult.status === "fulfilled") {
+        const blockNumber = blockNumberResult.value;
+        for (let i = 0; i < statusResult.length; i++) {
+            if (statusResult[i].status === "fulfilled") {
+                const sgStatus = statusResult[i]?.value?.data?.data?._meta;
+                if (sgStatus) {
+                    if (sgStatus.hasIndexingErrors) {
+                        reasons[validSgs[i]] = "subgraph has indexing error";
+                    }
+                    else if (
+                        sgStatus.block.number < blockNumber &&
+                        (
+                            blockNumber - sgStatus.block.number
+                        ).toString().length > 2
+                    ) {
+                        reasons[validSgs[i]] = "possibly out of sync";
+                    } else availableSgs.push(validSgs[i]);
+                } else {
+                    reasons[validSgs[i]] = "did not receive valid status response";
+                }
+            } else {
+                reasons[validSgs[i]] = statusResult[i].reason;
+            }
+        }
+        if (Object.keys(reasons).length) span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
+        if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
+    }
+    return { availableSgs, reasons };
+}
+
+function handleSgResults(availableSgs, responses, span, hasjson) {
+    const reasons = {};
+    const ordersDetails = [];
+    for (let i = 0; i < responses.length; i++) {
+        if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
+            ordersDetails.push(
+                ...responses[i].value.data.data.orders
+            );
+        }
+        else {
+            reasons[availableSgs[i]] = responses[i].status === "fulfilled"
+                ? "could not read from url"
+                : responses[i].reason;
+        }
+    }
+    if (Object.keys(reasons).length) span?.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
+    if (!hasjson && Object.keys(reasons).length === responses.length) throw "could not get order details from given sgs";
+    return ordersDetails;
+}
+
 module.exports = {
     getOrderDetails,
     getConfig,
-    clear
+    clear,
+    checkSgStatus,
+    handleSgResults,
 };
