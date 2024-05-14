@@ -156,6 +156,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             }
 
             let txs;
+            let foundOpp = false;
             const reports = await clear(
                 config,
                 ordersDetails,
@@ -169,8 +170,13 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             if (reports && reports.length) {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);
                 if (txs.length) {
+                    foundOpp = true;
                     span.setAttribute("details.txUrls", txs);
                     span.setAttribute("details.didClear", true);
+                    span.setAttribute("details.foundOpp", true);
+                } else if (reports.some(v => v.foundOpp)) {
+                    foundOpp = true;
+                    span.setAttribute("details.foundOpp", true);
                 }
             }
             else {
@@ -178,7 +184,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
-            return txs;
+            return { txs, foundOpp };
         } catch(e) {
             span.setAttribute("details.didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR });
@@ -278,16 +284,21 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const txs = await arbRound(tracer, roundCtx, options, lastError);
+                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("details.txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
-                    roundSpan.setStatus({ code: SpanStatusCode.OK });
+                    roundSpan.setAttribute("foundOpp", true);
+                }
+                else if (foundOpp) {
+                    roundSpan.setAttribute("foundOpp", true);
+                    roundSpan.setAttribute("didClear", false);
                 }
                 else {
+                    roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
-                    roundSpan.setStatus({ code: SpanStatusCode.OK });
                 }
+                roundSpan.setStatus({ code: SpanStatusCode.OK });
                 lastError = undefined;
                 lastSpanContext = undefined;
             }
@@ -329,16 +340,21 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const txs = await arbRound(tracer, roundCtx, options, lastError);
+                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("details.txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
-                    roundSpan.setStatus({ code: SpanStatusCode.OK });
+                    roundSpan.setAttribute("foundOpp", true);
+                }
+                else if (foundOpp) {
+                    roundSpan.setAttribute("foundOpp", true);
+                    roundSpan.setAttribute("didClear", false);
                 }
                 else {
+                    roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
-                    roundSpan.setStatus({ code: SpanStatusCode.OK });
                 }
+                roundSpan.setStatus({ code: SpanStatusCode.OK });
                 lastError = undefined;
                 lastSpanContext = undefined;
             }
