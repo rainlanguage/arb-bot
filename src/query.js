@@ -99,7 +99,17 @@ const getQuery = (orderHash, owner, interpreter) => {
     }`;
 };
 
+const statusCheckQuery = `{
+    _meta {
+        hasIndexingErrors
+        block {
+            number
+        }
+    }
+}`;
+
 module.exports = {
     DefaultQuery,
-    getQuery
+    getQuery,
+    statusCheckQuery
 };
