@@ -320,6 +320,7 @@ const srouterClear = async(
                         : await tx.wait();
 
                     if (receipt.status === 1) {
+                        pairSpan.setAttribute("didClear", true);
                         const clearActualAmount = getActualClearAmount(
                             arbAddress,
                             orderbookAddress,
@@ -377,15 +378,18 @@ const srouterClear = async(
                         });
                     }
                     else {
+                        report.push({ foundOpp: true });
                         pairSpan.setAttribute("details.receipt", JSON.stringify(receipt));
                         pairSpan.setStatus({ code: SpanStatusCode.ERROR });
                     }
                 } catch (error) {
+                    report.push({ foundOpp: true });
                     pairSpan.recordException(getSpanException(error));
                     pairSpan.setStatus({ code: SpanStatusCode.ERROR });
                 }
             }
             catch (error) {
+                report.push({ foundOpp: true });
                 pairSpan.setAttributes({
                     "details.rawTx": JSON.stringify(rawtx),
                 });
@@ -490,7 +494,6 @@ async function dryrun(
             } catch {
                 /**/
             }
-            hopAttrs["route"] = routeVisual;
 
             const rpParams = getRouteProcessorParamsVersion["3.2"](
                 pcMap,
@@ -537,13 +540,12 @@ async function dryrun(
                     gasPrice
                 };
 
-                const blockNumber = await signer.provider.getBlockNumber();
+                let blockNumber = await signer.provider.getBlockNumber();
                 hopAttrs["blockNumber"] = blockNumber;
 
                 let gasLimit;
                 try {
                     gasLimit = await signer.estimateGas(rawtx);
-                    hopAttrs["estimateGas"] = gasLimit.toString();
                 }
                 catch(e) {
                     const spanError = getSpanException(e);
@@ -557,6 +559,7 @@ async function dryrun(
                     }
                     // only record the last error for traces
                     if (j === hops) {
+                        hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
                     }
                     throw "nomatch";
@@ -573,10 +576,7 @@ async function dryrun(
                         36 - bundledOrder.buyTokenDecimals
                     )
                 );
-                hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
-                    gasCostInToken,
-                    toToken.decimals
-                );
+
                 if (gasCoveragePercentage !== "0") {
                     const headroom = (
                         Number(gasCoveragePercentage) * 1.05
@@ -588,6 +588,10 @@ async function dryrun(
                             gasCostInToken.mul(headroom).div("100")
                         ]
                     );
+
+                    blockNumber = await signer.provider.getBlockNumber();
+                    hopAttrs["blockNumber"] = blockNumber;
+
                     try {
                         await signer.estimateGas(rawtx);
                     }
@@ -602,6 +606,11 @@ async function dryrun(
                             return Promise.reject("no-balance");
                         }
                         if (j === hops) {
+                            hopAttrs["route"] = routeVisual;
+                            hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
+                                gasCostInToken,
+                                toToken.decimals
+                            );
                             hopAttrs["error"] = getSpanException(e);
                         }
                         throw "dryrun";
@@ -609,6 +618,8 @@ async function dryrun(
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
+                    span.setAttribute("details.oppBlockNumber", blockNumber);
+                    span.setAttribute("foundOpp", true);
                     return {
                         rawtx,
                         maximumInput,
