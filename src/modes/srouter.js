@@ -89,7 +89,8 @@ const srouterClear = async(
         );
         pairSpan.setAttributes({
             "details.orders": bundledOrders[i].takeOrders.map(v => v.id),
-            "details.pair": pair,
+            "details.input": bundledOrders[i].buyTokenSymbol,
+            "details.output": bundledOrders[i].sellTokenSymbol,
         });
 
         // terminate if wallet has no funds
