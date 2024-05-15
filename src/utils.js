@@ -1460,6 +1460,81 @@ function getSpanException(error) {
     return error;
 }
 
+/**
+ * Builds and bundles orders which their details are queried from a orderbook subgraph
+ *
+ * @param {any[]} ordersDetails - Orders details queried from subgraph
+ * @param {boolean} _shuffle - To shuffle the bundled order array at the end
+ * @param {boolean} _bundle = If orders should be bundled based on token pair
+ * @returns Array of bundled take orders
+ */
+const bundleOrders = (
+    ordersDetails,
+    _shuffle = true,
+    _bundle = true,
+) => {
+    const bundledOrders = [];
+    for (let i = 0; i < ordersDetails.length; i++) {
+        const orderDetails = ordersDetails[i];
+        const orderStruct = JSON.parse(ordersDetails[i].orderJSONString);
+        for (let j = 0; j < orderStruct.validOutputs.length; j++) {
+            const _output = orderStruct.validOutputs[j];
+            const _outputSymbol = orderDetails.validOutputs.find(
+                v => v.token.id.toLowerCase() === _output.token.toLowerCase()
+            ).token.symbol;
+
+            for (let k = 0; k < orderStruct.validInputs.length; k ++) {
+                const _input = orderStruct.validInputs[k];
+                const _inputSymbol = orderDetails.validInputs.find(
+                    v => v.token.id.toLowerCase() === _input.token.toLowerCase()
+                ).token.symbol;
+
+                if (_output.token.toLowerCase() !== _input.token.toLowerCase()) {
+                    const pair = bundledOrders.find(v =>
+                        v.sellToken === _output.token.toLowerCase() &&
+                        v.buyToken === _input.token.toLowerCase()
+                    );
+                    if (pair && _bundle) pair.takeOrders.push({
+                        id: orderDetails.id,
+                        takeOrder: {
+                            order: orderStruct,
+                            inputIOIndex: k,
+                            outputIOIndex: j,
+                            signedContext: []
+                        }
+                    });
+                    else bundledOrders.push({
+                        buyToken: _input.token.toLowerCase(),
+                        buyTokenSymbol: _inputSymbol,
+                        buyTokenDecimals: _input.decimals,
+                        sellToken: _output.token.toLowerCase(),
+                        sellTokenSymbol: _outputSymbol,
+                        sellTokenDecimals: _output.decimals,
+                        takeOrders: [{
+                            id: orderDetails.id,
+                            takeOrder: {
+                                order: orderStruct,
+                                inputIOIndex: k,
+                                outputIOIndex: j,
+                                signedContext: []
+                            }
+                        }]
+                    });
+
+                }
+            }
+        }
+    }
+    if (_shuffle) {
+        // shuffle take orders for each pair
+        if (_bundle) bundledOrders.forEach(v => shuffleArray(v.takeOrders));
+
+        // shuffle bundled orders pairs
+        shuffleArray(bundledOrders);
+    }
+    return bundledOrders;
+};
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1487,4 +1562,5 @@ module.exports = {
     interpreterV2Eval,
     getSpanException,
     getChainConfig,
+    bundleOrders,
 };

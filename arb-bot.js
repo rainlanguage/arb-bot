@@ -165,7 +165,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 },
                 tracer,
                 ctx,
-                span
             );
             if (reports && reports.length) {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);
