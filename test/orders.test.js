@@ -125,6 +125,7 @@ describe("Test order details", async function () {
     });
 
     it("should get correct vault balance", async function () {
+        const [signer] = await ethers.getSigners();
         const usdt = {
             address: order1.validInputs[0].token.id,
             decimals: order1.validInputs[0].token.decimals,
@@ -145,11 +146,10 @@ describe("Test order details", async function () {
             ERC20Artifact.abi,
             wmatic.address
         );
+
+        // impersonate owner1 and owner2 from orders structs to deposit token into their vaults
         const owner1 = await ethers.getImpersonatedSigner(orderStruct1.owner);
         const owner2 = await ethers.getImpersonatedSigner(orderStruct2.owner);
-
-        // get signers
-        const [bot] = await ethers.getSigners();
 
         // deploy contracts
         const interpreter = await rainterpreterNPE2Deploy();
@@ -168,23 +168,24 @@ describe("Test order details", async function () {
         const wmaticHolder = await ethers.getImpersonatedSigner(wmatic.addressWithBalance);
 
         // fund token holder with eth for gas tx
-        await bot.sendTransaction({
+        await signer.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
             to: usdtHolder.address
         });
-        await bot.sendTransaction({
+        await signer.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
             to: wmaticHolder.address
         });
-        await bot.sendTransaction({
+        await signer.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
             to: owner1.address
         });
-        await bot.sendTransaction({
+        await signer.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
             to: owner2.address
         });
 
+        // fund owner1 and owner2 with their orders output tokens from account with balance
         await wmaticContract.connect(wmaticHolder).transfer(owner1.address, "50" + "0".repeat(wmatic.decimals));
         await usdtContract.connect(usdtHolder).transfer(owner2.address, "50" + "0".repeat(usdt.decimals));
         await wmaticContract.connect(wmaticHolder).transfer(owner2.address, "50" + "0".repeat(wmatic.decimals));
