@@ -1536,34 +1536,25 @@ const bundleOrders = (
 };
 
 /**
- * Gets vault balance of an order or combined value of bundled orders
+ * Gets vault balance of an order or combined value of vaults if bundled
  */
-async function getVaultBalance(orderDetails, obContract, isBundled) {
-    if (isBundled) {
-        let combinedVaultBalances = ethers.BigNumber.from(0);
-        for (let i = 0; i < orderDetails.takeOrders.length; i++) {
-            combinedVaultBalances = combinedVaultBalances.add(await obContract.vaultBalance(
-                orderDetails.takeOrders[i].takeOrder.order.owner,
-                orderDetails.takeOrders[i].takeOrder.order.validOutputs[
-                    orderDetails.takeOrders[i].takeOrder.outputIOIndex
-                ].token,
-                orderDetails.takeOrders[i].takeOrder.order.validOutputs[
-                    orderDetails.takeOrders[i].takeOrder.outputIOIndex
-                ].vaultId,
-            ));
-        }
-        return combinedVaultBalances;
-    } else {
-        return await obContract.vaultBalance(
-            orderDetails.takeOrders[0].takeOrder.order.owner,
-            orderDetails.takeOrders[0].takeOrder.order.validOutputs[
-                orderDetails.takeOrders[0].takeOrder.outputIOIndex
+async function getVaultBalance(orderDetails, obContract) {
+    let result = ethers.BigNumber.from(0);
+    for (let i = 0; i < orderDetails.takeOrders.length; i++) {
+        result = result.add(await obContract.vaultBalance(
+            // owner
+            orderDetails.takeOrders[i].takeOrder.order.owner,
+            // token
+            orderDetails.takeOrders[i].takeOrder.order.validOutputs[
+                orderDetails.takeOrders[i].takeOrder.outputIOIndex
             ].token,
-            orderDetails.takeOrders[0].takeOrder.order.validOutputs[
-                orderDetails.takeOrders[0].takeOrder.outputIOIndex
+            // valut id
+            orderDetails.takeOrders[i].takeOrder.order.validOutputs[
+                orderDetails.takeOrders[i].takeOrder.outputIOIndex
             ].vaultId,
-        );
+        ));
     }
+    return result;
 }
 
 module.exports = {

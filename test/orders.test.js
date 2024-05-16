@@ -300,7 +300,7 @@ describe("Test order details", async function () {
         ];
         const noBundleOrders = bundleOrders([order1, order2], false, false);
         for (let i = 0; i < noBundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(noBundleOrders[i], orderbook, false);
+            const vaultBalance = await getVaultBalance(noBundleOrders[i], orderbook);
             assert.deepEqual(vaultBalance, expectedBalancesNoBundle[i]);
         }
 
@@ -311,7 +311,7 @@ describe("Test order details", async function () {
         ];
         const bundledOrders = bundleOrders([order1, order2], false, true);
         for (let i = 0; i < bundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(bundledOrders[i], orderbook, true);
+            const vaultBalance = await getVaultBalance(bundledOrders[i], orderbook);
             assert.deepEqual(vaultBalance, expectedBalancesBundled[i]);
         }
 
