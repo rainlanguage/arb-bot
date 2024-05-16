@@ -211,12 +211,12 @@ describe("Test order details", async function () {
         );
         const orderbook = await deployOrderBookNPE2(expressionDeployer);
 
-        // impersonate addresses with large token balances to fund the owner 1 2 3
-        // accounts with 110 tokens each used for topping up the order vaults
+        // impersonate addresses with large token balances to fund the owner 1 2
+        // accounts with some tokens used for topping up their vaults
         const usdtHolder = await ethers.getImpersonatedSigner(usdt.addressWithBalance);
         const wmaticHolder = await ethers.getImpersonatedSigner(wmatic.addressWithBalance);
 
-        // fund token holder with eth for gas tx
+        // fund token holders and owners with eth for tx gas cost
         await signer.sendTransaction({
             value: ethers.utils.parseEther("5.0"),
             to: usdtHolder.address
