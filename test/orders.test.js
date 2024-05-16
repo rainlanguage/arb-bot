@@ -66,8 +66,8 @@ describe("Test order details", async function () {
     const orderStruct2 = JSON.parse(order2.orderJSONString);
 
     it("should return correct order details", async function () {
-        const result = bundleOrders([order1, order2], false, false);
-        const expected = [
+        const unbundledResult = bundleOrders([order1, order2], false, false);
+        const unbundledExpected = [
             {
                 buyToken: orderStruct1.validInputs[0].token,
                 buyTokenSymbol: order1.validInputs[0].token.symbol,
@@ -120,8 +120,57 @@ describe("Test order details", async function () {
                 }]
             },
         ];
+        assert.deepEqual(unbundledResult, unbundledExpected);
 
-        assert.deepEqual(result, expected);
+        const bundledResult = bundleOrders([order1, order2], false, true);
+        const bundledExpected = [
+            {
+                buyToken: orderStruct1.validInputs[0].token,
+                buyTokenSymbol: order1.validInputs[0].token.symbol,
+                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
+                sellToken: orderStruct1.validOutputs[0].token,
+                sellTokenSymbol: order1.validOutputs[0].token.symbol,
+                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                takeOrders: [
+                    {
+                        id: order1.id,
+                        takeOrder: {
+                            order: orderStruct1,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: []
+                        }
+                    },
+                    {
+                        id: order2.id,
+                        takeOrder: {
+                            order: orderStruct2,
+                            inputIOIndex: 0,
+                            outputIOIndex: 1,
+                            signedContext: []
+                        }
+                    }
+                ]
+            },
+            {
+                buyToken: orderStruct2.validInputs[1].token,
+                buyTokenSymbol: order2.validInputs[1].token.symbol,
+                buyTokenDecimals: orderStruct2.validInputs[1].decimals,
+                sellToken: orderStruct2.validOutputs[0].token,
+                sellTokenSymbol: order2.validOutputs[0].token.symbol,
+                sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
+                takeOrders: [{
+                    id: order2.id,
+                    takeOrder: {
+                        order: orderStruct2,
+                        inputIOIndex: 1,
+                        outputIOIndex: 0,
+                        signedContext: []
+                    }
+                }]
+            },
+        ];
+        assert.deepEqual(bundledResult, bundledExpected);
     });
 
     it("should get correct vault balance", async function () {
