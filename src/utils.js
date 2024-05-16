@@ -1535,6 +1535,37 @@ const bundleOrders = (
     return bundledOrders;
 };
 
+/**
+ * Gets vault balance of an order or combined value of bundled orders
+ */
+async function getVaultBalance(orderDetails, obContract, isBundled) {
+    if (isBundled) {
+        let combinedVaultBalances = ethers.BigNumber.from(0);
+        for (let i = 0; i < orderDetails.takeOrders.length; i++) {
+            combinedVaultBalances = combinedVaultBalances.add(await obContract.vaultBalance(
+                orderDetails.takeOrders[i].takeOrder.order.owner,
+                orderDetails.takeOrders[i].takeOrder.order.validOutputs[
+                    orderDetails.takeOrders[i].takeOrder.outputIOIndex
+                ].token,
+                orderDetails.takeOrders[i].takeOrder.order.validOutputs[
+                    orderDetails.takeOrders[i].takeOrder.outputIOIndex
+                ].vaultId,
+            ));
+        }
+        return combinedVaultBalances;
+    } else {
+        return await obContract.vaultBalance(
+            orderDetails.takeOrders[0].takeOrder.order.owner,
+            orderDetails.takeOrders[0].takeOrder.order.validOutputs[
+                orderDetails.takeOrders[0].takeOrder.outputIOIndex
+            ].token,
+            orderDetails.takeOrders[0].takeOrder.order.validOutputs[
+                orderDetails.takeOrders[0].takeOrder.outputIOIndex
+            ].vaultId,
+        );
+    }
+}
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1563,4 +1594,5 @@ module.exports = {
     getSpanException,
     getChainConfig,
     bundleOrders,
+    getVaultBalance,
 };

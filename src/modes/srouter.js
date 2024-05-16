@@ -13,7 +13,8 @@ const {
     promiseTimeout,
     bundleOrders,
     getActualClearAmount,
-    getSpanException
+    getSpanException,
+    getVaultBalance
 } = require("../utils");
 
 
@@ -118,8 +119,14 @@ const srouterClear = async(
                 data: "0x70a08231000000000000000000000000" + orderbook.address.slice(2),
                 to: bundledOrders[i].sellToken
             }));
+            const vaultBalance = await getVaultBalance(bundledOrders[i], orderbook, config.bundle);
 
-            if (obSellTokenBalance.isZero()) {
+            // pick min of vault balance and ob balance
+            const discoveryStartAmount = obSellTokenBalance.gt(vaultBalance)
+                ? vaultBalance
+                : obSellTokenBalance;
+
+            if (discoveryStartAmount.isZero()) {
                 pairSpan.setStatus({
                     code: SpanStatusCode.OK,
                     message: `Orderbook has no ${bundledOrders[i].sellTokenSymbol}`
@@ -188,7 +195,7 @@ const srouterClear = async(
                         fromToken,
                         toToken,
                         signer,
-                        obSellTokenBalance,
+                        discoveryStartAmount,
                         gasPrice,
                         gasCoveragePercentage,
                         maxProfit,
@@ -213,7 +220,7 @@ const srouterClear = async(
                             fromToken,
                             toToken,
                             signer,
-                            obSellTokenBalance,
+                            discoveryStartAmount,
                             gasPrice,
                             gasCoveragePercentage,
                             maxProfit,
@@ -411,7 +418,7 @@ async function dryrun(
     fromToken,
     toToken,
     signer,
-    obSellTokenBalance,
+    discoveryStartAmount,
     gasPrice,
     gasCoveragePercentage,
     maxProfit,
@@ -428,7 +435,7 @@ async function dryrun(
         "4": Router.routeProcessor4Params,
     };
     let succesOrFailure = true;
-    let maximumInput = obSellTokenBalance;
+    let maximumInput = discoveryStartAmount;
 
     const hopsDetails = {};
     for (let j = 1; j < hops + 1; j++) {
@@ -468,7 +475,7 @@ async function dryrun(
             if (bundledOrder.takeOrders.length === 0) {
                 hopAttrs["status"] = "all orders had lower ratio than market price";
                 hopsDetails[`details.hop-${j}`] = JSON.stringify(hopAttrs);
-                maximumInput = maximumInput.sub(obSellTokenBalance.div(2 ** j));
+                maximumInput = maximumInput.sub(discoveryStartAmount.div(2 ** j));
                 continue;
             }
 
@@ -626,8 +633,8 @@ async function dryrun(
         }
         hopsDetails[`details.hop-${j}`] = JSON.stringify(hopAttrs);
         maximumInput = succesOrFailure
-            ? maximumInput.add(obSellTokenBalance.div(2 ** j))
-            : maximumInput.sub(obSellTokenBalance.div(2 ** j));
+            ? maximumInput.add(discoveryStartAmount.div(2 ** j))
+            : maximumInput.sub(discoveryStartAmount.div(2 ** j));
     }
     span.setAttributes(hopsDetails);
     return Promise.reject();
