@@ -14,7 +14,8 @@ const {
     bundleOrders,
     getActualClearAmount,
     getSpanException,
-    getVaultBalance
+    getVaultBalance,
+    createViemClient
 } = require("../utils");
 
 
@@ -41,7 +42,8 @@ const srouterClear = async(
     ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
 
     const lps               = processLps(config.lps);
-    const dataFetcher       = getDataFetcher(config, lps, false);
+    const viemClient        = createViemClient(config.chain.id, [config.rpc], false);
+    const dataFetcher       = getDataFetcher(viemClient, lps, false);
     const signer            = config.signer;
     const arbAddress        = config.arbAddress;
     const orderbookAddress  = config.orderbookAddress;
@@ -116,7 +118,13 @@ const srouterClear = async(
             });
 
             // get vault balance
-            const vaultBalance = await getVaultBalance(bundledOrders[i], orderbook, config.bundle);
+            const vaultBalance = await getVaultBalance(
+                bundledOrders[i],
+                orderbook.address,
+                // if on test, use test hardhat viem client
+                config.testViemClient ?? viemClient,
+                config.testViemClient ? "0xcA11bde05977b3631167028862bE2a173976CA11" : undefined
+            );
             if (vaultBalance.isZero()) {
                 pairSpan.setStatus({
                     code: SpanStatusCode.OK,

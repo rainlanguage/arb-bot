@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers, viem } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { bundleOrders, getVaultBalance } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
@@ -175,6 +175,7 @@ describe("Test order details", async function () {
 
     it("should get correct vault balance", async function () {
         const [signer] = await ethers.getSigners();
+        const viemClient = await viem.getPublicClient();
         const usdt = {
             address: order1.validInputs[0].token.id,
             decimals: order1.validInputs[0].token.decimals,
@@ -300,7 +301,12 @@ describe("Test order details", async function () {
         ];
         const noBundleOrders = bundleOrders([order1, order2], false, false);
         for (let i = 0; i < noBundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(noBundleOrders[i], orderbook);
+            const vaultBalance = await getVaultBalance(
+                noBundleOrders[i],
+                orderbook.address,
+                viemClient,
+                "0xcA11bde05977b3631167028862bE2a173976CA11"
+            );
             assert.deepEqual(vaultBalance, expectedBalancesNoBundle[i]);
         }
 
@@ -311,7 +317,12 @@ describe("Test order details", async function () {
         ];
         const bundledOrders = bundleOrders([order1, order2], false, true);
         for (let i = 0; i < bundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(bundledOrders[i], orderbook);
+            const vaultBalance = await getVaultBalance(
+                bundledOrders[i],
+                orderbook.address,
+                viemClient,
+                "0xcA11bde05977b3631167028862bE2a173976CA11"
+            );
             assert.deepEqual(vaultBalance, expectedBalancesBundled[i]);
         }
 

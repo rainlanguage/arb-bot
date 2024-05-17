@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { assert } = require("chai");
 const { clear } = require("../../src");
-const { ethers } = require("hardhat");
+const { ethers, viem } = require("hardhat");
 const { arbDeploy } = require("../deploy/arbDeploy");
 const { getChainConfig } = require("../../src/utils");
 const { Resource } = require("@opentelemetry/resources");
@@ -196,6 +196,7 @@ for (let i = 0; i < testChains.length; i++) {
             const rpVersion = rpVersions[j];
 
             it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+                const viemClient = await viem.getPublicClient();
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -314,6 +315,7 @@ for (let i = 0; i < testChains.length; i++) {
                 config.rpVersion = rpVersion;
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
+                config.testViemClient = viemClient;
                 const reports = await clear(config, sgOrders, undefined, tracer, ctx, testSpan);
 
                 // should have cleared 2 token pairs bundled orders
