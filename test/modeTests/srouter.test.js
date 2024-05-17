@@ -55,7 +55,7 @@ const testChains = [
     [
         ChainId.ARBITRUM,
         process?.env?.TEST_ARBITRUM_RPC,
-        209928505,
+        212050790,
         [
             WNATIVE[ChainId.ARBITRUM],
             USDT[ChainId.ARBITRUM],
