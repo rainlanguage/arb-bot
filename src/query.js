@@ -64,6 +64,7 @@ const getQuery = (orderHash, owner, interpreter) => {
             expression
             interpreter
             interpreterStore
+            orderJSONString
             owner {
                 id
             }

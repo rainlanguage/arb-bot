@@ -11,7 +11,7 @@ const {
     getActualPrice,
     visualizeRoute,
     promiseTimeout,
-    bundleTakeOrders,
+    bundleOrders,
     getActualClearAmount,
     getSpanException
 } = require("../utils");
@@ -25,7 +25,6 @@ const {
  * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
- * @param {import("@opentelemetry/api").Span} span
  * @returns The report of details of cleared orders
  */
 const srouterClear = async(
@@ -34,7 +33,6 @@ const srouterClear = async(
     gasCoveragePercentage = "100",
     tracer,
     ctx,
-    span,
 ) => {
     if (
         gasCoveragePercentage < 0 ||
@@ -63,14 +61,10 @@ const srouterClear = async(
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi, signer);
 
-    const bundledOrders = await bundleTakeOrders(
+    const bundledOrders = bundleOrders(
         ordersDetails,
-        orderbook,
-        arb,
-        maxProfit,
         config.shuffle,
         config.bundle,
-        span
     );
     if (!bundledOrders.length) return;
 
@@ -121,7 +115,7 @@ const srouterClear = async(
             });
 
             const obSellTokenBalance = ethers.BigNumber.from(await signer.call({
-                data: "0x70a08231000000000000000000000000" + orderbookAddress.slice(2),
+                data: "0x70a08231000000000000000000000000" + orderbook.address.slice(2),
                 to: bundledOrders[i].sellToken
             }));
 
@@ -471,14 +465,6 @@ async function dryrun(
             const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
             hopAttrs["marketPrice"] = ethers.utils.formatEther(price);
 
-            // filter out orders that are not price match or failed eval when --max-profit is enabled
-            // price check is at +2% as a headroom for current block vs tx block
-            if (!mode && maxProfit) {
-                bundledOrder.takeOrders = bundledOrder.takeOrders.filter(
-                    v => v.ratio !== undefined ? price.mul("102").div("100").gte(v.ratio) : false
-                );
-                hopAttrs["didRatioFilter"] = true;
-            }
             if (bundledOrder.takeOrders.length === 0) {
                 hopAttrs["status"] = "all orders had lower ratio than market price";
                 hopsDetails[`details.hop-${j}`] = JSON.stringify(hopAttrs);
@@ -611,7 +597,7 @@ async function dryrun(
                                 gasCostInToken,
                                 toToken.decimals
                             );
-                            hopAttrs["error"] = getSpanException(e);
+                            hopAttrs["error"] = spanError;
                         }
                         throw "dryrun";
                     }

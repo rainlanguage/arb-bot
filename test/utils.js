@@ -1,5 +1,6 @@
 const { ethers } = require("hardhat");
 const { assert } = require("chai");
+const { getOrderStruct } = require("../src/utils");
 
 /**
  * Deploys a simple contracts that takes no arguments for deployment
@@ -151,7 +152,7 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
         });
     }
 
-    return {
+    const tempOrderDetails = {
         id: typeof eventArgs.orderHash === "string"
             ? eventArgs.orderHash.toLowerCase()
             : eventArgs.orderHash.toHexString().toLowerCase(),
@@ -194,6 +195,11 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
                 }
             };
         })
+    };
+    const orderJSONString = JSON.stringify(getOrderStruct(tempOrderDetails));
+    return {
+        ...tempOrderDetails,
+        orderJSONString
     };
 };
 
