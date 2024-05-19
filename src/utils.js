@@ -1478,7 +1478,7 @@ const bundleOrders = (
         const orderDetails = ordersDetails[i];
         const orderStruct = JSON.parse(ordersDetails[i].orderJSONString);
         // exchange the "handleIo" to "handleIO" in case "handleIO" is not present in order json
-        if (orderStruct.handleIO === undefined || orderStruct.handleIO === null) {
+        if (orderStruct.handleIO === undefined) {
             orderStruct.handleIO = orderStruct.handleIo;
             delete orderStruct.handleIo;
         }
