@@ -73,7 +73,13 @@ describe("Test order details", async function () {
                 takeOrders: [{
                     id: order1.id,
                     takeOrder: {
-                        order: orderStruct1,
+                        order: {
+                            owner: orderStruct1.owner,
+                            handleIO: orderStruct1.handleIo,
+                            evaluable: orderStruct1.evaluable,
+                            validInputs: orderStruct1.validInputs,
+                            validOutputs: orderStruct1.validOutputs
+                        },
                         inputIOIndex: 0,
                         outputIOIndex: 0,
                         signedContext: []
@@ -90,7 +96,13 @@ describe("Test order details", async function () {
                 takeOrders: [{
                     id: order2.id,
                     takeOrder: {
-                        order: orderStruct2,
+                        order: {
+                            owner: orderStruct2.owner,
+                            handleIO: orderStruct2.handleIo,
+                            evaluable: orderStruct2.evaluable,
+                            validInputs: orderStruct2.validInputs,
+                            validOutputs: orderStruct2.validOutputs
+                        },
                         inputIOIndex: 1,
                         outputIOIndex: 0,
                         signedContext: []
@@ -107,7 +119,13 @@ describe("Test order details", async function () {
                 takeOrders: [{
                     id: order2.id,
                     takeOrder: {
-                        order: orderStruct2,
+                        order: {
+                            owner: orderStruct2.owner,
+                            handleIO: orderStruct2.handleIo,
+                            evaluable: orderStruct2.evaluable,
+                            validInputs: orderStruct2.validInputs,
+                            validOutputs: orderStruct2.validOutputs
+                        },
                         inputIOIndex: 0,
                         outputIOIndex: 1,
                         signedContext: []
@@ -130,7 +148,13 @@ describe("Test order details", async function () {
                     {
                         id: order1.id,
                         takeOrder: {
-                            order: orderStruct1,
+                            order: {
+                                owner: orderStruct1.owner,
+                                handleIO: orderStruct1.handleIo,
+                                evaluable: orderStruct1.evaluable,
+                                validInputs: orderStruct1.validInputs,
+                                validOutputs: orderStruct1.validOutputs
+                            },
                             inputIOIndex: 0,
                             outputIOIndex: 0,
                             signedContext: []
@@ -139,7 +163,13 @@ describe("Test order details", async function () {
                     {
                         id: order2.id,
                         takeOrder: {
-                            order: orderStruct2,
+                            order: {
+                                owner: orderStruct2.owner,
+                                handleIO: orderStruct2.handleIo,
+                                evaluable: orderStruct2.evaluable,
+                                validInputs: orderStruct2.validInputs,
+                                validOutputs: orderStruct2.validOutputs
+                            },
                             inputIOIndex: 0,
                             outputIOIndex: 1,
                             signedContext: []
@@ -157,7 +187,13 @@ describe("Test order details", async function () {
                 takeOrders: [{
                     id: order2.id,
                     takeOrder: {
-                        order: orderStruct2,
+                        order: {
+                            owner: orderStruct2.owner,
+                            handleIO: orderStruct2.handleIo,
+                            evaluable: orderStruct2.evaluable,
+                            validInputs: orderStruct2.validInputs,
+                            validOutputs: orderStruct2.validOutputs
+                        },
                         inputIOIndex: 1,
                         outputIOIndex: 0,
                         signedContext: []
