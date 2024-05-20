@@ -99,13 +99,15 @@ const srouterClear = async(
     const reports = [];
     for (let i = 0; i < bundledOrders.length; i++) {
         const pair = `${bundledOrders[i].buyTokenSymbol}/${bundledOrders[i].sellTokenSymbol}`;
-        const pairSpan = tracer.startSpan(
+
+        // instantiate a span for this pair
+        const span = tracer.startSpan(
             (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
             undefined,
             ctx
         );
 
-        // process the order pair
+        // process the pair
         try {
             const result = await processPair({
                 config,
@@ -117,59 +119,75 @@ const srouterClear = async(
                 arb,
                 orderbook,
                 pair,
-                pairSpan,
+                pairSpan: span,
                 gasCoveragePercentage,
             });
             reports.push(result.report);
 
-            pairSpan.setAttributes(result.spanAttributes);
+            // set the span attributes with the values gathered at processPair()
+            span.setAttributes(result.spanAttributes);
 
             // set the otel span status based on report status
             if (result.report.status === ProcessPairReportStatus.EmptyVault) {
-                pairSpan.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
+                span.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
             } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
-                pairSpan.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+            } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
+                span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
             } else {
-                pairSpan.setStatus({ code: SpanStatusCode.OK });
+                // set the span status to unexpected error
+                span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
         } catch(e) {
-            pairSpan.setAttributes(e.spanAttributes);
+            // set the span attributes with the values gathered at processPair()
+            span.setAttributes(e.spanAttributes);
 
-            if (e.error) pairSpan.recordException(getSpanException(e.error));
+            // record the error for the span
+            if (e.error) span.recordException(getSpanException(e.error));
+
             // record otel span status based on reported reason
             if (e.reason) {
-                // report the error reason
-                reports.push({ reason: e.reason, report: e.report });
+                // report the error reason along the rest of report
+                reports.push({
+                    ...e.report,
+                    error: e.error,
+                    reason: e.reason,
+                });
 
-                // set the otel span status based on report status
+                // set the otel span status based on returned reason
                 if (e.reason === ProcessPairHaltReason.NoWalletFund) {
                     // in case that wallet has no more funds, terminate the process by breaking the loop
-                    pairSpan.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
-                    pairSpan.end();
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
+                    span.end();
                     break;
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                    pairSpan.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get vault balance" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get vault balance" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                    pairSpan.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get gas price" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get gas price" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
-                    pairSpan.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get pool details" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get pool details" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
                     // set OK status because a token might not have a pool and as a result eth price cannot
-                    // be fetched for it and if set status to ERROR it will constantly error on each round
+                    // be fetched for it and if it is set to ERROR it will constantly error on each round
                     // resulting in lots of false positives
-                    pairSpan.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                    span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
                 } else {
                     // set the otel span status as OK as an unsuccessfull clear
-                    pairSpan.setStatus({ code: SpanStatusCode.OK });
-                    pairSpan.setAttribute("unsuccessfullClear", true);
+                    span.setStatus({ code: SpanStatusCode.OK });
+                    span.setAttribute("unsuccessfullClear", true);
                 }
             } else {
                 // report the unexpected error reason
-                reports.push({ reason: ProcessPairHaltReason.UnexpectedError, report: e.report });
-                pairSpan.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
+                reports.push({
+                    ...e.report,
+                    error: e.error,
+                    reason: ProcessPairHaltReason.UnexpectedError,
+                });
+                // set the span status to unexpected error
+                span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
         }
-        pairSpan.end();
+        span.end();
     }
     return reports;
 };
