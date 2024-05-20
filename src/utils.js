@@ -1477,6 +1477,11 @@ const bundleOrders = (
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
         const orderStruct = JSON.parse(ordersDetails[i].orderJSONString);
+        // exchange the "handleIo" to "handleIO" in case "handleIO" is not present in order json
+        if (!("handleIO" in orderStruct)) {
+            orderStruct.handleIO = orderStruct.handleIo;
+            delete orderStruct.handleIo;
+        }
         for (let j = 0; j < orderStruct.validOutputs.length; j++) {
             const _output = orderStruct.validOutputs[j];
             const _outputSymbol = orderDetails.validOutputs.find(
