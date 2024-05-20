@@ -266,7 +266,6 @@ describe("Test process pair", async function () {
     });
 
     it("should return failed to get gas price", async function () {
-        // set the orderbook to some unknown address, so reading vault balance errors
         config.testType = "gas-price";
         try {
             await processPair({
@@ -287,30 +286,7 @@ describe("Test process pair", async function () {
         }
     });
 
-    it("should return failed to get gas price", async function () {
-        // set the orderbook to some unknown address, so reading vault balance errors
-        config.testType = "pools";
-        try {
-            await processPair({
-                config,
-                orderPairObject,
-                viemClient,
-                dataFetcher,
-                signer: signers[0],
-                undefined,
-                arb,
-                orderbook,
-                pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            assert.equal(error.reason, ProcessPairHaltReason.FailedToGetPools);
-        }
-    });
-
     it("should return failed to get pools", async function () {
-        // set the orderbook to some unknown address, so reading vault balance errors
         config.testType = "pools";
         try {
             await processPair({
