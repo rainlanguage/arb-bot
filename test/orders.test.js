@@ -250,7 +250,7 @@ describe("Test order details", async function () {
         const result2 = bundleOrders([orderWithHandleIOKey], false, false);
         assert.deepEqual(result1, result2);
     });
-  
+
     it("should get correct vault balance", async function () {
         const [signer] = await ethers.getSigners();
         const viemClient = await viem.getPublicClient();
