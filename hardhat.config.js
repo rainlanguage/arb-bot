@@ -32,6 +32,6 @@ module.exports = {
         timeout: 5000000,
     },
     paths: {
-        tests: "./test/modeTests"
+        tests: "./test/e2e"
     }
 };

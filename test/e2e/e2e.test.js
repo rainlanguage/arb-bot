@@ -17,6 +17,7 @@ const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
 const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSDC } = require("sushi/currency");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
+const { ProcessPairReportStatus } = require("../../src/modes/srouter");
 
 const testChains = [
     [
@@ -174,7 +175,7 @@ for (let i = 0; i < testChains.length; i++) {
     // if rpc is not defined for a network go to next test
     if (!rpc) continue;
 
-    describe(`Rain Arb Bot Tests on "${ChainKey[chainId]}" Network`, async function () {
+    describe(`Rain Arb Bot E2E Tests on "${ChainKey[chainId]}" Network`, async function () {
         // get config for the chain
         const config = getChainConfig(chainId);
 
@@ -297,14 +298,15 @@ for (let i = 0; i < testChains.length; i++) {
                 // the deployed orders in format of a sg query
                 const sgOrders = await prepareOrders(
                     orderOwners,
-                    [Token1, Token2, Token4, Token3],
-                    [Token1Decimals, Token2Decimals, Token4Decimals, Token3Decimals],
-                    [Token1VaultId, Token2VaultId, Token4VaultId, Token3VaultId],
+                    [Token1, Token2, Token3, Token4],
+                    [Token1Decimals, Token2Decimals, Token3Decimals, Token4Decimals],
+                    [Token1VaultId, Token2VaultId, Token3VaultId, Token4VaultId],
                     orderbook,
                     expressionDeployer
                 );
 
                 // run the clearing process
+                config.isTest = true;
                 config.rpc = rpc;
                 config.shuffle = false;
                 config.signer = bot;
@@ -319,7 +321,7 @@ for (let i = 0; i < testChains.length; i++) {
                 const reports = await clear(config, sgOrders, undefined, tracer, ctx, testSpan);
 
                 // should have cleared 2 token pairs bundled orders
-                assert.ok(reports.length == 2);
+                assert.ok(reports.length == 3);
 
                 // validate first cleared token pair orders
                 assert.equal(reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
@@ -360,9 +362,13 @@ for (let i = 0; i < testChains.length; i++) {
                     "100" + "0".repeat(tokens[1].decimals)
                 );
 
-                // validate second cleared token pair orders
+                // validate second token pair orders, which should report empty vault
                 assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[1].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
+                assert.equal(reports[1].status, ProcessPairReportStatus.EmptyVault);
+
+                // validate third cleared token pair orders
+                assert.equal(reports[2].tokenPair, `${tokens[2].symbol}/${tokens[0].symbol}`);
+                assert.equal(reports[2].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
 
                 // check vault balances for orders in cleared token pair
                 assert.equal(
@@ -376,28 +382,28 @@ for (let i = 0; i < testChains.length; i++) {
                 assert.equal(
                     (await orderbook.vaultBalance(
                         orderOwners[1].address,
-                        Token4.address,
-                        Token4VaultId
+                        Token3.address,
+                        Token3VaultId
                     )).toString(),
-                    "100" + "0".repeat(tokens[3].decimals)
+                    "100" + "0".repeat(tokens[2].decimals)
                 );
 
                 // bot should have received the bounty for cleared orders,
-                // so its token 2 and 4 balances should have increased
+                // so its token 2 and 3 balances should have increased
                 assert.ok(
                     (await Token2.connect(bot).balanceOf(bot.address)).gt(BotToken2Balance)
                 );
                 assert.ok(
-                    (await Token4.connect(bot).balanceOf(bot.address)).gt(BotToken4Balance)
+                    (await Token3.connect(bot).balanceOf(bot.address)).gt(BotToken4Balance)
                 );
 
                 // bot should not have recieved any reward
-                // so its token 1 and 3 balances should have been equal to before
+                // so its token 1 and 4 balances should have been equal to before
                 assert.ok(
                     (await Token1.connect(bot).balanceOf(bot.address)).eq(BotToken1Balance)
                 );
                 assert.ok(
-                    (await Token3.connect(bot).balanceOf(bot.address)).eq(BotToken3Balance)
+                    (await Token4.connect(bot).balanceOf(bot.address)).eq(BotToken3Balance)
                 );
 
                 testSpan.end();

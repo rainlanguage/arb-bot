@@ -11,6 +11,7 @@ const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http")
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
+const { ProcessPairReportStatus } = require("./src/modes/srouter");
 
 
 /**
@@ -173,7 +174,9 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     span.setAttribute("details.txUrls", txs);
                     span.setAttribute("details.didClear", true);
                     span.setAttribute("details.foundOpp", true);
-                } else if (reports.some(v => v.foundOpp)) {
+                } else if (reports.some(
+                    v => v.status === ProcessPairReportStatus.FoundOpportunity
+                )) {
                     foundOpp = true;
                     span.setAttribute("details.foundOpp", true);
                 }

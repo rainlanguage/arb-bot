@@ -241,7 +241,7 @@ describe("Test order details", async function () {
         await wmaticContract.connect(wmaticHolder).transfer(owner2.address, "50" + "0".repeat(wmatic.decimals));
 
         // deposite for owner 1 wmatic vault
-        const owner1WmaticDepositAmount = ethers.BigNumber.from("10" + "0".repeat(usdt.decimals));
+        const owner1WmaticDepositAmount = ethers.BigNumber.from("10" + "0".repeat(wmatic.decimals));
         const depositConfigStructOwner1 = {
             token: wmaticContract.address,
             vaultId: orderStruct1.validOutputs[0].vaultId,
