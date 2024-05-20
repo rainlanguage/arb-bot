@@ -203,4 +203,46 @@ describe("Test order details", async function () {
         ];
         assert.deepEqual(bundledResult, bundledExpected);
     });
+
+    it("should correctly handle handleIo/handleIO key", async function () {
+        const orderWithHandleIoKey = {
+            orderJSONString: "{\"owner\":\"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6\",\"handleIo\":true,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}],\"validOutputs\":[{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}]}",
+            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+            validInputs: [{
+                token: {
+                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                    decimals: 6,
+                    symbol: "USDT"
+                }
+            }],
+            validOutputs: [{
+                token: {
+                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                    decimals: 18,
+                    symbol: "WMATIC",
+                }
+            }]
+        };
+        const orderWithHandleIOKey = {
+            orderJSONString: "{\"owner\":\"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6\",\"handleIO\":true,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}],\"validOutputs\":[{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}]}",
+            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+            validInputs: [{
+                token: {
+                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                    decimals: 6,
+                    symbol: "USDT"
+                }
+            }],
+            validOutputs: [{
+                token: {
+                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                    decimals: 18,
+                    symbol: "WMATIC",
+                }
+            }]
+        };
+        const result1 = bundleOrders([orderWithHandleIoKey], false, false);
+        const result2 = bundleOrders([orderWithHandleIOKey], false, false);
+        assert.deepEqual(result1, result2);
+    });
 });
