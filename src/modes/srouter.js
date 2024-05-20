@@ -119,7 +119,6 @@ const srouterClear = async(
                 arb,
                 orderbook,
                 pair,
-                pairSpan: span,
                 gasCoveragePercentage,
             });
             reports.push(result.report);
@@ -194,7 +193,6 @@ const srouterClear = async(
 
 /**
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
- * @param {any} args - The arguments and details for processing the orders
  */
 async function processPair(args) {
     const {
@@ -584,6 +582,9 @@ async function processPair(args) {
     }
 }
 
+/**
+ * Tries to find the maxInput for an arb tx by doing a binary search
+ */
 async function dryrun(
     mode,
     hops,
