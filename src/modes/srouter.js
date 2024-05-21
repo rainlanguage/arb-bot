@@ -158,13 +158,13 @@ const srouterClear = async(
                     // in case that wallet has no more funds, terminate the process by breaking the loop
                     span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
                     span.end();
-                    break;
+                    throw "empty wallet";
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get vault balance" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get vault balance" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get gas price" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get pool details" });
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
                     // set OK status because a token might not have a pool and as a result eth price cannot
                     // be fetched for it and if it is set to ERROR it will constantly error on each round
@@ -183,7 +183,7 @@ const srouterClear = async(
                     reason: ProcessPairHaltReason.UnexpectedError,
                 });
                 // set the span status to unexpected error
-                span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
+                span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
             }
         }
         span.end();

@@ -188,8 +188,18 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             span.end();
             return { txs, foundOpp };
         } catch(e) {
+            let message = "";
+            if (e instanceof Error) message = e.message;
+            else if (typeof e === "string") message = e;
+            else {
+                try {
+                    message = e.toString();
+                } catch (error) {
+                    message = "unknown error type";
+                }
+            }
             span.setAttribute("details.didClear", false);
-            span.setStatus({ code: SpanStatusCode.ERROR });
+            span.setStatus({ code: SpanStatusCode.ERROR, message });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
                 span.recordException("same as previous, see parent span links");
@@ -305,6 +315,16 @@ const main = async argv => {
                 lastSpanContext = undefined;
             }
             catch (error) {
+                let message = "";
+                if (e instanceof Error) message = e.message;
+                else if (typeof e === "string") message = e;
+                else {
+                    try {
+                        message = e.toString();
+                    } catch (error) {
+                        message = "unknown error type";
+                    }
+                }
                 const newError = getSpanException(error);
                 if (!lastError || newError !== lastError) {
                     lastSpanContext = roundSpan.spanContext();
@@ -314,7 +334,7 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
@@ -361,6 +381,16 @@ const main = async argv => {
                 lastSpanContext = undefined;
             }
             catch (error) {
+                let message = "";
+                if (e instanceof Error) message = e.message;
+                else if (typeof e === "string") message = e;
+                else {
+                    try {
+                        message = e.toString();
+                    } catch (error) {
+                        message = "unknown error type";
+                    }
+                }
                 const newError = getSpanException(error);
                 if (!lastError || newError !== lastError) {
                     lastSpanContext = roundSpan.spanContext();
@@ -370,7 +400,7 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             if (i !== repetitions) console.log(
                 `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
