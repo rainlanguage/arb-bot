@@ -194,7 +194,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             else {
                 try {
                     message = e.toString();
-                } catch (error) {
+                } catch {
                     message = "unknown error type";
                 }
             }
@@ -316,12 +316,12 @@ const main = async argv => {
             }
             catch (error) {
                 let message = "";
-                if (e instanceof Error) message = e.message;
-                else if (typeof e === "string") message = e;
+                if (error instanceof Error) message = error.message;
+                else if (typeof e === "string") message = error;
                 else {
                     try {
-                        message = e.toString();
-                    } catch (error) {
+                        message = error.toString();
+                    } catch {
                         message = "unknown error type";
                     }
                 }
@@ -382,12 +382,12 @@ const main = async argv => {
             }
             catch (error) {
                 let message = "";
-                if (e instanceof Error) message = e.message;
-                else if (typeof e === "string") message = e;
+                if (error instanceof Error) message = error.message;
+                else if (typeof e === "string") message = error;
                 else {
                     try {
-                        message = e.toString();
-                    } catch (error) {
+                        message = error.toString();
+                    } catch {
                         message = "unknown error type";
                     }
                 }
