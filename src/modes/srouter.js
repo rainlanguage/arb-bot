@@ -171,7 +171,8 @@ const srouterClear = async(
                     // resulting in lots of false positives
                     span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
                 } else {
-                    // set the otel span status as OK as an unsuccessfull clear
+                    // set the otel span status as OK as an unsuccessfull clear, this can happen for example
+                    // because of mev front running or false positive opportunities, etc
                     span.setStatus({ code: SpanStatusCode.OK });
                     span.setAttribute("unsuccessfullClear", true);
                 }

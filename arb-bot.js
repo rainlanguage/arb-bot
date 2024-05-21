@@ -317,7 +317,7 @@ const main = async argv => {
             catch (error) {
                 let message = "";
                 if (error instanceof Error) message = error.message;
-                else if (typeof e === "string") message = error;
+                else if (typeof error === "string") message = error;
                 else {
                     try {
                         message = error.toString();
@@ -383,7 +383,7 @@ const main = async argv => {
             catch (error) {
                 let message = "";
                 if (error instanceof Error) message = error.message;
-                else if (typeof e === "string") message = error;
+                else if (typeof error === "string") message = error;
                 else {
                     try {
                         message = error.toString();
