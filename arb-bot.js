@@ -189,7 +189,10 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             return { txs, foundOpp };
         } catch(e) {
             let message = "";
-            if (e instanceof Error) message = e.message;
+            if (e instanceof Error) {
+                if ("reason" in e) message = e.reason;
+                else message = e.message;
+            }
             else if (typeof e === "string") message = e;
             else {
                 try {
@@ -207,7 +210,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 span.recordException(error);
             }
             span.end();
-            return Promise.reject(e);
+            return Promise.reject(message);
         }
     });
 };

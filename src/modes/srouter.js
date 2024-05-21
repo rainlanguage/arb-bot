@@ -324,7 +324,7 @@ async function processPair(args) {
     let rawtx, gasCostInToken, takeOrdersConfigStruct, price, routeVisual, maximumInput;
     if (config.bundle) {
         try {
-            const result = await dryrun(
+            const dryrunResult = await dryrun(
                 0,
                 config.hops,
                 orderPairObject,
@@ -348,10 +348,11 @@ async function processPair(args) {
                 price,
                 routeVisual,
                 maximumInput,
-            } = result.value);
-            spanAttributes["details.hops"] = result.spanAttributes;
+            } = dryrunResult.value);
+            for (attrKey in dryrunResult.spanAttributes) {
+                spanAttributes[attrKey] = dryrunResult.spanAttributes[attrKey];
+            }
         } catch(e) {
-            spanAttributes["details.hops"] = e.spanAttributes;
             if (e.reason === DryrunHaltReason.NoWalletFund) {
                 result.reason = ProcessPairHaltReason.NoWalletFund;
                 throw result;
@@ -359,6 +360,10 @@ async function processPair(args) {
             if (e.reason === DryrunHaltReason.NoRoute) {
                 result.reason = ProcessPairHaltReason.NoRoute;
                 throw result;
+            }
+            // record all span attributes in case neither of above errors were present
+            for (attrKey in e.spanAttributes) {
+                spanAttributes[attrKey] = e.spanAttributes[attrKey];
             }
             rawtx = undefined;
         }
@@ -387,15 +392,6 @@ async function processPair(args) {
         }
         const allPromises = await Promise.allSettled(promises);
 
-        // collect the otel span details
-        if (allPromises.length > 1) allPromises.forEach((v, i) => {
-            if (v.status === "fulfilled") spanAttributes[`details.retry-${i}`] = v.value.spanAttributes;
-            else spanAttributes[`details.retry-${i}`] = v.reason.spanAttributes;
-        });
-        else spanAttributes["details.hops"] = allPromises[0].status === "fulfilled"
-            ? allPromises[0].value.spanAttributes
-            : allPromises[0].reason.spanAttributes;
-
         let choice;
         if (allPromises.some(v => v.status === "fulfilled")) {
             for (let j = 0; j < allPromises.length; j++) {
@@ -404,6 +400,9 @@ async function processPair(args) {
                         !choice ||
                         choice.maximumInput.lt(allPromises[j].value.value.maximumInput)
                     ) {
+                        for (attrKey in allPromises[j].value.spanAttributes) {
+                            spanAttributes[attrKey] = allPromises[j].value.spanAttributes[attrKey];
+                        }
                         choice = allPromises[j].value.value;
                     }
                 }
@@ -417,6 +416,19 @@ async function processPair(args) {
                 if (allPromises[j].reason.reason === DryrunHaltReason.NoRoute) {
                     result.reason = ProcessPairHaltReason.NoRoute;
                     throw result;
+                }
+            }
+            // record all retries span attributes in case neither of above errors were present
+            if (allPromises.length === 1) {
+                for (attrKey in allPromises[0].reason.spanAttributes) {
+                    spanAttributes["details." + attrKey] = allPromises[0].reason.spanAttributes[attrKey];
+                }
+            } else {
+                spanAttributes["details.retries"] = [];
+                for (let j = 0; j < allPromises.length; j++) {
+                    spanAttributes["details.retries"].push(
+                        JSON.stringify(allPromises[j].reason.spanAttributes)
+                    );
                 }
             }
         }
@@ -620,6 +632,7 @@ async function dryrun(
     let succesOrFailure = true;
     let maximumInput = vaultBalance;
 
+    const allHopsAttributes = [];
     for (let j = 1; j < hops + 1; j++) {
         const hopAttrs = {};
         hopAttrs["maxInput"] = maximumInput.toString();
@@ -792,7 +805,9 @@ async function dryrun(
                 }
                 succesOrFailure = true;
                 if (j == 1 || j == hops) {
-                    spanAttributes["details.oppBlockNumber"] = blockNumber;
+                    // we dont need allHopsAttributes in case an opp is found
+                    // since all those data will be available in the submitting tx
+                    spanAttributes["oppBlockNumber"] = blockNumber;
                     spanAttributes["foundOpp"] = true;
                     result.value = {
                         rawtx,
@@ -813,13 +828,17 @@ async function dryrun(
                 }
             }
         }
-        spanAttributes[`details.hop-${j}`] = JSON.stringify(hopAttrs);
+        allHopsAttributes.push(JSON.stringify(hopAttrs));
         maximumInput = succesOrFailure
             ? maximumInput.add(vaultBalance.div(2 ** j))
             : maximumInput.sub(vaultBalance.div(2 ** j));
     }
+    // in case no opp is found, allHopsAttributes will be included
+    spanAttributes["hops"] = allHopsAttributes;
+
     if (noRoute) result.reason = DryrunHaltReason.NoRoute;
     else result.reason = DryrunHaltReason.NoOpportunity;
+
     return Promise.reject(result);
 }
 
