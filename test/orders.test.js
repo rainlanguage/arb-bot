@@ -274,10 +274,6 @@ describe("Test order details", async function () {
             wmatic.address
         );
 
-        // impersonate owner1 and owner2 from orders structs to deposit token into their vaults
-        const owner1 = await ethers.getImpersonatedSigner(orderStruct1.owner);
-        const owner2 = await ethers.getImpersonatedSigner(orderStruct2.owner);
-
         // deploy contracts
         const interpreter = await rainterpreterNPE2Deploy();
         const store = await rainterpreterStoreNPE2Deploy();
@@ -289,16 +285,18 @@ describe("Test order details", async function () {
         );
         const orderbook = await deployOrderBookNPE2(expressionDeployer);
 
-        // impersonate addresses with large token balances to fund the owner 1 2
+        // impersonate owners and addresses with large token balances to fund the owner 1 2
         // accounts with some tokens used for topping up their vaults
+        const owner1 = await ethers.getImpersonatedSigner(orderStruct1.owner);
+        const owner2 = await ethers.getImpersonatedSigner(orderStruct2.owner);
         const usdtHolder = await ethers.getImpersonatedSigner(usdt.addressWithBalance);
         const wmaticHolder = await ethers.getImpersonatedSigner(wmatic.addressWithBalance);
 
         // fund token holders and owners with eth for tx gas cost
-        await network.provider.send("hardhat_setBalance", [owner1.address, "0x5000000000000000000"]);
-        await network.provider.send("hardhat_setBalance", [owner2.address, "0x5000000000000000000"]);
-        await network.provider.send("hardhat_setBalance", [usdtHolder.address, "0x5000000000000000000"]);
-        await network.provider.send("hardhat_setBalance", [wmaticHolder.address, "0x5000000000000000000"]);
+        await network.provider.send("hardhat_setBalance", [owner1.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [owner2.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [usdtHolder.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [wmaticHolder.address, "0x4563918244F40000"]);
 
         // fund owner1 and owner2 with their orders output tokens from account with balance
         await wmaticContract.connect(wmaticHolder).transfer(owner1.address, "50" + "0".repeat(wmatic.decimals));

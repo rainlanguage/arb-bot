@@ -267,10 +267,10 @@ for (let i = 0; i < testChains.length; i++) {
                 const Token4Holder = await ethers.getImpersonatedSigner(addressesWithBalance[3]);
 
                 // set eth balance for tx gas cost
-                await network.provider.send("hardhat_setBalance", [Token1Holder.address, "0x5000000000000000000"]);
-                await network.provider.send("hardhat_setBalance", [Token2Holder.address, "0x5000000000000000000"]);
-                await network.provider.send("hardhat_setBalance", [Token3Holder.address, "0x5000000000000000000"]);
-                await network.provider.send("hardhat_setBalance", [Token4Holder.address, "0x5000000000000000000"]);
+                await network.provider.send("hardhat_setBalance", [Token1Holder.address, "0x4563918244F40000"]);
+                await network.provider.send("hardhat_setBalance", [Token2Holder.address, "0x4563918244F40000"]);
+                await network.provider.send("hardhat_setBalance", [Token3Holder.address, "0x4563918244F40000"]);
+                await network.provider.send("hardhat_setBalance", [Token4Holder.address, "0x4563918244F40000"]);
 
                 // send tokens to owners from token holders accounts
                 for (let i = 0; i < 3; i++) {

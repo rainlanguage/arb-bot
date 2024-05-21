@@ -421,7 +421,9 @@ async function processPair(args) {
             // record all retries span attributes in case neither of above errors were present
             if (allPromises.length === 1) {
                 for (attrKey in allPromises[0].reason.spanAttributes) {
-                    spanAttributes["details." + attrKey] = allPromises[0].reason.spanAttributes[attrKey];
+                    spanAttributes[
+                        "details." + attrKey
+                    ] = allPromises[0].reason.spanAttributes[attrKey];
                 }
             } else {
                 spanAttributes["details.retries"] = [];
@@ -509,7 +511,10 @@ async function processPair(args) {
         spanAttributes["details.txUrl"] = txUrl;
         spanAttributes["details.tx"] = JSON.stringify(tx);
     } catch(e) {
-        spanAttributes["details.rawTx"] = JSON.stringify(rawtx);
+        // record rawtx in case it is not already present in the error
+        if (!JSON.stringify(e).includes(rawtx.data)) spanAttributes[
+            "details.rawTx"
+        ] = JSON.stringify(rawtx);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -748,7 +753,7 @@ async function dryrun(
                         hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
                     }
-                    throw "nomatch";
+                    throw "noopp";
                 }
                 gasLimit = gasLimit.mul("103").div("100");
                 rawtx.gasLimit = gasLimit;
@@ -800,7 +805,7 @@ async function dryrun(
                             );
                             hopAttrs["error"] = spanError;
                         }
-                        throw "dryrun";
+                        throw "noopp";
                     }
                 }
                 succesOrFailure = true;
@@ -822,7 +827,7 @@ async function dryrun(
             }
             catch (error) {
                 succesOrFailure = false;
-                if (error !== "nomatch" && error !== "dryrun") {
+                if (error !== "noopp") {
                     hopAttrs["error"] = getSpanException(error);
                     // reason, code, method, transaction, error, stack, message
                 }

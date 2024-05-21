@@ -110,8 +110,8 @@ describe("Test process pair", async function () {
         wmaticHolder = await ethers.getImpersonatedSigner(wmatic.addressWithBalance);
 
         // fund token holders and owners with eth for tx gas cost
-        await network.provider.send("hardhat_setBalance", [wmaticHolder.address, "0x5000000000000000000"]);
-        await network.provider.send("hardhat_setBalance", [owner.address, "0x5000000000000000000"]);
+        await network.provider.send("hardhat_setBalance", [wmaticHolder.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [owner.address, "0x4563918244F40000"]);
 
         // send some wmatic to owner
         await wmaticContract.connect(wmaticHolder).transfer(owner.address, "50" + "0".repeat(wmatic.decimals));
