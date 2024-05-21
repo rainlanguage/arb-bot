@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { assert } = require("chai");
 const { clear } = require("../../src");
-const { ethers, viem } = require("hardhat");
+const { ethers, viem, network } = require("hardhat");
 const { arbDeploy } = require("../deploy/arbDeploy");
 const { getChainConfig } = require("../../src/utils");
 const { Resource } = require("@opentelemetry/resources");
