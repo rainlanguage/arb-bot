@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { ethers, viem } = require("hardhat");
+const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { bundleOrders, getVaultBalance } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
@@ -252,7 +252,6 @@ describe("Test order details", async function () {
     });
 
     it("should get correct vault balance", async function () {
-        const [signer] = await ethers.getSigners();
         const viemClient = await viem.getPublicClient();
         const usdt = {
             address: order1.validInputs[0].token.id,
@@ -296,22 +295,10 @@ describe("Test order details", async function () {
         const wmaticHolder = await ethers.getImpersonatedSigner(wmatic.addressWithBalance);
 
         // fund token holders and owners with eth for tx gas cost
-        await signer.sendTransaction({
-            value: ethers.utils.parseEther("5.0"),
-            to: usdtHolder.address
-        });
-        await signer.sendTransaction({
-            value: ethers.utils.parseEther("5.0"),
-            to: wmaticHolder.address
-        });
-        await signer.sendTransaction({
-            value: ethers.utils.parseEther("5.0"),
-            to: owner1.address
-        });
-        await signer.sendTransaction({
-            value: ethers.utils.parseEther("5.0"),
-            to: owner2.address
-        });
+        await network.provider.send("hardhat_setBalance", [owner1.address, "0x5000000000000000000"]);
+        await network.provider.send("hardhat_setBalance", [owner2.address, "0x5000000000000000000"]);
+        await network.provider.send("hardhat_setBalance", [usdtHolder.address, "0x5000000000000000000"]);
+        await network.provider.send("hardhat_setBalance", [wmaticHolder.address, "0x5000000000000000000"]);
 
         // fund owner1 and owner2 with their orders output tokens from account with balance
         await wmaticContract.connect(wmaticHolder).transfer(owner1.address, "50" + "0".repeat(wmatic.decimals));

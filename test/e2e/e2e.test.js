@@ -265,22 +265,14 @@ for (let i = 0; i < testChains.length; i++) {
                 const Token2Holder = await ethers.getImpersonatedSigner(addressesWithBalance[1]);
                 const Token3Holder = await ethers.getImpersonatedSigner(addressesWithBalance[2]);
                 const Token4Holder = await ethers.getImpersonatedSigner(addressesWithBalance[3]);
-                await bot.sendTransaction({
-                    value: ethers.utils.parseEther("5.0"),
-                    to: Token1Holder.address
-                });
-                await bot.sendTransaction({
-                    value: ethers.utils.parseEther("5.0"),
-                    to: Token2Holder.address
-                });
-                await bot.sendTransaction({
-                    value: ethers.utils.parseEther("5.0"),
-                    to: Token3Holder.address
-                });
-                await bot.sendTransaction({
-                    value: ethers.utils.parseEther("5.0"),
-                    to: Token4Holder.address
-                });
+
+                // set eth balance for tx gas cost
+                await network.provider.send("hardhat_setBalance", [Token1Holder.address, "0x5000000000000000000"]);
+                await network.provider.send("hardhat_setBalance", [Token2Holder.address, "0x5000000000000000000"]);
+                await network.provider.send("hardhat_setBalance", [Token3Holder.address, "0x5000000000000000000"]);
+                await network.provider.send("hardhat_setBalance", [Token4Holder.address, "0x5000000000000000000"]);
+
+                // send tokens to owners from token holders accounts
                 for (let i = 0; i < 3; i++) {
                     await Token1.connect(Token1Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token1Decimals));
                     await Token2.connect(Token2Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token2Decimals));
@@ -318,7 +310,7 @@ for (let i = 0; i < testChains.length; i++) {
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
                 config.testViemClient = viemClient;
-                const reports = await clear(config, sgOrders, undefined, tracer, ctx, testSpan);
+                const reports = await clear(config, sgOrders, undefined, tracer, ctx);
 
                 // should have cleared 2 token pairs bundled orders
                 assert.ok(reports.length == 3);
