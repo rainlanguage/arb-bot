@@ -59,7 +59,7 @@ const DryrunHaltReason = {
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
  */
-const srouterClear = async(
+const processOrders = async(
     config,
     ordersDetails,
     gasCoveragePercentage = "100",
@@ -326,7 +326,6 @@ async function processPair(args) {
         try {
             const dryrunResult = await dryrun(
                 0,
-                config.hops,
                 orderPairObject,
                 dataFetcher,
                 fromToken,
@@ -335,8 +334,6 @@ async function processPair(args) {
                 vaultBalance,
                 gasPrice,
                 gasCoveragePercentage,
-                config.maxProfit,
-                config.maxRatio,
                 arb,
                 ethPrice,
                 config,
@@ -373,7 +370,6 @@ async function processPair(args) {
             promises.push(
                 dryrun(
                     j,
-                    config.hops,
                     orderPairObject,
                     dataFetcher,
                     fromToken,
@@ -382,8 +378,6 @@ async function processPair(args) {
                     vaultBalance,
                     gasPrice,
                     gasCoveragePercentage,
-                    config.maxProfit,
-                    config.maxRatio,
                     arb,
                     ethPrice,
                     config,
@@ -605,7 +599,6 @@ async function processPair(args) {
  */
 async function dryrun(
     mode,
-    hops,
     bundledOrder,
     dataFetcher,
     fromToken,
@@ -614,8 +607,6 @@ async function dryrun(
     vaultBalance,
     gasPrice,
     gasCoveragePercentage,
-    maxProfit,
-    maxRatio,
     arb,
     ethPrice,
     config,
@@ -634,11 +625,11 @@ async function dryrun(
         "3.2": Router.routeProcessor3_2Params,
         "4": Router.routeProcessor4Params,
     };
-    let succesOrFailure = true;
+    let binarySearchLastHopSuccess = true;
     let maximumInput = vaultBalance;
 
     const allHopsAttributes = [];
-    for (let j = 1; j < hops + 1; j++) {
+    for (let j = 1; j < config.hops + 1; j++) {
         const hopAttrs = {};
         hopAttrs["maxInput"] = maximumInput.toString();
 
@@ -663,7 +654,7 @@ async function dryrun(
         );
         if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
             hopAttrs["route"] = "no-way";
-            succesOrFailure = false;
+            binarySearchLastHopSuccess = false;
         }
         else {
             // if reached here, a route has been found at least once among all hops
@@ -713,7 +704,7 @@ async function dryrun(
             const takeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
                 maximumInput,
-                maximumIORatio: maxRatio ? ethers.constants.MaxUint256 : price,
+                maximumIORatio: config.maxRatio ? ethers.constants.MaxUint256 : price,
                 orders,
                 data: ethers.utils.defaultAbiCoder.encode(
                     ["bytes"],
@@ -749,7 +740,7 @@ async function dryrun(
                         return Promise.reject(result);
                     }
                     // only record the last error for traces
-                    if (j === hops) {
+                    if (j === config.hops) {
                         hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
                     }
@@ -797,7 +788,7 @@ async function dryrun(
                             result.reason = DryrunHaltReason.NoWalletFund;
                             return Promise.reject(result);
                         }
-                        if (j === hops) {
+                        if (j === config.hops) {
                             hopAttrs["route"] = routeVisual;
                             hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
                                 gasCostInToken,
@@ -808,8 +799,8 @@ async function dryrun(
                         throw "noopp";
                     }
                 }
-                succesOrFailure = true;
-                if (j == 1 || j == hops) {
+                binarySearchLastHopSuccess = true;
+                if (j == 1 || j == config.hops) {
                     // we dont need allHopsAttributes in case an opp is found
                     // since all those data will be available in the submitting tx
                     spanAttributes["oppBlockNumber"] = blockNumber;
@@ -826,7 +817,7 @@ async function dryrun(
                 }
             }
             catch (error) {
-                succesOrFailure = false;
+                binarySearchLastHopSuccess = false;
                 if (error !== "noopp") {
                     hopAttrs["error"] = getSpanException(error);
                     // reason, code, method, transaction, error, stack, message
@@ -834,7 +825,7 @@ async function dryrun(
             }
         }
         allHopsAttributes.push(JSON.stringify(hopAttrs));
-        maximumInput = succesOrFailure
+        maximumInput = binarySearchLastHopSuccess
             ? maximumInput.add(vaultBalance.div(2 ** j))
             : maximumInput.sub(vaultBalance.div(2 ** j));
     }
@@ -848,7 +839,7 @@ async function dryrun(
 }
 
 module.exports = {
-    srouterClear,
+    processOrders,
     processPair,
     ProcessPairHaltReason,
     ProcessPairReportStatus,

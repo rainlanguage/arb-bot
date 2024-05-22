@@ -221,7 +221,7 @@ describe("Test process pair", async function () {
     });
 
     it("should return failed to get eth price", async function () {
-        // set the buy toke to some unknown address, so router cannot find a price for
+        // set the buy token to some unknown address, so router cannot find a price for
         const _orderPairObject = Object.assign({}, orderPairObject);
         _orderPairObject.buyToken = "0x140D8d3649Ec605CF69018C627fB44cCC76eC89f";
         try {

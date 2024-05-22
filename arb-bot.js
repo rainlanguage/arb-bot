@@ -29,7 +29,6 @@ const ENV_OPTIONS = {
     orderOwner          : process?.env?.ORDER_OWNER,
     orderInterpreter    : process?.env?.ORDER_INTERPRETER,
     sleep               : process?.env?.SLEEP,
-    maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
@@ -62,7 +61,6 @@ const getOptions = async argv => {
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
-        .option("--max-profit", "Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
@@ -92,7 +90,6 @@ const getOptions = async argv => {
     cmdOptions.orderOwner       = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
     cmdOptions.sleep            = cmdOptions.sleep              || ENV_OPTIONS.sleep;
     cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
-    cmdOptions.maxProfit        = cmdOptions.maxProfit          || ENV_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
@@ -125,7 +122,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 options.orderbookAddress,
                 options.arbAddress,
                 {
-                    maxProfit           : options.maxProfit,
                     maxRatio            : options.maxRatio,
                     flashbotRpc         : options.flashbotRpc,
                     timeout             : options.timeout,
@@ -171,18 +167,18 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);
                 if (txs.length) {
                     foundOpp = true;
-                    span.setAttribute("details.txUrls", txs);
-                    span.setAttribute("details.didClear", true);
-                    span.setAttribute("details.foundOpp", true);
+                    span.setAttribute("txUrls", txs);
+                    span.setAttribute("didClear", true);
+                    span.setAttribute("foundOpp", true);
                 } else if (reports.some(
                     v => v.status === ProcessPairReportStatus.FoundOpportunity
                 )) {
                     foundOpp = true;
-                    span.setAttribute("details.foundOpp", true);
+                    span.setAttribute("foundOpp", true);
                 }
             }
             else {
-                span.setAttribute("details.didClear", false);
+                span.setAttribute("didClear", false);
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
@@ -201,7 +197,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     message = "unknown error type";
                 }
             }
-            span.setAttribute("details.didClear", false);
+            span.setAttribute("didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
@@ -301,7 +297,7 @@ const main = async argv => {
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
-                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
@@ -367,7 +363,7 @@ const main = async argv => {
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
-                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
