@@ -386,7 +386,7 @@ for (let i = 0; i < testChains.length; i++) {
                     (await Token2.connect(bot).balanceOf(bot.address)).gt(BotToken2Balance)
                 );
                 assert.ok(
-                    (await Token3.connect(bot).balanceOf(bot.address)).gt(BotToken4Balance)
+                    (await Token3.connect(bot).balanceOf(bot.address)).gt(BotToken3Balance)
                 );
 
                 // bot should not have recieved any reward
@@ -395,7 +395,7 @@ for (let i = 0; i < testChains.length; i++) {
                     (await Token1.connect(bot).balanceOf(bot.address)).eq(BotToken1Balance)
                 );
                 assert.ok(
-                    (await Token4.connect(bot).balanceOf(bot.address)).eq(BotToken3Balance)
+                    (await Token4.connect(bot).balanceOf(bot.address)).eq(BotToken4Balance)
                 );
 
                 testSpan.end();
