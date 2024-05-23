@@ -102,6 +102,7 @@ describe("Test process pair", async function () {
         config.arbAddress = arb.address;
         config.orderbookAddress = orderbook.address;
         config.testViemClient = viemClient;
+        config.testBlockNumber = 56738134n;
 
         // get a DataFetcher
         dataFetcher = getDataFetcher(config, config.lps, false);

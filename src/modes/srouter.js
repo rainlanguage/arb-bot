@@ -276,20 +276,25 @@ async function processPair(args) {
     let ethPrice;
     if (gasCoveragePercentage !== "0") {
         try {
+            const options = {
+                fetchPoolsTimeout: 10000,
+                memoize: true,
+            };
+            // pin block number for test case
+            if (config.isTest && config.testBlockNumber) {
+                options.blockNumber = config.testBlockNumber;
+            }
             ethPrice = await getEthPrice(
                 config,
                 orderPairObject.buyToken,
                 orderPairObject.buyTokenDecimals,
                 gasPrice,
                 dataFetcher,
-                {
-                    fetchPoolsTimeout: 10000,
-                    memoize: true,
-                }
+                options
             );
             if (!ethPrice) {
                 result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-                throw result;
+                return Promise.reject(result);
             }
             else spanAttributes["details.ethPrice"] = ethPrice;
         } catch(e) {
@@ -304,15 +309,19 @@ async function processPair(args) {
     try {
         // only for test case
         if (config.isTest && config.testType === "pools") throw "pools";
-
+        const options = {
+            fetchPoolsTimeout: 30000,
+            memoize: true,
+        };
+        // pin block number for test case
+        if (config.isTest && config.testBlockNumber) {
+            options.blockNumber = config.testBlockNumber;
+        }
         await dataFetcher.fetchPoolsForToken(
             fromToken,
             toToken,
             undefined,
-            {
-                fetchPoolsTimeout: 30000,
-                memoize: true,
-            }
+            options
         );
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetPools;
@@ -585,7 +594,7 @@ async function processPair(args) {
         else {
             spanAttributes["details.receipt"] = JSON.stringify(receipt);
             result.reason = ProcessPairHaltReason.TxMineFailed;
-            throw result;
+            return Promise.reject(result);
         }
     } catch(e) {
         result.error = e;
