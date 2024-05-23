@@ -157,7 +157,23 @@ describe("Test process pair", async function () {
                 pair: "USDT/WMATIC",
                 gasCoveragePercentage: "100",
             });
+
             assert.equal(result.report.status, ProcessPairReportStatus.EmptyVault);
+
+            // check span attributes
+            const expectedOtelAttrs = {
+                "details.orders": orderPairObject.takeOrders.map(v => v.id),
+                "details.pair": "USDT/WMATIC",
+            };
+            assert.deepEqual(result.spanAttributes, expectedOtelAttrs);
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = ["details.orders", "details.pair"];
+            for (key in result.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) {
+                    assert.fail(`found unexpected key in span atributes: ${key}`);
+                }
+            }
         } catch (error) {
             assert.fail("expected to resolve, but rejected");
         }
@@ -193,7 +209,54 @@ describe("Test process pair", async function () {
                 pair: "USDT/WMATIC",
                 gasCoveragePercentage: "100",
             });
+
             assert.equal(result.report.status, ProcessPairReportStatus.NoOpportunity);
+
+            // check span attributes
+            assert.deepEqual(result.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(result.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof result.spanAttributes["details.gasPrice"] === "string");
+            assert.exists(result.spanAttributes["details.ethPrice"]);
+            assert.isTrue(typeof result.spanAttributes["details.ethPrice"] === "string");
+            assert.exists(result.spanAttributes["details.hops"]);
+            assert.ok(Array.isArray(result.spanAttributes["details.hops"]));
+            assert.ok(result.spanAttributes["details.hops"].length === 2);
+            assert.deepEqual(
+                result.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "details.ethPrice",
+                "details.hops"
+            ];
+            for (key in result.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) {
+                    assert.fail(`found unexpected key in span atributes: ${key}`);
+                }
+            }
+
+            // check each hop span attributes
+            const hop1 = JSON.parse(result.spanAttributes["details.hops"][0]);
+            const expectedHop1Keys = ["maxInput", "marketPrice", "blockNumber", "route", "error"];
+            assert.equal(hop1["maxInput"], ownerWmaticDepositAmount.toString());
+            for (key in hop1) {
+                if (!expectedHop1Keys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
+            const hop2 = JSON.parse(result.spanAttributes["details.hops"][1]);
+            const expectedHop2Keys = ["maxInput", "marketPrice", "blockNumber", "route", "error"];
+            assert.equal(hop2["maxInput"], ownerWmaticDepositAmount.div(2).toString());
+            for (key in hop2) {
+                if (!expectedHop2Keys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         } catch (error) {
             assert.fail("expected to resolve, but rejected");
         }
@@ -217,6 +280,30 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.NoWalletFund);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.exists(error.spanAttributes["details.ethPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.ethPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "details.ethPrice"
+            ];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 
@@ -240,12 +327,32 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.FailedToGetEthPrice);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = ["details.orders", "details.pair", "details.gasPrice"];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 
     it("should return failed to get vault balance", async function () {
         // set the orderbook to some unknown address, so reading vault balance errors
-        const _orderbook = await ethers.getContractAt(orderbookAbi, "0x140D8d3649Ec605CF69018C627fB44cCC76eC89f");
+        const _orderbook = await ethers.getContractAt(
+            orderbookAbi,
+            "0x140D8d3649Ec605CF69018C627fB44cCC76eC89f"
+        );
         try {
             await processPair({
                 config,
@@ -262,6 +369,21 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.FailedToGetVaultBalance);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = ["details.orders", "details.pair"];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 
@@ -283,6 +405,21 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.FailedToGetGasPrice);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = ["details.orders", "details.pair"];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 
@@ -304,6 +441,30 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.FailedToGetPools);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.exists(error.spanAttributes["details.ethPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.ethPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "details.ethPrice"
+            ];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 
@@ -352,6 +513,30 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.NoRoute);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.exists(error.spanAttributes["details.ethPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.ethPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                _orderPairObject.takeOrders.map(v => v.id)
+            );
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "details.ethPrice"
+            ];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
 
         // set the test type to tx fail
@@ -372,6 +557,50 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.TxFailed);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                _orderPairObject.takeOrders.map(v => v.id)
+            );
+            assert.exists(error.spanAttributes["oppBlockNumber"]);
+            assert.isTrue(typeof error.spanAttributes["oppBlockNumber"] === "number");
+            assert.isTrue(error.spanAttributes["foundOpp"]);
+            assert.exists(error.spanAttributes["details.blockNumber"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumber"] === "number");
+            assert.exists(error.spanAttributes["details.route"]);
+            assert.isTrue(error.spanAttributes["details.route"].every(v => typeof v === "string"));
+            assert.equal(error.spanAttributes["details.maxInput"], "10000000000000000000");
+            assert.exists(error.spanAttributes["details.marketPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.marketPrice"] === "string");
+            assert.exists(error.spanAttributes["details.gasCostInToken"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasCostInToken"] === "string");
+            assert.exists(error.spanAttributes["details.rawTx"]);
+            assert.exists(typeof error.spanAttributes["details.rawTx"] === "string");
+
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "oppBlockNumber",
+                "foundOpp",
+                "details.blockNumber",
+                "details.route",
+                "details.maxInput",
+                "details.marketPrice",
+                "details.gasCostInToken",
+                "details.rawTx",
+            ];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
 
         // set the test type to tx mine fail
@@ -392,6 +621,52 @@ describe("Test process pair", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             assert.equal(error.reason, ProcessPairHaltReason.TxMineFailed);
+
+            // check span attributes
+            assert.deepEqual(error.spanAttributes["details.pair"], "USDT/WMATIC");
+            assert.exists(error.spanAttributes["details.gasPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
+            assert.deepEqual(
+                error.spanAttributes["details.orders"],
+                _orderPairObject.takeOrders.map(v => v.id)
+            );
+            assert.exists(error.spanAttributes["oppBlockNumber"]);
+            assert.isTrue(typeof error.spanAttributes["oppBlockNumber"] === "number");
+            assert.isTrue(error.spanAttributes["foundOpp"]);
+            assert.exists(error.spanAttributes["details.blockNumber"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumber"] === "number");
+            assert.exists(error.spanAttributes["details.route"]);
+            assert.isTrue(error.spanAttributes["details.route"].every(v => typeof v === "string"));
+            assert.equal(error.spanAttributes["details.maxInput"], "10000000000000000000");
+            assert.exists(error.spanAttributes["details.marketPrice"]);
+            assert.isTrue(typeof error.spanAttributes["details.marketPrice"] === "string");
+            assert.exists(error.spanAttributes["details.gasCostInToken"]);
+            assert.isTrue(typeof error.spanAttributes["details.gasCostInToken"] === "string");
+            assert.exists(error.spanAttributes["details.txUrl"]);
+            assert.isTrue(typeof error.spanAttributes["details.txUrl"] === "string");
+            assert.exists(error.spanAttributes["details.tx"]);
+            assert.isTrue(typeof error.spanAttributes["details.tx"] === "string");
+
+            // check for unexpected keys/values in the spans attrs
+            const expectedSpanAttrsKeys = [
+                "details.orders",
+                "details.pair",
+                "details.gasPrice",
+                "oppBlockNumber",
+                "foundOpp",
+                "details.blockNumber",
+                "details.route",
+                "details.maxInput",
+                "details.marketPrice",
+                "details.gasCostInToken",
+                "details.txUrl",
+                "details.tx",
+            ];
+            for (key in error.spanAttributes) {
+                if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
+                    `found unexpected key in span atributes: ${key}`
+                );
+            }
         }
     });
 });
