@@ -17,7 +17,7 @@ const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
 const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSDC } = require("sushi/currency");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
-const { ProcessPairReportStatus } = require("../../src/modes/srouter");
+const { ProcessPairReportStatus } = require("../../src/processOrders");
 
 const testChains = [
     [
@@ -310,7 +310,8 @@ for (let i = 0; i < testChains.length; i++) {
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
                 config.testViemClient = viemClient;
-                const reports = await clear(config, sgOrders, undefined, tracer, ctx);
+                config.gasCoveragePercentage = "100";
+                const reports = await clear(config, sgOrders, tracer, ctx);
 
                 // should have cleared 2 token pairs bundled orders
                 assert.ok(reports.length == 3);

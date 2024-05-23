@@ -15,10 +15,11 @@ describe("Test app options", async function () {
         assert.equal(config.lps, undefined);
         assert.equal(config.flashbotRpc, undefined);
         assert.equal(config.maxRatio, false);
-        assert.equal(config.hops, 11);
+        assert.equal(config.hops, 7);
         assert.equal(config.retries, 1);
         assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);
+        assert.equal(config.gasCoveragePercentage, "100");
     });
 
     it("should error if retries is not between 1-3", async function () {

@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { Token } = require("sushi/currency");
-const { arbAbis, orderbookAbi } = require("../abis");
+const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const {
     getIncome,
@@ -15,7 +15,7 @@ const {
     getVaultBalance,
     createViemClient,
     getActualClearAmount,
-} = require("../utils");
+} = require("./utils");
 
 /**
  * Specifies reason that order process halted
@@ -55,22 +55,15 @@ const DryrunHaltReason = {
  *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {string} gasCoveragePercentage - (optional) The percentage of the gas cost to cover on each transaction for it to be considered profitable and get submitted
  * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
  * @param {import("@opentelemetry/api").Context} ctx
  */
 const processOrders = async(
     config,
     ordersDetails,
-    gasCoveragePercentage = "100",
     tracer,
     ctx,
 ) => {
-    if (
-        gasCoveragePercentage < 0 ||
-        !Number.isInteger(Number(gasCoveragePercentage))
-    ) throw "invalid gas coverage percentage, must be an integer greater than equal 0";
-
     const lps               = processLps(config.lps);
     const viemClient        = createViemClient(config.chain.id, [config.rpc], false);
     const dataFetcher       = getDataFetcher(viemClient, lps, false);
@@ -83,7 +76,7 @@ const processOrders = async(
         : undefined;
 
     // instantiating arb contract
-    const arb = new ethers.Contract(config.arbAddress, arbAbis["srouter"], signer);
+    const arb = new ethers.Contract(config.arbAddress, arbAbis, signer);
 
     // instantiating orderbook contract
     const orderbook = new ethers.Contract(config.orderbookAddress, orderbookAbi, signer);
@@ -119,7 +112,6 @@ const processOrders = async(
                 arb,
                 orderbook,
                 pair,
-                gasCoveragePercentage,
             });
             reports.push(result.report);
 
@@ -206,7 +198,6 @@ async function processPair(args) {
         arb,
         orderbook,
         pair,
-        gasCoveragePercentage,
     } = args;
 
     const spanAttributes = {};
@@ -274,7 +265,7 @@ async function processPair(args) {
 
     // get eth price
     let ethPrice;
-    if (gasCoveragePercentage !== "0") {
+    if (config.gasCoveragePercentage !== "0") {
         try {
             ethPrice = await getEthPrice(
                 config,
@@ -333,7 +324,6 @@ async function processPair(args) {
                 signer,
                 vaultBalance,
                 gasPrice,
-                gasCoveragePercentage,
                 arb,
                 ethPrice,
                 config,
@@ -377,7 +367,6 @@ async function processPair(args) {
                     signer,
                     vaultBalance,
                     gasPrice,
-                    gasCoveragePercentage,
                     arb,
                     ethPrice,
                     config,
@@ -481,7 +470,7 @@ async function processPair(args) {
             "arb",
             [
                 takeOrdersConfigStruct,
-                gasCostInToken.mul(gasCoveragePercentage).div("100")
+                gasCostInToken.mul(config.gasCoveragePercentage).div("100")
             ]
         );
 
@@ -606,7 +595,6 @@ async function dryrun(
     signer,
     vaultBalance,
     gasPrice,
-    gasCoveragePercentage,
     arb,
     ethPrice,
     config,
@@ -759,9 +747,9 @@ async function dryrun(
                     )
                 );
 
-                if (gasCoveragePercentage !== "0") {
+                if (config.gasCoveragePercentage !== "0") {
                     const headroom = (
-                        Number(gasCoveragePercentage) * 1.05
+                        Number(config.gasCoveragePercentage) * 1.05
                     ).toFixed();
                     rawtx.data = arb.interface.encodeFunctionData(
                         "arb",

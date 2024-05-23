@@ -11,7 +11,7 @@ const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http")
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
-const { ProcessPairReportStatus } = require("./src/modes/srouter");
+const { ProcessPairReportStatus } = require("./src/processOrders");
 
 
 /**
@@ -77,26 +77,26 @@ const getOptions = async argv => {
         .opts();
 
     // assigning specified options from cli/env
-    cmdOptions.key              = cmdOptions.key                || ENV_OPTIONS.key;
-    cmdOptions.rpc              = cmdOptions.rpc                || ENV_OPTIONS.rpc;
-    cmdOptions.arbAddress       = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
-    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
-    cmdOptions.orders           = cmdOptions.orders             || ENV_OPTIONS.orders;
-    cmdOptions.subgraph         = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
-    cmdOptions.lps              = cmdOptions.lps                || ENV_OPTIONS.lps;
-    cmdOptions.gasCoverage      = cmdOptions.gasCoverage        || ENV_OPTIONS.gasCoverage;
-    cmdOptions.repetitions      = cmdOptions.repetitions        || ENV_OPTIONS.repetitions;
-    cmdOptions.orderHash        = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
-    cmdOptions.orderOwner       = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
-    cmdOptions.sleep            = cmdOptions.sleep              || ENV_OPTIONS.sleep;
-    cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
-    cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
-    cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
-    cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
-    cmdOptions.hops             = cmdOptions.hops               || ENV_OPTIONS.hops;
-    cmdOptions.retries          = cmdOptions.retries            || ENV_OPTIONS.retries;
-    cmdOptions.bundle           = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.key                = cmdOptions.key                || ENV_OPTIONS.key;
+    cmdOptions.rpc                = cmdOptions.rpc                || ENV_OPTIONS.rpc;
+    cmdOptions.arbAddress         = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
+    cmdOptions.orderbookAddress   = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
+    cmdOptions.orders             = cmdOptions.orders             || ENV_OPTIONS.orders;
+    cmdOptions.subgraph           = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
+    cmdOptions.lps                = cmdOptions.lps                || ENV_OPTIONS.lps;
+    cmdOptions.gasCoverage        = cmdOptions.gasCoverage        || ENV_OPTIONS.gasCoverage;
+    cmdOptions.repetitions        = cmdOptions.repetitions        || ENV_OPTIONS.repetitions;
+    cmdOptions.orderHash          = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
+    cmdOptions.orderOwner         = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
+    cmdOptions.sleep              = cmdOptions.sleep              || ENV_OPTIONS.sleep;
+    cmdOptions.orderInterpreter   = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
+    cmdOptions.maxRatio           = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
+    cmdOptions.flashbotRpc        = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
+    cmdOptions.timeout            = cmdOptions.timeout            || ENV_OPTIONS.timeout;
+    cmdOptions.hops               = cmdOptions.hops               || ENV_OPTIONS.hops;
+    cmdOptions.retries            = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
+    cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
 };
@@ -122,14 +122,15 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 options.orderbookAddress,
                 options.arbAddress,
                 {
-                    maxRatio            : options.maxRatio,
-                    flashbotRpc         : options.flashbotRpc,
-                    timeout             : options.timeout,
-                    bundle              : options.bundle,
-                    hops                : options.hops,
-                    retries             : options.retries,
-                    poolUpdateInterval  : options.poolUpdateInterval,
-                    liquidityProviders  : options.lps
+                    maxRatio             : options.maxRatio,
+                    flashbotRpc          : options.flashbotRpc,
+                    timeout              : options.timeout,
+                    bundle               : options.bundle,
+                    hops                 : options.hops,
+                    retries              : options.retries,
+                    poolUpdateInterval   : options.poolUpdateInterval,
+                    gasCoveragePercentage: options.gasCoverage,
+                    liquidityProviders   : options.lps
                         ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                         : undefined,
                 }
@@ -157,9 +158,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             const reports = await clear(
                 config,
                 ordersDetails,
-                {
-                    gasCoveragePercentage: options.gasCoverage
-                },
                 tracer,
                 ctx,
             );
@@ -252,11 +250,11 @@ const main = async argv => {
     let rpcTurn = 0;
 
     if (options.repetitions) {
-        if (/^\d+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
+        if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";
     }
     if (options.sleep) {
-        if (/^\d+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
+        if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
         else throw "invalid sleep value, must be an integer greater than equal 0";
     }
     let _poolUpdateInterval = 15;
@@ -266,7 +264,7 @@ const main = async argv => {
             if (_poolUpdateInterval === 0 || !Number.isInteger(_poolUpdateInterval))
                 throw "invalid poolUpdateInterval value, must be an integer greater than zero";
         }
-        else if (typeof options.poolUpdateInterval === "string" && /^\d+$/.test(options.poolUpdateInterval)) {
+        else if (typeof options.poolUpdateInterval === "string" && /^[0-9]+$/.test(options.poolUpdateInterval)) {
             _poolUpdateInterval = Number(options.poolUpdateInterval);
             if (_poolUpdateInterval === 0) throw "invalid poolUpdateInterval value, must be an integer greater than zero";
         }

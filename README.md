@@ -236,9 +236,7 @@ const configOptions = {
   liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
     "sushiswapv2",
     "uniswapv2"
-  ]
-}
-const clearOptions = {s
+  ],
   gasCoveragePercentage : "500"    // percentage of the transaction gas cost denominated in receiving ERC20 to be earned from the transaction in order for it to be successfull, as an example a value of 500 means atleast 5x the amount of transaction gas cost needs to be earned for the transaction to be successfull
 }
 
@@ -258,7 +256,7 @@ const sgFilters     = {                                                   // fil
 const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
 
 // to run the clearing process and get the report object which holds the report of cleared orders
-const reports = await RainArbBot.clear(config, orderDetails, ...[clearOptions])
+const reports = await RainArbBot.clear(config, orderDetails)
 ```
 <br>
 
