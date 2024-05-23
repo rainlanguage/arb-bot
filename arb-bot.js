@@ -11,6 +11,7 @@ const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http")
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
+const { ProcessPairReportStatus } = require("./src/modes/srouter");
 
 
 /**
@@ -28,7 +29,6 @@ const ENV_OPTIONS = {
     orderOwner          : process?.env?.ORDER_OWNER,
     orderInterpreter    : process?.env?.ORDER_INTERPRETER,
     sleep               : process?.env?.SLEEP,
-    maxProfit           : process?.env?.MAX_PROFIT?.toLowerCase() === "true" ? true : false,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout             : process?.env?.TIMEOUT,
@@ -61,7 +61,6 @@ const getOptions = async argv => {
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
-        .option("--max-profit", "Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables")
@@ -91,7 +90,6 @@ const getOptions = async argv => {
     cmdOptions.orderOwner       = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
     cmdOptions.sleep            = cmdOptions.sleep              || ENV_OPTIONS.sleep;
     cmdOptions.orderInterpreter = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
-    cmdOptions.maxProfit        = cmdOptions.maxProfit          || ENV_OPTIONS.maxProfit;
     cmdOptions.maxRatio         = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc      = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout          = cmdOptions.timeout            || ENV_OPTIONS.timeout;
@@ -124,7 +122,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 options.orderbookAddress,
                 options.arbAddress,
                 {
-                    maxProfit           : options.maxProfit,
                     maxRatio            : options.maxRatio,
                     flashbotRpc         : options.flashbotRpc,
                     timeout             : options.timeout,
@@ -170,23 +167,38 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);
                 if (txs.length) {
                     foundOpp = true;
-                    span.setAttribute("details.txUrls", txs);
-                    span.setAttribute("details.didClear", true);
-                    span.setAttribute("details.foundOpp", true);
-                } else if (reports.some(v => v.foundOpp)) {
+                    span.setAttribute("txUrls", txs);
+                    span.setAttribute("didClear", true);
+                    span.setAttribute("foundOpp", true);
+                } else if (reports.some(
+                    v => v.status === ProcessPairReportStatus.FoundOpportunity
+                )) {
                     foundOpp = true;
-                    span.setAttribute("details.foundOpp", true);
+                    span.setAttribute("foundOpp", true);
                 }
             }
             else {
-                span.setAttribute("details.didClear", false);
+                span.setAttribute("didClear", false);
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
             return { txs, foundOpp };
         } catch(e) {
-            span.setAttribute("details.didClear", false);
-            span.setStatus({ code: SpanStatusCode.ERROR });
+            let message = "";
+            if (e instanceof Error) {
+                if ("reason" in e) message = e.reason;
+                else message = e.message;
+            }
+            else if (typeof e === "string") message = e;
+            else {
+                try {
+                    message = e.toString();
+                } catch {
+                    message = "unknown error type";
+                }
+            }
+            span.setAttribute("didClear", false);
+            span.setStatus({ code: SpanStatusCode.ERROR, message });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
                 span.recordException("same as previous, see parent span links");
@@ -194,7 +206,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 span.recordException(error);
             }
             span.end();
-            return Promise.reject(e);
+            return Promise.reject(message);
         }
     });
 };
@@ -285,7 +297,7 @@ const main = async argv => {
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
-                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
@@ -302,6 +314,16 @@ const main = async argv => {
                 lastSpanContext = undefined;
             }
             catch (error) {
+                let message = "";
+                if (error instanceof Error) message = error.message;
+                else if (typeof error === "string") message = error;
+                else {
+                    try {
+                        message = error.toString();
+                    } catch {
+                        message = "unknown error type";
+                    }
+                }
                 const newError = getSpanException(error);
                 if (!lastError || newError !== lastError) {
                     lastSpanContext = roundSpan.spanContext();
@@ -311,7 +333,7 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
@@ -341,7 +363,7 @@ const main = async argv => {
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
-                    roundSpan.setAttribute("details.txUrls", txs);
+                    roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
@@ -358,6 +380,16 @@ const main = async argv => {
                 lastSpanContext = undefined;
             }
             catch (error) {
+                let message = "";
+                if (error instanceof Error) message = error.message;
+                else if (typeof error === "string") message = error;
+                else {
+                    try {
+                        message = error.toString();
+                    } catch {
+                        message = "unknown error type";
+                    }
+                }
                 const newError = getSpanException(error);
                 if (!lastError || newError !== lastError) {
                     lastSpanContext = roundSpan.spanContext();
@@ -367,7 +399,7 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR });
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             if (i !== repetitions) console.log(
                 `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"

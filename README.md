@@ -73,7 +73,6 @@ Other optional arguments are:
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
-- `--max-profit`, Option to maximize profit, comes at the cost of more RPC calls, Will override the 'MAX_PROFIT' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
@@ -184,9 +183,6 @@ ORDER_OWNER=""
 # Option to filter the subgraph query results with a specific order interpreter address
 ORDER_INTERPRETER=""
 
-# Option to maximize profit, comes at the cost of more RPC calls
-MAX_PROFIT="true"
-
 # Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 SLEEP=10
 
@@ -231,7 +227,6 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 // to run the app:
 // options (all properties are optional)
 const configOptions = {
-  maxProfit             : true,    // option to maximize profit
   maxRatio              : true,    // option to maximize the maxIORatio
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  

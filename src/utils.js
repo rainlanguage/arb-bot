@@ -1,8 +1,8 @@
 const { ChainId } = require("sushi/chain");
 const { ethers, BigNumber } = require("ethers");
 const { Token, WNATIVE } = require("sushi/currency");
-const { erc20Abi, interpreterV2Abi } = require("./abis");
-const { createPublicClient, http, fallback } = require("viem");
+const { erc20Abi, interpreterV2Abi, orderbookAbi } = require("./abis");
+const { createPublicClient, http, fallback, parseAbi } = require("viem");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const {
     STABLES,
@@ -1540,6 +1540,43 @@ const bundleOrders = (
     return bundledOrders;
 };
 
+/**
+ * Gets vault balance of an order or combined value of vaults if bundled
+ */
+async function getVaultBalance(
+    orderDetails,
+    orderbookAddress,
+    viemClient,
+    multicallAddressOverride
+) {
+    const multicallResult = await viemClient.multicall({
+        multicallAddress:
+            viemClient.chain?.contracts?.multicall3?.address ?? multicallAddressOverride,
+        allowFailure: false,
+        contracts: orderDetails.takeOrders.map(v => ({
+            address: orderbookAddress,
+            allowFailure: false,
+            chainId: viemClient.chain.id,
+            abi: parseAbi(orderbookAbi),
+            functionName: "vaultBalance",
+            args: [
+                // owner
+                v.takeOrder.order.owner,
+                // token
+                v.takeOrder.order.validOutputs[v.takeOrder.outputIOIndex].token,
+                // valut id
+                v.takeOrder.order.validOutputs[v.takeOrder.outputIOIndex].vaultId,
+            ]
+        })),
+    });
+
+    let result = ethers.BigNumber.from(0);
+    for (let i = 0; i < multicallResult.length; i++) {
+        result = result.add(multicallResult[i]);
+    }
+    return result;
+}
+
 module.exports = {
     fallbacks,
     bnFromFloat,
@@ -1568,4 +1605,5 @@ module.exports = {
     getSpanException,
     getChainConfig,
     bundleOrders,
+    getVaultBalance,
 };

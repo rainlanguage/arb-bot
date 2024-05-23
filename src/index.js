@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
-const { getQuery, statusCheckQuery } = require("./query");
 const { versions } = require("process");
-const { srouterClear } = require("./modes/srouter");
+const { processOrders } = require("./modes/srouter");
+const { getQuery, statusCheckQuery } = require("./query");
 const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
 
 
@@ -24,10 +24,6 @@ const configOptions = {
      * Flashbot rpc url
      */
     flashbotRpc: undefined,
-    /**
-     * Maximize profit, comes at the cost of RPC calls
-     */
-    maxProfit: false,
     /**
      * Maximize maxIORatio
      */
@@ -210,7 +206,6 @@ const getConfig = async(
     config.lps              = options?.liquidityProviders;
     config.timeout          = options?.timeout;
     config.flashbotRpc      = options?.flashbotRpc;
-    config.maxProfit        = !!options?.maxProfit;
     config.maxRatio         = !!options?.maxRatio;
     config.hops             = hops;
     config.retries          = retries;
@@ -241,7 +236,7 @@ const clear = async(
         ? options.gasCoveragePercentage
         : clearOptions.gasCoveragePercentage;
 
-    if (majorVersion >= 18) return await srouterClear(
+    if (majorVersion >= 18) return await processOrders(
         config,
         ordersDetails,
         gasCoveragePercentage,

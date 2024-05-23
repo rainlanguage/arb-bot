@@ -11,11 +11,7 @@ const erc20Abi = [
  * Minimal ABI for Orderbook contract only including vaultBalance() function
  */
 const orderbookAbi = [
-    `function vaultBalance(
-        address owner,
-        address token,
-        uint256 id
-    ) external view returns (uint256 balance)`
+    "function vaultBalance(address owner, address token, uint256 id) external view returns (uint256 balance)"
 ];
 
 /**

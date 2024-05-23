@@ -14,7 +14,6 @@ describe("Test app options", async function () {
 
         assert.equal(config.lps, undefined);
         assert.equal(config.flashbotRpc, undefined);
-        assert.equal(config.maxProfit, false);
         assert.equal(config.maxRatio, false);
         assert.equal(config.hops, 11);
         assert.equal(config.retries, 1);
