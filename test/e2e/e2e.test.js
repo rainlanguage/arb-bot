@@ -310,6 +310,7 @@ for (let i = 0; i < testChains.length; i++) {
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
                 config.testViemClient = viemClient;
+                config.testBlockNumber = BigInt(blockNumber);
                 config.gasCoveragePercentage = "100";
                 const reports = await clear(config, sgOrders, tracer, ctx);
 

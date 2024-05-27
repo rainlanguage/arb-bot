@@ -102,6 +102,7 @@ describe("Test process pair", async function () {
         config.arbAddress = arb.address;
         config.orderbookAddress = orderbook.address;
         config.testViemClient = viemClient;
+        config.testBlockNumber = 56738134n;
         config.gasCoveragePercentage = "100";
 
         // get a DataFetcher
