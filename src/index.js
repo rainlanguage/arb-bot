@@ -3,7 +3,7 @@ const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
-const { processOrders } = require("./modes/srouter");
+const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
 const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
 
@@ -35,17 +35,11 @@ const configOptions = {
     /**
      * The amount of hops of binary search
      */
-    hops: 11,
+    hops: 7,
     /**
      * The amount of retries for the same order
      */
     retries: 1,
-};
-
-/**
- * Options for clear()
- */
-const clearOptions = {
     /**
      * The percentage of the gas cost to cover on each transaction
      * for it to be considered profitable and get submitted
@@ -130,7 +124,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 };
 
 /**
- * Get the configuration info of a network required for the bot
+ * Get the general and network configuration required for the bot to operate
  *
  * @param {string} rpcUrl - The RPC URL
  * @param {string} walletPrivateKey - The wallet private key
@@ -148,7 +142,11 @@ const getConfig = async(
     options = configOptions
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
+    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
+    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
+
     if (options.timeout !== undefined){
         if (typeof options.timeout === "number") {
             if (!Number.isInteger(options.timeout) || options.timeout == 0) throw "invalid timeout, must be an integer greater than 0";
@@ -162,53 +160,67 @@ const getConfig = async(
         else throw "invalid timeout, must be an integer greater than 0";
     }
 
-    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const signer    = new ethers.Wallet(walletPrivateKey, provider);
-    const chainId   = await signer.getChainId();
-    const config    = getChainConfig(chainId);
-    if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
+    let gasCoveragePercentage = "100";
+    if (options.gasCoveragePercentage) {
+        if (typeof options.gasCoveragePercentage === "number") {
+            if (
+                options.gasCoveragePercentage < 0 ||
+                !Number.isInteger(options.gasCoveragePercentage)
+            ) "invalid gas coverage percentage, must be an integer greater than equal 0";
+            gasCoveragePercentage = options.gasCoveragePercentage.toString();
+        }
+        else if (typeof options.gasCoveragePercentage === "string" && /^[0-9]+$/.test(options.gasCoveragePercentage)) {
+            gasCoveragePercentage = options.gasCoveragePercentage;
+        }
+        else throw "invalid gas coverage percentage, must be an integer greater than equal 0";
+    }
 
-    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
-    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
-
-    config.bundle = true;
-    if (options?.bundle !== undefined) config.bundle = !!options.bundle;
-
-    let hops = 11;
+    let hops = 7;
     if (options.hops) {
         if (typeof options.hops === "number") {
             hops = options.hops;
             if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
         }
-        else if (typeof options.hops === "string" && /^\d+$/.test(options.hops)) {
+        else if (typeof options.hops === "string" && /^[0-9]+$/.test(options.hops)) {
             hops = Number(options.hops);
             if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
         }
         else throw "invalid hops value, must be an integer greater than 0";
     }
+
     let retries = 1;
     if (options.retries) {
         if (typeof options.retries === "number") {
             retries = options.retries;
             if (retries < 1 || retries > 3) throw "invalid retries value, must be an integer between 1 - 3";
         }
-        else if (typeof options.retries === "string" && /^\d+$/.test(options.retries)) {
+        else if (typeof options.retries === "string" && /^[0-9]+$/.test(options.retries)) {
             retries = Number(options.retries);
             if (retries < 1 || retries > 3) throw "invalid retries value, must be an integer between 1 - 3";
         }
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
-    config.rpc              = rpcUrl;
-    config.signer           = signer;
-    config.orderbookAddress = orderbookAddress;
-    config.arbAddress       = arbAddress;
-    config.lps              = options?.liquidityProviders;
-    config.timeout          = options?.timeout;
-    config.flashbotRpc      = options?.flashbotRpc;
-    config.maxRatio         = !!options?.maxRatio;
-    config.hops             = hops;
-    config.retries          = retries;
+    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer    = new ethers.Wallet(walletPrivateKey, provider);
+    const chainId   = await signer.getChainId();
+    const config    = getChainConfig(chainId);
+    if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
+
+    config.bundle = true;
+    if (options?.bundle !== undefined) config.bundle = !!options.bundle;
+
+    config.rpc                      = rpcUrl;
+    config.signer                   = signer;
+    config.orderbookAddress         = orderbookAddress;
+    config.arbAddress               = arbAddress;
+    config.lps                      = options?.liquidityProviders;
+    config.timeout                  = options?.timeout;
+    config.flashbotRpc              = options?.flashbotRpc;
+    config.maxRatio                 = !!options?.maxRatio;
+    config.hops                     = hops;
+    config.retries                  = retries;
+    config.gasCoveragePercentage    = gasCoveragePercentage;
 
     return config;
 };
@@ -226,26 +238,26 @@ const getConfig = async(
 const clear = async(
     config,
     ordersDetails,
-    options = clearOptions,
     tracer,
     ctx,
 ) => {
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
-    const gasCoveragePercentage = options.gasCoveragePercentage !== undefined
-        ? options.gasCoveragePercentage
-        : clearOptions.gasCoveragePercentage;
 
     if (majorVersion >= 18) return await processOrders(
         config,
         ordersDetails,
-        gasCoveragePercentage,
         tracer,
         ctx,
     );
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 };
 
+
+/**
+ * Checks a subgraph health status and records the result in an object or throws
+ * error if all given subgraphs are unhealthy
+ */
 function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson) {
     const availableSgs = [];
     const reasons = {};
@@ -279,6 +291,12 @@ function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson)
     return { availableSgs, reasons };
 }
 
+/**
+ * Handles the result of querying multiple subgraphs, by recording the errors
+ * and resolved order details, if all given subgraphs error, it will throw an
+ * error else, it will record errors in span attributes and returns the resolved
+ * order details.
+ */
 function handleSgResults(availableSgs, responses, span, hasjson) {
     const reasons = {};
     const ordersDetails = [];

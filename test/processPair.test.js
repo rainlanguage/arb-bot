@@ -6,7 +6,7 @@ const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
 const { mockSgFromEvent, getEventArgs, encodeMeta, generateEvaluableConfig } = require("./utils");
-const { processPair, ProcessPairReportStatus, ProcessPairHaltReason } = require("../src/modes/srouter");
+const { processPair, ProcessPairReportStatus, ProcessPairHaltReason } = require("../src/processOrders");
 const { LiquidityProviders } = require("sushi");
 const { arbDeploy } = require("./deploy/arbDeploy");
 const { orderbookAbi } = require("../src/abis");
@@ -103,6 +103,7 @@ describe("Test process pair", async function () {
         config.orderbookAddress = orderbook.address;
         config.testViemClient = viemClient;
         config.testBlockNumber = 56738134n;
+        config.gasCoveragePercentage = "100";
 
         // get a DataFetcher
         dataFetcher = getDataFetcher(config, config.lps, false);
@@ -156,7 +157,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
 
             assert.equal(result.report.status, ProcessPairReportStatus.EmptyVault);
@@ -208,7 +208,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
 
             assert.equal(result.report.status, ProcessPairReportStatus.NoOpportunity);
@@ -276,7 +275,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -323,7 +321,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -365,7 +362,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook: _orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -401,7 +397,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -437,7 +432,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -509,7 +503,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "100",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -542,6 +535,7 @@ describe("Test process pair", async function () {
 
         // set the test type to tx fail
         config.testType = "tx-fail";
+        config.gasCoveragePercentage = "0";
         try {
             await processPair({
                 config,
@@ -553,7 +547,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "0",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
@@ -617,7 +610,6 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair: "USDT/WMATIC",
-                gasCoveragePercentage: "0",
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
