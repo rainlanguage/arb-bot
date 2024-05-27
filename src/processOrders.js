@@ -138,7 +138,7 @@ const processOrders = async(
 
             // record otel span status based on reported reason
             if (e.reason) {
-                // report the error reason along the rest of report
+                // report the error reason along with the rest of report
                 reports.push({
                     ...e.report,
                     error: e.error,

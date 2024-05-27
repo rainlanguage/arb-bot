@@ -35,7 +35,7 @@ const configOptions = {
     /**
      * The amount of hops of binary search
      */
-    hops: 11,
+    hops: 7,
     /**
      * The amount of retries for the same order
      */
@@ -124,7 +124,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 };
 
 /**
- * Get the configuration info of a network required for the bot
+ * Get the general and network configuration required for the bot to operate
  *
  * @param {string} rpcUrl - The RPC URL
  * @param {string} walletPrivateKey - The wallet private key
@@ -253,6 +253,11 @@ const clear = async(
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 };
 
+
+/**
+ * Checks a subgraph health status and records the result in an object or throws
+ * error if all given subgraphs are unhealthy
+ */
 function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson) {
     const availableSgs = [];
     const reasons = {};
@@ -286,6 +291,12 @@ function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson)
     return { availableSgs, reasons };
 }
 
+/**
+ * Handles the result of querying multiple subgraphs, by recording the errors
+ * and resolved order details, if all given subgraphs error, it will throw an
+ * error else, it will record errors in span attributes and returns the resolved
+ * order details.
+ */
 function handleSgResults(availableSgs, responses, span, hasjson) {
     const reasons = {};
     const ordersDetails = [];

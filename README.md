@@ -77,7 +77,7 @@ Other optional arguments are:
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
-- `--hops`, Option to specify how many hops the binary search should do, default is 11 if left unspecified, Will override the 'HOPS' in env variables
+- `--hops`, Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `-V` or `--version`, output the version number
@@ -195,7 +195,7 @@ TIMEOUT=""
 # Flag for not bundling orders based on pairs and clear each order individually
 NO_BUNDLE="false"
 
-# number of hops of binary search, if left unspecified will be 11 by default
+# number of hops of binary search, if left unspecified will be 7 by default
 HOPS=11
 
 # api key for heyperDx platfomr to send spans to, if not set will send traces to localhost
