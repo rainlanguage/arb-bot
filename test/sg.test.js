@@ -7,11 +7,6 @@ describe("Test read subgraph", async function () {
             "url1",
             "url2"
         ];
-        const blockNumberResult = {
-            status: "fulfilled",
-            reason: undefined,
-            value: 123
-        };
         const mockSgStatusOk = [
             {
                 status: "fulfilled",
@@ -44,7 +39,7 @@ describe("Test read subgraph", async function () {
         ];
         let result;
         try {
-            result = checkSgStatus(sgsUrls, mockSgStatusOk, blockNumberResult);
+            result = checkSgStatus(sgsUrls, mockSgStatusOk);
         } catch {
             throw "expected to resolve, but rejected";
         }
@@ -64,7 +59,7 @@ describe("Test read subgraph", async function () {
             }
         ];
         try {
-            checkSgStatus(sgsUrls, mockSgStatusRejected, blockNumberResult);
+            checkSgStatus(sgsUrls, mockSgStatusRejected);
             throw "expected to reject, but resolved";
         } catch(error) {
             assert.equal(error, "unhealthy subgraph");
@@ -83,7 +78,7 @@ describe("Test read subgraph", async function () {
             }
         ];
         try {
-            checkSgStatus(sgsUrls, mockSgStatusUndefined, blockNumberResult);
+            checkSgStatus(sgsUrls, mockSgStatusUndefined);
             throw "expected to reject, but resolved";
         } catch(error) {
             assert.equal(error, "unhealthy subgraph");
@@ -111,7 +106,7 @@ describe("Test read subgraph", async function () {
             }
         ];
         try {
-            result = checkSgStatus(sgsUrls, mockSgStatusUndefinedPartial, blockNumberResult);
+            result = checkSgStatus(sgsUrls, mockSgStatusUndefinedPartial);
         } catch(error) {
             throw "expected to resolve, but rejected";
         }
@@ -150,51 +145,12 @@ describe("Test read subgraph", async function () {
             }
         ];
         try {
-            result = checkSgStatus(sgsUrls, mockSgStatusIndexingError, blockNumberResult);
+            result = checkSgStatus(sgsUrls, mockSgStatusIndexingError);
         } catch(error) {
             throw "expected to resolve, but rejected";
         }
         assert.deepEqual(result.reasons, { "url1": "subgraph has indexing error" });
         assert.deepEqual(result.availableSgs, ["url2"]);
-
-        const mockSgStatusOutOfSync = [
-            {
-                status: "fulfilled",
-                reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            _meta: {
-                                hasIndexingErrors: false,
-                                block: { number: 12 }
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                status: "fulfilled",
-                reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            _meta: {
-                                hasIndexingErrors: false,
-                                block: { number: 123 }
-                            }
-                        }
-                    }
-                }
-            }
-        ];
-        try {
-            result = checkSgStatus(sgsUrls, mockSgStatusOutOfSync, blockNumberResult);
-        } catch(error) {
-            throw "expected to resolve, but rejected";
-        }
-        assert.deepEqual(result.reasons, { "url1": "possibly out of sync" });
-        assert.deepEqual(result.availableSgs, ["url2"]);
-
     });
 
     it("should return correct orders details", async function () {
