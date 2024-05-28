@@ -91,13 +91,10 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                     validSgs.push(v);
                 }
             });
-            statusCheckPromises.push(signer.provider.getBlockNumber());
             const statusResult = await Promise.allSettled(statusCheckPromises);
-            const blockNumberResult = statusResult.pop();
             ({ availableSgs } = checkSgStatus(
                 validSgs,
                 statusResult,
-                blockNumberResult,
                 span,
                 hasjson
             ));
@@ -258,36 +255,26 @@ const clear = async(
  * Checks a subgraph health status and records the result in an object or throws
  * error if all given subgraphs are unhealthy
  */
-function checkSgStatus(validSgs, statusResult, blockNumberResult, span, hasjson) {
+function checkSgStatus(validSgs, statusResult, span, hasjson) {
     const availableSgs = [];
     const reasons = {};
-    if (blockNumberResult.status === "fulfilled") {
-        const blockNumber = blockNumberResult.value;
-        for (let i = 0; i < statusResult.length; i++) {
-            if (statusResult[i].status === "fulfilled") {
-                const sgStatus = statusResult[i]?.value?.data?.data?._meta;
-                if (sgStatus) {
-                    if (sgStatus.hasIndexingErrors) {
-                        reasons[validSgs[i]] = "subgraph has indexing error";
-                    }
-                    else if (
-                        sgStatus.block.number < blockNumber &&
-                        (
-                            blockNumber - sgStatus.block.number
-                        ).toString().length > 2
-                    ) {
-                        reasons[validSgs[i]] = "possibly out of sync";
-                    } else availableSgs.push(validSgs[i]);
-                } else {
-                    reasons[validSgs[i]] = "did not receive valid status response";
-                }
+    for (let i = 0; i < statusResult.length; i++) {
+        if (statusResult[i].status === "fulfilled") {
+            const sgStatus = statusResult[i]?.value?.data?.data?._meta;
+            if (sgStatus) {
+                if (sgStatus.hasIndexingErrors) {
+                    reasons[validSgs[i]] = "subgraph has indexing error";
+                } else availableSgs.push(validSgs[i]);
             } else {
-                reasons[validSgs[i]] = statusResult[i].reason;
+                reasons[validSgs[i]] = "did not receive valid status response";
             }
+        } else {
+            reasons[validSgs[i]] = statusResult[i].reason;
         }
-        if (Object.keys(reasons).length) span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
-        if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
     }
+    if (Object.keys(reasons).length) span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
+    if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
+
     return { availableSgs, reasons };
 }
 
@@ -306,10 +293,8 @@ function handleSgResults(availableSgs, responses, span, hasjson) {
                 ...responses[i].value.data.data.orders
             );
         }
-        else {
-            reasons[availableSgs[i]] = responses[i].status === "fulfilled"
-                ? "could not read from url"
-                : responses[i].reason;
+        else if (responses[i].status === "rejected") {
+            reasons[availableSgs[i]] = responses[i].reason;
         }
     }
     if (Object.keys(reasons).length) span?.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));

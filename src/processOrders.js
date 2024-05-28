@@ -133,9 +133,6 @@ const processOrders = async(
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
-            // record the error for the span
-            if (e.error) span.recordException(getSpanException(e.error));
-
             // record otel span status based on reported reason
             if (e.reason) {
                 // report the error reason along with the rest of report
@@ -148,27 +145,36 @@ const processOrders = async(
                 // set the otel span status based on returned reason
                 if (e.reason === ProcessPairHaltReason.NoWalletFund) {
                     // in case that wallet has no more funds, terminate the process by breaking the loop
+                    if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
                     span.end();
                     throw "empty wallet";
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
+                    if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get vault balance" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
+                    if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
+                    if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
                     // set OK status because a token might not have a pool and as a result eth price cannot
                     // be fetched for it and if it is set to ERROR it will constantly error on each round
                     // resulting in lots of false positives
+                    if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                     span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
                 } else {
                     // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                     // because of mev front running or false positive opportunities, etc
+                    if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                     span.setStatus({ code: SpanStatusCode.OK });
                     span.setAttribute("unsuccessfullClear", true);
                 }
             } else {
+                // record the error for the span
+                if (e.error) span.recordException(getSpanException(e.error));
+
                 // report the unexpected error reason
                 reports.push({
                     ...e.report,
