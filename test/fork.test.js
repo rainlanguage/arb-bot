@@ -13,14 +13,14 @@ describe("Test forking evm", async function () {
         const fork = await Fork.create(process?.env?.TEST_POLYGON_RPC, block, 137);
         const forkLastBlock = await fork.hardhatNode.getLatestBlock();
 
-        assert.deepEqual(BigInt(block.difficulty), forkLastBlock.header.difficulty);
-        assert.deepEqual(block.extraData, ethers.utils.hexlify(forkLastBlock.header.extraData));
-        assert.deepEqual(block.gasLimit.toBigInt(), forkLastBlock.header.gasLimit);
-        assert.deepEqual(block.gasUsed.toBigInt(), forkLastBlock.header.gasUsed);
-        assert.deepEqual(BigInt(block.number), forkLastBlock.header.number);
-        assert.deepEqual(BigInt(block.timestamp), forkLastBlock.header.timestamp);
-        assert.deepEqual(block.parentHash, ethers.utils.hexlify(forkLastBlock.header.parentHash));
-        assert.deepEqual(block.baseFeePerGas.toBigInt(), forkLastBlock.header.baseFeePerGas);
+        assert.equal(BigInt(block.difficulty), forkLastBlock.header.difficulty);
+        assert.equal(block.extraData, ethers.utils.hexlify(forkLastBlock.header.extraData));
+        assert.equal(block.gasLimit.toBigInt(), forkLastBlock.header.gasLimit);
+        assert.equal(block.gasUsed.toBigInt(), forkLastBlock.header.gasUsed);
+        assert.equal(BigInt(block.number), forkLastBlock.header.number);
+        assert.equal(BigInt(block.timestamp), forkLastBlock.header.timestamp);
+        assert.equal(block.parentHash, ethers.utils.hexlify(forkLastBlock.header.parentHash));
+        assert.equal(block.baseFeePerGas.toBigInt(), forkLastBlock.header.baseFeePerGas);
     });
 
     it("should return reliable gas estimation", async function () {

@@ -8,7 +8,7 @@ const { HardhatNode } = require("hardhat/internal/hardhat-network/provider/node"
  * @param {number} chainId - the network chain id
  */
 async function createFork(jsonRpcUrl, block, chainId) {
-    // hardhat node config, this fields are default,
+    // hardhat node config, the fields are default,
     // except forkConfig, blockGasLimit, networkId, chainId and initialDate
     const hardhatNodeConfig = {
         automine: true,
