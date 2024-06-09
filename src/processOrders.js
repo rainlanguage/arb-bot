@@ -539,7 +539,7 @@ async function processPair(args) {
                 orderbook.address,
                 receipt
             );
-            const income = getIncome(signer, receipt);
+            const income = getIncome(await signer.getAddress(), receipt);
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
             ).mul(receipt.gasUsed);

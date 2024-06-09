@@ -420,14 +420,14 @@ const sleep = async(ms, msg = "") => {
 /**
  * Extracts the income (received token value) from transaction receipt
  *
- * @param {ethers.Wallet} signer - The ethers wallet instance of the bot
+ * @param {ethers.Wallet} signerAddress - The ethers wallet instance of the bot
  * @param {any} receipt - The transaction receipt
  * @returns The income value or undefined if cannot find any valid value
  */
-const getIncome = (signer, receipt) => {
+const getIncome = (signerAddress, receipt) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
     if (receipt.events) return receipt.events.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
+        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
     ).map(v => {
         try{
             return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
@@ -437,7 +437,7 @@ const getIncome = (signer, receipt) => {
         }
     })[0]?.value;
     else if (receipt.logs) return receipt.logs.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signer.address)
+        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
     ).map(v => {
         try{
             return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
