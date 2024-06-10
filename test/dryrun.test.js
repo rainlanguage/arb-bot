@@ -92,10 +92,12 @@ describe("Test dryrun", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        let rejectFirst = false;
+        // mock the signer to reject the first attempt on gas estimation
+        // so the dryrun goes into binary search
+        let rejectFirst = true;
         signer.estimateGas = async () => {
-            if (!rejectFirst) {
-                rejectFirst = true;
+            if (rejectFirst) {
+                rejectFirst = false;
                 return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
             } else return gasLimitEstimation;
         };

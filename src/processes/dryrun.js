@@ -45,7 +45,7 @@ async function dryrun({
     let maximumInput = vaultBalance;
 
     const allHopsAttributes = [];
-    for (let j = 1; j < config.hops + 1; j++) {
+    for (let i = 1; i < config.hops + 1; i++) {
         const hopAttrs = {};
         hopAttrs["maxInput"] = maximumInput.toString();
 
@@ -53,6 +53,7 @@ async function dryrun({
             "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals)
         );
 
+        // get route details from sushi dataFetcher
         const pcMap = dataFetcher.getCurrentPoolCodeMap(
             fromToken,
             toToken
@@ -64,9 +65,6 @@ async function dryrun({
             maximumInput.toBigInt(),
             toToken,
             gasPrice.toNumber(),
-            // 30e9,
-            // providers,
-            // poolFilter
         );
 
         if (route.status == "NoWay") {
@@ -99,8 +97,6 @@ async function dryrun({
                 toToken,
                 arb.address,
                 config.routeProcessors["3.2"],
-                // permits
-                // "0.005"
             );
 
             const orders = mode === 0
@@ -148,8 +144,9 @@ async function dryrun({
                 catch(e) {
                     const spanError = getSpanException(e);
                     const errorString = JSON.stringify(spanError);
+                    // reject early in case of no wallet fund
                     if (
-                        e.code === ethers.errors.INSUFFICIENT_FUNDS
+                        (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
                         || errorString.includes("gas required exceeds allowance")
                         || errorString.includes("insufficient funds for gas")
                     ) {
@@ -158,7 +155,7 @@ async function dryrun({
                         return Promise.reject(result);
                     }
                     // only record the first error for traces
-                    if (j === 1) {
+                    if (i === 1) {
                         hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
                     }
@@ -177,6 +174,9 @@ async function dryrun({
                     )
                 );
 
+                // repeat the same process with heaedroom if gas
+                // coverage is not 0, 0 gas coverage means 0 minimum
+                // sender output which is already called above
                 if (config.gasCoveragePercentage !== "0") {
                     const headroom = (
                         Number(config.gasCoveragePercentage) * 1.05
@@ -198,8 +198,9 @@ async function dryrun({
                     catch(e) {
                         const spanError = getSpanException(e);
                         const errorString = JSON.stringify(spanError);
+                        // reject early in case of no wallet fund
                         if (
-                            e.code === ethers.errors.INSUFFICIENT_FUNDS
+                            (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
                             || errorString.includes("gas required exceeds allowance")
                             || errorString.includes("insufficient funds for gas")
                         ) {
@@ -207,7 +208,8 @@ async function dryrun({
                             result.reason = DryrunHaltReason.NoWalletFund;
                             return Promise.reject(result);
                         }
-                        if (j === 1) {
+                        // only record the first error for traces
+                        if (i === 1) {
                             hopAttrs["route"] = routeVisual;
                             hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
                                 gasCostInToken,
@@ -218,10 +220,16 @@ async function dryrun({
                         throw "noopp";
                     }
                 }
+
+                // if reached here means there was success on dryrun, so set binary
+                // search last status to true, and return if there was success on
+                // first attempt (ie full vault balance) or when the binary search
+                // has completed
                 binarySearchLastHopSuccess = true;
-                if (j == 1 || j == config.hops) {
-                    // we dont need allHopsAttributes in case an opp is found
-                    // since all those data will be available in the submitting tx
+                if (i == 1 || i == config.hops) {
+                    // allHopsAttributes is not needed in case an opp is found
+                    // since all those data will be available in the submitting
+                    // tx trace, as they are being returned as data for processTx()
                     spanAttributes["oppBlockNumber"] = blockNumber;
                     result.data = {
                         rawtx,
@@ -237,18 +245,22 @@ async function dryrun({
             }
             catch (error) {
                 binarySearchLastHopSuccess = false;
+                // record the error in case it is an unexpected one
                 if (error !== "noopp") {
                     hopAttrs["error"] = getSpanException(error);
                     // reason, code, method, transaction, error, stack, message
                 }
             }
         }
+        // record this hop attributes
         allHopsAttributes.push(JSON.stringify(hopAttrs));
+
+        // set the maxInput for next hop
         maximumInput = binarySearchLastHopSuccess
-            ? maximumInput.add(vaultBalance.div(2 ** j))
-            : maximumInput.sub(vaultBalance.div(2 ** j));
+            ? maximumInput.add(vaultBalance.div(2 ** i))
+            : maximumInput.sub(vaultBalance.div(2 ** i));
     }
-    // in case no opp is found, allHopsAttributes will be included
+    // in case reached here, allHopsAttributes will be included
     spanAttributes["hops"] = allHopsAttributes;
 
     if (noRoute) result.reason = DryrunHaltReason.NoRoute;
@@ -299,16 +311,19 @@ async function dryrunWithRetries({
     const allPromises = await Promise.allSettled(promises);
     if (allPromises.some(v => v.status === "fulfilled")) {
         let choice;
-        for (let j = 0; j < allPromises.length; j++) {
-            if (allPromises[j].status === "fulfilled") {
+        for (let i = 0; i < allPromises.length; i++) {
+            // from retries, choose the one that can clear the most
+            // ie its maxInput is the greatest
+            if (allPromises[i].status === "fulfilled") {
                 if (
                     !choice ||
-                    choice.maximumInput.lt(allPromises[j].value.data.maximumInput)
+                    choice.maximumInput.lt(allPromises[i].value.data.maximumInput)
                 ) {
-                    for (attrKey in allPromises[j].value.spanAttributes) {
-                        spanAttributes[attrKey] = allPromises[j].value.spanAttributes[attrKey];
+                    // record the attributes of the choosing one
+                    for (attrKey in allPromises[i].value.spanAttributes) {
+                        spanAttributes[attrKey] = allPromises[i].value.spanAttributes[attrKey];
                     }
-                    choice = allPromises[j].value.data;
+                    choice = allPromises[i].value.data;
                 }
             }
         }
