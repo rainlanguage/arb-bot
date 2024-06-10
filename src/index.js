@@ -3,9 +3,16 @@ const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
-const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
-const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
+const { processOrders } = require("./processes/processOrders");
+const {
+    processLps,
+    getDataFetcher,
+    getChainConfig,
+    createViemClient,
+    getSpanException,
+    getOrderDetailsFromJson,
+} = require("./utils");
 
 
 /**
@@ -207,6 +214,10 @@ const getConfig = async(
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
+    const lps               = processLps(options?.liquidityProviders);
+    const viemClient        = createViemClient(chainId, [rpcUrl], false);
+    const dataFetcher       = getDataFetcher(viemClient, lps, false);
+
     config.rpc                      = rpcUrl;
     config.signer                   = signer;
     config.orderbookAddress         = orderbookAddress;
@@ -218,6 +229,8 @@ const getConfig = async(
     config.hops                     = hops;
     config.retries                  = retries;
     config.gasCoveragePercentage    = gasCoveragePercentage;
+    config.viemClient               = viemClient;
+    config.dataFetcher              = dataFetcher;
 
     return config;
 };

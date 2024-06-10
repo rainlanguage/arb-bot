@@ -1170,13 +1170,11 @@ function getSpanException(error) {
  *
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
- * @param {boolean} _bundle = If orders should be bundled based on token pair
  * @returns Array of bundled take orders
  */
 const bundleOrders = (
     ordersDetails,
     _shuffle = true,
-    _bundle = true,
 ) => {
     const bundledOrders = [];
     for (let i = 0; i < ordersDetails.length; i++) {
@@ -1204,7 +1202,7 @@ const bundleOrders = (
                         v.sellToken === _output.token.toLowerCase() &&
                         v.buyToken === _input.token.toLowerCase()
                     );
-                    if (pair && _bundle) pair.takeOrders.push({
+                    if (pair) pair.takeOrders.push({
                         id: orderDetails.id,
                         takeOrder: {
                             order: orderStruct,
@@ -1237,7 +1235,7 @@ const bundleOrders = (
     }
     if (_shuffle) {
         // shuffle take orders for each pair
-        if (_bundle) bundledOrders.forEach(v => shuffleArray(v.takeOrders));
+        bundledOrders.forEach(v => shuffleArray(v.takeOrders));
 
         // shuffle bundled orders pairs
         shuffleArray(bundledOrders);
@@ -1275,11 +1273,9 @@ async function getVaultBalance(
         })),
     });
 
-    let result = ethers.BigNumber.from(0);
     for (let i = 0; i < multicallResult.length; i++) {
-        result = result.add(multicallResult[i]);
+        orderDetails.takeOrders[i].vaultBalance = ethers.BigNumber.from(multicallResult[i]);
     }
-    return result;
 }
 
 module.exports = {

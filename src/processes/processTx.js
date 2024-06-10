@@ -79,9 +79,6 @@ async function processTx({
             ]
         );
 
-        // only for test case
-        if (config.isTest && config.testType === "tx-fail") throw "tx-fail";
-
         tx = config.timeout
             ? await promiseTimeout(
                 (flashbotSigner !== undefined
@@ -111,9 +108,6 @@ async function processTx({
 
     // wait for tx receipt
     try {
-        // only for test case
-        if (config.isTest && config.testType === "tx-mine-fail") throw "tx-mine-fail";
-
         const receipt = config.timeout
             ? await promiseTimeout(
                 tx.wait(),

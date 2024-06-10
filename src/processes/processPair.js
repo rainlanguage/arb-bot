@@ -87,9 +87,6 @@ async function processPair({
     // get gas price
     let gasPrice;
     try {
-        // only for test case
-        if (config.isTest && config.testType === "gas-price") throw "gas-price";
-
         gasPrice = await signer.provider.getGasPrice();
         sharedSpanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
@@ -136,8 +133,6 @@ async function processPair({
 
     // get pool details
     try {
-        // only for test case
-        if (config.isTest && config.testType === "pools") throw "pools";
         const options = {
             fetchPoolsTimeout: 30000,
             memoize: true,

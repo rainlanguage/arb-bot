@@ -66,82 +66,8 @@ describe("Test order details", async function () {
     const orderStruct2 = JSON.parse(order2.orderJSONString);
 
     it("should return correct order details", async function () {
-        const unbundledResult = bundleOrders([order1, order2], false, false);
-        const unbundledExpected = [
-            {
-                buyToken: orderStruct1.validInputs[0].token,
-                buyTokenSymbol: order1.validInputs[0].token.symbol,
-                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
-                sellToken: orderStruct1.validOutputs[0].token,
-                sellTokenSymbol: order1.validOutputs[0].token.symbol,
-                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
-                takeOrders: [{
-                    id: order1.id,
-                    takeOrder: {
-                        order: {
-                            owner: orderStruct1.owner,
-                            handleIO: orderStruct1.handleIo,
-                            evaluable: orderStruct1.evaluable,
-                            validInputs: orderStruct1.validInputs,
-                            validOutputs: orderStruct1.validOutputs
-                        },
-                        inputIOIndex: 0,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                }]
-            },
-            {
-                buyToken: orderStruct2.validInputs[1].token,
-                buyTokenSymbol: order2.validInputs[1].token.symbol,
-                buyTokenDecimals: orderStruct2.validInputs[1].decimals,
-                sellToken: orderStruct2.validOutputs[0].token,
-                sellTokenSymbol: order2.validOutputs[0].token.symbol,
-                sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
-                takeOrders: [{
-                    id: order2.id,
-                    takeOrder: {
-                        order: {
-                            owner: orderStruct2.owner,
-                            handleIO: orderStruct2.handleIo,
-                            evaluable: orderStruct2.evaluable,
-                            validInputs: orderStruct2.validInputs,
-                            validOutputs: orderStruct2.validOutputs
-                        },
-                        inputIOIndex: 1,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                }]
-            },
-            {
-                buyToken: orderStruct2.validInputs[0].token,
-                buyTokenSymbol: order2.validInputs[0].token.symbol,
-                buyTokenDecimals: orderStruct2.validInputs[0].decimals,
-                sellToken: orderStruct2.validOutputs[1].token,
-                sellTokenSymbol: order2.validOutputs[1].token.symbol,
-                sellTokenDecimals: orderStruct2.validOutputs[1].decimals,
-                takeOrders: [{
-                    id: order2.id,
-                    takeOrder: {
-                        order: {
-                            owner: orderStruct2.owner,
-                            handleIO: orderStruct2.handleIo,
-                            evaluable: orderStruct2.evaluable,
-                            validInputs: orderStruct2.validInputs,
-                            validOutputs: orderStruct2.validOutputs
-                        },
-                        inputIOIndex: 0,
-                        outputIOIndex: 1,
-                        signedContext: []
-                    }
-                }]
-            },
-        ];
-        assert.deepEqual(unbundledResult, unbundledExpected);
-
-        const bundledResult = bundleOrders([order1, order2], false, true);
-        const bundledExpected = [
+        const result = bundleOrders([order1, order2], false);
+        const expected = [
             {
                 buyToken: orderStruct1.validInputs[0].token,
                 buyTokenSymbol: order1.validInputs[0].token.symbol,
@@ -206,7 +132,7 @@ describe("Test order details", async function () {
                 }]
             },
         ];
-        assert.deepEqual(bundledResult, bundledExpected);
+        assert.deepEqual(result, expected);
     });
 
     it("should correctly handle handleIo/handleIO key", async function () {
@@ -246,8 +172,8 @@ describe("Test order details", async function () {
                 }
             }]
         };
-        const result1 = bundleOrders([orderWithHandleIoKey], false, false);
-        const result2 = bundleOrders([orderWithHandleIOKey], false, false);
+        const result1 = bundleOrders([orderWithHandleIoKey], false);
+        const result2 = bundleOrders([orderWithHandleIOKey], false);
         assert.deepEqual(result1, result2);
     });
 
@@ -357,36 +283,28 @@ describe("Test order details", async function () {
             );
 
         // no bundle vault balance check
-        const expectedBalancesNoBundle = [
+        const expectedBalances = [
             owner1WmaticDepositAmount,
             owner2UsdtDepositAmount,
             owner2WmaticDepositAmount,
         ];
-        const noBundleOrders = bundleOrders([order1, order2], false, false);
-        for (let i = 0; i < noBundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(
-                noBundleOrders[i],
-                orderbook.address,
-                viemClient,
-                "0xcA11bde05977b3631167028862bE2a173976CA11"
-            );
-            assert.deepEqual(vaultBalance, expectedBalancesNoBundle[i]);
-        }
+        const bundledOrders = bundleOrders([order1, order2], false);
 
-        // bundle vault balance check
-        const expectedBalancesBundled = [
-            owner1WmaticDepositAmount.add(owner2WmaticDepositAmount),
-            owner2UsdtDepositAmount,
-        ];
-        const bundledOrders = bundleOrders([order1, order2], false, true);
-        for (let i = 0; i < bundleOrders.length; i++) {
-            const vaultBalance = await getVaultBalance(
-                bundledOrders[i],
-                orderbook.address,
-                viemClient,
-                "0xcA11bde05977b3631167028862bE2a173976CA11"
-            );
-            assert.deepEqual(vaultBalance, expectedBalancesBundled[i]);
-        }
+        await getVaultBalance(
+            bundledOrders[0],
+            orderbook.address,
+            viemClient,
+            "0xcA11bde05977b3631167028862bE2a173976CA11"
+        );
+        assert.deepEqual(bundledOrders[0].takeOrders[0].vaultBalance, expectedBalances[0]);
+        assert.deepEqual(bundledOrders[0].takeOrders[1].vaultBalance, expectedBalances[2]);
+
+        await getVaultBalance(
+            bundledOrders[1],
+            orderbook.address,
+            viemClient,
+            "0xcA11bde05977b3631167028862bE2a173976CA11"
+        );
+        assert.deepEqual(bundledOrders[1].takeOrders[0].vaultBalance, expectedBalances[1]);
     });
 });

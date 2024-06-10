@@ -69,7 +69,7 @@ async function dryrun({
             // poolFilter
         );
 
-        if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
+        if (route.status == "NoWay") {
             hopAttrs["route"] = "no-way";
             binarySearchLastHopSuccess = false;
         }
@@ -142,7 +142,6 @@ async function dryrun({
 
                 let gasLimit;
                 try {
-                    if (config.isTest && config.testType === "no-fund") throw "insufficient funds for gas";
                     gasLimit = await signer.estimateGas(rawtx);
                 }
                 catch(e) {

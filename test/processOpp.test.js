@@ -184,7 +184,7 @@ describe("Test process opp for bundled orders", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should find no route", async function () {
+    it("should find no wallet fund", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
