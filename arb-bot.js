@@ -35,6 +35,7 @@ const ENV_OPTIONS = {
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     hops                : process?.env?.HOPS,
     retries             : process?.env?.RETRIES,
+    concurrency         : process?.env?.CONCURRENCY,
     poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -66,6 +67,7 @@ const getOptions = async argv => {
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("--concurrency <integer>", "Option to set concurrency limit for processing orders in async manner, default is 1, ie no concurrency, use 'max' for maximum concurrency, Will override the 'CONCURRENCY' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -95,6 +97,7 @@ const getOptions = async argv => {
     cmdOptions.timeout            = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.hops               = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries            = cmdOptions.retries            || ENV_OPTIONS.retries;
+    cmdOptions.concurrency        = cmdOptions.concurrency        || ENV_OPTIONS.concurrency;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
@@ -128,6 +131,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     bundle               : options.bundle,
                     hops                 : options.hops,
                     retries              : options.retries,
+                    concurrency          : options.concurrency,
                     poolUpdateInterval   : options.poolUpdateInterval,
                     gasCoveragePercentage: options.gasCoverage,
                     liquidityProviders   : options.lps

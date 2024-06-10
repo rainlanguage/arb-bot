@@ -52,6 +52,10 @@ const configOptions = {
      * for it to be considered profitable and get submitted
      */
     gasCoveragePercentage: "100",
+    /**
+     * Concurrency limit for processing orders in async manner
+     */
+    concurrency: 1,
 };
 
 /**
@@ -205,6 +209,22 @@ const getConfig = async(
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
+    let concurrency = 1;
+    if (options.concurrency) {
+        if (options.concurrency === "max") {
+            concurrency = "max";
+        }
+        else if (typeof options.concurrency === "number") {
+            concurrency = options.concurrency;
+            if (concurrency < 1 || Number.isInteger(concurrency)) throw "invalid concurrency value, must be an integer greater than 0";
+        }
+        else if (typeof options.concurrency === "string" && /^[0-9]+$/.test(options.concurrency)) {
+            concurrency = Number(options.concurrency);
+            if (concurrency < 1) throw "invalid concurrency value, must be an integer greater than 0";
+        }
+        else throw "invalid concurrency value, must be an integer greater than 0";
+    }
+
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
@@ -231,6 +251,7 @@ const getConfig = async(
     config.gasCoveragePercentage    = gasCoveragePercentage;
     config.viemClient               = viemClient;
     config.dataFetcher              = dataFetcher;
+    config.concurrency              = concurrency;
 
     return config;
 };

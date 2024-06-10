@@ -80,6 +80,7 @@ Other optional arguments are:
 - `--hops`, Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
+- `--concurrency`, Option to set concurrency limit for processing orders in async manner, default is 1, ie no concurrency, use 'max' for maximum concurrency, Will override the 'CONCURRENCY' in env variables"
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -209,6 +210,9 @@ RETRIES=1
 
 # Option to specify time (in minutes) between pools updates, default is 15 minutes
 POOL_UPDATE_INTERVAL=
+
+# Option to set concurrency limit for processing orders in async manner, default is 1, ie no concurrency, use 'max' for maximum concurrency
+CONCURRENCY=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -232,6 +236,7 @@ const configOptions = {
   timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
   bundle                : true,    // if orders should be bundled based on token pair or be handled individually
   hops                  : 6,       // The amount of hops of binary search
+  concurrency           : 3,       // The concurrency limit for processing orders in async manner
   retries               : 1,       // The amount of retries for the same order
   liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
     "sushiswapv2",

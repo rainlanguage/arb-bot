@@ -20,6 +20,7 @@ describe("Test app options", async function () {
         assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);
         assert.equal(config.gasCoveragePercentage, "100");
+        assert.equal(config.concurrency, 1);
     });
 
     it("should error if retries is not between 1-3", async function () {
