@@ -69,7 +69,7 @@ async function dryrun({
             // poolFilter
         );
 
-        if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
+        if (route.status == "NoWay") {
             hopAttrs["route"] = "no-way";
             binarySearchLastHopSuccess = false;
         }
@@ -129,7 +129,8 @@ async function dryrun({
                 )
             };
 
-            // building and submit the transaction
+            // trying to find opp with doing gas estimation, once to get gas and calculate
+            // minimum sender output and second to check the arb() with headroom
             try {
                 const rawtx = {
                     data: arb.interface.encodeFunctionData("arb", [takeOrdersConfigStruct, "0"]),
@@ -142,7 +143,6 @@ async function dryrun({
 
                 let gasLimit;
                 try {
-                    if (config.isTest && config.testType === "no-fund") throw "insufficient funds for gas";
                     gasLimit = await signer.estimateGas(rawtx);
                 }
                 catch(e) {
@@ -157,7 +157,7 @@ async function dryrun({
                         result.reason = DryrunHaltReason.NoWalletFund;
                         return Promise.reject(result);
                     }
-                    // only record the last error for traces
+                    // only record the first error for traces
                     if (j === 1) {
                         hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
