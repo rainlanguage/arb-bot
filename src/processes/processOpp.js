@@ -114,10 +114,12 @@ async function attemptOppAndClear({
         }
         results.push(result);
     } else {
-        const orderPairObjectCopy = JSON.parse(JSON.stringify(orderPairObject));
         const concurrencyLimit = config.concurrency === "max"
             ? orderPairObject.takeOrders.length
             : config.concurrency;
+
+        // process orders async in batch set by concurrency limit, until run out of orders to process
+        const orderPairObjectCopy = JSON.parse(JSON.stringify(orderPairObject));
         while (orderPairObjectCopy.takeOrders.length) {
             const batch = orderPairObjectCopy.takeOrders.splice(0, concurrencyLimit);
             const orders = [];
