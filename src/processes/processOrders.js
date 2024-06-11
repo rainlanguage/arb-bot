@@ -79,22 +79,19 @@ const processOrders = async(
                     if (report.reason === AttemptOppAndClearHaltReason.NoWalletFund) {
                         span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
                         if (report.error) span.recordException(getSpanException(report.error));
-                    }
-                    else if (report.reason === AttemptOppAndClearHaltReason.NoRoute) {
+                    } else if (report.reason === AttemptOppAndClearHaltReason.NoRoute) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no route" });
                         if (report.error) span.setAttribute(
                             "details.error",
                             JSON.stringify(getSpanException(report.error))
                         );
-                    }
-                    else if (report.reason === AttemptOppAndClearHaltReason.NoOpportunity) {
+                    } else if (report.reason === AttemptOppAndClearHaltReason.NoOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                         if (report.error) span.setAttribute(
                             "details.error",
                             JSON.stringify(getSpanException(report.error))
                         );
-                    }
-                    else if (report.reason === AttemptOppAndClearHaltReason.TxFailed) {
+                    } else if (report.reason === AttemptOppAndClearHaltReason.TxFailed) {
                         allReports.foundOppsCount++;
                         span.setAttribute("foundOpp", true);
                         span.setStatus({ code: SpanStatusCode.OK, message: "failed to send the transaction" });
@@ -102,8 +99,7 @@ const processOrders = async(
                             "details.error",
                             JSON.stringify(getSpanException(report.error))
                         );
-                    }
-                    else if (report.reason === AttemptOppAndClearHaltReason.TxMineFailed) {
+                    } else if (report.reason === AttemptOppAndClearHaltReason.TxMineFailed) {
                         allReports.foundOppsCount++;
                         span.setAttribute("foundOpp", true);
                         span.setStatus({ code: SpanStatusCode.OK, message: "transaction was included in block, but execution failed" });
@@ -111,8 +107,7 @@ const processOrders = async(
                             "details.error",
                             JSON.stringify(getSpanException(report.error))
                         );
-                    }
-                    else {
+                    } else {
                         span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
                         if (report.error) span.recordException(getSpanException(report.error));
                     }
