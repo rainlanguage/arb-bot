@@ -188,7 +188,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     message = "unknown error type";
                 }
             }
-            // span.setAttribute("didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
