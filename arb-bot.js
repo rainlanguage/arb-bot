@@ -4,15 +4,13 @@ require("dotenv").config();
 const fs = require("fs");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
-const { Resource } = require("@opentelemetry/resources");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
-const { ProcessPairReportStatus } = require("./src/processOrders");
-
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 
 /**
  * Options specified in env variables
@@ -35,6 +33,7 @@ const ENV_OPTIONS = {
     flashbotRpc         : process?.env?.FLASHBOT_RPC,
     hops                : process?.env?.HOPS,
     retries             : process?.env?.RETRIES,
+    concurrency         : process?.env?.CONCURRENCY,
     poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
@@ -66,6 +65,7 @@ const getOptions = async argv => {
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("--concurrency <integer>", "Option to set concurrency limit for processing orders in async manner, default is 1, ie no concurrency, use 'max' for maximum concurrency, Will override the 'CONCURRENCY' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -95,6 +95,7 @@ const getOptions = async argv => {
     cmdOptions.timeout            = cmdOptions.timeout            || ENV_OPTIONS.timeout;
     cmdOptions.hops               = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries            = cmdOptions.retries            || ENV_OPTIONS.retries;
+    cmdOptions.concurrency        = cmdOptions.concurrency        || ENV_OPTIONS.concurrency;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
@@ -114,6 +115,12 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
+        const result = {
+            txUrls: [],
+            foundOppsCount: 0,
+            clearsCount: 0,
+            errorMsg: undefined,
+        };
         const ctx = trace.setSpan(context.active(), span);
         try {
             const config = await getConfig(
@@ -128,6 +135,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     bundle               : options.bundle,
                     hops                 : options.hops,
                     retries              : options.retries,
+                    concurrency          : options.concurrency,
                     poolUpdateInterval   : options.poolUpdateInterval,
                     gasCoveragePercentage: options.gasCoverage,
                     liquidityProviders   : options.lps
@@ -147,40 +155,25 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 },
                 span
             );
+            // return early if no orders has been found from sources
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
-                return;
+                return result;
             }
 
-            let txs;
-            let foundOpp = false;
             const reports = await clear(
                 config,
                 ordersDetails,
                 tracer,
                 ctx,
             );
-            if (reports && reports.length) {
-                txs = reports.map(v => v.txUrl).filter(v => !!v);
-                if (txs.length) {
-                    foundOpp = true;
-                    span.setAttribute("txUrls", txs);
-                    span.setAttribute("didClear", true);
-                    span.setAttribute("foundOpp", true);
-                } else if (reports.some(
-                    v => v.status === ProcessPairReportStatus.FoundOpportunity
-                )) {
-                    foundOpp = true;
-                    span.setAttribute("foundOpp", true);
-                }
-            }
-            else {
-                span.setAttribute("didClear", false);
-            }
+            result.txUrls = reports.txUrls;
+            result.clearsCount = reports.clearsCount;
+            result.foundOppsCount = reports.foundOppsCount;
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
-            return { txs, foundOpp };
+            return result;
         } catch(e) {
             let message = "";
             if (e instanceof Error) {
@@ -195,7 +188,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     message = "unknown error type";
                 }
             }
-            span.setAttribute("didClear", false);
+            // span.setAttribute("didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message });
             const error = getSpanException(e);
             if (lastError && lastError === error) {
@@ -293,20 +286,16 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
-                if (txs && txs.length) {
-                    roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
-                    roundSpan.setAttribute("foundOpp", true);
-                }
-                else if (foundOpp) {
-                    roundSpan.setAttribute("foundOpp", true);
-                    roundSpan.setAttribute("didClear", false);
-                }
-                else {
-                    roundSpan.setAttribute("foundOpp", false);
-                    roundSpan.setAttribute("didClear", false);
-                }
+                const {
+                    txUrls,
+                    foundOppsCount,
+                    clearsCount
+                } = await arbRound(tracer, roundCtx, options, lastError);
+                roundSpan.setAttribute("didClear", clearsCount > 0);
+                roundSpan.setAttribute("clearsCount", clearsCount);
+                roundSpan.setAttribute("foundOpp", foundOppsCount > 0);
+                roundSpan.setAttribute("foundOppsCount", foundOppsCount);
+                if (txUrls.length) roundSpan.setAttribute("txUrls", txUrls);
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
                 lastError = undefined;
                 lastSpanContext = undefined;
@@ -331,6 +320,9 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
+                roundSpan.setAttribute("clearsCount", 0);
+                roundSpan.setAttribute("foundOpp", false);
+                roundSpan.setAttribute("foundOppsCount", 0);
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
@@ -359,20 +351,16 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
-                if (txs && txs.length) {
-                    roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
-                    roundSpan.setAttribute("foundOpp", true);
-                }
-                else if (foundOpp) {
-                    roundSpan.setAttribute("foundOpp", true);
-                    roundSpan.setAttribute("didClear", false);
-                }
-                else {
-                    roundSpan.setAttribute("foundOpp", false);
-                    roundSpan.setAttribute("didClear", false);
-                }
+                const {
+                    txUrls,
+                    foundOppsCount,
+                    clearsCount
+                } = await arbRound(tracer, roundCtx, options, lastError);
+                roundSpan.setAttribute("didClear", clearsCount > 0);
+                roundSpan.setAttribute("clearsCount", clearsCount);
+                roundSpan.setAttribute("foundOpp", foundOppsCount > 0);
+                roundSpan.setAttribute("foundOppsCount", foundOppsCount);
+                if (txUrls.length) roundSpan.setAttribute("txUrls", txUrls);
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
                 lastError = undefined;
                 lastSpanContext = undefined;
@@ -397,6 +385,9 @@ const main = async argv => {
                     else roundSpan.links = [{ context: lastSpanContext }];
                 }
                 roundSpan.setAttribute("didClear", false);
+                roundSpan.setAttribute("clearsCount", 0);
+                roundSpan.setAttribute("foundOpp", false);
+                roundSpan.setAttribute("foundOppsCount", 0);
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             if (i !== repetitions) console.log(

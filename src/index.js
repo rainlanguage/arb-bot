@@ -3,9 +3,16 @@ const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
-const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
-const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
+const { processOrders } = require("./processes/processOrders");
+const {
+    processLps,
+    getDataFetcher,
+    getChainConfig,
+    createViemClient,
+    getSpanException,
+    getOrderDetailsFromJson,
+} = require("./utils");
 
 
 /**
@@ -45,6 +52,10 @@ const configOptions = {
      * for it to be considered profitable and get submitted
      */
     gasCoveragePercentage: "100",
+    /**
+     * Concurrency limit for processing orders in async manner
+     */
+    concurrency: 1,
 };
 
 /**
@@ -198,6 +209,22 @@ const getConfig = async(
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
+    let concurrency = 1;
+    if (options.concurrency) {
+        if (options.concurrency === "max") {
+            concurrency = "max";
+        }
+        else if (typeof options.concurrency === "number") {
+            concurrency = options.concurrency;
+            if (concurrency < 1 || Number.isInteger(concurrency)) throw "invalid concurrency value, must be an integer greater than 0";
+        }
+        else if (typeof options.concurrency === "string" && /^[0-9]+$/.test(options.concurrency)) {
+            concurrency = Number(options.concurrency);
+            if (concurrency < 1) throw "invalid concurrency value, must be an integer greater than 0";
+        }
+        else throw "invalid concurrency value, must be an integer greater than 0";
+    }
+
     const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
@@ -206,6 +233,10 @@ const getConfig = async(
 
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
+
+    const lps               = processLps(options?.liquidityProviders);
+    const viemClient        = createViemClient(chainId, [rpcUrl], false);
+    const dataFetcher       = getDataFetcher(viemClient, lps, false);
 
     config.rpc                      = rpcUrl;
     config.signer                   = signer;
@@ -218,6 +249,9 @@ const getConfig = async(
     config.hops                     = hops;
     config.retries                  = retries;
     config.gasCoveragePercentage    = gasCoveragePercentage;
+    config.viemClient               = viemClient;
+    config.dataFetcher              = dataFetcher;
+    config.concurrency              = concurrency;
 
     return config;
 };

@@ -3,7 +3,6 @@ const { assert } = require("chai");
 const { clear } = require("../../src");
 const { ethers, viem, network } = require("hardhat");
 const { arbDeploy } = require("../deploy/arbDeploy");
-const { getChainConfig } = require("../../src/utils");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
@@ -13,11 +12,11 @@ const { deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { randomUint256, prepareOrders, generateEvaluableConfig } = require("../utils");
+const { getChainConfig, getDataFetcher, createViemClient } = require("../../src/utils");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
 const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSDC } = require("sushi/currency");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
-const { ProcessPairReportStatus } = require("../../src/processOrders");
 
 const testChains = [
     [
@@ -197,7 +196,9 @@ for (let i = 0; i < testChains.length; i++) {
             const rpVersion = rpVersions[j];
 
             it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
-                const viemClient = await viem.getPublicClient();
+                const testViemClient = await viem.getPublicClient();
+                const viemClient = createViemClient(chainId, [rpc], false);
+                const dataFetcher = getDataFetcher(viemClient, liquidityProviders, false);
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -309,18 +310,20 @@ for (let i = 0; i < testChains.length; i++) {
                 config.rpVersion = rpVersion;
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
-                config.testViemClient = viemClient;
+                config.testViemClient = testViemClient;
                 config.testBlockNumber = BigInt(blockNumber);
                 config.gasCoveragePercentage = "100";
-                const reports = await clear(config, sgOrders, tracer, ctx);
+                config.dataFetcher = dataFetcher;
+                config.viemClient = viemClient;
+                const allReports = await clear(config, sgOrders, tracer, ctx);
 
                 // should have cleared 2 token pairs bundled orders
-                assert.ok(reports.length == 3);
+                assert.ok(allReports.reports.length == 2);
 
                 // validate first cleared token pair orders
-                assert.equal(reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
-                assert.equal(reports[0].clearedOrders.length, 2);
+                assert.equal(allReports.reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
+                assert.equal(allReports.reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
+                assert.equal(allReports.reports[0].clearedOrders.length, 2);
 
                 // check vault balances for orders in cleared token pair
                 assert.equal(
@@ -356,13 +359,9 @@ for (let i = 0; i < testChains.length; i++) {
                     "100" + "0".repeat(tokens[1].decimals)
                 );
 
-                // validate second token pair orders, which should report empty vault
-                assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[1].status, ProcessPairReportStatus.EmptyVault);
-
                 // validate third cleared token pair orders
-                assert.equal(reports[2].tokenPair, `${tokens[2].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[2].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
+                assert.equal(allReports.reports[1].tokenPair, `${tokens[2].symbol}/${tokens[0].symbol}`);
+                assert.equal(allReports.reports[1].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
 
                 // check vault balances for orders in cleared token pair
                 assert.equal(
