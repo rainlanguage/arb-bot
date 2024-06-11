@@ -21,6 +21,7 @@ describe("Test process tx", async function () {
         effectiveGasPrice,
         gasUsed,
         expectedRouteData,
+        scannerUrl,
     } = fixtures;
     const takeOrdersConfigStruct = {
         minimumInput: ethers.BigNumber.from("1"),
@@ -98,7 +99,7 @@ describe("Test process tx", async function () {
                 maxInput: vaultBalance.toString(),
                 marketPrice: ethers.utils.formatUnits(dryrunData.price),
                 estimatedGasCostInToken: "0.5",
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tx: `{"hash":"${txHash}"}`,
                 gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                 gasCostInToken: ethers.utils.formatUnits(
@@ -106,7 +107,7 @@ describe("Test process tx", async function () {
                 ).slice(0, orderPairObject.buyTokenDecimals + 2),
             },
             report: {
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
@@ -206,14 +207,14 @@ describe("Test process tx", async function () {
                     marketPrice: ethers.utils.formatUnits(dryrunData.price),
                     estimatedGasCostInToken: "0.5",
                     receipt: JSON.stringify(receipt),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                 },
                 report: {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 }
             };
             assert.deepEqual(error, expected);

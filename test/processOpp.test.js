@@ -25,6 +25,7 @@ const {
     effectiveGasPrice,
     gasUsed,
     expectedRouteData,
+    scannerUrl,
 } = fixtures;
 
 const bundledConfig = JSON.parse(JSON.stringify(config));
@@ -80,7 +81,7 @@ describe("Test process opp for bundled orders", async function () {
             {
                 order: orderPairObject.takeOrders.map(v => v.id),
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
@@ -105,7 +106,7 @@ describe("Test process opp for bundled orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                     gasCostInToken: ethers.utils.formatUnits(
@@ -331,7 +332,7 @@ describe("Test process opp for bundled orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -343,7 +344,7 @@ describe("Test process opp for bundled orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },
@@ -401,7 +402,7 @@ describe("Test process opp for single orders", async function () {
             {
                 order: orderPairObject.takeOrders[0].id,
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
@@ -426,7 +427,7 @@ describe("Test process opp for single orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                     gasCostInToken: ethers.utils.formatUnits(
@@ -437,7 +438,7 @@ describe("Test process opp for single orders", async function () {
             {
                 order: orderPairObject.takeOrders[1].id,
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
@@ -462,7 +463,7 @@ describe("Test process opp for single orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                     gasCostInToken: ethers.utils.formatUnits(
@@ -753,7 +754,7 @@ describe("Test process opp for single orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -765,7 +766,7 @@ describe("Test process opp for single orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },
@@ -778,7 +779,7 @@ describe("Test process opp for single orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -790,7 +791,7 @@ describe("Test process opp for single orders", async function () {
                     estimatedGasCostInToken: ethers.utils.formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },

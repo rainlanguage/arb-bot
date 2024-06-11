@@ -13,8 +13,8 @@ describe("Test process orders", async function () {
     const {
         arb,
         pair,
-        usdt,
-        wmatic,
+        token1,
+        token2,
         gasPrice,
         gasLimitEstimation,
         vaultBalance,
@@ -25,22 +25,23 @@ describe("Test process orders", async function () {
         gasUsed,
         expectedRouteVisual,
         expectedRouteData,
+        scannerUrl,
     } = fixtures;
     const ordersDetails = [{
-        orderJSONString: `{"owner":"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6","handleIo":false,"evaluable":{"interpreter":"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30","store":"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d","expression":"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2"},"validInputs":[{"token":"${usdt.address}","decimals":${usdt.decimals},"vaultId":"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"}],"validOutputs":[{"token":"${wmatic.address}","decimals":${wmatic.decimals},"vaultId":"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"}]}`,
+        orderJSONString: `{"owner":"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6","handleIo":false,"evaluable":{"interpreter":"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30","store":"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d","expression":"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2"},"validInputs":[{"token":"${token1.address}","decimals":${token1.decimals},"vaultId":"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"}],"validOutputs":[{"token":"${token2.address}","decimals":${token2.decimals},"vaultId":"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"}]}`,
         id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
         validInputs: [{
             token: {
-                id: usdt.address,
-                decimals: usdt.decimals,
-                symbol: usdt.symbol,
+                id: token1.address,
+                decimals: token1.decimals,
+                symbol: token1.symbol,
             }
         }],
         validOutputs: [{
             token: {
-                id: wmatic.address,
-                decimals: wmatic.decimals,
-                symbol: wmatic.symbol,
+                id: token2.address,
+                decimals: token2.decimals,
+                symbol: token2.symbol,
             }
         }]
     }];
@@ -133,15 +134,15 @@ describe("Test process orders", async function () {
             "details.order": ordersDetails[0].id,
             "details.route": expectedRouteVisual,
             "details.tx": `{"hash":"${txHash}"}`,
-            "details.txUrl": "https://polygonscan.com/tx/" + txHash,
+            "details.txUrl": scannerUrl + "/tx/" + txHash,
         };
         const expectedResult = {
             reports: [
                 {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
-                    buyToken: usdt.address,
-                    sellToken: wmatic.address,
+                    buyToken: token1.address,
+                    sellToken: token2.address,
                     clearedAmount: undefined,
                     actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                     actualGasCostInToken: "0.0",
@@ -154,14 +155,14 @@ describe("Test process orders", async function () {
             ],
             foundOppsCount: 1,
             clearsCount: 1,
-            txUrls: [ "https://polygonscan.com/tx/" + txHash ]
+            txUrls: [ scannerUrl + "/tx/" + txHash ]
         };
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
                 "details.gasPrice": gasPrice.toString(),
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 foundOpp: true,
                 didClear: true,
@@ -208,8 +209,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
             },
@@ -247,8 +248,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
             },
@@ -289,8 +290,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
             },
@@ -352,8 +353,8 @@ describe("Test process orders", async function () {
         const expectedResult = {
             reports: [{
                 tokenPair: pair,
-                buyToken: usdt.address,
-                sellToken: wmatic.address,
+                buyToken: token1.address,
+                sellToken: token2.address,
                 order: ordersDetails[0].id,
                 spanAttributes: expectedSpanAttributes,
                 error: { code: ethers.errors.UNPREDICTABLE_GAS_LIMIT },
@@ -366,8 +367,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
                 "details.error": JSON.stringify({ code: ethers.errors.UNPREDICTABLE_GAS_LIMIT }),
@@ -415,15 +416,15 @@ describe("Test process orders", async function () {
             "details.marketPrice": "0.9969006",
             "details.estimatedGasCostInToken": "0.0",
             "details.receipt": JSON.stringify(receipt),
-            "details.txUrl": "https://polygonscan.com/tx/" + txHash,
+            "details.txUrl": scannerUrl + "/tx/" + txHash,
             "details.tx": JSON.stringify({ hash: txHash })
         };
         const expectedResult = {
             reports: [{
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tokenPair: pair,
-                buyToken: usdt.address,
-                sellToken: wmatic.address,
+                buyToken: token1.address,
+                sellToken: token2.address,
                 order: ordersDetails[0].id,
                 spanAttributes: expectedSpanAttributes,
                 error: undefined,
@@ -431,13 +432,13 @@ describe("Test process orders", async function () {
             }],
             foundOppsCount: 1,
             clearsCount: 0,
-            txUrls: ["https://polygonscan.com/tx/" + txHash]
+            txUrls: [scannerUrl + "/tx/" + txHash]
         };
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
                 foundOpp: true,
@@ -469,8 +470,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
             },
             status: { code: SpanStatusCode.OK, message: "all orders have empty vault" },
@@ -503,8 +504,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
             },
             status: { code: SpanStatusCode.ERROR, message: pair + ": failed to get vault balances" },
@@ -537,8 +538,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
             },
             status: { code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" },
@@ -571,8 +572,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
             },
@@ -606,8 +607,8 @@ describe("Test process orders", async function () {
         const expectedOtelResult = {
             attributes: {
                 ...expectedSpanAttributes,
-                "details.input": usdt.address,
-                "details.output": wmatic.address,
+                "details.input": token1.address,
+                "details.output": token2.address,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString()
             },

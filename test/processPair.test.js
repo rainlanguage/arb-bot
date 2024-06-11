@@ -22,6 +22,7 @@ describe("Test process pair", async function () {
         txHash,
         effectiveGasPrice,
         gasUsed,
+        scannerUrl,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
 
@@ -75,7 +76,7 @@ describe("Test process pair", async function () {
         });
         const expected = {
             reports: [{
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
@@ -98,7 +99,7 @@ describe("Test process pair", async function () {
                     "details.order": orderPairObject.takeOrders[0].id,
                     "details.route": expectedRouteVisual,
                     "details.tx": `{"hash":"${txHash}"}`,
-                    "details.txUrl": "https://polygonscan.com/tx/" + txHash,
+                    "details.txUrl": scannerUrl + "/tx/" + txHash,
                 }
             }],
             reason: undefined,
