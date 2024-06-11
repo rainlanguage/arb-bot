@@ -325,6 +325,7 @@ describe("Test dryrun with retries", async function () {
                 oppBlockNumber: 123456
             },
             reason: undefined,
+            error: undefined,
             spanAttributes: { oppBlockNumber: 123456 }
         };
         assert.deepEqual(result, expected);
@@ -354,6 +355,7 @@ describe("Test dryrun with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoOpportunity,
+                error: undefined,
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
@@ -387,6 +389,7 @@ describe("Test dryrun with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoRoute,
+                error: undefined,
                 spanAttributes: {}
             };
             assert.deepEqual(error, expected);
@@ -417,6 +420,7 @@ describe("Test dryrun with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
+                error: undefined,
                 spanAttributes: {},
             };
             assert.deepEqual(error, expected);

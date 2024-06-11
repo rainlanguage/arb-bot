@@ -91,6 +91,7 @@ async function attemptOppAndClear({
                     result.reason = AttemptOppAndClearHaltReason.TxMineFailed;
                 } else {
                     result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
+                    result.error = e;
                 }
             }
         } catch(e) {
@@ -110,6 +111,7 @@ async function attemptOppAndClear({
                     spanAttributes[attrKey] = e.spanAttributes[attrKey];
                 }
                 result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
+                result.error = e;
             }
         }
         results.push(result);
@@ -191,6 +193,7 @@ async function attemptOppAndClear({
                             result.reason = AttemptOppAndClearHaltReason.TxMineFailed;
                         } else {
                             result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
+                            result.error = e;
                         }
                     }
                 } else {
@@ -214,6 +217,7 @@ async function attemptOppAndClear({
                             ] = dryrunResults[i].reason.spanAttributes[attrKey];
                         }
                         result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
+                        result.error = dryrunResults[i].reason.error;
                     }
                 }
                 results.push(result);

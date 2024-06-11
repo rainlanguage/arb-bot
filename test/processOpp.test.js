@@ -351,6 +351,37 @@ describe("Test process opp for bundled orders", async function () {
         ];
         assert.deepEqual(result, expected);
     });
+
+    it("should fail with unexpected error", async function () {
+        // set dataFetcher to throw unexpected error
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            throw "unexpected error";
+        };
+        const result = await attemptOppAndClear({
+            orderPairObject: orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            flashbotSigner: undefined,
+            gasPrice,
+            arb,
+            orderbook,
+            ethPrice,
+            config: bundledConfig,
+            pair,
+        });
+        const expected = [
+            {
+                order: orderPairObject.takeOrders.map(v => v.id),
+                report: undefined,
+                reason: AttemptOppAndClearHaltReason.UnexpectedError,
+                error: "unexpected error",
+                spanAttributes: {}
+            }
+        ];
+        assert.deepEqual(result, expected);
+    });
 });
 
 describe("Test process opp for single orders async", async function () {
@@ -794,6 +825,44 @@ describe("Test process opp for single orders async", async function () {
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },
+            }
+        ];
+        assert.deepEqual(result, expected);
+    });
+
+    it("should fail with unexpected error", async function () {
+        // set dataFetcher to throw unexpected error
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            throw "unexpected error";
+        };
+        const result = await attemptOppAndClear({
+            orderPairObject: orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            flashbotSigner: undefined,
+            gasPrice,
+            arb,
+            orderbook,
+            ethPrice,
+            config: unbundledConfig,
+            pair,
+        });
+        const expected = [
+            {
+                order: orderPairObject.takeOrders[0].id,
+                report: undefined,
+                reason: AttemptOppAndClearHaltReason.UnexpectedError,
+                error: "unexpected error",
+                spanAttributes: {}
+            },
+            {
+                order: orderPairObject.takeOrders[1].id,
+                report: undefined,
+                reason: AttemptOppAndClearHaltReason.UnexpectedError,
+                error: "unexpected error",
+                spanAttributes: {}
             }
         ];
         assert.deepEqual(result, expected);
