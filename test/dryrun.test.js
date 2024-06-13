@@ -7,6 +7,7 @@ const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../sr
 let signer = {};
 let dataFetcher = {};
 
+const oppBlockNumber = 123456;
 const {
     ethPrice,
     gasPrice,
@@ -20,13 +21,14 @@ const {
     poolCodeMap,
     expectedRouteData,
     expectedRouteVisual,
+    getCurrentPrice,
 } = fixtures;
 
 describe("Test dryrun", async function () {
     beforeEach(() => {
         signer = {
             provider: {
-                getBlockNumber: async () => 123456
+                getBlockNumber: async () => oppBlockNumber
             },
             estimateGas: async () => gasLimitEstimation
         };
@@ -78,12 +80,12 @@ describe("Test dryrun", async function () {
                     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
                 ),
                 takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
-                price: ethers.BigNumber.from("996900600000000000"),
+                price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber: 123456
+                oppBlockNumber,
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber: 123456 }
+            spanAttributes: { oppBlockNumber }
         };
         assert.deepEqual(result, expected);
     });
@@ -148,9 +150,9 @@ describe("Test dryrun", async function () {
                 data: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
                 spanAttributes: {
-                    marketPrice: "0.9969006",
+                    marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
-                    blockNumber: 123456,
+                    blockNumber: oppBlockNumber,
                     error: noFundError,
                     route: expectedRouteVisual,
                 }
@@ -186,9 +188,9 @@ describe("Test dryrun", async function () {
                 data: undefined,
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
-                    marketPrice: "0.9969006",
+                    marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
-                    blockNumber: 123456,
+                    blockNumber: oppBlockNumber,
                     error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
                     route: expectedRouteVisual,
                 }
@@ -202,7 +204,7 @@ describe("Test find opp", async function () {
     beforeEach(() => {
         signer = {
             provider: {
-                getBlockNumber: async () => 123456
+                getBlockNumber: async () => oppBlockNumber
             },
             estimateGas: async () => gasLimitEstimation
         };
@@ -254,12 +256,12 @@ describe("Test find opp", async function () {
                     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
                 ),
                 takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
-                price: ethers.BigNumber.from("996900600000000000"),
+                price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber: 123456
+                oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber: 123456 }
+            spanAttributes: { oppBlockNumber }
         };
         assert.deepEqual(result, expected);
     });
@@ -318,12 +320,12 @@ describe("Test find opp", async function () {
                     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
                 ),
                 takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
-                price: ethers.BigNumber.from("0x0dd5ca4f08ebd555"),
+                price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber: 123456
+                oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber: 123456 }
+            spanAttributes: { oppBlockNumber }
         };
         assert.deepEqual(result, expected);
     });
@@ -356,9 +358,9 @@ describe("Test find opp", async function () {
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        `{"maxInput":"5000000000000000000","marketPrice":"0.9969502","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
-                        `{"maxInput":"2500000000000000000","marketPrice":"0.9969748","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
                 }
             };
@@ -391,9 +393,9 @@ describe("Test find opp", async function () {
                 reason: DryrunHaltReason.NoRoute,
                 spanAttributes: {
                     hops: [
-                        "{\"maxInput\":\"10000000000000000000\",\"route\":\"no-way\"}",
-                        "{\"maxInput\":\"5000000000000000000\",\"route\":\"no-way\"}",
-                        "{\"maxInput\":\"2500000000000000000\",\"route\":\"no-way\"}",
+                        `{"maxInput":"${vaultBalance.toString()}","route":"no-way"}`,
+                        `{"maxInput":"${vaultBalance.div(2).toString()}","route":"no-way"}`,
+                        `{"maxInput":"${vaultBalance.div(4).toString()}","route":"no-way"}`,
                     ]
                 }
             };
@@ -438,7 +440,7 @@ describe("Test find opp with retries", async function () {
     beforeEach(() => {
         signer = {
             provider: {
-                getBlockNumber: async () => 123456
+                getBlockNumber: async () => oppBlockNumber
             },
             estimateGas: async () => gasLimitEstimation
         };
@@ -498,12 +500,12 @@ describe("Test find opp with retries", async function () {
                     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
                 ),
                 takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
-                price: ethers.BigNumber.from("996900600000000000"),
+                price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber: 123456
+                oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber: 123456 }
+            spanAttributes: { oppBlockNumber }
         };
         assert.deepEqual(result, expected);
     });
@@ -534,9 +536,9 @@ describe("Test find opp with retries", async function () {
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        `{"maxInput":"5000000000000000000","marketPrice":"0.9969502","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
-                        `{"maxInput":"2500000000000000000","marketPrice":"0.9969748","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
                 }
             };

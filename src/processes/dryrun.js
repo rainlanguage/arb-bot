@@ -84,6 +84,7 @@ async function dryrun({
         } catch {
             /**/
         }
+        spanAttributes["route"] = routeVisual;
 
         const rpParams = getRouteProcessorParamsVersion["3.2"](
             pcMap,
@@ -138,7 +139,6 @@ async function dryrun({
             // reason, code, method, transaction, error, stack, message
             const spanError = getSpanException(e);
             const errorString = JSON.stringify(spanError);
-            spanAttributes["route"] = routeVisual;
             spanAttributes["error"] = spanError;
 
             // check for no wallet fund
@@ -189,7 +189,6 @@ async function dryrun({
             catch(e) {
                 const spanError = getSpanException(e);
                 const errorString = JSON.stringify(spanError);
-                spanAttributes["route"] = routeVisual;
                 spanAttributes["error"] = spanError;
 
                 // check for no wallet fund
@@ -208,9 +207,7 @@ async function dryrun({
 
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
-        result.spanAttributes = {
-            oppBlockNumber: blockNumber,
-        };
+        result.spanAttributes = { oppBlockNumber: blockNumber };
         result.data = {
             rawtx,
             maximumInput,
@@ -252,7 +249,8 @@ async function findOpp({
     let noRoute = true;
     let maximumInput = vaultBalance;
 
-    const allReasons = [];
+    const allHaltReasons = [];
+    const allSuccessHops = [];
     const allHopsAttributes = [];
     for (let i = 1; i < config.hops + 1; i++) {
         try {
@@ -271,12 +269,13 @@ async function findOpp({
             });
 
             // return early if there was success on first attempt (ie full vault balance)
-            // or reached to the end of binary search with sucess
-            if (i == 1 || i == config.hops) {
+            // else record the success result
+            if (i == 1) {
                 return dryrunResult;
+            } else {
+                allSuccessHops.push(dryrunResult);
             }
-
-            // set the maxInput for next hop
+            // set the maxInput for next hop by increasing
             maximumInput = maximumInput.add(vaultBalance.div(2 ** i));
         } catch(e) {
             // reject early in case of no wallet fund
@@ -284,7 +283,7 @@ async function findOpp({
                 result.reason = DryrunHaltReason.NoWalletFund;
                 return Promise.reject(result);
             } else {
-                allReasons.push(e.reason);
+                allHaltReasons.push(e.reason);
 
                 // the fail reason can only be no route in case all hops fail
                 // reasons are no route
@@ -297,17 +296,21 @@ async function findOpp({
                 allHopsAttributes.push(JSON.stringify(e.spanAttributes));
             }
 
-            // set the maxInput for next hop
+            // set the maxInput for next hop by decreasing
             maximumInput = maximumInput.sub(vaultBalance.div(2 ** i));
         }
     }
-    // in case reached here, allHopsAttributes will be included
-    spanAttributes["hops"] = allHopsAttributes;
 
-    if (noRoute) result.reason = DryrunHaltReason.NoRoute;
-    else result.reason = DryrunHaltReason.NoOpportunity;
+    if (allSuccessHops.length) return allSuccessHops[allSuccessHops.length - 1];
+    else {
+        // in case of no successfull hop, allHopsAttributes will be included
+        spanAttributes["hops"] = allHopsAttributes;
 
-    return Promise.reject(result);
+        if (noRoute) result.reason = DryrunHaltReason.NoRoute;
+        else result.reason = DryrunHaltReason.NoOpportunity;
+
+        return Promise.reject(result);
+    }
 }
 
 /**

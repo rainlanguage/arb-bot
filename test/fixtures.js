@@ -6,15 +6,16 @@ const { ConstantProductRPool } = require("sushi/tines");
 const { ConstantProductPoolCode, Router } = require("sushi");
 const { hexlify, randomBytes } = require("ethers/lib/utils");
 
+const chainId = 137;
 const token1 = {
     address: hexlify(randomBytes(20)),
     decimals: 6,
-    symbol: "T1"
+    symbol: "TOKEN-1"
 };
 const token2 = {
     address: hexlify(randomBytes(20)),
     decimals: 18,
-    symbol: "T2"
+    symbol: "TOKEN-2"
 };
 const rp3_2 = hexlify(randomBytes(20));
 const arbAddress = hexlify(randomBytes(20));
@@ -29,13 +30,13 @@ const txHash = hexlify(randomBytes(32));
 const effectiveGasPrice = ethers.BigNumber.from(30000000);
 const gasUsed = 234567;
 const fromToken = new Token({
-    chainId: 137,
+    chainId: chainId,
     decimals: token2.decimals,
     address: token2.address,
     symbol: token2.symbol,
 });
 const toToken = new Token({
-    chainId: 137,
+    chainId: chainId,
     decimals: token1.decimals,
     address: token1.address,
     symbol: token1.symbol
@@ -51,7 +52,7 @@ const config = {
     orderbookAddress,
     routeProcessors: { "3.2": rp3_2 },
     chain: {
-        id: 137,
+        id: chainId,
         blockExplorers: { default: { url: scannerUrl } }
     },
     gasCoveragePercentage: "100",
@@ -186,7 +187,7 @@ const poolCodeMap = new Map([[
 ]]);
 const route = Router.findBestRoute(
     poolCodeMap,
-    137,
+    chainId,
     fromToken,
     vaultBalance.toBigInt(),
     toToken,
@@ -206,6 +207,23 @@ const expectedRouteData = ethers.utils.defaultAbiCoder.encode(
     ]
 );
 const expectedRouteVisual = visualizeRoute(fromToken, toToken, route.legs);
+
+function getCurrentPrice(amountIn) {
+    const amountInFixed = amountIn.mul("1" + "0".repeat(18 - fromToken.decimals));
+    const route = Router.findBestRoute(
+        poolCodeMap,
+        chainId,
+        fromToken,
+        amountIn.toBigInt(),
+        toToken,
+        gasPrice.toNumber(),
+    );
+    const amountOutFixed = ethers.BigNumber.from(route.amountOutBI).mul(
+        "1" + "0".repeat(18 - toToken.decimals)
+    );
+    const price = amountOutFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+    return price;
+}
 
 module.exports = {
     config,
@@ -235,4 +253,6 @@ module.exports = {
     orderPairObject1,
     orderPairObject2,
     scannerUrl,
+    getCurrentPrice,
+    chainId,
 };
