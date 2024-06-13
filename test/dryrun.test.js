@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const { ethers } = require("hardhat");
 const fixtures = require("./fixtures");
-const { dryrun, DryrunHaltReason, dryrunWithRetries } = require("../src/processes/dryrun");
+const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../src/processes/dryrun");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -33,11 +33,187 @@ describe("Test dryrun", async function () {
         dataFetcher = {};
     });
 
-    it("should find opp for full vault balance", async function () {
+    it("should succeed", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
         const result = await dryrun({
+            mode: 0,
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            maximumInput: vaultBalance,
+            gasPrice,
+            arb,
+            ethPrice,
+            config,
+        });
+        const expectedTakeOrdersConfigStruct = {
+            minimumInput: ethers.BigNumber.from("1"),
+            maximumInput: vaultBalance,
+            maximumIORatio: ethers.constants.MaxUint256,
+            orders: [orderPairObject.takeOrders[0].takeOrder],
+            data: expectedRouteData
+        };
+        const expected = {
+            data: {
+                rawtx: {
+                    data: arb.interface.encodeFunctionData(
+                        "arb",
+                        [
+                            expectedTakeOrdersConfigStruct,
+                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                            )
+                        ]
+                    ),
+                    to: arb.address,
+                    gasPrice,
+                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                },
+                maximumInput: vaultBalance,
+                gasCostInToken: gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                    "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                ),
+                takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
+                price: ethers.BigNumber.from("996900600000000000"),
+                routeVisual: expectedRouteVisual,
+                oppBlockNumber: 123456
+            },
+            reason: undefined,
+            spanAttributes: { oppBlockNumber: 123456 }
+        };
+        assert.deepEqual(result, expected);
+    });
+
+    it("should fail with no route", async function () {
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return new Map();
+        };
+        try {
+            await dryrun({
+                mode: 0,
+                orderPairObject,
+                dataFetcher,
+                fromToken,
+                toToken,
+                signer,
+                maximumInput: vaultBalance,
+                gasPrice,
+                arb,
+                ethPrice,
+                config,
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch (error) {
+            const expected = {
+                data: undefined,
+                reason: DryrunHaltReason.NoRoute,
+                spanAttributes: {
+                    maxInput: vaultBalance.toString(),
+                    route: "no-way"
+                }
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+
+    it("should fail with no wallet fund", async function () {
+        const noFundError = { code: ethers.errors.INSUFFICIENT_FUNDS };
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        signer.estimateGas = async () => {
+            return Promise.reject(noFundError);
+        };
+        try {
+            await dryrun({
+                mode: 0,
+                orderPairObject,
+                dataFetcher,
+                fromToken,
+                toToken,
+                signer,
+                maximumInput: vaultBalance,
+                gasPrice,
+                arb,
+                ethPrice,
+                config,
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch (error) {
+            const expected = {
+                data: undefined,
+                reason: DryrunHaltReason.NoWalletFund,
+                spanAttributes: {
+                    marketPrice: "0.9969006",
+                    maxInput: vaultBalance.toString(),
+                    blockNumber: 123456,
+                    error: noFundError,
+                    route: expectedRouteVisual,
+                }
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+
+    it("should fail with no opp", async function () {
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        signer.estimateGas = async () => {
+            return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
+        };
+        try {
+            await dryrun({
+                mode: 0,
+                orderPairObject,
+                dataFetcher,
+                fromToken,
+                toToken,
+                signer,
+                maximumInput: vaultBalance,
+                gasPrice,
+                arb,
+                ethPrice,
+                config,
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch (error) {
+            const expected = {
+                data: undefined,
+                reason: DryrunHaltReason.NoOpportunity,
+                spanAttributes: {
+                    marketPrice: "0.9969006",
+                    maxInput: vaultBalance.toString(),
+                    blockNumber: 123456,
+                    error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
+                    route: expectedRouteVisual,
+                }
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+});
+
+describe("Test find opp", async function () {
+    beforeEach(() => {
+        signer = {
+            provider: {
+                getBlockNumber: async () => 123456
+            },
+            estimateGas: async () => gasLimitEstimation
+        };
+        dataFetcher = {};
+    });
+
+    it("should find opp for full vault balance", async function () {
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        const result = await findOpp({
             mode: 0,
             orderPairObject,
             dataFetcher,
@@ -101,7 +277,7 @@ describe("Test dryrun", async function () {
                 return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
             } else return gasLimitEstimation;
         };
-        const result = await dryrun({
+        const result = await findOpp({
             mode: 0,
             orderPairObject,
             dataFetcher,
@@ -160,7 +336,7 @@ describe("Test dryrun", async function () {
             return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
         };
         try {
-            await dryrun({
+            await findOpp({
                 mode: 0,
                 orderPairObject,
                 dataFetcher,
@@ -181,8 +357,8 @@ describe("Test dryrun", async function () {
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        "{\"maxInput\":\"5000000000000000000\",\"marketPrice\":\"0.9969502\",\"blockNumber\":123456}",
-                        "{\"maxInput\":\"2500000000000000000\",\"marketPrice\":\"0.9969748\",\"blockNumber\":123456}",
+                        `{"maxInput":"5000000000000000000","marketPrice":"0.9969502","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
+                        `{"maxInput":"2500000000000000000","marketPrice":"0.9969748","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
                     ]
                 }
             };
@@ -195,7 +371,7 @@ describe("Test dryrun", async function () {
             return new Map();
         };
         try {
-            await dryrun({
+            await findOpp({
                 mode: 0,
                 orderPairObject,
                 dataFetcher,
@@ -233,7 +409,7 @@ describe("Test dryrun", async function () {
             return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
         };
         try {
-            await dryrun({
+            await findOpp({
                 mode: 0,
                 orderPairObject,
                 dataFetcher,
@@ -258,7 +434,7 @@ describe("Test dryrun", async function () {
     });
 });
 
-describe("Test dryrun with retries", async function () {
+describe("Test find opp with retries", async function () {
     beforeEach(() => {
         signer = {
             provider: {
@@ -280,7 +456,7 @@ describe("Test dryrun with retries", async function () {
                 return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
             } else return gasLimitEstimation;
         };
-        const result = await dryrunWithRetries({
+        const result = await findOppWithRetries({
             orderPairObject,
             dataFetcher,
             fromToken,
@@ -340,7 +516,7 @@ describe("Test dryrun with retries", async function () {
             return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
         };
         try {
-            await dryrunWithRetries({
+            await findOppWithRetries({
                 orderPairObject,
                 dataFetcher,
                 fromToken,
@@ -359,8 +535,8 @@ describe("Test dryrun with retries", async function () {
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        "{\"maxInput\":\"5000000000000000000\",\"marketPrice\":\"0.9969502\",\"blockNumber\":123456}",
-                        "{\"maxInput\":\"2500000000000000000\",\"marketPrice\":\"0.9969748\",\"blockNumber\":123456}",
+                        `{"maxInput":"5000000000000000000","marketPrice":"0.9969502","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
+                        `{"maxInput":"2500000000000000000","marketPrice":"0.9969748","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)}}`,
                     ]
                 }
             };
@@ -373,7 +549,7 @@ describe("Test dryrun with retries", async function () {
             return new Map();
         };
         try {
-            await dryrunWithRetries({
+            await findOppWithRetries({
                 orderPairObject,
                 dataFetcher,
                 fromToken,
@@ -403,7 +579,7 @@ describe("Test dryrun with retries", async function () {
             return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
         };
         try {
-            await dryrunWithRetries({
+            await findOppWithRetries({
                 orderPairObject,
                 dataFetcher,
                 fromToken,
