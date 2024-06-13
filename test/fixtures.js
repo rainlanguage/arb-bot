@@ -1,10 +1,9 @@
-const { ethers } = require("ethers");
 const { arbAbis } = require("../src/abis");
 const { Token } = require("sushi/currency");
 const { visualizeRoute } = require("../src/utils");
 const { ConstantProductRPool } = require("sushi/tines");
 const { ConstantProductPoolCode, Router } = require("sushi");
-const { hexlify, randomBytes } = require("ethers/lib/utils");
+const { ethers, BigNumber, utils: { hexlify, randomBytes } } = require("ethers");
 
 const chainId = 137;
 const token1 = {
@@ -21,13 +20,13 @@ const rp3_2 = hexlify(randomBytes(20));
 const arbAddress = hexlify(randomBytes(20));
 const orderbookAddress = hexlify(randomBytes(20));
 const ethPrice = "0.5";
-const gasPrice = ethers.BigNumber.from("30000000");
-const gasLimitEstimation = ethers.BigNumber.from("456789");
+const gasPrice = BigNumber.from("30000000");
+const gasLimitEstimation = BigNumber.from("456789");
 const arb = new ethers.Contract(arbAddress, arbAbis);
 const orderbook = new ethers.Contract(orderbookAddress, arbAbis);
 const pair = token1.symbol + "/" + token2.symbol;
 const txHash = hexlify(randomBytes(32));
-const effectiveGasPrice = ethers.BigNumber.from(30000000);
+const effectiveGasPrice = BigNumber.from("30000000");
 const gasUsed = 234567;
 const fromToken = new Token({
     chainId: chainId,
@@ -63,8 +62,8 @@ const config = {
     },
 };
 
-const vaultBalance1 = ethers.BigNumber.from("10000000000000000000");
-const vaultBalance2 = ethers.BigNumber.from("20000000000000000000");
+const vaultBalance1 = BigNumber.from("10000000000000000000");
+const vaultBalance2 = BigNumber.from("20000000000000000000");
 const orderPairObject2 = {
     buyToken: token1.address,
     buyTokenSymbol: token1.symbol,
@@ -132,7 +131,7 @@ const orderPairObject2 = {
     ]
 };
 
-const vaultBalance = ethers.BigNumber.from("10000000000000000000");
+const vaultBalance = BigNumber.from("10000000000000000000");
 const orderPairObject1 = {
     buyToken: token1.address,
     buyTokenSymbol: token1.symbol,
@@ -218,7 +217,7 @@ function getCurrentPrice(amountIn) {
         toToken,
         gasPrice.toNumber(),
     );
-    const amountOutFixed = ethers.BigNumber.from(route.amountOutBI).mul(
+    const amountOutFixed = BigNumber.from(route.amountOutBI).mul(
         "1" + "0".repeat(18 - toToken.decimals)
     );
     const price = amountOutFixed.mul("1" + "0".repeat(18)).div(amountInFixed);

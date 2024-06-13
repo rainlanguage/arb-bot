@@ -1,6 +1,6 @@
 const { assert } = require("chai");
-const { ethers } = require("hardhat");
 const fixtures = require("./fixtures");
+const { ethers, utils: { formatUnits } } = require("ethers");
 const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../src/processes/dryrun");
 
 // mocking signer and dataFetcher
@@ -53,7 +53,7 @@ describe("Test dryrun", async function () {
             config,
         });
         const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
@@ -150,7 +150,7 @@ describe("Test dryrun", async function () {
                 data: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
                 spanAttributes: {
-                    marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
                     error: noFundError,
@@ -188,7 +188,7 @@ describe("Test dryrun", async function () {
                 data: undefined,
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
-                    marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
                     error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
@@ -229,7 +229,7 @@ describe("Test find opp", async function () {
             config,
         });
         const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
@@ -293,7 +293,7 @@ describe("Test find opp", async function () {
             config,
         });
         const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance.mul(3).div(4),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
@@ -358,9 +358,9 @@ describe("Test find opp", async function () {
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
                 }
             };
@@ -451,10 +451,10 @@ describe("Test find opp with retries", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        let rejectFirst = false;
+        let rejectFirst = true;
         signer.estimateGas = async () => {
-            if (!rejectFirst) {
-                rejectFirst = true;
+            if (rejectFirst) {
+                rejectFirst = false;
                 return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
             } else return gasLimitEstimation;
         };
@@ -470,7 +470,7 @@ describe("Test find opp with retries", async function () {
             config,
         });
         const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [
@@ -536,9 +536,9 @@ describe("Test find opp with retries", async function () {
                 reason: DryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${ethers.utils.formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
                 }
             };
