@@ -69,7 +69,10 @@ async function processTx({
         spanAttributes["route"] = routeVisual;
         spanAttributes["maxInput"] = maximumInput.toString();
         spanAttributes["marketPrice"] = ethers.utils.formatEther(price);
-        spanAttributes["estimatedGasCostInToken"] = ethers.utils.formatUnits(gasCostInToken, orderPairObject.buyTokenDecimals);
+        spanAttributes["estimatedGasCostInToken"] = ethers.utils.formatUnits(
+            gasCostInToken,
+            orderPairObject.buyTokenDecimals
+        );
 
         rawtx.data = arb.interface.encodeFunctionData(
             "arb",
@@ -78,9 +81,6 @@ async function processTx({
                 gasCostInToken.mul(config.gasCoveragePercentage).div("100")
             ]
         );
-
-        // only for test case
-        if (config.isTest && config.testType === "tx-fail") throw "tx-fail";
 
         tx = config.timeout
             ? await promiseTimeout(
@@ -111,9 +111,6 @@ async function processTx({
 
     // wait for tx receipt
     try {
-        // only for test case
-        if (config.isTest && config.testType === "tx-mine-fail") throw "tx-mine-fail";
-
         const receipt = config.timeout
             ? await promiseTimeout(
                 tx.wait(),

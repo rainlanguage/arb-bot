@@ -1,6 +1,6 @@
 const { assert } = require("chai");
-const { ethers } = require("ethers");
 const fixtures = require("./fixtures");
+const { ethers, utils: { formatUnits } } = require("ethers");
 const { attemptOppAndClear, AttemptOppAndClearHaltReason } = require("../src/processes/processOpp");
 
 let dataFetcher = {};
@@ -25,6 +25,8 @@ const {
     effectiveGasPrice,
     gasUsed,
     expectedRouteData,
+    scannerUrl,
+    getCurrentPrice,
 } = fixtures;
 
 const bundledConfig = JSON.parse(JSON.stringify(config));
@@ -80,13 +82,13 @@ describe("Test process opp for bundled orders", async function () {
             {
                 order: orderPairObject.takeOrders.map(v => v.id),
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
                     clearedAmount: undefined,
-                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    actualGasCostInToken: ethers.utils.formatUnits(
+                    actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    actualGasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     income: undefined,
@@ -101,14 +103,14 @@ describe("Test process opp for bundled orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.add(vaultBalance2).toString(),
-                    marketPrice: "0.996701866666666666",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2))),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
-                    gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    gasCostInToken: ethers.utils.formatUnits(
+                    gasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    gasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                 }
@@ -145,9 +147,9 @@ describe("Test process opp for bundled orders", async function () {
                 reason: AttemptOppAndClearHaltReason.NoOpportunity,
                 error: undefined,
                 spanAttributes: { hops: [
-                    `{"maxInput":"30000000000000000000","marketPrice":"0.996701866666666666","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                    "{\"maxInput\":\"15000000000000000000\",\"marketPrice\":\"0.996850866666666666\",\"blockNumber\":123456}",
-                    "{\"maxInput\":\"7500000000000000000\",\"marketPrice\":\"0.996925333333333333\",\"blockNumber\":123456}"
+                    `{"maxInput":"${vaultBalance1.add(vaultBalance2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456,"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                    `{"maxInput":"${vaultBalance1.add(vaultBalance2).div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2).div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`,
+                    `{"maxInput":"${vaultBalance1.add(vaultBalance2).div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2).div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`
                 ]}
             }
         ];
@@ -239,7 +241,7 @@ describe("Test process opp for bundled orders", async function () {
             pair,
         });
         const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance1.add(vaultBalance2),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [
@@ -278,8 +280,8 @@ describe("Test process opp for bundled orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.add(vaultBalance2).toString(),
-                    marketPrice: "0.996701866666666666",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2))),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     rawTx: JSON.stringify(rawtx)
@@ -331,7 +333,7 @@ describe("Test process opp for bundled orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -339,11 +341,11 @@ describe("Test process opp for bundled orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.add(vaultBalance2).toString(),
-                    marketPrice: "0.996701866666666666",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1.add(vaultBalance2))),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },
@@ -401,13 +403,13 @@ describe("Test process opp for single orders", async function () {
             {
                 order: orderPairObject.takeOrders[0].id,
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
                     clearedAmount: undefined,
-                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    actualGasCostInToken: ethers.utils.formatUnits(
+                    actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    actualGasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     income: undefined,
@@ -422,14 +424,14 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.toString(),
-                    marketPrice: "0.9969006",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
-                    gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    gasCostInToken: ethers.utils.formatUnits(
+                    gasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    gasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                 }
@@ -437,13 +439,13 @@ describe("Test process opp for single orders", async function () {
             {
                 order: orderPairObject.takeOrders[1].id,
                 report: {
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
                     clearedAmount: undefined,
-                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    actualGasCostInToken: ethers.utils.formatUnits(
+                    actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    actualGasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     income: undefined,
@@ -458,14 +460,14 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance2.toString(),
-                    marketPrice: "0.9968012",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance2)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
-                    gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                    gasCostInToken: ethers.utils.formatUnits(
+                    gasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    gasCostInToken: formatUnits(
                         effectiveGasPrice.mul(gasUsed).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                 }
@@ -502,9 +504,9 @@ describe("Test process opp for single orders", async function () {
                 reason: AttemptOppAndClearHaltReason.NoOpportunity,
                 error: undefined,
                 spanAttributes: { hops: [
-                    `{"maxInput":"10000000000000000000","marketPrice":"0.9969006","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                    "{\"maxInput\":\"5000000000000000000\",\"marketPrice\":\"0.9969502\",\"blockNumber\":123456}",
-                    "{\"maxInput\":\"2500000000000000000\",\"marketPrice\":\"0.9969748\",\"blockNumber\":123456}"
+                    `{"maxInput":"${vaultBalance1.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456,"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                    `{"maxInput":"${vaultBalance1.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`,
+                    `{"maxInput":"${vaultBalance1.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance1.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`
                 ]}
             },
             {
@@ -513,9 +515,9 @@ describe("Test process opp for single orders", async function () {
                 reason: AttemptOppAndClearHaltReason.NoOpportunity,
                 error: undefined,
                 spanAttributes: { hops: [
-                    `{"maxInput":"20000000000000000000","marketPrice":"0.9968012","blockNumber":123456,"route":${JSON.stringify(expectedRouteVisual)},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                    "{\"maxInput\":\"10000000000000000000\",\"marketPrice\":\"0.9969006\",\"blockNumber\":123456}",
-                    "{\"maxInput\":\"5000000000000000000\",\"marketPrice\":\"0.9969502\",\"blockNumber\":123456}"
+                    `{"maxInput":"${vaultBalance2.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance2))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456,"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                    `{"maxInput":"${vaultBalance2.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance2.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`,
+                    `{"maxInput":"${vaultBalance2.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance2.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":123456}`
                 ]}
             }
         ];
@@ -621,7 +623,7 @@ describe("Test process opp for single orders", async function () {
             pair,
         });
         const expectedTakeOrdersConfigStruct1 = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance1,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
@@ -642,7 +644,7 @@ describe("Test process opp for single orders", async function () {
             gasLimit: gasLimitEstimation.mul("103").div("100"),
         };
         const expectedTakeOrdersConfigStruct2 = {
-            minimumInput: ethers.BigNumber.from("1"),
+            minimumInput: ethers.constants.One,
             maximumInput: vaultBalance2,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[1].takeOrder],
@@ -678,8 +680,8 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.toString(),
-                    marketPrice: "0.9969006",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     rawTx: JSON.stringify(rawtx1)
@@ -700,8 +702,8 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance2.toString(),
-                    marketPrice: "0.9968012",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance2)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
                     rawTx: JSON.stringify(rawtx2)
@@ -753,7 +755,7 @@ describe("Test process opp for single orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -761,11 +763,11 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance1.toString(),
-                    marketPrice: "0.9969006",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance1)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },
@@ -778,7 +780,7 @@ describe("Test process opp for single orders", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 spanAttributes: {
                     oppBlockNumber: 123456,
@@ -786,11 +788,11 @@ describe("Test process opp for single orders", async function () {
                     blockDiff: 0,
                     route: expectedRouteVisual,
                     maxInput: vaultBalance2.toString(),
-                    marketPrice: "0.9968012",
-                    estimatedGasCostInToken: ethers.utils.formatUnits(
+                    marketPrice: formatUnits(getCurrentPrice(vaultBalance2)),
+                    estimatedGasCostInToken: formatUnits(
                         gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2)
                     ).slice(0, orderPairObject.buyTokenDecimals + 2),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                     receipt: JSON.stringify(receipt),
                 },

@@ -1,44 +1,46 @@
-const { ethers } = require("ethers");
 const { arbAbis } = require("../src/abis");
 const { Token } = require("sushi/currency");
 const { visualizeRoute } = require("../src/utils");
 const { ConstantProductRPool } = require("sushi/tines");
 const { ConstantProductPoolCode, Router } = require("sushi");
+const { ethers, BigNumber, utils: { hexlify, randomBytes } } = require("ethers");
 
-const usdt = {
-    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+const chainId = 137;
+const token1 = {
+    address: hexlify(randomBytes(20)),
     decimals: 6,
-    symbol: "USDT"
+    symbol: "TOKEN-1"
 };
-const wmatic = {
-    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+const token2 = {
+    address: hexlify(randomBytes(20)),
     decimals: 18,
-    symbol: "WMATIC"
+    symbol: "TOKEN-2"
 };
-const rp3_2 = "0xE7eb31f23A5BefEEFf76dbD2ED6AdC822568a5d2";
-const arbAddress = "0x56394785a22b3BE25470a0e03eD9E0a939C47b9b";
-const orderbookAddress = "0xb06202aA3Fe7d85171fB7aA5f17011d17E63f382";
+const rp3_2 = hexlify(randomBytes(20));
+const arbAddress = hexlify(randomBytes(20));
+const orderbookAddress = hexlify(randomBytes(20));
 const ethPrice = "0.5";
-const gasPrice = ethers.BigNumber.from("30000000");
-const gasLimitEstimation = ethers.BigNumber.from("456789");
+const gasPrice = BigNumber.from("30000000");
+const gasLimitEstimation = BigNumber.from("456789");
 const arb = new ethers.Contract(arbAddress, arbAbis);
 const orderbook = new ethers.Contract(orderbookAddress, arbAbis);
-const pair = "USDT/WMATIC";
-const txHash = "0xd91f9402fed0c14672f64329ed6af5278b600ea785b0e35475ec5e3618b1cda6";
-const effectiveGasPrice = ethers.BigNumber.from(30000000);
+const pair = token1.symbol + "/" + token2.symbol;
+const txHash = hexlify(randomBytes(32));
+const effectiveGasPrice = BigNumber.from("30000000");
 const gasUsed = 234567;
 const fromToken = new Token({
-    chainId: 137,
-    decimals: wmatic.decimals,
-    address: wmatic.address,
-    symbol: wmatic.symbol,
+    chainId: chainId,
+    decimals: token2.decimals,
+    address: token2.address,
+    symbol: token2.symbol,
 });
 const toToken = new Token({
-    chainId: 137,
-    decimals: usdt.decimals,
-    address: usdt.address,
-    symbol: usdt.symbol
+    chainId: chainId,
+    decimals: token1.decimals,
+    address: token1.address,
+    symbol: token1.symbol
 });
+const scannerUrl = "https://scanner.com";
 const config = {
     hops: 3,
     bundle: false,
@@ -49,47 +51,47 @@ const config = {
     orderbookAddress,
     routeProcessors: { "3.2": rp3_2 },
     chain: {
-        id: 137,
-        blockExplorers: { default: { url: "https://polygonscan.com" } }
+        id: chainId,
+        blockExplorers: { default: { url: scannerUrl } }
     },
     gasCoveragePercentage: "100",
     nativeWrappedToken: {
-        address: wmatic.address,
-        decimals: wmatic.decimals,
-        symbol: wmatic.symbol,
+        address: token2.address,
+        decimals: token2.decimals,
+        symbol: token2.symbol,
     },
 };
 
-const vaultBalance1 = ethers.BigNumber.from("10000000000000000000");
-const vaultBalance2 = ethers.BigNumber.from("20000000000000000000");
+const vaultBalance1 = BigNumber.from("10000000000000000000");
+const vaultBalance2 = BigNumber.from("20000000000000000000");
 const orderPairObject2 = {
-    buyToken: usdt.address,
-    buyTokenSymbol: usdt.symbol,
-    buyTokenDecimals: usdt.decimals,
-    sellToken: wmatic.address,
-    sellTokenSymbol: wmatic.symbol,
-    sellTokenDecimals: wmatic.decimals,
+    buyToken: token1.address,
+    buyTokenSymbol: token1.symbol,
+    buyTokenDecimals: token1.decimals,
+    sellToken: token2.address,
+    sellTokenSymbol: token2.symbol,
+    sellTokenDecimals: token2.decimals,
     takeOrders: [
         {
-            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+            id: hexlify(randomBytes(32)),
             vaultBalance: vaultBalance1,
             takeOrder: {
                 order: {
-                    owner: "0x0f47a0c7f86a615606ca315ad83c3e302b474bd6",
+                    owner: hexlify(randomBytes(20)),
                     evaluable: {
-                        interpreter: "0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30",
-                        store: "0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d",
-                        expression: "0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2"
+                        interpreter: hexlify(randomBytes(20)),
+                        store: hexlify(randomBytes(20)),
+                        expression: hexlify(randomBytes(20))
                     },
                     validInputs: [{
-                        token: usdt.address,
-                        decimals: usdt.decimals,
-                        vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                        token: token1.address,
+                        decimals: token1.decimals,
+                        vaultId: hexlify(randomBytes(32))
                     }],
                     validOutputs: [{
-                        token: wmatic.address,
-                        decimals: wmatic.decimals,
-                        vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                        token: token2.address,
+                        decimals: token2.decimals,
+                        vaultId: hexlify(randomBytes(32))
                     }],
                     handleIO: false
                 },
@@ -99,25 +101,25 @@ const orderPairObject2 = {
             }
         },
         {
-            id: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
+            id: hexlify(randomBytes(32)),
             vaultBalance: vaultBalance2,
             takeOrder: {
                 order: {
-                    owner: "0x0eb840e5acd0125853ad630663d3a62e673c22e6",
+                    owner: hexlify(randomBytes(20)),
                     evaluable: {
-                        interpreter: "0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30",
-                        store: "0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d",
-                        expression: "0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2"
+                        interpreter: hexlify(randomBytes(20)),
+                        store: hexlify(randomBytes(20)),
+                        expression: hexlify(randomBytes(20))
                     },
                     validInputs: [{
-                        token: usdt.address,
-                        decimals: usdt.decimals,
-                        vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                        token: token1.address,
+                        decimals: token1.decimals,
+                        vaultId: hexlify(randomBytes(32))
                     }],
                     validOutputs: [{
-                        token: wmatic.address,
-                        decimals: wmatic.decimals,
-                        vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                        token: token2.address,
+                        decimals: token2.decimals,
+                        vaultId: hexlify(randomBytes(32))
                     }],
                     handleIO: false
                 },
@@ -129,34 +131,34 @@ const orderPairObject2 = {
     ]
 };
 
-const vaultBalance = ethers.BigNumber.from("10000000000000000000");
+const vaultBalance = BigNumber.from("10000000000000000000");
 const orderPairObject1 = {
-    buyToken: usdt.address,
-    buyTokenSymbol: usdt.symbol,
-    buyTokenDecimals: usdt.decimals,
-    sellToken: wmatic.address,
-    sellTokenSymbol: wmatic.symbol,
-    sellTokenDecimals: wmatic.decimals,
+    buyToken: token1.address,
+    buyTokenSymbol: token1.symbol,
+    buyTokenDecimals: token1.decimals,
+    sellToken: token2.address,
+    sellTokenSymbol: token2.symbol,
+    sellTokenDecimals: token2.decimals,
     takeOrders: [{
-        id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+        id: hexlify(randomBytes(32)),
         vaultBalance,
         takeOrder: {
             order: {
-                owner: "0x0f47a0c7f86a615606ca315ad83c3e302b474bd6",
+                owner: hexlify(randomBytes(20)),
                 evaluable: {
-                    interpreter: "0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30",
-                    store: "0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d",
-                    expression: "0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2"
+                    interpreter: hexlify(randomBytes(20)),
+                    store: hexlify(randomBytes(20)),
+                    expression: hexlify(randomBytes(20))
                 },
                 validInputs: [{
-                    token: usdt.address,
-                    decimals: usdt.decimals,
-                    vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                    token: token1.address,
+                    decimals: token1.decimals,
+                    vaultId: hexlify(randomBytes(32))
                 }],
                 validOutputs: [{
-                    token: wmatic.address,
-                    decimals: wmatic.decimals,
-                    vaultId: "0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092"
+                    token: token2.address,
+                    decimals: token2.decimals,
+                    vaultId: hexlify(randomBytes(32))
                 }],
                 handleIO: false
             },
@@ -166,11 +168,12 @@ const orderPairObject1 = {
         }
     }]
 };
+const poolAddress = hexlify(randomBytes(20));
 const poolCodeMap = new Map([[
-    "0x7c76B6B3FE14831A39C0fec908DA5f17180df677",
+    poolAddress,
     new ConstantProductPoolCode(
         new ConstantProductRPool(
-            "0x7c76B6B3FE14831A39C0fec908DA5f17180df677",
+            poolAddress,
             fromToken,
             toToken,
             0.003,
@@ -183,7 +186,7 @@ const poolCodeMap = new Map([[
 ]]);
 const route = Router.findBestRoute(
     poolCodeMap,
-    137,
+    chainId,
     fromToken,
     vaultBalance.toBigInt(),
     toToken,
@@ -198,16 +201,33 @@ const expectedRouteData = ethers.utils.defaultAbiCoder.encode(
             fromToken,
             toToken,
             arb.address,
-            "0xE7eb31f23A5BefEEFf76dbD2ED6AdC822568a5d2"
+            rp3_2,
         ).routeCode
     ]
 );
 const expectedRouteVisual = visualizeRoute(fromToken, toToken, route.legs);
 
+function getCurrentPrice(amountIn) {
+    const amountInFixed = amountIn.mul("1" + "0".repeat(18 - fromToken.decimals));
+    const route = Router.findBestRoute(
+        poolCodeMap,
+        chainId,
+        fromToken,
+        amountIn.toBigInt(),
+        toToken,
+        gasPrice.toNumber(),
+    );
+    const amountOutFixed = BigNumber.from(route.amountOutBI).mul(
+        "1" + "0".repeat(18 - toToken.decimals)
+    );
+    const price = amountOutFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+    return price;
+}
+
 module.exports = {
     config,
-    wmatic,
-    usdt,
+    token1,
+    token2,
     arbAddress,
     orderbookAddress,
     rp3_2,
@@ -231,4 +251,7 @@ module.exports = {
     vaultBalance2,
     orderPairObject1,
     orderPairObject2,
+    scannerUrl,
+    getCurrentPrice,
+    chainId,
 };
