@@ -249,7 +249,6 @@ async function findOpp({
     let noRoute = true;
     let maximumInput = vaultBalance;
 
-    const allHaltReasons = [];
     const allSuccessHops = [];
     const allHopsAttributes = [];
     for (let i = 1; i < config.hops + 1; i++) {
@@ -283,8 +282,6 @@ async function findOpp({
                 result.reason = DryrunHaltReason.NoWalletFund;
                 return Promise.reject(result);
             } else {
-                allHaltReasons.push(e.reason);
-
                 // the fail reason can only be no route in case all hops fail
                 // reasons are no route
                 if (e.reason !== DryrunHaltReason.NoRoute) noRoute = false;
