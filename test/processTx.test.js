@@ -1,11 +1,13 @@
 const { assert } = require("chai");
-const { ethers } = require("ethers");
 const fixtures = require("./fixtures");
+const { ethers, utils: { formatUnits } } = require("ethers");
 const { processTx, ProcessTxHaltReason } = require("../src/processes/processTx");
 
 describe("Test process tx", async function () {
     let signer = {};
 
+    const oppBlockNumber = 123456;
+    const clearBlockNumber = 123459;
     const {
         ethPrice,
         gasPrice,
@@ -21,9 +23,11 @@ describe("Test process tx", async function () {
         effectiveGasPrice,
         gasUsed,
         expectedRouteData,
+        getCurrentPrice,
+        scannerUrl,
     } = fixtures;
     const takeOrdersConfigStruct = {
-        minimumInput: ethers.BigNumber.from("1"),
+        minimumInput: ethers.constants.One,
         maximumInput: vaultBalance,
         maximumIORatio: ethers.constants.MaxUint256,
         orders: [orderPairObject.takeOrders[0].takeOrder],
@@ -47,9 +51,9 @@ describe("Test process tx", async function () {
         maximumInput: vaultBalance,
         gasCostInToken: ethers.BigNumber.from("500000"),
         takeOrdersConfigStruct,
-        price: ethers.BigNumber.from("996900600000000000"),
+        price: getCurrentPrice(vaultBalance),
         routeVisual: expectedRouteVisual,
-        oppBlockNumber: 123456,
+        oppBlockNumber,
     };
 
     beforeEach(() => {
@@ -92,27 +96,27 @@ describe("Test process tx", async function () {
             reason: undefined,
             error: undefined,
             spanAttributes: {
-                clearBlockNumber: 123459,
-                blockDiff: 3,
+                clearBlockNumber,
+                blockDiff: clearBlockNumber - oppBlockNumber,
                 route: dryrunData.routeVisual,
                 maxInput: vaultBalance.toString(),
-                marketPrice: ethers.utils.formatUnits(dryrunData.price),
+                marketPrice: formatUnits(dryrunData.price),
                 estimatedGasCostInToken: "0.5",
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tx: `{"hash":"${txHash}"}`,
-                gasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                gasCostInToken: ethers.utils.formatUnits(
+                gasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                gasCostInToken: formatUnits(
                     effectiveGasPrice.mul(gasUsed).div(2)
                 ).slice(0, orderPairObject.buyTokenDecimals + 2),
             },
             report: {
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: undefined,
-                actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
-                actualGasCostInToken: ethers.utils.formatUnits(
+                actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                actualGasCostInToken: formatUnits(
                     effectiveGasPrice.mul(gasUsed).div(2)
                 ).slice(0, orderPairObject.buyTokenDecimals + 2),
                 income: undefined,
@@ -147,11 +151,11 @@ describe("Test process tx", async function () {
                 reason: ProcessTxHaltReason.TxFailed,
                 error: { code: ethers.errors.UNPREDICTABLE_GAS_LIMIT },
                 spanAttributes: {
-                    clearBlockNumber: 123459,
-                    blockDiff: 3,
+                    clearBlockNumber,
+                    blockDiff: clearBlockNumber - oppBlockNumber,
                     route: dryrunData.routeVisual,
                     maxInput: vaultBalance.toString(),
-                    marketPrice: ethers.utils.formatUnits(dryrunData.price),
+                    marketPrice: formatUnits(dryrunData.price),
                     estimatedGasCostInToken: "0.5",
                     rawTx: JSON.stringify(dryrunData.rawtx),
                 },
@@ -199,21 +203,21 @@ describe("Test process tx", async function () {
                 reason: ProcessTxHaltReason.TxMineFailed,
                 error: undefined,
                 spanAttributes: {
-                    clearBlockNumber: 123459,
-                    blockDiff: 3,
+                    clearBlockNumber,
+                    blockDiff: clearBlockNumber - oppBlockNumber,
                     route: dryrunData.routeVisual,
                     maxInput: vaultBalance.toString(),
-                    marketPrice: ethers.utils.formatUnits(dryrunData.price),
+                    marketPrice: formatUnits(dryrunData.price),
                     estimatedGasCostInToken: "0.5",
                     receipt: JSON.stringify(receipt),
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                     tx: `{"hash":"${txHash}"}`,
                 },
                 report: {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
-                    txUrl: "https://polygonscan.com/tx/" + txHash,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 }
             };
             assert.deepEqual(error, expected);
