@@ -1,6 +1,6 @@
 const { assert } = require("chai");
-const { ethers } = require("ethers");
 const fixtures = require("./fixtures");
+const { ethers, utils: { formatUnits } } = require("ethers");
 const { processPair, ProcessPairHaltReason } = require("../src/processes/processPair");
 
 describe("Test process pair", async function () {
@@ -22,6 +22,8 @@ describe("Test process pair", async function () {
         txHash,
         effectiveGasPrice,
         gasUsed,
+        scannerUrl,
+        getCurrentPrice,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
 
@@ -75,12 +77,12 @@ describe("Test process pair", async function () {
         });
         const expected = {
             reports: [{
-                txUrl: "https://polygonscan.com/tx/" + txHash,
+                txUrl: scannerUrl + "/tx/" + txHash,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: undefined,
-                actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
+                actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
                 actualGasCostInToken: "0.0",
                 income: undefined,
                 netProfit: undefined,
@@ -90,15 +92,15 @@ describe("Test process pair", async function () {
                     "details.blockDiff": 0,
                     "details.clearBlockNumber": 123456,
                     "details.estimatedGasCostInToken": "0.0",
-                    "details.gasCost": ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    "details.gasCost": formatUnits(effectiveGasPrice.mul(gasUsed)),
                     "details.gasCostInToken": "0.0",
-                    "details.marketPrice": "0.9969006",
+                    "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
                     "details.maxInput": vaultBalance.toString(),
                     "details.oppBlockNumber": 123456,
                     "details.order": orderPairObject.takeOrders[0].id,
                     "details.route": expectedRouteVisual,
                     "details.tx": `{"hash":"${txHash}"}`,
-                    "details.txUrl": "https://polygonscan.com/tx/" + txHash,
+                    "details.txUrl": scannerUrl + "/tx/" + txHash,
                 }
             }],
             reason: undefined,
