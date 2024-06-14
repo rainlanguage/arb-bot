@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 const { processTx, ProcessTxHaltReason } = require("./processTx");
-const { DryrunHaltReason, dryrun, dryrunWithRetries } = require("./dryrun");
+const { DryrunHaltReason, findOpp, findOppWithRetries } = require("./dryrun");
 
 /**
  * Specifies the reason of an unsuccessfull attempt to find opp and clear
@@ -11,7 +11,6 @@ const AttemptOppAndClearHaltReason = {
     NoRoute: 3,
     TxFailed: 4,
     TxMineFailed: 5,
-    UnexpectedError: 6,
 };
 
 /**
@@ -47,7 +46,7 @@ async function attemptOppAndClear({
             for (v of orderPairObject.takeOrders) {
                 bundleVaultBalance = bundleVaultBalance.add(v.vaultBalance);
             }
-            const dryrunResult = await dryrun({
+            const dryrunResult = await findOpp({
                 mode: 0,
                 orderPairObject,
                 dataFetcher,
@@ -89,9 +88,6 @@ async function attemptOppAndClear({
                     result.reason = AttemptOppAndClearHaltReason.TxFailed;
                 } else if (e.reason === ProcessTxHaltReason.TxMineFailed) {
                     result.reason = AttemptOppAndClearHaltReason.TxMineFailed;
-                } else {
-                    result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
-                    result.error = e;
                 }
             }
         } catch(e) {
@@ -105,13 +101,6 @@ async function attemptOppAndClear({
                     spanAttributes[attrKey] = e.spanAttributes[attrKey];
                 }
                 result.reason = AttemptOppAndClearHaltReason.NoOpportunity;
-            } else {
-                // record all span attributes in case of unexpected error
-                for (attrKey in e.spanAttributes) {
-                    spanAttributes[attrKey] = e.spanAttributes[attrKey];
-                }
-                result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
-                result.error = e;
             }
         }
         results.push(result);
@@ -138,7 +127,7 @@ async function attemptOppAndClear({
                 };
                 orders.push(order);
                 promises.push(
-                    dryrunWithRetries({
+                    findOppWithRetries({
                         orderPairObject: order,
                         dataFetcher,
                         fromToken,
@@ -191,9 +180,6 @@ async function attemptOppAndClear({
                             result.reason = AttemptOppAndClearHaltReason.TxFailed;
                         } else if (e.reason === ProcessTxHaltReason.TxMineFailed) {
                             result.reason = AttemptOppAndClearHaltReason.TxMineFailed;
-                        } else {
-                            result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
-                            result.error = e;
                         }
                     }
                 } else {
@@ -209,15 +195,6 @@ async function attemptOppAndClear({
                             ] = dryrunResults[i].reason.spanAttributes[attrKey];
                         }
                         result.reason = AttemptOppAndClearHaltReason.NoOpportunity;
-                    } else {
-                        // record all span attributes in case of no opp
-                        for (attrKey in dryrunResults[i].reason.spanAttributes) {
-                            spanAttributes[
-                                attrKey
-                            ] = dryrunResults[i].reason.spanAttributes[attrKey];
-                        }
-                        result.reason = AttemptOppAndClearHaltReason.UnexpectedError;
-                        result.error = dryrunResults[i].reason.error;
                     }
                 }
                 results.push(result);

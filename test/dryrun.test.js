@@ -534,7 +534,6 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoOpportunity,
-                error: undefined,
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
@@ -568,7 +567,6 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoRoute,
-                error: undefined,
                 spanAttributes: {}
             };
             assert.deepEqual(error, expected);
@@ -599,7 +597,6 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 data: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
-                error: undefined,
                 spanAttributes: {},
             };
             assert.deepEqual(error, expected);

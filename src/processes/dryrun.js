@@ -331,7 +331,6 @@ async function findOppWithRetries({
     const result = {
         data: undefined,
         reason: undefined,
-        error: undefined,
         spanAttributes,
     };
 
@@ -389,13 +388,7 @@ async function findOppWithRetries({
         for (attrKey in allPromises[0].reason.spanAttributes) {
             spanAttributes[attrKey] = allPromises[0].reason.spanAttributes[attrKey];
         }
-        if (allPromises.some(v => v.reason.reason === DryrunHaltReason.NoOpportunity)) {
-            result.reason = DryrunHaltReason.NoOpportunity;
-        } else {
-            result.error = allPromises.find(
-                v => !(v.reason.spanAttributes && v.reason.data && v.reason.reason)
-            )?.reason;
-        }
+        result.reason = DryrunHaltReason.NoOpportunity;
         throw result;
     }
 }
