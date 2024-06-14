@@ -1,5 +1,5 @@
 - you need foundry installed on your machine for this process, as well as having `forge-std` lib for contract dependencies.
-- copy the `DiagOrder.sol` file below and put it in `./script` folder (or any other folder of your choice)
+- copy the `./diag/DiagOrder.sol` file below and put it in `./script` folder (or any other folder of your choice)
 - replace the import path with the location of `forge-std/src/Script.sol` on you disk.
 - replace the `to` address with the arb contract address on the desired network.
 - replace the `data` with the calldata without leading 0x taken from otel (hyperdx).
@@ -17,7 +17,7 @@ after the traces are printed, the desired data can be extraced.
 here are some examples to explain the steps required to get the desired data:
 
 ## example 1 (successfull call)
-<img width="1328" alt="example1" src="./assets/example1.png">
+<img width="1328" alt="example1" src="./diag/assets/example1.png">
 
 - find the `eval2()` call, as it is clear in the image above, the first arrow points to the eval() being called
 - find the first call with `00000000` selector (second arrow), that is the eval result, and it is encoded, so the first 2 words (the first 2 256bytes) determine the price and maxouput in order, which in this case are 0x0 and 0x0x43cc30c876b457.
@@ -29,14 +29,14 @@ to make sure you are looking at the correct `Transfer` event, you can check the 
 
 
 ## example 2 (failed call)
-<img width="1318" alt="example2" src="./assets/example2.png">
+<img width="1318" alt="example2" src="./diag/assets/example2.png">
 
 - this example is exactly as previous one, but it is an unsuccessfull call, so the error details are visible at the end of the traces, explaining the reason why the call failed.
 - everything about identifying the eval result and RP quote is the same as previous example, but you can see that there are multiple `Swap` and `Transfer` events, and the ones that are in our interest are the very last ones (flagged by red arrow), you can also see the `balanceOf` calls at after the specified `Swap` event that match the order's input/output tokens.
 in this case the amountOut is 33388, amountIn is 27685185185185008000, and eval result is 27685185185185008000 maxoutput and 2500000000000000 price, so by dividing amountOut from amountIn we reach to about 0.0012 as the current AMM market price, which is below what the order is asking for which is 0.0025, as a result the call failed since there is no arbing opportunity in this case.
 
 ## example 3 (failed eval2)
-<img width="1321" alt="example3" src="./assets/example3.png">
+<img width="1321" alt="example3" src="./diag/assets/example3.png">
 
 - sometimes traces dont go beyond eval, ie eval failing is the reason the call has failed, in such cases the reason of why eval has failed is clearly visible at the end of traces.
 - in such cases traces wont produce the RP quote since the call has terminated before even reaching to that stage, so it is not possible to get the RP quote in such cases.

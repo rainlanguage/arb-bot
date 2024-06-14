@@ -280,6 +280,10 @@ npm run lint
 ```bash
 npm run lint-fix
 ```
+<br>
+
+## Diag Order
+Read this [document](./DiagOrder.md) in order to diag what happenes when an order is being tried to find an opportunity to clear against onchain liquidity, you would find the onchain liquidity price at the time the order is being executed against it as well as the what the order evals to, ie its `maxouput` and `ratio`.
 
 ## Docker
 
