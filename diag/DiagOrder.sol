@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CAL
 pragma solidity >=0.6.0;
 
-import {Script} from "path/to/forge-std/Script.sol"; // put the path to forge-std/Script.sol
+import {Script} from "../lib/forge-std/src/Script.sol";
 
 contract DiagOrder is Script {
     function run() external {

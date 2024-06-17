@@ -1,0 +1,5 @@
+[profile.default]
+src = './diag'
+out = './diag/out'
+
+solc = "0.8.25"
