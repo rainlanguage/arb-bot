@@ -564,17 +564,17 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  */
 const createViemClient = (chainId, rpcs, useFallbacs = false) => {
     const transport = rpcs.includes("test") || rpcs.length === 0
-        ? fallback(fallbacks[chainId].transport, {rank: true})
+        ? fallback(fallbacks[chainId].transport, { rank: true, retryCount: 6 })
         : useFallbacs
             ? fallback(
                 [...rpcs.map(v => http(v)), ...fallbacks[chainId].transport],
-                { rank: true }
+                { rank: true, retryCount: 6 }
             )
-            : fallback(rpcs.map(v => http(v)));
+            : fallback(rpcs.map(v => http(v)), { retryCount: 6 });
 
     return createPublicClient({
         chain: publicClientConfig[chainId]?.chain,
-        transport
+        transport,
         // batch: {
         //     multicall: {
         //         batchSize: 512
