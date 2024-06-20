@@ -114,6 +114,9 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
+        let txs = [];
+        let foundOpp = false;
+
         const ctx = trace.setSpan(context.active(), span);
         try {
             const config = await getConfig(
@@ -150,11 +153,9 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
-                return;
+                return { txs, foundOpp };
             }
 
-            let txs;
-            let foundOpp = false;
             const reports = await clear(
                 config,
                 ordersDetails,
