@@ -114,9 +114,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
-        let txs = [];
-        let foundOpp = false;
-
         const ctx = trace.setSpan(context.active(), span);
         try {
             const config = await getConfig(
@@ -153,9 +150,11 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
-                return { txs, foundOpp };
+                return;
             }
 
+            let txs;
+            let foundOpp = false;
             const reports = await clear(
                 config,
                 ordersDetails,
@@ -294,13 +293,13 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
-                if (txs && txs.length) {
+                const result = await arbRound(tracer, roundCtx, options, lastError);
+                if (result?.txs?.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
-                else if (foundOpp) {
+                else if (result?.foundOpp) {
                     roundSpan.setAttribute("foundOpp", true);
                     roundSpan.setAttribute("didClear", false);
                 }
@@ -360,13 +359,13 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             options.rpc = rpcs[rpcTurn];
             try {
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
-                if (txs && txs.length) {
+                const result = await arbRound(tracer, roundCtx, options, lastError);
+                if (result?.txs?.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
                 }
-                else if (foundOpp) {
+                else if (result?.foundOpp) {
                     roundSpan.setAttribute("foundOpp", true);
                     roundSpan.setAttribute("didClear", false);
                 }
