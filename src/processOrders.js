@@ -1,4 +1,5 @@
 const ethers = require("ethers");
+const { BaseError } = require("viem");
 const { Router } = require("sushi/router");
 const { Token } = require("sushi/currency");
 const { arbAbis, orderbookAbi } = require("./abis");
@@ -150,8 +151,18 @@ const processOrders = async(
                     span.end();
                     throw "empty wallet";
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                    if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get vault balance" });
+                    const message = ["failed to get vault balance"];
+                    if (e.error) {
+                        if (e.error instanceof BaseError) {
+                            if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
+                            if (e.error.name) message.push("Error: " + e.error.name);
+                            if (e.error.details) message.push("Details: " + e.error.details);
+                        } else if (e.error instanceof Error) {
+                            if (e.error.message) message.push("Reason: " + e.error.message);
+                        }
+                        span.recordException(getSpanException(e.error));
+                    }
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                     if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
