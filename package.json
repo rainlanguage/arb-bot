@@ -21,14 +21,14 @@
     "files": [
         "src",
         "docs",
-        "./cli.js",
         "./arb-bot.js",
         "./example.env",
         "./config.json",
+        "./arb-bot-cli.js",
         "./lib/sushiswap/packages/sushi"
     ],
     "bin": {
-        "arb-bot": "./arb-bot.js"
+        "arb-bot-cli": "./arb-bot-cli.js"
     },
     "scripts": {
         "test": "npm run unit-test && npm run e2e-test",

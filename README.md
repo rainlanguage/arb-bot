@@ -52,7 +52,7 @@ npm install
 ### CLI
 For starting the app:
 ```bash
-node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
+node arb-bot-cli -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
 ```
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
@@ -135,7 +135,7 @@ Other optional arguments are:
 
 CLI options can be viewed by running:
 ```bash
-node arb-bot -h
+node arb-bot-cli -h
 ```
 <br>
 
@@ -214,7 +214,7 @@ If both env variables and CLI argument are set, the CLI arguments will be priori
 
 If you install this app as a dependency for your project you can run it by (All the above arguments apply here as well):
 ```bash
-arb-bot [arguments]
+arb-bot-cli [arguments]
 ```
 <br>
 
