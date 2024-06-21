@@ -278,8 +278,9 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
         const msg = ["subgraphs status check failed"];
         if (urls.length === 1) {
             // indexing error or invalid fulfilled response
-            if (typeof reasons[urls[0]] === "string") msg.push("Reason: " + reasons[urls[0]]);
-            else {
+            if (typeof reasons[urls[0]] === "string") {
+                msg.push("Reason: " + reasons[urls[0]]);
+            } else {
                 // AxsioError
                 if (reasons[urls[0]].message) msg.push("Reason: " + reasons[urls[0]].message);
                 if (reasons[urls[0]].code) msg.push("Code: " + reasons[urls[0]].code);
@@ -288,8 +289,9 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
             for (const url in reasons) {
                 msg.push(url + ":");
                 // indexing error or invalid fulfilled response
-                if (typeof reasons[url] === "string") msg.push("Reason: " + reasons[url]);
-                else {
+                if (typeof reasons[url] === "string") {
+                    msg.push("Reason: " + reasons[url]);
+                } else {
                     // AxsioError
                     if (reasons[url].message) msg.push("Reason: " + reasons[url].message);
                     if (reasons[url].code) msg.push("Code: " + reasons[url].code);
