@@ -2,14 +2,14 @@ require("dotenv").config();
 const fs = require("fs");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
-const { Resource } = require("@opentelemetry/resources");
+const { ProcessPairReportStatus } = require("./src/processOrders");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
-const { ProcessPairReportStatus } = require("./src/processOrders");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 
 
 /**
