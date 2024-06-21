@@ -21,19 +21,25 @@ describe("Test arb round", async function () {
         const testSpan = tracer.startSpan("test");
         const ctx = trace.setSpan(context.active(), testSpan);
 
-        // Mock sg
-        await mockServer.forPost("/sg-url").withBodyIncluding("_meta").thenReply(
-            200,
-            JSON.stringify({data: {_meta: {hasIndexingErrors: false}}})
-        );
-        await mockServer.forPost("/sg-url").withBodyIncluding("orders").thenReply(
-            200,
-            JSON.stringify({data: {orders: []}})
-        );
+        // Mock sg status and orders query
+        await mockServer
+            .forPost("/sg-url")
+            .withBodyIncluding("_meta")
+            .thenReply(200, JSON.stringify({data: {_meta: {hasIndexingErrors: false}}}));
+        await mockServer
+            .forPost("/sg-url")
+            .withBodyIncluding("orders")
+            .thenReply(200, JSON.stringify({data: {orders: []}}));
+
+        // mock provider chain id call
+        await mockServer
+            .forPost("/rpc-url")
+            .withBodyIncluding("eth_chainId")
+            .thenReply(200, JSON.stringify({jsonrpc: "2.0", id: 1, result: "137"}));
 
         const options = {
-            rpc: process?.env?.TEST_POLYGON_RPC,
-            key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+            rpc: "http://localhost:8080/rpc-url",
+            key: "0x" + "1".repeat(64),
             orderbookAddress: "0x" + "0".repeat(40),
             arbAddress: "0x" + "0".repeat(40),
             maxRatio: true,
