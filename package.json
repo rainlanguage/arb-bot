@@ -21,6 +21,7 @@
     "files": [
         "src",
         "docs",
+        "./cli.js",
         "./arb-bot.js",
         "./example.env",
         "./config.json",
@@ -68,6 +69,7 @@
         "jsdoc": "^4.0.0",
         "jsdoc-to-markdown": "^7.1.1",
         "mocha": "^10.1.0",
+        "mockttp": "^3.12.0",
         "rimraf": "^5.0.0"
     }
 }
