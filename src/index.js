@@ -282,8 +282,12 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
                 msg.push("Reason: " + reasons[urls[0]]);
             } else {
                 // AxsioError
-                if (reasons[urls[0]].message) msg.push("Reason: " + reasons[urls[0]].message);
-                if (reasons[urls[0]].code) msg.push("Code: " + reasons[urls[0]].code);
+                if (reasons[urls[0]].message) {
+                    msg.push("Reason: " + reasons[urls[0]].message);
+                }
+                if (reasons[urls[0]].code) {
+                    msg.push("Code: " + reasons[urls[0]].code);
+                }
             }
         } else {
             for (const url in reasons) {
@@ -293,8 +297,12 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
                     msg.push("Reason: " + reasons[url]);
                 } else {
                     // AxsioError
-                    if (reasons[url].message) msg.push("Reason: " + reasons[url].message);
-                    if (reasons[url].code) msg.push("Code: " + reasons[url].code);
+                    if (reasons[url].message) {
+                        msg.push("Reason: " + reasons[url].message);
+                    }
+                    if (reasons[url].code) {
+                        msg.push("Code: " + reasons[url].code);
+                    }
                 }
             }
         }
