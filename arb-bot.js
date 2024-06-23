@@ -1,17 +1,15 @@
-#!/usr/bin/env node
-
 require("dotenv").config();
 const fs = require("fs");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
-const { Resource } = require("@opentelemetry/resources");
+const { ProcessPairReportStatus } = require("./src/processOrders");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
-const { ProcessPairReportStatus } = require("./src/processOrders");
+const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 
 
 /**
@@ -150,7 +148,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
-                return;
+                return { txs: [], foundOpp: false };
             }
 
             let txs;
@@ -416,17 +414,7 @@ const main = async argv => {
     await sleep(10000);
 };
 
-main(
-    process.argv
-).then(
-    () => {
-        console.log("\x1b[32m%s\x1b[0m", "Rain orderbook arbitrage clearing process finished successfully!");
-        process.exit(0);
-    }
-).catch(
-    (v) => {
-        console.log("\x1b[31m%s\x1b[0m", "An error occured during execution: ");
-        console.log(v);
-        process.exit(1);
-    }
-);
+module.exports = {
+    arbRound,
+    main
+};
