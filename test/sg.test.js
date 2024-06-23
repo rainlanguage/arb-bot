@@ -1,4 +1,5 @@
 const { assert } = require("chai");
+const { AxiosError } = require("axios");
 const { checkSgStatus, handleSgResults } = require("../src");
 
 describe("Test read subgraph", async function () {
@@ -7,6 +8,13 @@ describe("Test read subgraph", async function () {
             "url1",
             "url2"
         ];
+        const error1 = new Error("some error");
+        const error2 = new Error("some other error");
+        const code1 = "some code";
+        const code2 = "some other code";
+        const axiosError1 = AxiosError.from(error1, code1);
+        const axiosError2 = AxiosError.from(error2, code2);
+
         const mockSgStatusOk = [
             {
                 status: "fulfilled",
@@ -49,12 +57,12 @@ describe("Test read subgraph", async function () {
         const mockSgStatusRejected = [
             {
                 status: "rejected",
-                reason: undefined,
+                reason: axiosError1,
                 value: undefined
             },
             {
                 status: "rejected",
-                reason: undefined,
+                reason: axiosError2,
                 value: undefined
             }
         ];
@@ -62,7 +70,16 @@ describe("Test read subgraph", async function () {
             checkSgStatus(sgsUrls, mockSgStatusRejected);
             throw "expected to reject, but resolved";
         } catch(error) {
-            assert.equal(error, "unhealthy subgraph");
+            const errorMsg = [
+                "subgraphs status check failed",
+                `${sgsUrls[0]}:`,
+                `Reason: ${error1.message}`,
+                `Code: ${code1}`,
+                `${sgsUrls[1]}:`,
+                `Reason: ${error2.message}`,
+                `Code: ${code2}`,
+            ];
+            assert.equal(error, errorMsg.join("\n"));
         }
 
         const mockSgStatusUndefined = [
@@ -81,7 +98,14 @@ describe("Test read subgraph", async function () {
             checkSgStatus(sgsUrls, mockSgStatusUndefined);
             throw "expected to reject, but resolved";
         } catch(error) {
-            assert.equal(error, "unhealthy subgraph");
+            const errorMsg = [
+                "subgraphs status check failed",
+                `${sgsUrls[0]}:`,
+                "Reason: did not receive valid status response",
+                `${sgsUrls[1]}:`,
+                "Reason: did not receive valid status response",
+            ];
+            assert.equal(error, errorMsg.join("\n"));
         }
 
         const mockSgStatusUndefinedPartial = [
@@ -228,7 +252,7 @@ describe("Test read subgraph", async function () {
         ];
         try {
             handleSgResults(sgsUrls, mockSgResultRejected);
-            throw "expected to resolve, but rejected";
+            throw "expected to reject, but resolved";
         } catch(error) {
             assert.equal(error, "could not get order details from given sgs");
         }

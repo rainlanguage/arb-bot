@@ -273,7 +273,41 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
         }
     }
     if (Object.keys(reasons).length) span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
-    if (!hasjson && Object.keys(reasons).length === statusResult.length) throw "unhealthy subgraph";
+    if (!hasjson && Object.keys(reasons).length === statusResult.length) {
+        const urls = Object.keys(reasons);
+        const msg = ["subgraphs status check failed"];
+        if (urls.length === 1) {
+            // indexing error or invalid fulfilled response
+            if (typeof reasons[urls[0]] === "string") {
+                msg.push("Reason: " + reasons[urls[0]]);
+            } else {
+                // AxsioError
+                if (reasons[urls[0]].message) {
+                    msg.push("Reason: " + reasons[urls[0]].message);
+                }
+                if (reasons[urls[0]].code) {
+                    msg.push("Code: " + reasons[urls[0]].code);
+                }
+            }
+        } else {
+            for (const url in reasons) {
+                msg.push(url + ":");
+                // indexing error or invalid fulfilled response
+                if (typeof reasons[url] === "string") {
+                    msg.push("Reason: " + reasons[url]);
+                } else {
+                    // AxsioError
+                    if (reasons[url].message) {
+                        msg.push("Reason: " + reasons[url].message);
+                    }
+                    if (reasons[url].code) {
+                        msg.push("Code: " + reasons[url].code);
+                    }
+                }
+            }
+        }
+        throw msg.join("\n");
+    }
 
     return { availableSgs, reasons };
 }
