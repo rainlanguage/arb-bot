@@ -689,13 +689,13 @@ async function dryrun(
                 /**/
             }
 
-            const rpParams = getRouteProcessorParamsVersion["3.2"](
+            const rpParams = getRouteProcessorParamsVersion["4"](
                 pcMap,
                 route,
                 fromToken,
                 toToken,
                 arb.address,
-                config.routeProcessors["3.2"],
+                config.routeProcessors["4"],
                 // permits
                 // "0.005"
             );
