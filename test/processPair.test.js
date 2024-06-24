@@ -88,7 +88,7 @@ describe("Test process pair", async function () {
                     bytecode: "0x01000000000000"
                 }
             ),
-            config.routeProcessors["3.2"],
+            config.routeProcessors["4"],
         );
 
         // set the rest of config

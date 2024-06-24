@@ -1056,7 +1056,7 @@ const getRouteForTokens = async(
                 ")";
         });
         console.log("Route portions: ", routeText, "\n");
-        const rpParams = Router.routeProcessor2Params(
+        const rpParams = Router.routeProcessor4Params(
             pcMap,
             route,
             fromToken,
