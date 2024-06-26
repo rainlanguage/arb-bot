@@ -77,7 +77,7 @@ const testChains = [
     [
         ChainId.FLARE,
         process?.env?.TEST_FLARE_RPC,
-        23676999,
+        25902360,
         [
             WNATIVE[ChainId.FLARE],
             USDT[ChainId.FLARE],
@@ -86,7 +86,7 @@ const testChains = [
         ],
         [
             "0x2258e7Ad1D8AC70FAB053CF59c027960e94DB7d1",
-            "0x09F5e7452d72b4A4e51b77DF1Ec8391e46e5F864",
+            "0x980Db8443D19B64B1d4616980ebbD44e7DD30C2E",
             "0x2e574D0802F433E71F7dC91650aB2C23aDeb0D81",
             "0x311613c3339bBd4B91a0b498E43dc63ACC1f2740",
         ],

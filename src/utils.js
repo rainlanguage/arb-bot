@@ -676,9 +676,8 @@ const getEthPrice = async(
  *
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
-const processLps = (liquidityProviders, _isv4 = false) => {
-    let LP = Object.values(LiquidityProviders);
-    if (!_isv4) LP = LP.filter(v => v !== LiquidityProviders.CurveSwap);
+const processLps = (liquidityProviders) => {
+    const LP = Object.values(LiquidityProviders);
     if (
         !liquidityProviders ||
         !Array.isArray(liquidityProviders) ||
