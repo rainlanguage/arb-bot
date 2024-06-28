@@ -10,14 +10,15 @@ const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { ChainId, LiquidityProviders, ChainKey } = require("sushi");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
+const { ProcessPairReportStatus } = require("../../src/processOrders");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { randomUint256, prepareOrders, generateEvaluableConfig } = require("../utils");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
-const { USDT, WNATIVE, USDC, DAI, ENOSYS_BNZ, USD_PLUS, ENOSYS_HLN, FRAX, axlUSDC } = require("sushi/currency");
+const { USDT, WNATIVE, USDC, ENOSYS_BNZ, ENOSYS_HLN, axlUSDC, Token } = require("sushi/currency");
+const { randomUint256, generateEvaluableConfig, mockSgFromEvent, getEventArgs, encodeMeta } = require("../utils");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
-const { ProcessPairReportStatus } = require("../../src/processOrders");
+
 
 const testChains = [
     [
@@ -33,17 +34,24 @@ const testChains = [
         // tokens to test with
         [
             WNATIVE[ChainId.POLYGON],
-            USDT[ChainId.POLYGON],
+            // USDT[ChainId.POLYGON],
             USDC[ChainId.POLYGON],
-            DAI[ChainId.POLYGON]
+            // DAI[ChainId.POLYGON],
+            new Token({
+                chainId: ChainId.POLYGON,
+                address: "0xd0e9c8f5Fae381459cf07Ec506C1d2896E8b5df6",
+                decimals: 18,
+                symbol: "IOEN"
+            }),
         ],
 
         // addresses with token balance, in order with specified tokens
         [
             "0xdF906eA18C6537C6379aC83157047F507FB37263",
-            "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+            // "0xF977814e90dA44bFA03b6295A0616a897441aceC",
             "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
-            "0x4aac95EBE2eA6038982566741d1860556e265F8B",
+            // "0x4aac95EBE2eA6038982566741d1860556e265F8B",
+            "0xdFB5396f06bE50eAA745094ff51d272C292cc218",
         ],
 
         // liq providers to use for test
@@ -51,6 +59,7 @@ const testChains = [
         [
             LiquidityProviders.QuickSwap,
             LiquidityProviders.SushiSwapV3,
+            LiquidityProviders.UniswapV3,
         ]
     ],
     [
@@ -60,18 +69,26 @@ const testChains = [
         [
             WNATIVE[ChainId.ARBITRUM],
             USDT[ChainId.ARBITRUM],
-            USDC[ChainId.ARBITRUM],
-            DAI[ChainId.ARBITRUM]
+            new Token({
+                chainId: ChainId.ARBITRUM,
+                address: "0x9cAAe40DCF950aFEA443119e51E821D6FE2437ca",
+                decimals: 18,
+                symbol: "BJ"
+            }),
+            // USDC[ChainId.ARBITRUM],
+            // DAI[ChainId.ARBITRUM]
         ],
         [
             "0xc3e5607cd4ca0d5fe51e09b60ed97a0ae6f874dd",
             "0x8f9c79B9De8b0713dCAC3E535fc5A1A92DB6EA2D",
-            "0x5a52e96bacdabb82fd05763e25335261b270efcb",
-            "0xc2995bbd284953e8ba0b01efe64535ac55cfcd9d"
+            "0x9f29801ac82befe279786e5691b0399b637c560c",
+            // "0x5a52e96bacdabb82fd05763e25335261b270efcb",
+            // "0xc2995bbd284953e8ba0b01efe64535ac55cfcd9d"
         ],
         [
             LiquidityProviders.SushiSwapV2,
             LiquidityProviders.UniswapV3,
+            LiquidityProviders.Camelot,
         ]
     ],
     [
@@ -82,7 +99,7 @@ const testChains = [
             WNATIVE[ChainId.FLARE],
             USDT[ChainId.FLARE],
             ENOSYS_HLN,
-            ENOSYS_BNZ
+            ENOSYS_BNZ,
         ],
         [
             "0x2258e7Ad1D8AC70FAB053CF59c027960e94DB7d1",
@@ -102,14 +119,21 @@ const testChains = [
         [
             WNATIVE[ChainId.ETHEREUM],
             USDT[ChainId.ETHEREUM],
-            USDC[ChainId.ETHEREUM],
-            DAI[ChainId.ETHEREUM]
+            // USDC[ChainId.ETHEREUM],
+            // DAI[ChainId.ETHEREUM],
+            new Token({
+                chainId: ChainId.ETHEREUM,
+                address: "0x922D8563631B03C2c4cf817f4d18f6883AbA0109",
+                decimals: 18,
+                symbol: "LOCK"
+            }),
         ],
         [
             "0x17FD2FeeDabE71f013F5228ed9a52DE58291b15d",
             "0x83B9c290E8D86e686a9Eda6A6DC8FA6d281A5157",
-            "0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC",
-            "0x837c20D568Dfcd35E74E5CC0B8030f9Cebe10A28",
+            // "0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC",
+            // "0x837c20D568Dfcd35E74E5CC0B8030f9Cebe10A28",
+            "0x3776100a4b669Ef0d727a81FC69bF50DE74A976c",
         ],
         [
             LiquidityProviders.SushiSwapV2,
@@ -123,15 +147,36 @@ const testChains = [
         14207369,
         [
             axlUSDC[ChainId.BASE],
-            USDC[ChainId.BASE],
-            DAI[ChainId.BASE],
-            USD_PLUS[ChainId.BASE],
+            // USDC[ChainId.BASE],
+            // DAI[ChainId.BASE],
+            // USD_PLUS[ChainId.BASE],
+            new Token({
+                chainId: ChainId.BASE,
+                address: "0x71DDE9436305D2085331AF4737ec6f1fe876Cf9f",
+                decimals: 18,
+                symbol: "PAID"
+            }),
+            new Token({
+                chainId: ChainId.BASE,
+                address: "0x3982E57fF1b193Ca8eb03D16Db268Bd4B40818f8",
+                decimals: 18,
+                symbol: "BLOOD"
+            }),
+            new Token({
+                chainId: ChainId.BASE,
+                address: "0x99b2B1A2aDB02B38222ADcD057783D7e5D1FCC7D",
+                decimals: 18,
+                symbol: "WLTH"
+            }),
         ],
         [
             "0xe743a49f04f2f77eb2d3b753ae3ad599de8cea84",
-            "0x9b4Fc9E22b46487F0810eF5dFa230b9f139E5179",
-            "0xf89BCB2Cc4F790Ba5b2fa4A1FBCb33e178459E65",
-            "0x898137400867603E6D713CBD40881dd0c79E47cB",
+            // "0x9b4Fc9E22b46487F0810eF5dFa230b9f139E5179",
+            // "0xf89BCB2Cc4F790Ba5b2fa4A1FBCb33e178459E65",
+            // "0x898137400867603E6D713CBD40881dd0c79E47cB",
+            "0x3ea31919Ef9b3e72Cc25657b604DB1ACDb1DdB4b",
+            "0x7731D522011b4ACE5D812C15539321F373d0E964",
+            "0xD6216fC19DB775Df9774a6E33526131dA7D19a2c",
         ],
         [
             LiquidityProviders.UniswapV3,
@@ -145,14 +190,28 @@ const testChains = [
         [
             WNATIVE[ChainId.BSC],
             USDC[ChainId.BSC],
-            DAI[ChainId.BSC],
-            FRAX[ChainId.BSC]
+            // DAI[ChainId.BSC],
+            // FRAX[ChainId.BSC],
+            new Token({
+                chainId: ChainId.BSC,
+                address: "0x8f0FB159380176D324542b3a7933F0C2Fd0c2bbf",
+                decimals: 7,
+                symbol: "TFT"
+            }),
+            new Token({
+                chainId: ChainId.BSC,
+                address: "0xAD86d0E9764ba90DDD68747D64BFfBd79879a238",
+                decimals: 18,
+                symbol: "PAID"
+            }),
         ],
         [
             "0x59d779BED4dB1E734D3fDa3172d45bc3063eCD69",
-            "0xD3a22590f8243f8E83Ac230D1842C9Af0404C4A1",
-            "0x737bc92643287e5b598eC4F5809bD25643c330f6",
-            "0x8b666FAD7B4209B080Cb5f02159A60c3Bf346ebA"
+            // "0xD3a22590f8243f8E83Ac230D1842C9Af0404C4A1",
+            // "0x737bc92643287e5b598eC4F5809bD25643c330f6",
+            "0x8b666FAD7B4209B080Cb5f02159A60c3Bf346ebA",
+            "0x66803c0B34B1baCCb68fF515f76cd63ba48a2039",
+            "0x604b2B06ad0D5a2f8ef4383626f6dD37E780D090",
         ],
         [
             LiquidityProviders.PancakeSwapV2,
@@ -205,7 +264,7 @@ for (let i = 0; i < testChains.length; i++) {
                 await helpers.reset(rpc, blockNumber);
 
                 // get signers
-                const [bot, ...orderOwners] = await ethers.getSigners();
+                const [bot] = await ethers.getSigners();
 
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
@@ -230,72 +289,79 @@ for (let i = 0; i < testChains.length; i++) {
                     config.routeProcessors[rpVersion],
                 );
 
-                // set up tokens
-                const Token1 = await ethers.getContractAt(
-                    ERC20Artifact.abi,
-                    tokens[0].address
-                );
-                const Token1Decimals = tokens[0].decimals;
-                const Token1VaultId = ethers.BigNumber.from(randomUint256());
-
-                const Token2 = await ethers.getContractAt(
-                    ERC20Artifact.abi,
-                    tokens[1].address
-                );
-                const Token2Decimals = tokens[1].decimals;
-                const Token2VaultId = ethers.BigNumber.from(randomUint256());
-
-                const Token3 = await ethers.getContractAt(
-                    ERC20Artifact.abi,
-                    tokens[2].address
-                );
-                const Token3Decimals = tokens[2].decimals;
-                const Token3VaultId = ethers.BigNumber.from(randomUint256());
-
-                const Token4 = await ethers.getContractAt(
-                    ERC20Artifact.abi,
-                    tokens[3].address
-                );
-                const Token4Decimals = tokens[3].decimals;
-                const Token4VaultId = ethers.BigNumber.from(randomUint256());
-
-                // impersonate addresses with large token balances to fund the owner 1 2 3
-                // accounts with 110 tokens each used for topping up the order vaults
-                const Token1Holder = await ethers.getImpersonatedSigner(addressesWithBalance[0]);
-                const Token2Holder = await ethers.getImpersonatedSigner(addressesWithBalance[1]);
-                const Token3Holder = await ethers.getImpersonatedSigner(addressesWithBalance[2]);
-                const Token4Holder = await ethers.getImpersonatedSigner(addressesWithBalance[3]);
-
-                // set eth balance for tx gas cost
-                await network.provider.send("hardhat_setBalance", [Token1Holder.address, "0x4563918244F40000"]);
-                await network.provider.send("hardhat_setBalance", [Token2Holder.address, "0x4563918244F40000"]);
-                await network.provider.send("hardhat_setBalance", [Token3Holder.address, "0x4563918244F40000"]);
-                await network.provider.send("hardhat_setBalance", [Token4Holder.address, "0x4563918244F40000"]);
-
-                // send tokens to owners from token holders accounts
-                for (let i = 0; i < 3; i++) {
-                    await Token1.connect(Token1Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token1Decimals));
-                    await Token2.connect(Token2Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token2Decimals));
-                    await Token3.connect(Token3Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token3Decimals));
-                    await Token4.connect(Token4Holder).transfer(orderOwners[i].address, "110" + "0".repeat(Token4Decimals));
+                // set up tokens contracts and impersonate owners
+                const orderOwners = [];
+                for (let i = 0; i < tokens.length; i++) {
+                    tokens[i].contract = await ethers.getContractAt(
+                        ERC20Artifact.abi,
+                        tokens[i].address
+                    );
+                    tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
+                    orderOwners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
+                    await network.provider.send("hardhat_setBalance", [addressesWithBalance[i], "0x4563918244F40000"]);
                 }
 
                 // bot original token balances
-                const BotToken1Balance = await Token1.balanceOf(bot.address);
-                const BotToken2Balance = await Token2.balanceOf(bot.address);
-                const BotToken3Balance = await Token3.balanceOf(bot.address);
-                const BotToken4Balance = await Token4.balanceOf(bot.address);
+                const originalBotTokenBalances = [];
+                for (const t of tokens) {
+                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
+                }
+                const EvaluableConfig = generateEvaluableConfig(
+                    expressionDeployer,
+                    {
+                        constants: [ethers.constants.MaxUint256.toHexString(), "0"],
+                        bytecode: "0x020000000c02020002010000000100000100000000"
+                    }
+                );
 
                 // dposit and add orders for each owner and return
                 // the deployed orders in format of a sg query
-                const sgOrders = await prepareOrders(
-                    orderOwners,
-                    [Token1, Token2, Token3, Token4],
-                    [Token1Decimals, Token2Decimals, Token3Decimals, Token4Decimals],
-                    [Token1VaultId, Token2VaultId, Token3VaultId, Token4VaultId],
-                    orderbook,
-                    expressionDeployer
-                );
+                const sgOrders = [];
+                for (let i = 1; i < tokens.length; i++) {
+                    const depositConfigStruct = {
+                        token: tokens[i].address,
+                        vaultId: tokens[i].vaultId,
+                        amount: "100" + "0".repeat(tokens[i].decimals),
+                    };
+                    await tokens[i]
+                        .contract
+                        .connect(orderOwners[i])
+                        .approve(orderbook.address, depositConfigStruct.amount);
+                    await orderbook
+                        .connect(orderOwners[i])
+                        .deposit(
+                            depositConfigStruct.token,
+                            depositConfigStruct.vaultId,
+                            depositConfigStruct.amount
+                        );
+                    const owner_i_order = {
+                        validInputs: [{
+                            token: tokens[0].address,
+                            decimals: tokens[0].decimals,
+                            vaultId: tokens[0].vaultId
+                        }],
+                        validOutputs: [{
+                            token: tokens[i].address,
+                            decimals: tokens[i].decimals,
+                            vaultId: tokens[i].vaultId
+                        }],
+                        evaluableConfig: EvaluableConfig,
+                        meta: encodeMeta("owner_i_order"),
+                    };
+                    const tx_owner_i_order1 = await orderbook
+                        .connect(orderOwners[i])
+                        .addOrder(owner_i_order);
+
+                    sgOrders.push(await mockSgFromEvent(
+                        await getEventArgs(
+                            tx_owner_i_order1,
+                            "AddOrder",
+                            orderbook
+                        ),
+                        orderbook,
+                        tokens.map(v => v.contract)
+                    ));
+                }
 
                 // run the clearing process
                 config.isTest = true;
@@ -314,90 +380,44 @@ for (let i = 0; i < testChains.length; i++) {
                 config.gasCoveragePercentage = "100";
                 const reports = await clear(config, sgOrders, tracer, ctx);
 
-                // should have cleared 2 token pairs bundled orders
-                assert.ok(reports.length == 3);
+                // should have cleared correct number of orders
+                assert.ok(reports.length == tokens.length - 1, "failed to clear all given orders");
 
-                // validate first cleared token pair orders
-                assert.equal(reports[0].tokenPair, `${tokens[1].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[0].clearedAmount, "200" + "0".repeat(tokens[0].decimals));
-                assert.equal(reports[0].clearedOrders.length, 2);
+                let profit = ethers.constants.Zero;
+                for (let i=0; i< reports.length; i++) {
+                    const tokenPair = `${tokens[0].symbol}/${tokens[i + 1].symbol}`;
 
-                // check vault balances for orders in cleared token pair
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[0].address,
-                        Token1.address,
-                        Token3VaultId
-                    )).toString(),
-                    "0"
-                );
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[0].address,
-                        Token2.address,
-                        Token2VaultId
-                    )).toString(),
-                    "100" + "0".repeat(tokens[1].decimals)
-                );
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[2].address,
-                        Token1.address,
-                        Token1VaultId
-                    )).toString(),
-                    "0"
-                );
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[2].address,
-                        Token2.address,
-                        Token2VaultId
-                    )).toString(),
-                    "100" + "0".repeat(tokens[1].decimals)
-                );
-
-                // validate second token pair orders, which should report empty vault
-                assert.equal(reports[1].tokenPair, `${tokens[3].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[1].status, ProcessPairReportStatus.EmptyVault);
-
-                // validate third cleared token pair orders
-                assert.equal(reports[2].tokenPair, `${tokens[2].symbol}/${tokens[0].symbol}`);
-                assert.equal(reports[2].clearedAmount, "100" + "0".repeat(tokens[0].decimals));
-
-                // check vault balances for orders in cleared token pair
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[1].address,
-                        Token1.address,
-                        Token1VaultId
-                    )).toString(),
-                    "0"
-                );
-                assert.equal(
-                    (await orderbook.vaultBalance(
-                        orderOwners[1].address,
-                        Token3.address,
-                        Token3VaultId
-                    )).toString(),
-                    "100" + "0".repeat(tokens[2].decimals)
-                );
-
-                // bot should have received the bounty for cleared orders,
-                // so its token 2 and 3 balances should have increased
+                    assert.equal(reports[i].tokenPair, tokenPair);
+                    assert.equal(reports[i].clearedOrders.length, 1);
+                    assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
+                    assert.equal(reports[i].clearedAmount, "100" + "0".repeat(tokens[i + 1].decimals));
+                    assert.equal(
+                        (await orderbook.vaultBalance(
+                            orderOwners[i + 1].address,
+                            tokens[i + 1].address,
+                            tokens[i + 1].vaultId
+                        )).toString(),
+                        "0"
+                    );
+                    assert.equal(
+                        (await orderbook.vaultBalance(
+                            orderOwners[0].address,
+                            tokens[0].address,
+                            tokens[0].vaultId
+                        )).toString(),
+                        "0"
+                    );
+                    assert.ok(
+                        (await tokens[i + 1].contract.connect(bot).balanceOf(bot.address))
+                            .eq(originalBotTokenBalances[i + 1]),
+                        `bot wrongfully recieved bounty tokens for order with ${tokenPair}`
+                    );
+                    profit = profit.add(reports[i].income);
+                }
                 assert.ok(
-                    (await Token2.connect(bot).balanceOf(bot.address)).gt(BotToken2Balance)
-                );
-                assert.ok(
-                    (await Token3.connect(bot).balanceOf(bot.address)).gt(BotToken3Balance)
-                );
-
-                // bot should not have recieved any reward
-                // so its token 1 and 4 balances should have been equal to before
-                assert.ok(
-                    (await Token1.connect(bot).balanceOf(bot.address)).eq(BotToken1Balance)
-                );
-                assert.ok(
-                    (await Token4.connect(bot).balanceOf(bot.address)).eq(BotToken4Balance)
+                    (await tokens[0].contract.connect(bot).balanceOf(bot.address))
+                        .eq(originalBotTokenBalances[0].add(profit)),
+                    "bot recieved bounty isn't equal to expected amount"
                 );
 
                 testSpan.end();
