@@ -11,10 +11,7 @@ const erc20Abi = [
  * Minimal ABI for Orderbook contract only including vaultBalance() function
  */
 const orderbookAbi = [
-    "function vaultBalance(address owner, address token, uint256 id) external view returns (uint256 balance)",
-    "function deposit(address token, uint256 vaultId, uint256 amount) external",
-    "function addOrder(((address token, uint8 decimals, uint256 vaultId)[] validInputs, (address token, uint8 decimals, uint256 vaultId)[] validOutputs, (address deployer, bytes bytecode, uint256[] constants) evaluableConfig, bytes meta) config) returns (bool stateChanged)",
-    "event AddOrder(address sender, address expressionDeployer, (address owner, bool handleIO, (address interpreter, address store, address expression) evaluable, (address token, uint8 decimals, uint256 vaultId)[] validInputs, (address token, uint8 decimals, uint256 vaultId)[] validOutputs) order, bytes32 orderHash)"
+    "function vaultBalance(address owner, address token, uint256 id) external view returns (uint256 balance)"
 ];
 
 /**
