@@ -683,7 +683,10 @@ const processLps = (liquidityProviders) => {
         !Array.isArray(liquidityProviders) ||
         !liquidityProviders.length ||
         !liquidityProviders.every(v => typeof v === "string")
-    ) return undefined;
+    ) {
+        // exclude curve since it is currently in audit, unless it is explicitly specified
+        return LP.filter(v => v !== LiquidityProviders.CurveSwap);
+    }
     const _lps = [];
     for (let i = 0; i < liquidityProviders.length; i++) {
         const index = LP.findIndex(
@@ -691,7 +694,7 @@ const processLps = (liquidityProviders) => {
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
-    return _lps.length ? _lps : LP;
+    return _lps.length ? _lps : LP.filter(v => v !== LiquidityProviders.CurveSwap);
 };
 
 /**

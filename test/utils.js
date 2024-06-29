@@ -128,10 +128,14 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
     const inputDetails = [];
     const outputDetails = [];
     for (let i = 0; i < eventArgs.order.validInputs.length; i++) {
+        const token = tokens.find(e =>
+            e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase()
+        );
+        const symbol = token?.knownSymbol
+            ?? (await token.contract?.symbol())
+            ?? (await token.symbol());
         inputDetails.push({
-            symbol: await (tokens.find(e =>
-                e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase()
-            )).symbol(),
+            symbol,
             balance: await orderbook.vaultBalance(
                 eventArgs.order.owner,
                 eventArgs.order.validInputs[i].token,
@@ -140,10 +144,14 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
         });
     }
     for (let i = 0; i < eventArgs.order.validOutputs.length; i++) {
+        const token = tokens.find(e =>
+            e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase()
+        );
+        const symbol = token?.knownSymbol
+            ?? (await token.contract?.symbol())
+            ?? (await token.symbol());
         outputDetails.push({
-            symbol: await (tokens.find(e =>
-                e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase()
-            )).symbol(),
+            symbol,
             balance: await orderbook.vaultBalance(
                 eventArgs.order.owner,
                 eventArgs.order.validOutputs[i].token,
