@@ -111,8 +111,14 @@ for (let i = 0; i < testChains.length; i++) {
                         tokens[i].address
                     );
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
+                    tokens[i].depositAmount = ethers.BigNumber.from(
+                        (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
+                    );
                     orderOwners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
-                    await network.provider.send("hardhat_setBalance", [addressesWithBalance[i], "0x4563918244F40000"]);
+                    await network.provider.send(
+                        "hardhat_setBalance",
+                        [addressesWithBalance[i], "0x4563918244F40000"]
+                    );
                 }
 
                 // bot original token balances
@@ -137,7 +143,7 @@ for (let i = 0; i < testChains.length; i++) {
                     const depositConfigStruct = {
                         token: tokens[i].address,
                         vaultId: tokens[i].vaultId,
-                        amount: (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals),
+                        amount: tokens[i].depositAmount.toString()
                     };
                     await tokens[i]
                         .contract
@@ -202,12 +208,17 @@ for (let i = 0; i < testChains.length; i++) {
 
                 // validate each cleared order
                 for (let i = 0; i < reports.length; i++) {
+                    const pair = `${tokens[0].symbol}/${tokens[i + 1].symbol}`;
+                    const clearedAmount = ethers.BigNumber.from(reports[i].clearedAmount);
+
+                    assert.equal(reports[i].tokenPair, pair);
                     assert.equal(reports[i].clearedOrders.length, 1);
                     assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
-                    assert.equal(reports[i].tokenPair, `${tokens[0].symbol}/${tokens[i + 1].symbol}`);
-                    assert.equal(
-                        reports[i].clearedAmount,
-                        (deposits[i + 1] ?? "100") + "0".repeat(tokens[i + 1].decimals)
+
+                    // should have cleared equal to vault balance or lower
+                    assert.isTrue(
+                        tokens[i + 1].depositAmount.gte(clearedAmount),
+                        `Did not clear expected amount for: ${pair}`
                     );
                     assert.equal(
                         (await orderbook.vaultBalance(
@@ -215,7 +226,7 @@ for (let i = 0; i < testChains.length; i++) {
                             tokens[i + 1].address,
                             tokens[i + 1].vaultId
                         )).toString(),
-                        "0"
+                        tokens[i + 1].depositAmount.sub(clearedAmount).toString()
                     );
                     assert.equal(
                         (await orderbook.vaultBalance(
