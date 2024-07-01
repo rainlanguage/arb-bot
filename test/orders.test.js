@@ -5,86 +5,108 @@ const { bundleOrders, getVaultBalance } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
 const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const { OrderV3, OrderV3Struct } = require("../src/abis");
 
 describe("Test order details", async function () {
     const order1 = {
-        orderJSONString: "{\"owner\":\"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6\",\"handleIo\":false,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}],\"validOutputs\":[{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}]}",
         id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
-        validInputs: [{
+        orderHash: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+        owner: "0x0f47a0c7f86a615606ca315ad83c3e302b474bd6",
+        orderBytes: "",
+        active: true,
+        nonce: `0x${"0".repeat(64)}`,
+        inputs: [{
+            balance: "1",
+            vaultId: "1",
             token: {
-                id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
                 decimals: 6,
                 symbol: "USDT"
             }
         }],
-        validOutputs: [{
+        outputs: [{
+            balance: "1",
+            vaultId: "1",
             token: {
-                id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
                 decimals: 18,
                 symbol: "WMATIC",
             }
         }]
     };
-    const orderStruct1 = JSON.parse(order1.orderJSONString);
+    const orderStruct1 = getOrderStruct(order1);
+    const orderBytes1 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct1]);
+    order1.orderBytes = orderBytes1;
 
     const order2 = {
-        orderJSONString: "{\"owner\":\"0x0eb840e5acd0125853ad630663d3a62e673c22e6\",\"handleIo\":false,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0xcc2de1bec57eb64004bcf28cc7cc3c62c4cc574b\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xce7cff94ca97c481063dae48cfb378eb4dd3c6b935aef16c2397624c300045fb\"},{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xce7cff94ca97c481063dae48cfb378eb4dd3c6b935aef16c2397624c300045fb\"}],\"validOutputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xce7cff94ca97c481063dae48cfb378eb4dd3c6b935aef16c2397624c300045fb\"},{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xce7cff94ca97c481063dae48cfb378eb4dd3c6b935aef16c2397624c300045fb\"}]}",
         id: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
-        validInputs: [
+        orderHash: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
+        owner: "0x0eb840e5acd0125853ad630663d3a62e673c22e6",
+        orderBytes: "",
+        active: true,
+        nonce: `0x${"0".repeat(64)}`,
+        inputs: [
             {
+                balance: "1",
+                vaultId: "1",
                 token: {
-                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
                     decimals: 6,
                     symbol: "USDT"
                 }
             },
             {
+                balance: "1",
+                vaultId: "1",
                 token: {
-                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
                     decimals: 18,
                     symbol: "WMATIC",
                 }
             }
         ],
-        validOutputs: [
+        outputs: [
             {
+                balance: "1",
+                vaultId: "1",
                 token: {
-                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
                     decimals: 6,
                     symbol: "USDT"
                 }
             },
             {
+                balance: "1",
+                vaultId: "1",
                 token: {
-                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
                     decimals: 18,
                     symbol: "WMATIC",
                 }
             }
         ]
     };
-    const orderStruct2 = JSON.parse(order2.orderJSONString);
+    const orderStruct2 = getOrderStruct(order2);
+    const orderBytes2 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct2]);
+    order2.orderBytes = orderBytes2;
 
     it("should return correct order details", async function () {
         const unbundledResult = bundleOrders([order1, order2], false, false);
         const unbundledExpected = [
             {
                 buyToken: orderStruct1.validInputs[0].token,
-                buyTokenSymbol: order1.validInputs[0].token.symbol,
+                buyTokenSymbol: order1.inputs[0].token.symbol,
                 buyTokenDecimals: orderStruct1.validInputs[0].decimals,
                 sellToken: orderStruct1.validOutputs[0].token,
-                sellTokenSymbol: order1.validOutputs[0].token.symbol,
+                sellTokenSymbol: order1.outputs[0].token.symbol,
                 sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
                 takeOrders: [{
-                    id: order1.id,
+                    id: order1.orderHash,
                     takeOrder: {
-                        order: {
-                            owner: orderStruct1.owner,
-                            handleIO: orderStruct1.handleIo,
-                            evaluable: orderStruct1.evaluable,
-                            validInputs: orderStruct1.validInputs,
-                            validOutputs: orderStruct1.validOutputs
-                        },
+                        order: ethers.utils.defaultAbiCoder.decode(
+                            [OrderV3Struct],
+                            orderBytes1
+                        )[0],
                         inputIOIndex: 0,
                         outputIOIndex: 0,
                         signedContext: []
@@ -93,21 +115,18 @@ describe("Test order details", async function () {
             },
             {
                 buyToken: orderStruct2.validInputs[1].token,
-                buyTokenSymbol: order2.validInputs[1].token.symbol,
+                buyTokenSymbol: order2.inputs[1].token.symbol,
                 buyTokenDecimals: orderStruct2.validInputs[1].decimals,
                 sellToken: orderStruct2.validOutputs[0].token,
-                sellTokenSymbol: order2.validOutputs[0].token.symbol,
+                sellTokenSymbol: order2.outputs[0].token.symbol,
                 sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
                 takeOrders: [{
-                    id: order2.id,
+                    id: order2.orderHash,
                     takeOrder: {
-                        order: {
-                            owner: orderStruct2.owner,
-                            handleIO: orderStruct2.handleIo,
-                            evaluable: orderStruct2.evaluable,
-                            validInputs: orderStruct2.validInputs,
-                            validOutputs: orderStruct2.validOutputs
-                        },
+                        order: ethers.utils.defaultAbiCoder.decode(
+                            [OrderV3Struct],
+                            orderBytes2
+                        )[0],
                         inputIOIndex: 1,
                         outputIOIndex: 0,
                         signedContext: []
@@ -116,21 +135,18 @@ describe("Test order details", async function () {
             },
             {
                 buyToken: orderStruct2.validInputs[0].token,
-                buyTokenSymbol: order2.validInputs[0].token.symbol,
+                buyTokenSymbol: order2.inputs[0].token.symbol,
                 buyTokenDecimals: orderStruct2.validInputs[0].decimals,
                 sellToken: orderStruct2.validOutputs[1].token,
-                sellTokenSymbol: order2.validOutputs[1].token.symbol,
+                sellTokenSymbol: order2.outputs[1].token.symbol,
                 sellTokenDecimals: orderStruct2.validOutputs[1].decimals,
                 takeOrders: [{
-                    id: order2.id,
+                    id: order2.orderHash,
                     takeOrder: {
-                        order: {
-                            owner: orderStruct2.owner,
-                            handleIO: orderStruct2.handleIo,
-                            evaluable: orderStruct2.evaluable,
-                            validInputs: orderStruct2.validInputs,
-                            validOutputs: orderStruct2.validOutputs
-                        },
+                        order: ethers.utils.defaultAbiCoder.decode(
+                            [OrderV3Struct],
+                            orderBytes2
+                        )[0],
                         inputIOIndex: 0,
                         outputIOIndex: 1,
                         signedContext: []
@@ -144,37 +160,31 @@ describe("Test order details", async function () {
         const bundledExpected = [
             {
                 buyToken: orderStruct1.validInputs[0].token,
-                buyTokenSymbol: order1.validInputs[0].token.symbol,
+                buyTokenSymbol: order1.inputs[0].token.symbol,
                 buyTokenDecimals: orderStruct1.validInputs[0].decimals,
                 sellToken: orderStruct1.validOutputs[0].token,
-                sellTokenSymbol: order1.validOutputs[0].token.symbol,
+                sellTokenSymbol: order1.outputs[0].token.symbol,
                 sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
                 takeOrders: [
                     {
                         id: order1.id,
                         takeOrder: {
-                            order: {
-                                owner: orderStruct1.owner,
-                                handleIO: orderStruct1.handleIo,
-                                evaluable: orderStruct1.evaluable,
-                                validInputs: orderStruct1.validInputs,
-                                validOutputs: orderStruct1.validOutputs
-                            },
+                            order: ethers.utils.defaultAbiCoder.decode(
+                                [OrderV3Struct],
+                                orderBytes1
+                            )[0],
                             inputIOIndex: 0,
                             outputIOIndex: 0,
                             signedContext: []
                         }
                     },
                     {
-                        id: order2.id,
+                        id: order2.orderHash,
                         takeOrder: {
-                            order: {
-                                owner: orderStruct2.owner,
-                                handleIO: orderStruct2.handleIo,
-                                evaluable: orderStruct2.evaluable,
-                                validInputs: orderStruct2.validInputs,
-                                validOutputs: orderStruct2.validOutputs
-                            },
+                            order: ethers.utils.defaultAbiCoder.decode(
+                                [OrderV3Struct],
+                                orderBytes2
+                            )[0],
                             inputIOIndex: 0,
                             outputIOIndex: 1,
                             signedContext: []
@@ -184,21 +194,18 @@ describe("Test order details", async function () {
             },
             {
                 buyToken: orderStruct2.validInputs[1].token,
-                buyTokenSymbol: order2.validInputs[1].token.symbol,
+                buyTokenSymbol: order2.inputs[1].token.symbol,
                 buyTokenDecimals: orderStruct2.validInputs[1].decimals,
                 sellToken: orderStruct2.validOutputs[0].token,
-                sellTokenSymbol: order2.validOutputs[0].token.symbol,
+                sellTokenSymbol: order2.outputs[0].token.symbol,
                 sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
                 takeOrders: [{
-                    id: order2.id,
+                    id: order2.orderHash,
                     takeOrder: {
-                        order: {
-                            owner: orderStruct2.owner,
-                            handleIO: orderStruct2.handleIo,
-                            evaluable: orderStruct2.evaluable,
-                            validInputs: orderStruct2.validInputs,
-                            validOutputs: orderStruct2.validOutputs
-                        },
+                        order: ethers.utils.defaultAbiCoder.decode(
+                            [OrderV3Struct],
+                            orderBytes2
+                        )[0],
                         inputIOIndex: 1,
                         outputIOIndex: 0,
                         signedContext: []
@@ -209,54 +216,12 @@ describe("Test order details", async function () {
         assert.deepEqual(bundledResult, bundledExpected);
     });
 
-    it("should correctly handle handleIo/handleIO key", async function () {
-        const orderWithHandleIoKey = {
-            orderJSONString: "{\"owner\":\"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6\",\"handleIo\":true,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}],\"validOutputs\":[{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}]}",
-            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
-            validInputs: [{
-                token: {
-                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                    decimals: 6,
-                    symbol: "USDT"
-                }
-            }],
-            validOutputs: [{
-                token: {
-                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-                    decimals: 18,
-                    symbol: "WMATIC",
-                }
-            }]
-        };
-        const orderWithHandleIOKey = {
-            orderJSONString: "{\"owner\":\"0x0f47a0c7f86a615606ca315ad83c3e302b474bd6\",\"handleIO\":true,\"evaluable\":{\"interpreter\":\"0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30\",\"store\":\"0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d\",\"expression\":\"0x224f9ca76a6f1b3414280bed0f68227c1b61f2b2\"},\"validInputs\":[{\"token\":\"0xc2132d05d31c914a87c6611c10748aeb04b58e8f\",\"decimals\":\"6\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}],\"validOutputs\":[{\"token\":\"0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270\",\"decimals\":\"18\",\"vaultId\":\"0xdce98e3a7ee4b8b7ec1def4542b220083f8c3f0d569f142752cdc5bad6e14092\"}]}",
-            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
-            validInputs: [{
-                token: {
-                    id: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                    decimals: 6,
-                    symbol: "USDT"
-                }
-            }],
-            validOutputs: [{
-                token: {
-                    id: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-                    decimals: 18,
-                    symbol: "WMATIC",
-                }
-            }]
-        };
-        const result1 = bundleOrders([orderWithHandleIoKey], false, false);
-        const result2 = bundleOrders([orderWithHandleIOKey], false, false);
-        assert.deepEqual(result1, result2);
-    });
-
     it("should get correct vault balance", async function () {
         const viemClient = await viem.getPublicClient();
         const usdt = {
-            address: order1.validInputs[0].token.id,
-            decimals: order1.validInputs[0].token.decimals,
-            symbol: order1.validInputs[0].token.symbol,
+            address: order1.inputs[0].token.address,
+            decimals: order1.inputs[0].token.decimals,
+            symbol: order1.inputs[0].token.symbol,
             addressWithBalance: "0xF977814e90dA44bFA03b6295A0616a897441aceC",
         };
         const usdtContract = await ethers.getContractAt(
@@ -264,9 +229,9 @@ describe("Test order details", async function () {
             usdt.address
         );
         const wmatic = {
-            address: order1.validOutputs[0].token.id,
-            decimals: order1.validOutputs[0].token.decimals,
-            symbol: order1.validOutputs[0].token.symbol,
+            address: order1.outputs[0].token.address,
+            decimals: order1.outputs[0].token.decimals,
+            symbol: order1.outputs[0].token.symbol,
             addressWithBalance: "0xdF906eA18C6537C6379aC83157047F507FB37263",
         };
         const wmaticContract = await ethers.getContractAt(
@@ -315,10 +280,11 @@ describe("Test order details", async function () {
             .approve(orderbook.address, depositConfigStructOwner1.amount);
         await orderbook
             .connect(owner1)
-            .deposit(
+            .deposit2(
                 depositConfigStructOwner1.token,
                 depositConfigStructOwner1.vaultId,
-                depositConfigStructOwner1.amount
+                depositConfigStructOwner1.amount,
+                []
             );
 
         // deposite for owner 2 in usdt and wmatic vaults
@@ -333,10 +299,11 @@ describe("Test order details", async function () {
             .approve(orderbook.address, depositConfigStructOwner2_1.amount);
         await orderbook
             .connect(owner2)
-            .deposit(
+            .deposit2(
                 depositConfigStructOwner2_1.token,
                 depositConfigStructOwner2_1.vaultId,
-                depositConfigStructOwner2_1.amount
+                depositConfigStructOwner2_1.amount,
+                []
             );
 
         const owner2WmaticDepositAmount = ethers.BigNumber.from("15" + "0".repeat(usdt.decimals));
@@ -350,10 +317,11 @@ describe("Test order details", async function () {
             .approve(orderbook.address, depositConfigStructOwner2_2.amount);
         await orderbook
             .connect(owner2)
-            .deposit(
+            .deposit2(
                 depositConfigStructOwner2_2.token,
                 depositConfigStructOwner2_2.vaultId,
-                depositConfigStructOwner2_2.amount
+                depositConfigStructOwner2_2.amount,
+                []
             );
 
         // no bundle vault balance check
@@ -390,3 +358,25 @@ describe("Test order details", async function () {
         }
     });
 });
+
+function getOrderStruct(order) {
+    return {
+        nonce: order.nonce,
+        owner: order.owner.toLowerCase(),
+        evaluable: {
+            interpreter: "0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30",
+            store: "0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d",
+            bytecode: "0x1234",
+        },
+        validInputs: order.inputs.map(v => ({
+            token: v.token.address.toLowerCase(),
+            decimals: v.token.decimals,
+            vaultId: v.vaultId
+        })),
+        validOutputs: order.outputs.map(v => ({
+            token: v.token.address.toLowerCase(),
+            decimals: v.token.decimals,
+            vaultId: v.vaultId
+        })),
+    };
+}

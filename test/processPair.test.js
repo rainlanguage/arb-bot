@@ -1,15 +1,14 @@
 const { assert } = require("chai");
+const { LiquidityProviders } = require("sushi");
+const { orderbookAbi } = require("../src/abis");
+const { arbDeploy } = require("./deploy/arbDeploy");
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
-const { bundleOrders, getDataFetcher, getChainConfig } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
-const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
-const { mockSgFromEvent, getEventArgs, encodeMeta, generateEvaluableConfig } = require("./utils");
+const { mockSgFromEvent, getEventArgs, encodeMeta } = require("./utils");
+const { bundleOrders, getDataFetcher, getChainConfig } = require("../src/utils");
 const { processPair, ProcessPairReportStatus, ProcessPairHaltReason } = require("../src/processOrders");
-const { LiquidityProviders } = require("sushi");
-const { arbDeploy } = require("./deploy/arbDeploy");
-const { orderbookAbi } = require("../src/abis");
+const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("./deploy/rainterpreterDeploy");
 
 describe("Test process pair", async function () {
     let signers,
@@ -25,7 +24,8 @@ describe("Test process pair", async function () {
         orderPairObject,
         dataFetcher,
         wmaticHolder,
-        expressionDeployer;
+        interpreter,
+        store;
 
     // usdt
     const validInputs = [{
@@ -69,25 +69,11 @@ describe("Test process pair", async function () {
         owner = await ethers.getImpersonatedSigner("0x0f47a0c7f86a615606ca315ad83c3e302b474bd6");
 
         // deploy contracts
-        const interpreter = await rainterpreterNPE2Deploy();
-        const store = await rainterpreterStoreNPE2Deploy();
-        const parser = await rainterpreterParserNPE2Deploy();
-        expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
-            interpreter,
-            store,
-            parser
-        );
-        orderbook = await deployOrderBookNPE2(expressionDeployer);
+        interpreter = await rainterpreterNPE2Deploy();
+        store = await rainterpreterStoreNPE2Deploy();
+        orderbook = await deployOrderBookNPE2();
         arb = await arbDeploy(
-            expressionDeployer,
             orderbook.address,
-            generateEvaluableConfig(
-                expressionDeployer,
-                {
-                    constants: [],
-                    bytecode: "0x01000000000000"
-                }
-            ),
             config.routeProcessors["4"],
         );
 
@@ -118,25 +104,25 @@ describe("Test process pair", async function () {
         // send some wmatic to owner
         await wmaticContract.connect(wmaticHolder).transfer(owner.address, "50" + "0".repeat(wmatic.decimals));
 
-        const orderTx = await orderbook.connect(owner).addOrder({
+        const ratio = "f".repeat(64); // 0
+        const maxOutput = "f".repeat(64); // max
+        const bytecode = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput}${ratio}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
+        const orderTx = await orderbook.connect(owner).addOrder2({
+            evaluable: {
+                interpreter: interpreter.address,
+                store: store.address,
+                bytecode,
+            },
+            nonce: "0x" + "0".repeat(63) + "1",
+            secret: "0x" + "0".repeat(63) + "1",
+            meta: encodeMeta("some_order"),
             validInputs,
             validOutputs,
-            evaluableConfig: generateEvaluableConfig(
-                expressionDeployer,
-                {
-                    constants: [
-                        ethers.constants.MaxUint256.toHexString(),
-                        ethers.constants.MaxUint256.toHexString(),
-                    ],
-                    bytecode: "0x020000000c02020002010000000100000100000000"
-                }
-            ),
-            meta: encodeMeta("owner_order"),
-        });
+        }, []);
         const order = await mockSgFromEvent(
             await getEventArgs(
                 orderTx,
-                "AddOrder",
+                "AddOrderV2",
                 orderbook
             ),
             orderbook,
@@ -192,10 +178,11 @@ describe("Test process pair", async function () {
             .approve(orderbook.address, depositConfigStructOwner.amount);
         await orderbook
             .connect(owner)
-            .deposit(
+            .deposit2(
                 depositConfigStructOwner.token,
                 depositConfigStructOwner.vaultId,
-                depositConfigStructOwner.amount
+                depositConfigStructOwner.amount,
+                []
             );
         try {
             const result = await processPair({
@@ -464,25 +451,25 @@ describe("Test process pair", async function () {
     });
 
     it("should return no route, tx failed and tx mine failed", async function () {
-        const orderTx = await orderbook.connect(owner).addOrder({
+        const ratio = "0".repeat(64); // 0
+        const maxOutput = "f".repeat(64); // max
+        const bytecode = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput}${ratio}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
+        const orderTx = await orderbook.connect(owner).addOrder2({
+            evaluable: {
+                interpreter: interpreter.address,
+                store: store.address,
+                bytecode,
+            },
+            nonce: "0x" + "0".repeat(63) + "1",
+            secret: "0x" + "0".repeat(63) + "1",
+            meta: encodeMeta("some_order"),
             validInputs,
             validOutputs,
-            evaluableConfig: generateEvaluableConfig(
-                expressionDeployer,
-                {
-                    constants: [
-                        ethers.constants.MaxUint256.toHexString(),
-                        "0",
-                    ],
-                    bytecode: "0x020000000c02020002010000000100000100000000"
-                }
-            ),
-            meta: encodeMeta("owner_order"),
-        });
+        }, []);
         const order = await mockSgFromEvent(
             await getEventArgs(
                 orderTx,
-                "AddOrder",
+                "AddOrderV2",
                 orderbook
             ),
             orderbook,

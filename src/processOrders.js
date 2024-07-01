@@ -2,7 +2,7 @@ const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Router } = require("sushi/router");
 const { Token } = require("sushi/currency");
-const { arbAbis, orderbookAbi } = require("./abis");
+const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const {
     getIncome,
@@ -493,10 +493,11 @@ async function processPair(args) {
         spanAttributes["details.gasCostInToken"] = ethers.utils.formatUnits(gasCostInToken, toToken.decimals);
 
         rawtx.data = arb.interface.encodeFunctionData(
-            "arb",
+            "arb2",
             [
                 takeOrdersConfigStruct,
-                gasCostInToken.mul(config.gasCoveragePercentage).div("100")
+                gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
+                DefaultArbEvaluable,
             ]
         );
 
@@ -729,7 +730,10 @@ async function dryrun(
             // building and submit the transaction
             try {
                 const rawtx = {
-                    data: arb.interface.encodeFunctionData("arb", [takeOrdersConfigStruct, "0"]),
+                    data: arb.interface.encodeFunctionData(
+                        "arb2",
+                        [takeOrdersConfigStruct, "0", DefaultArbEvaluable,]
+                    ),
                     to: arb.address,
                     gasPrice
                 };
@@ -743,6 +747,7 @@ async function dryrun(
                     gasLimit = await signer.estimateGas(rawtx);
                 }
                 catch(e) {
+                    console.log(e);
                     const spanError = getSpanException(e);
                     const errorString = JSON.stringify(spanError);
                     if (
@@ -778,10 +783,11 @@ async function dryrun(
                         Number(config.gasCoveragePercentage) * 1.05
                     ).toFixed();
                     rawtx.data = arb.interface.encodeFunctionData(
-                        "arb",
+                        "arb2",
                         [
                             takeOrdersConfigStruct,
-                            gasCostInToken.mul(headroom).div("100")
+                            gasCostInToken.mul(headroom).div("100"),
+                            DefaultArbEvaluable,
                         ]
                     );
 

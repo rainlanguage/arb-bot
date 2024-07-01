@@ -97,17 +97,17 @@ module.exports = [
         [
             WNATIVE[ChainId.ETHEREUM],
             USDT[ChainId.ETHEREUM],
-            new Token({
-                chainId: ChainId.ETHEREUM,
-                address: "0x922D8563631B03C2c4cf817f4d18f6883AbA0109",
-                decimals: 18,
-                symbol: "LOCK"
-            }),
+            // new Token({
+            //     chainId: ChainId.ETHEREUM,
+            //     address: "0x922D8563631B03C2c4cf817f4d18f6883AbA0109",
+            //     decimals: 18,
+            //     symbol: "LOCK"
+            // }),
         ],
         [
             "0x17FD2FeeDabE71f013F5228ed9a52DE58291b15d",
             "0x83B9c290E8D86e686a9Eda6A6DC8FA6d281A5157",
-            "0x3776100a4b669Ef0d727a81FC69bF50DE74A976c",
+            // "0x3776100a4b669Ef0d727a81FC69bF50DE74A976c",
         ],
         [
             LiquidityProviders.SushiSwapV2,
@@ -116,9 +116,9 @@ module.exports = [
         ["1", "100", "100"],
 
         // ob, arb, bot addresses
-        "0xf1224A483ad7F1E9aA46A8CE41229F32d7549A74",
-        "0x96C3673Ee4B0d5303272193BaB0c565B7ce58D7A",
-        "0x22025257BeF969A81eDaC0b343ce82d777931327",
+        // "0xf1224A483ad7F1E9aA46A8CE41229F32d7549A74",
+        // "0x96C3673Ee4B0d5303272193BaB0c565B7ce58D7A",
+        // "0x22025257BeF969A81eDaC0b343ce82d777931327",
     ],
     [
         ChainId.BASE,
