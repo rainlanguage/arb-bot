@@ -18,8 +18,7 @@ const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http")
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { randomUint256, mockSgFromEvent, getEventArgs, encodeMeta } = require("../utils");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
+const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("../deploy/rainterpreterDeploy");
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {
@@ -80,14 +79,8 @@ for (let i = 0; i < testData.length; i++) {
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
-                const parser = await rainterpreterParserNPE2Deploy();
-                const expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                    interpreter,
-                    store,
-                    parser
-                );
                 const orderbook = !orderbookAddress
-                    ? await deployOrderBookNPE2(expressionDeployer)
+                    ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
 
                 const arb = !arbAddress

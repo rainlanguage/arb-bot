@@ -1,11 +1,9 @@
 const { assert } = require("chai");
 const { ethers, viem, network } = require("hardhat");
+const { OrderV3, OrderV3Struct } = require("../src/abis");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { bundleOrders, getVaultBalance } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
-const { rainterpreterExpressionDeployerNPE2Deploy } = require("./deploy/expressionDeployer");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("./deploy/rainterpreterDeploy");
-const { OrderV3, OrderV3Struct } = require("../src/abis");
 
 describe("Test order details", async function () {
     const order1 = {
@@ -239,16 +237,8 @@ describe("Test order details", async function () {
             wmatic.address
         );
 
-        // deploy contracts
-        const interpreter = await rainterpreterNPE2Deploy();
-        const store = await rainterpreterStoreNPE2Deploy();
-        const parser = await rainterpreterParserNPE2Deploy();
-        const expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
-            interpreter,
-            store,
-            parser
-        );
-        const orderbook = await deployOrderBookNPE2(expressionDeployer);
+        // deploy orderbook
+        const orderbook = await deployOrderBookNPE2();
 
         // impersonate owners and addresses with large token balances to fund the owner 1 2
         // accounts with some tokens used for topping up their vaults
@@ -364,8 +354,8 @@ function getOrderStruct(order) {
         nonce: order.nonce,
         owner: order.owner.toLowerCase(),
         evaluable: {
-            interpreter: "0x1efd85e6c384fad9b80c6d508e9098eb91c4ed30",
-            store: "0x4ffc97bfb6dfce289f9b2a4083f5f5e940c8b88d",
+            interpreter: `0x${"1".repeat(40)}`,
+            store: `0x${"2".repeat(40)}`,
             bytecode: "0x1234",
         },
         validInputs: order.inputs.map(v => ({
