@@ -16,10 +16,9 @@ const { deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
 const { ProcessPairReportStatus } = require("../../src/processOrders");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { randomUint256, mockSgFromEvent, getEventArgs, encodeMeta } = require("../utils");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { rainterpreterExpressionDeployerNPE2Deploy } = require("../deploy/expressionDeployer");
-const { randomUint256, generateEvaluableConfig, mockSgFromEvent, getEventArgs, encodeMeta } = require("../utils");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy, rainterpreterParserNPE2Deploy } = require("../deploy/rainterpreterDeploy");
+const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("../deploy/rainterpreterDeploy");
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {
@@ -80,27 +79,13 @@ for (let i = 0; i < testData.length; i++) {
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
-                const parser = await rainterpreterParserNPE2Deploy();
-                const expressionDeployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                    interpreter,
-                    store,
-                    parser
-                );
                 const orderbook = !orderbookAddress
-                    ? await deployOrderBookNPE2(expressionDeployer)
+                    ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
 
                 const arb = !arbAddress
                     ? await arbDeploy(
-                        expressionDeployer,
                         orderbook.address,
-                        generateEvaluableConfig(
-                            expressionDeployer,
-                            {
-                                constants: [],
-                                bytecode: "0x01000000000000"
-                            }
-                        ),
                         config.routeProcessors[rpVersion],
                     )
                     : await ethers.getContractAt(arbAbis, arbAddress);
@@ -128,13 +113,6 @@ for (let i = 0; i < testData.length; i++) {
                 for (const t of tokens) {
                     originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
                 }
-                const EvaluableConfig = generateEvaluableConfig(
-                    expressionDeployer,
-                    {
-                        constants: [ethers.constants.MaxUint256.toHexString(), "0"],
-                        bytecode: "0x020000000c02020002010000000100000100000000"
-                    }
-                );
 
                 // dposit and add orders for each owner and return
                 // the deployed orders in format of a sg query.
@@ -153,12 +131,25 @@ for (let i = 0; i < testData.length; i++) {
                         .approve(orderbook.address, depositConfigStruct.amount);
                     await orderbook
                         .connect(owners[i])
-                        .deposit(
+                        .deposit2(
                             depositConfigStruct.token,
                             depositConfigStruct.vaultId,
-                            depositConfigStruct.amount
+                            depositConfigStruct.amount,
+                            []
                         );
-                    const txData = {
+
+                    // prebuild bytecode: "_ _: 0 max; :;"
+                    const ratio = "0".repeat(64); // 0
+                    const maxOutput = "f".repeat(64); // max
+                    const bytecode = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput}${ratio}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
+                    const addOrderConfig = {
+                        evaluable: {
+                            interpreter: interpreter.address,
+                            store: store.address,
+                            bytecode,
+                        },
+                        nonce: "0x" + "0".repeat(63) + "1",
+                        secret: "0x" + "0".repeat(63) + "1",
                         validInputs: [{
                             token: tokens[0].address,
                             decimals: tokens[0].decimals,
@@ -169,14 +160,13 @@ for (let i = 0; i < testData.length; i++) {
                             decimals: tokens[i].decimals,
                             vaultId: tokens[i].vaultId
                         }],
-                        evaluableConfig: EvaluableConfig,
                         meta: encodeMeta("some_order"),
                     };
                     const tx = await orderbook
                         .connect(owners[i])
-                        .addOrder(txData);
+                        .addOrder2(addOrderConfig, []);
                     orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx, "AddOrder", orderbook),
+                        await getEventArgs(tx, "AddOrderV2", orderbook),
                         orderbook,
                         tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
                     ));
@@ -208,6 +198,9 @@ for (let i = 0; i < testData.length; i++) {
                 // validate each cleared order
                 let profit = ethers.constants.Zero;
                 for (let i = 0; i < reports.length; i++) {
+                    assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
+                    assert.equal(reports[i].clearedOrders.length, 1);
+
                     const pair = `${tokens[0].symbol}/${tokens[i + 1].symbol}`;
                     const clearedAmount = ethers.BigNumber.from(reports[i].clearedAmount);
                     const outputVault = await orderbook.vaultBalance(
@@ -225,8 +218,6 @@ for (let i = 0; i < testData.length; i++) {
                         .balanceOf(bot.address);
 
                     assert.equal(reports[i].tokenPair, pair);
-                    assert.equal(reports[i].clearedOrders.length, 1);
-                    assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
 
                     // should have cleared equal to vault balance or lower
                     assert.ok(

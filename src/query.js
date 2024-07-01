@@ -2,43 +2,33 @@
  * The default query used in the matchmaker bot to fetch the orders from subgraph
  */
 const DefaultQuery = `{
-    orders(
-        where: {orderActive: true}
-    ) {
+    orders(where: {active: true}) {
         id
-        handleIO 
-        expression
-        interpreter
-        interpreterStore
-        owner {
+        owner
+        orderHash
+        orderBytes
+        active
+        nonce
+        inputs {
             id
-        }
-        validInputs(orderBy: index, orderDirection: asc) {
-            index
+            balance
+            vaultId
             token {
-                id
+                address
                 decimals
+                name
                 symbol
             }
-            tokenVault {
-                balance
-            }
-            vault {
-                id
-            }
         }
-        validOutputs(orderBy: index, orderDirection: asc) {
-            index
+        outputs {
+            id
+            balance
+            vaultId
             token {
-                id
+                address
                 decimals
+                name
                 symbol
-            }
-            tokenVault {
-                balance
-            }
-            vault {
-                id
             }
         }
     }
@@ -48,57 +38,39 @@ const DefaultQuery = `{
  * Method to get the subgraph query body with optional filters
  * @param {string} orderHash - The order hash to apply as filter
  * @param {string} owner - The order owner to apply as filter
- * @param {string} interpreter - The interpreter to apply as filter
  * @returns the query string
  */
-const getQuery = (orderHash, owner, interpreter) => {
+const getQuery = (orderHash, owner) => {
     const ownerFilter = owner ? `, owner :"${owner.toLowerCase()}"` : "";
-    const orderHashFilter = orderHash ? `, id :"${orderHash.toLowerCase()}"` : "";
-    const interpreterFilter = interpreter ? `, interpreter :"${interpreter.toLowerCase()}"` : "";
+    const orderHashFilter = orderHash ? `, orderHash :"${orderHash.toLowerCase()}"` : "";
     return `{
-        orders(
-            where: {orderActive: true${orderHashFilter}${ownerFilter}${interpreterFilter}}
-        ) {
-            id
-            handleIO 
-            expression
-            interpreter
-            interpreterStore
-            orderJSONString
-            owner {
-                id
-            }
-            validInputs(orderBy: index, orderDirection: asc) {
-                index
-                token {
-                    id
-                    decimals
-                    symbol
-                }
-                tokenVault {
-                    balance
-                }
-                vault {
-                    id
-                }
-            }
-            validOutputs(orderBy: index, orderDirection: asc) {
-                index
-                token {
-                    id
-                    decimals
-                    symbol
-                }
-                tokenVault {
-                    balance
-                }
-                vault {
-                    id
-                }
+    orders(where: {active: true${orderHashFilter}${ownerFilter}}) {
+        id
+        owner
+        orderHash
+        orderBytes
+        active
+        nonce
+        inputs {
+            balance
+            vaultId
+            token {
+                address
+                decimals
+                symbol
             }
         }
-    }`;
-};
+        outputs {
+            balance
+            vaultId
+            token {
+                address
+                decimals
+                symbol
+            }
+        }
+    }
+}`;};
 
 const statusCheckQuery = `{
     _meta {

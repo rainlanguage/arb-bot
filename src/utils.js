@@ -1,7 +1,7 @@
 const { ChainId } = require("sushi/chain");
 const { ethers, BigNumber } = require("ethers");
 const { Token, WNATIVE } = require("sushi/currency");
-const { erc20Abi, orderbookAbi } = require("./abis");
+const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { createPublicClient, http, fallback, parseAbi } = require("viem");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const {
@@ -782,64 +782,53 @@ const getOrderHash = (order) => {
 };
 
 /**
- * Get order details from an array of order struct
- *
- * @param {string} jsonContent - Content of a JSON file containing orders struct
+ * Get order details from an array of order bytes in a .json file and return them as form of sg response
+ * @param {string} jsonContent - Content of a JSON file containing orders bytes
  */
 const getOrderDetailsFromJson = async(jsonContent, signer) => {
-    const orders = JSON.parse(jsonContent);
-    if (!validateOrders(orders)) throw "invalid orders format";
+    const ordersBytes = JSON.parse(jsonContent);
     const orderDetails = [];
-    for (let i = 0; i < orders.length; i++) {
+    for (let i = 0; i < ordersBytes.length; i++) {
+        const orderHash = ethers.utils.keccak256(ordersBytes[i]);
+        const order = ethers.utils.defaultAbiCoder.decode(
+            [OrderV3],
+            ordersBytes[i]
+        )[0];
         const _inputSymbols = [];
         const _outputSymbols = [];
-        for (let j = 0; j < orders[i].validInputs.length; j++) {
-            const erc20 = new ethers.Contract(orders[i].validInputs[j].token, erc20Abi, signer);
+        for (let j = 0; j < order.validInputs.length; j++) {
+            const erc20 = new ethers.Contract(order.validInputs[j].token, erc20Abi, signer);
             const symbol = await erc20.symbol();
             _inputSymbols.push(symbol);
         }
-        for (let j = 0; j < orders[i].validOutputs.length; j++) {
-            const erc20 = new ethers.Contract(orders[i].validOutputs[j].token, erc20Abi, signer);
+        for (let j = 0; j < order.validOutputs.length; j++) {
+            const erc20 = new ethers.Contract(order.validOutputs[j].token, erc20Abi, signer);
             const symbol = await erc20.symbol();
             _outputSymbols.push(symbol);
         }
         orderDetails.push({
-            id: getOrderHash(orders[i]).toLowerCase(),
-            handleIO: orders[i].handleIO,
-            expression: orders[i].evaluable.expression.toLowerCase(),
-            interpreter: orders[i].evaluable.interpreter.toLowerCase(),
-            interpreterStore: orders[i].evaluable.store.toLowerCase(),
-            owner: {
-                id: orders[i].owner.toLowerCase()
-            },
-            validInputs: orders[i].validInputs.map((v, i) => {
-                const _input = {
-                    index: i,
-                    token: {
-                        id: v.token.toLowerCase(),
-                        decimals: v.decimals,
-                        symbol: _inputSymbols[i]
-                    },
-                    vault: {
-                        id: v.vaultId.toLowerCase() + "-" + orders[i].owner.toLowerCase()
-                    }
-                };
-                return _input;
-            }),
-            validOutputs: orders[i].validOutputs.map((v, i) => {
-                const _output = {
-                    index: i,
-                    token: {
-                        id: v.token.toLowerCase(),
-                        decimals: v.decimals,
-                        symbol: _outputSymbols[i]
-                    },
-                    vault: {
-                        id: v.vaultId.toLowerCase() + "-" + orders[i].owner.toLowerCase()
-                    }
-                };
-                return _output;
-            })
+            id: orderHash.toLowerCase(),
+            owner: order.owner.toLowerCase(),
+            orderHash: orderHash.toLowerCase(),
+            orderBytes: ordersBytes[i],
+            active: true,
+            nonce: order.nonce.toLowerCase(),
+            inputs: order.validInputs.map((v, i) => ({
+                vaultId: v.vaultId,
+                token: {
+                    address: v.token,
+                    decimals: v.decimals,
+                    symbol: _inputSymbols[i]
+                }
+            })),
+            outputs: order.validOutputs.map((v, i) => ({
+                vaultId: v.vaultId,
+                token: {
+                    address: v.token,
+                    decimals: v.decimals,
+                    symbol: _outputSymbols[i]
+                }
+            })),
         });
     }
     return orderDetails;
@@ -1183,22 +1172,21 @@ const bundleOrders = (
     const bundledOrders = [];
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
-        const orderStruct = JSON.parse(ordersDetails[i].orderJSONString);
-        // exchange the "handleIo" to "handleIO" in case "handleIO" is not present in order json
-        if (!("handleIO" in orderStruct)) {
-            orderStruct.handleIO = orderStruct.handleIo;
-            delete orderStruct.handleIo;
-        }
+        const orderStruct = ethers.utils.defaultAbiCoder.decode(
+            [OrderV3],
+            orderDetails.orderBytes
+        )[0];
+
         for (let j = 0; j < orderStruct.validOutputs.length; j++) {
             const _output = orderStruct.validOutputs[j];
-            const _outputSymbol = orderDetails.validOutputs.find(
-                v => v.token.id.toLowerCase() === _output.token.toLowerCase()
+            const _outputSymbol = orderDetails.outputs.find(
+                v => v.token.address.toLowerCase() === _output.token.toLowerCase()
             ).token.symbol;
 
             for (let k = 0; k < orderStruct.validInputs.length; k ++) {
                 const _input = orderStruct.validInputs[k];
-                const _inputSymbol = orderDetails.validInputs.find(
-                    v => v.token.id.toLowerCase() === _input.token.toLowerCase()
+                const _inputSymbol = orderDetails.inputs.find(
+                    v => v.token.address.toLowerCase() === _input.token.toLowerCase()
                 ).token.symbol;
 
                 if (_output.token.toLowerCase() !== _input.token.toLowerCase()) {
@@ -1207,7 +1195,7 @@ const bundleOrders = (
                         v.buyToken === _input.token.toLowerCase()
                     );
                     if (pair && _bundle) pair.takeOrders.push({
-                        id: orderDetails.id,
+                        id: orderDetails.orderHash,
                         takeOrder: {
                             order: orderStruct,
                             inputIOIndex: k,
@@ -1223,7 +1211,7 @@ const bundleOrders = (
                         sellTokenSymbol: _outputSymbol,
                         sellTokenDecimals: _output.decimals,
                         takeOrders: [{
-                            id: orderDetails.id,
+                            id: orderDetails.orderHash,
                             takeOrder: {
                                 order: orderStruct,
                                 inputIOIndex: k,

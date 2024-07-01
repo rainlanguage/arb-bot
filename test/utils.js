@@ -1,6 +1,6 @@
-const { ethers } = require("hardhat");
 const { assert } = require("chai");
-const { getOrderStruct } = require("../src/utils");
+const { ethers } = require("hardhat");
+const { OrderV3 } = require("../src/abis");
 
 /**
  * Deploys a simple contracts that takes no arguments for deployment
@@ -160,54 +160,39 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
         });
     }
 
-    const tempOrderDetails = {
+    return {
         id: typeof eventArgs.orderHash === "string"
             ? eventArgs.orderHash.toLowerCase()
             : eventArgs.orderHash.toHexString().toLowerCase(),
-        handleIO: eventArgs.order.handleIO,
-        expression: eventArgs.order.evaluable.expression.toLowerCase(),
-        interpreter: eventArgs.order.evaluable.interpreter.toLowerCase(),
-        interpreterStore: eventArgs.order.evaluable.store.toLowerCase(),
-        owner: {
-            id: eventArgs.order.owner.toLowerCase()
-        },
-        validInputs: eventArgs.order.validInputs.map((v, i) => {
+        owner: eventArgs.order.owner.toLowerCase(),
+        orderHash: typeof eventArgs.orderHash === "string"
+            ? eventArgs.orderHash.toLowerCase()
+            : eventArgs.orderHash.toHexString().toLowerCase(),
+        orderBytes: ethers.utils.defaultAbiCoder.encode([OrderV3], [eventArgs.order]),
+        active: true,
+        nonce: eventArgs.order.nonce,
+        inputs: eventArgs.order.validInputs.map((v, i) => {
             return {
-                index: i,
                 token: {
-                    id: v.token.toLowerCase(),
+                    address: v.token.toLowerCase(),
                     decimals: v.decimals,
                     symbol: inputDetails[i].symbol
                 },
-                tokenVault: {
-                    balance: inputDetails[i].balance.toString()
-                },
-                vault: {
-                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
-                }
+                balance: inputDetails[i].balance.toString(),
+                vaultId: v.vaultId.toString(),
             };
         }),
-        validOutputs: eventArgs.order.validOutputs.map((v, i) => {
+        outputs: eventArgs.order.validOutputs.map((v, i) => {
             return {
-                index: i,
                 token: {
-                    id: v.token.toLowerCase(),
+                    address: v.token.toLowerCase(),
                     decimals: v.decimals,
                     symbol: outputDetails[i].symbol
                 },
-                tokenVault: {
-                    balance: outputDetails[i].balance.toString()
-                },
-                vault: {
-                    id: v.vaultId.toString() + "-" + eventArgs.order.owner.toLowerCase()
-                }
+                balance: outputDetails[i].balance.toString(),
+                vaultId: v.vaultId.toString(),
             };
-        })
-    };
-    const orderJSONString = JSON.stringify(getOrderStruct(tempOrderDetails));
-    return {
-        ...tempOrderDetails,
-        orderJSONString
+        }),
     };
 };
 
