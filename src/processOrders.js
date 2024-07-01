@@ -753,8 +753,8 @@ async function dryrun(
                         result.reason = DryrunHaltReason.NoWalletFund;
                         return Promise.reject(result);
                     }
-                    // only record the last error for traces
-                    if (j === config.hops) {
+                    // only record the first error for traces
+                    if (j === 1) {
                         hopAttrs["route"] = routeVisual;
                         hopAttrs["error"] = spanError;
                     }
@@ -802,7 +802,7 @@ async function dryrun(
                             result.reason = DryrunHaltReason.NoWalletFund;
                             return Promise.reject(result);
                         }
-                        if (j === config.hops) {
+                        if (j === 1) {
                             hopAttrs["route"] = routeVisual;
                             hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
                                 gasCostInToken,
