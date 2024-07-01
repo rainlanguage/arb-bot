@@ -1,7 +1,7 @@
 const { ChainId } = require("sushi/chain");
 const { ethers, BigNumber } = require("ethers");
 const { Token, WNATIVE } = require("sushi/currency");
-const { erc20Abi, orderbookAbi, OrderV3Struct } = require("./abis");
+const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { createPublicClient, http, fallback, parseAbi } = require("viem");
 const { DataFetcher, Router, LiquidityProviders } = require("sushi/router");
 const {
@@ -791,7 +791,7 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
     for (let i = 0; i < ordersBytes.length; i++) {
         const orderHash = ethers.utils.keccak256(ordersBytes[i]);
         const order = ethers.utils.defaultAbiCoder.decode(
-            [OrderV3Struct],
+            [OrderV3],
             ordersBytes[i]
         )[0];
         const _inputSymbols = [];
@@ -1173,7 +1173,7 @@ const bundleOrders = (
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
         const orderStruct = ethers.utils.defaultAbiCoder.decode(
-            [OrderV3Struct],
+            [OrderV3],
             orderDetails.orderBytes
         )[0];
 

@@ -1,6 +1,6 @@
 const { assert } = require("chai");
+const { OrderV3 } = require("../src/abis");
 const { ethers, viem, network } = require("hardhat");
-const { OrderV3, OrderV3Struct } = require("../src/abis");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { bundleOrders, getVaultBalance } = require("../src/utils");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
@@ -102,7 +102,7 @@ describe("Test order details", async function () {
                     id: order1.orderHash,
                     takeOrder: {
                         order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3Struct],
+                            [OrderV3],
                             orderBytes1
                         )[0],
                         inputIOIndex: 0,
@@ -122,7 +122,7 @@ describe("Test order details", async function () {
                     id: order2.orderHash,
                     takeOrder: {
                         order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3Struct],
+                            [OrderV3],
                             orderBytes2
                         )[0],
                         inputIOIndex: 1,
@@ -142,7 +142,7 @@ describe("Test order details", async function () {
                     id: order2.orderHash,
                     takeOrder: {
                         order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3Struct],
+                            [OrderV3],
                             orderBytes2
                         )[0],
                         inputIOIndex: 0,
@@ -168,7 +168,7 @@ describe("Test order details", async function () {
                         id: order1.id,
                         takeOrder: {
                             order: ethers.utils.defaultAbiCoder.decode(
-                                [OrderV3Struct],
+                                [OrderV3],
                                 orderBytes1
                             )[0],
                             inputIOIndex: 0,
@@ -180,7 +180,7 @@ describe("Test order details", async function () {
                         id: order2.orderHash,
                         takeOrder: {
                             order: ethers.utils.defaultAbiCoder.decode(
-                                [OrderV3Struct],
+                                [OrderV3],
                                 orderBytes2
                             )[0],
                             inputIOIndex: 0,
@@ -201,7 +201,7 @@ describe("Test order details", async function () {
                     id: order2.orderHash,
                     takeOrder: {
                         order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3Struct],
+                            [OrderV3],
                             orderBytes2
                         )[0],
                         inputIOIndex: 1,

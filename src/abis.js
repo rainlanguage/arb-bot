@@ -13,7 +13,6 @@ const EvaluableV3 = "(address interpreter, address store, bytes bytecode)";
 const SignedContextV1 = "(address signer, uint256[] context, bytes signature)";
 const ActionV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)`;
 const OrderV3 = `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce)`;
-const OrderV3Struct = `(address owner, tuple${EvaluableV3} evaluable, tuple${IO}[] validInputs, tuple${IO}[] validOutputs, bytes32 nonce)`;
 const TakeOrderConfigV3 = `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)`;
 const OrderConfigV3 = `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)`;
 const TakeOrdersConfigV3 = `(uint256 minimumInput, uint256 maximumInput, uint256 maximumIORatio, ${TakeOrderConfigV3}[] orders, bytes data)`;
@@ -66,6 +65,7 @@ const arbAbis = [
     `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`
 ];
 
+// an empty evaluable mainly used as default evaluable for arb contracts
 const DefaultArbEvaluable = {
     interpreter: "0x" + "0".repeat(40),
     store: "0x" + "0".repeat(40),
@@ -83,7 +83,6 @@ module.exports = {
     SignedContextV1,
     ActionV1,
     OrderV3,
-    OrderV3Struct,
     TakeOrderConfigV3,
     OrderConfigV3,
     TakeOrdersConfigV3,
