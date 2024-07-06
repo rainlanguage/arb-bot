@@ -31,6 +31,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - run: |
-          docker build -t "$TAG_BASE:$CHANNEL" .
+          docker build -t "$TAG_BASE:$CHANNEL" --build-arg GIT_SHA=${{ github.sha }} --build-arg DOCKER_CHANNEL=$CHANNEL .
       - run: |
           docker push "$TAG_BASE:$CHANNEL"

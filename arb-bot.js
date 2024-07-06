@@ -289,6 +289,10 @@ const main = async argv => {
                 }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
+            roundSpan.setAttributes({
+                gitCommitHash: process?.env?.GIT_COMMIT ?? "",
+                dockerTag: process?.env?.DOCKER_TAG ?? ""
+            });
             options.rpc = rpcs[rpcTurn];
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
@@ -355,6 +359,10 @@ const main = async argv => {
                 }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
+            roundSpan.setAttributes({
+                gitCommitHash: process?.env?.GIT_COMMIT ?? "",
+                dockerTag: process?.env?.DOCKER_TAG ?? ""
+            });
             options.rpc = rpcs[rpcTurn];
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
