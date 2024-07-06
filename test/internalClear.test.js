@@ -7,19 +7,12 @@ const { bundleOrders } = require("../src/utils");
 const { genericArbrbDeploy } = require("./deploy/arbDeploy");
 const { DefaultArbEvaluable } = require("../src/abis");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
-const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
 const { randomUint256, mockSgFromEvent, getEventArgs, encodeMeta } = require("./utils");
 const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("./deploy/rainterpreterDeploy");
 
 describe("Rain Arb Bot Internal Clear", async function () {
     it("should clear orders against orders of other orderbook", async function () {
-        // fork rpc url
-        const rpc = process?.env?.TEST_POLYGON_RPC;
-
-        // block number of fork network
-        const blockNumber = 56738134;
-
         // tokens to test with
         const tokens = [
             USDT[ChainId.POLYGON],
@@ -33,9 +26,6 @@ describe("Rain Arb Bot Internal Clear", async function () {
             "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
             // "0x4aac95EBE2eA6038982566741d1860556e265F8B",
         ];
-
-        // reset network before each test
-        await helpers.reset(rpc, blockNumber);
 
         // get bot signer
         const bot = await ethers.getImpersonatedSigner("0x22025257BeF969A81eDaC0b343ce82d777931327");
