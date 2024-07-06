@@ -104,9 +104,9 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                     v,
                     {
                         query: getQuery(
+                            sgFilters?.orderbook,
                             sgFilters?.orderHash,
                             sgFilters?.orderOwner,
-                            sgFilters?.orderInterpreter
                         )
                     },
                     { headers: { "Content-Type": "application/json" } }
@@ -125,7 +125,6 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  *
  * @param {string} rpcUrl - The RPC URL
  * @param {string} walletPrivateKey - The wallet private key
- * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
  * @param {configOptions} options - (optional) Optional parameters, liquidity providers
@@ -134,12 +133,10 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 const getConfig = async(
     rpcUrl,
     walletPrivateKey,
-    orderbookAddress,
     arbAddress,
     options = configOptions
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
-    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
 
     if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
@@ -209,7 +206,6 @@ const getConfig = async(
 
     config.rpc                      = rpcUrl;
     config.signer                   = signer;
-    config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
     config.lps                      = options?.liquidityProviders;
     config.timeout                  = options?.timeout;

@@ -14,5 +14,5 @@ artifacts
 logs.txt
 logs
 docs
-mem-cache
+mem-cache*
 diag/out

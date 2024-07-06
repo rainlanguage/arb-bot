@@ -48,14 +48,13 @@ const getOptions = async argv => {
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
-        .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--repetitions <integer>", "Option to run `number` of times, if unset will run for infinte number of times")
         .option("--order-hash <hash>", "Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables")
         .option("--order-owner <address>", "Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables")
-        .option("--order-interpreter <address>", "Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables")
+        .option("--orderbook-address <address>", "Option to only process a specific orderbook, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
@@ -109,7 +108,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
     if (!options.key)               throw "undefined wallet private key";
     if (!options.rpc)               throw "undefined RPC URL";
     if (!options.arbAddress)        throw "undefined arb contract address";
-    if (!options.orderbookAddress)  throw "undefined orderbook contract address";
 
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
@@ -117,7 +115,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             const config = await getConfig(
                 options.rpc,
                 options.key,
-                options.orderbookAddress,
                 options.arbAddress,
                 {
                     maxRatio             : options.maxRatio,
@@ -141,7 +138,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 {
                     orderHash       : options.orderHash,
                     orderOwner      : options.orderOwner,
-                    orderInterpreter: options.orderInterpreter
+                    orderbook       : options.orderbookAddress
                 },
                 span
             );

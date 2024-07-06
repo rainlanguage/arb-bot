@@ -79,9 +79,6 @@ const processOrders = async(
     // instantiating arb contract
     const arb = new ethers.Contract(config.arbAddress, arbAbis, signer);
 
-    // instantiating orderbook contract
-    const orderbook = new ethers.Contract(config.orderbookAddress, orderbookAbi, signer);
-
     // prepare orders
     const bundledOrders = bundleOrders(
         ordersDetails,
@@ -213,7 +210,7 @@ async function processPair(args) {
         signer,
         flashbotSigner,
         arb,
-        orderbook,
+        // orderbook,
         pair,
     } = args;
 
@@ -224,6 +221,9 @@ async function processPair(args) {
         report: undefined,
         spanAttributes,
     };
+
+    // instantiating orderbook contract
+    const orderbook = new ethers.Contract(orderPairObject.orderbook, orderbookAbi, signer);
 
     spanAttributes["details.orders"] = orderPairObject.takeOrders.map(v => v.id);
     spanAttributes["details.pair"] = pair;
@@ -599,11 +599,13 @@ async function processPair(args) {
             return result;
         }
         else {
+            console.log(receipt);
             spanAttributes["details.receipt"] = JSON.stringify(receipt);
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
         }
     } catch(e) {
+        console.log(e);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
@@ -732,7 +734,7 @@ async function dryrun(
                 const rawtx = {
                     data: arb.interface.encodeFunctionData(
                         "arb2",
-                        [takeOrdersConfigStruct, "0", DefaultArbEvaluable,]
+                        [takeOrdersConfigStruct, "0", DefaultArbEvaluable]
                     ),
                     to: arb.address,
                     gasPrice

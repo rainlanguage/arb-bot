@@ -1172,6 +1172,7 @@ const bundleOrders = (
     const bundledOrders = [];
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
+        const orderbook = orderDetails.orderbook.id.toLowerCase();
         const orderStruct = ethers.utils.defaultAbiCoder.decode(
             [OrderV3],
             orderDetails.orderBytes
@@ -1191,6 +1192,7 @@ const bundleOrders = (
 
                 if (_output.token.toLowerCase() !== _input.token.toLowerCase()) {
                     const pair = bundledOrders.find(v =>
+                        v.orderbook === orderbook &&
                         v.sellToken === _output.token.toLowerCase() &&
                         v.buyToken === _input.token.toLowerCase()
                     );
@@ -1204,6 +1206,7 @@ const bundleOrders = (
                         }
                     });
                     else bundledOrders.push({
+                        orderbook,
                         buyToken: _input.token.toLowerCase(),
                         buyTokenSymbol: _inputSymbol,
                         buyTokenDecimals: _input.decimals,
