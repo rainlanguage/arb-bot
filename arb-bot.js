@@ -290,8 +290,8 @@ const main = async argv => {
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "",
-                dockerTag: process?.env?.DOCKER_TAG ?? ""
+                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
+                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             options.rpc = rpcs[rpcTurn];
             try {
@@ -360,8 +360,8 @@ const main = async argv => {
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "",
-                dockerTag: process?.env?.DOCKER_TAG ?? ""
+                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
+                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             options.rpc = rpcs[rpcTurn];
             try {
