@@ -338,7 +338,13 @@ async function processPair(args) {
     }
 
     // execute maxInput discovery dryrun logic
-    let rawtx, gasCostInToken, takeOrdersConfigStruct, price, routeVisual, maximumInput;
+    let rawtx,
+        gasCostInToken,
+        takeOrdersConfigStruct,
+        price,
+        routeVisual,
+        maximumInput,
+        oppBlockNumber;
     if (config.bundle) {
         try {
             const dryrunResult = await dryrun(
@@ -361,6 +367,7 @@ async function processPair(args) {
                 price,
                 routeVisual,
                 maximumInput,
+                oppBlockNumber,
             } = dryrunResult.value);
             for (attrKey in dryrunResult.spanAttributes) {
                 spanAttributes[attrKey] = dryrunResult.spanAttributes[attrKey];
@@ -451,6 +458,7 @@ async function processPair(args) {
                 price,
                 routeVisual,
                 maximumInput,
+                oppBlockNumber
             } = choice);
         }
     }
@@ -478,6 +486,7 @@ async function processPair(args) {
     try {
         blockNumber = await signer.provider.getBlockNumber();
         spanAttributes["details.blockNumber"] = blockNumber;
+        spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
     } catch(e) {
         // dont reject if getting block number fails but just record it,
         // since an opp is found and can ultimately be cleared
@@ -825,7 +834,8 @@ async function dryrun(
                         gasCostInToken,
                         takeOrdersConfigStruct,
                         price,
-                        routeVisual
+                        routeVisual,
+                        oppBlockNumber: blockNumber,
                     };
                     return result;
                 }
