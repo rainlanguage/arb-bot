@@ -573,7 +573,13 @@ describe("Test process pair", async function () {
             assert.exists(error.spanAttributes["details.gasCostInToken"]);
             assert.isTrue(typeof error.spanAttributes["details.gasCostInToken"] === "string");
             assert.exists(error.spanAttributes["details.rawTx"]);
-            assert.exists(typeof error.spanAttributes["details.rawTx"] === "string");
+            assert.isTrue(typeof error.spanAttributes["details.rawTx"] === "string");
+            assert.exists(error.spanAttributes["details.blockNumberDiff"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumberDiff"] === "number");
+            assert.equal(
+                error.spanAttributes["details.blockNumberDiff"],
+                error.spanAttributes["details.blockNumber"] - error.spanAttributes["oppBlockNumber"]
+            );
 
 
             // check for unexpected keys/values in the spans attrs
@@ -589,6 +595,7 @@ describe("Test process pair", async function () {
                 "details.marketPrice",
                 "details.gasCostInToken",
                 "details.rawTx",
+                "details.blockNumberDiff"
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
@@ -639,6 +646,12 @@ describe("Test process pair", async function () {
             assert.isTrue(typeof error.spanAttributes["details.txUrl"] === "string");
             assert.exists(error.spanAttributes["details.tx"]);
             assert.isTrue(typeof error.spanAttributes["details.tx"] === "string");
+            assert.exists(error.spanAttributes["details.blockNumberDiff"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumberDiff"] === "number");
+            assert.equal(
+                error.spanAttributes["details.blockNumberDiff"],
+                error.spanAttributes["details.blockNumber"] - error.spanAttributes["oppBlockNumber"]
+            );
 
             // check for unexpected keys/values in the spans attrs
             const expectedSpanAttrsKeys = [
@@ -654,6 +667,7 @@ describe("Test process pair", async function () {
                 "details.gasCostInToken",
                 "details.txUrl",
                 "details.tx",
+                "details.blockNumberDiff",
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(

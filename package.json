@@ -1,6 +1,6 @@
 {
     "name": "@rainlanguage/arb-bot",
-    "version": "2.3.2",
+    "version": "2.4.0",
     "description": "NodeJS app that clears Rain orderbook orders against decentralized liquididty providers (decentralized exchanges)",
     "author": "Rain Protocol",
     "license": "CAL-1.0",
@@ -20,12 +20,10 @@
     "main": "./src/index.js",
     "files": [
         "src",
-        "docs",
         "./arb-bot.js",
         "./example.env",
-        "./config.json",
         "./arb-bot-cli.js",
-        "./lib/sushiswap/packages/sushi"
+        "./lib/sushiswap"
     ],
     "bin": {
         "arb-bot-cli": "./arb-bot-cli.js"
