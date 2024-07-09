@@ -18,6 +18,8 @@ jobs:
       - name: Checkout Repo
         id: checkout
         uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.DEPLOYER_KEY }}
 
       # Install node
       - name: Install NodeJS v18
