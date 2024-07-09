@@ -23,7 +23,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.DEPLOYER_KEY }}
+          ssh-key: ${{ secrets.PUBLISHER_SSH_KEY }}
 
       # Install nix
       - uses: DeterminateSystems/nix-installer-action@v4
