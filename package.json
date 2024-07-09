@@ -20,12 +20,10 @@
     "main": "./src/index.js",
     "files": [
         "src",
-        "docs",
         "./arb-bot.js",
         "./example.env",
-        "./config.json",
         "./arb-bot-cli.js",
-        "./lib/sushiswap/packages/sushi"
+        "./lib/sushiswap"
     ],
     "bin": {
         "arb-bot-cli": "./arb-bot-cli.js"

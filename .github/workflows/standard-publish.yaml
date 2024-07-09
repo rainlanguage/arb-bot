@@ -1,18 +1,22 @@
 name: Standard Publish
 permissions: write-all
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Select Version To Bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
 
   publish:
     runs-on: ubuntu-latest
 
-    # do not start if [skip-publish] and [skip publish] is found in commit msg
-    # configuration: 
-    # - you can change the keywords to your desired ones in the below "if" statement
-    if: contains(github.event.head_commit.message, '[skip-publish]') != true && contains(github.event.head_commit.message, '[skip publish]') != true
-
-    # All steps of the job depend on their previous step to finish successfully
     steps:
       # Checkout repo
       - name: Checkout Repo
@@ -21,10 +25,20 @@ jobs:
         with:
           ssh-key: ${{ secrets.DEPLOYER_KEY }}
 
+      # Install nix
+      - uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      # Prepare and build sushi lib
+      - name: Build Sushi Lib
+        id: sushi
+        if: steps.checkout.outcome == 'success'
+        run: ./prep-sushi.sh
+
       # Install node
       - name: Install NodeJS v18
         id: node
-        if: steps.checkout.outcome == 'success'
+        if: steps.sushi.outcome == 'success'
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -40,49 +54,21 @@ jobs:
       - name: Git Config
         id: git
         if: steps.install.outcome == 'success'
-        # set git user and email to github actions, 
-        # this email and user id will result in github user with github avatar in Github
         run: |
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions"
+          git config --global user.email "${{ secrets.CI_GIT_EMAIL }}"
+          git config --global user.name "${{ secrets.CI_GIT_USER }}"
 
-      # Major Release
-      - name: Bump Major Version
-        id: major
-        # bump major version only if the commit msg ends with [major] keyword
-        # [major] keyword must be at the end of commit msg
-        # configuration: 
-        # - you can change the keyword to your desired one in the below "if" statement
-        if: steps.git.outcome == 'success' && endsWith(github.event.head_commit.message, '[major]')
-        # bump the major version without creating tag and commit and store the version in env
-        run: echo "NEW_VERSION=$(npm version major --no-git-tag-version)" >> $GITHUB_ENV
-
-      # Minor Release
-      - name: Bump Minor Version
-        id: minor
-        # bump minor version only if the commit msg ends with [minor] keyword
-        # [minor] keyword must be at the end of commit msg
-        # configuration: 
-        # - you can change the keyword to your desired one in the below "if" statement
-        if: steps.git.outcome == 'success' && endsWith(github.event.head_commit.message, '[minor]')
-        # bump the minor version without creating tag and commit and store the version in env
-        run: echo "NEW_VERSION=$(npm version minor --no-git-tag-version)" >> $GITHUB_ENV
-
-      # Patch Release
-      - name: Bump Patch Version
-        id: patch
-        # bump patch version only if [major] and [minor] are not present in commit msg
-        # will increase patch version for any other commits that don't have major and minor keywords
-        # configuration: 
-        # - alternatively you can set a keyword for bumping patch version with specific keyword
-        if: steps.git.outcome == 'success' && ! endsWith(github.event.head_commit.message, '[major]') && ! endsWith(github.event.head_commit.message, '[minor]')
-        # bump the patch version without creating tag and commit and store the version in env
-        run: echo "NEW_VERSION=$(npm version patch --no-git-tag-version)" >> $GITHUB_ENV
+      # Set Release Version
+      - name: Bump Version
+        id: version
+        if: steps.git.outcome == 'success'
+        # bump the version without creating tag/commit and store the version in env
+        run: echo "NEW_VERSION=$(npm version ${{ inputs.version }} --no-git-tag-version)" >> $GITHUB_ENV
 
       # Commit changes and tag
       - name: Commit And Tag
         id: commit
-        if: steps.major.outcome == 'success' || steps.minor.outcome == 'success' || steps.patch.outcome == 'success'
+        if: steps.version.outcome == 'success'
         run: |
           git add "package.json"
           git add "package-lock.json"
