@@ -218,6 +218,7 @@ const getConfig = async(
     config.hops                     = hops;
     config.retries                  = retries;
     config.gasCoveragePercentage    = gasCoveragePercentage;
+    config.multiRpc                  = options.multiRpc;
 
     return config;
 };

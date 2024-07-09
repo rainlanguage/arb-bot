@@ -66,7 +66,11 @@ const processOrders = async(
     ctx,
 ) => {
     const lps               = processLps(config.lps);
-    const viemClient        = createViemClient(config.chain.id, [config.rpc], false);
+    const viemClient        = createViemClient(
+        config.chain.id,
+        config.multiRpc && config.multiRpc.length ? config.multiRpc : [config.rpc],
+        false
+    );
     const dataFetcher       = getDataFetcher(viemClient, lps, false);
     const signer            = config.signer;
     const flashbotSigner    = config.flashbotRpc
@@ -271,7 +275,8 @@ async function processPair(args) {
     try {
         // only for test case
         if (config.isTest && config.testType === "gas-price") throw "gas-price";
-
+        const gasPriceBigInt = await viemClient.getGasPrice();
+        gasPrice = ethers.BigNumber.from(gasPriceBigInt);
         gasPrice = await signer.provider.getGasPrice();
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
@@ -484,7 +489,8 @@ async function processPair(args) {
     // get block number
     let blockNumber;
     try {
-        blockNumber = await signer.provider.getBlockNumber();
+        const blockNumBigint = await viemClient.getBlockNumber();
+        blockNumber = Number(blockNumBigint);
         spanAttributes["details.blockNumber"] = blockNumber;
         spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
     } catch(e) {
