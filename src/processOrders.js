@@ -364,6 +364,7 @@ async function processPair(args) {
                 arb,
                 ethPrice,
                 config,
+                viemClient,
             );
             ({
                 rawtx,
@@ -408,6 +409,7 @@ async function processPair(args) {
                     arb,
                     ethPrice,
                     config,
+                    viemClient,
                 )
             );
         }
@@ -489,8 +491,7 @@ async function processPair(args) {
     // get block number
     let blockNumber;
     try {
-        const blockNumBigint = await viemClient.getBlockNumber();
-        blockNumber = Number(blockNumBigint);
+        blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["details.blockNumber"] = blockNumber;
         spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
     } catch(e) {
@@ -639,6 +640,7 @@ async function dryrun(
     arb,
     ethPrice,
     config,
+    viemClient,
 ) {
     const spanAttributes = {};
     const result = {
@@ -749,7 +751,7 @@ async function dryrun(
                     gasPrice
                 };
 
-                let blockNumber = await signer.provider.getBlockNumber();
+                let blockNumber = Number(await viemClient.getBlockNumber());
                 hopAttrs["blockNumber"] = blockNumber;
 
                 let gasLimit;
@@ -800,7 +802,7 @@ async function dryrun(
                         ]
                     );
 
-                    blockNumber = await signer.provider.getBlockNumber();
+                    blockNumber = Number(await viemClient.getBlockNumber());
                     hopAttrs["blockNumber"] = blockNumber;
 
                     try {
