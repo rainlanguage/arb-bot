@@ -243,7 +243,6 @@ const main = async argv => {
     let repetitions = -1;
     const options = await getOptions(argv);
     if (!options.rpc) throw "undefined RPC URL";
-    shuffleArray(options.rpc);
     let roundGap = 10000;
 
     if (options.repetitions) {
@@ -293,6 +292,7 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
+                shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
@@ -360,6 +360,7 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
+                shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
