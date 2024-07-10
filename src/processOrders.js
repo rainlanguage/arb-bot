@@ -273,7 +273,6 @@ async function processPair(args) {
         if (config.isTest && config.testType === "gas-price") throw "gas-price";
         const gasPriceBigInt = await viemClient.getGasPrice();
         gasPrice = ethers.BigNumber.from(gasPriceBigInt);
-        gasPrice = await signer.provider.getGasPrice();
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
