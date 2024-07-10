@@ -3,9 +3,9 @@ const fs = require("fs");
 const { Command } = require("commander");
 const { version } = require("./package.json");
 const { Resource } = require("@opentelemetry/resources");
-const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
+const { sleep, getSpanException, shuffleArray } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
@@ -244,10 +244,8 @@ const main = async argv => {
     let repetitions = -1;
     const options = await getOptions(argv);
     if (!options.rpc) throw "undefined RPC URL";
-    const rpcs = [...options.rpc];
-    options.multiRpc = rpcs;
+    shuffleArray(options.rpc);
     let roundGap = 10000;
-    let rpcTurn = 0;
 
     if (options.repetitions) {
         if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
@@ -295,7 +293,6 @@ const main = async argv => {
                 gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
-            options.rpc = rpcs[rpcTurn];
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
@@ -338,8 +335,6 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
-            if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
-            else rpcTurn++;
             roundSpan.end();
             await sleep(roundGap);
             // give otel some time to export
@@ -365,7 +360,6 @@ const main = async argv => {
                 gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
-            options.rpc = rpcs[rpcTurn];
             try {
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
@@ -410,8 +404,6 @@ const main = async argv => {
             if (i !== repetitions) console.log(
                 `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
             );
-            if (rpcTurn === rpcs.length - 1) rpcTurn = 0;
-            else rpcTurn++;
             roundSpan.end();
             await sleep(roundGap);
             // give otel some time to export

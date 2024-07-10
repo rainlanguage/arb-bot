@@ -38,7 +38,7 @@ describe("Test arb round", async function () {
             .thenReply(200, JSON.stringify({jsonrpc: "2.0", id: 1, result: "137"}));
 
         const options = {
-            rpc: "http://localhost:8080/rpc-url",
+            rpc: ["http://localhost:8080/rpc-url"],
             key: "0x" + "1".repeat(64),
             orderbookAddress: "0x" + "0".repeat(40),
             arbAddress: "0x" + "0".repeat(40),

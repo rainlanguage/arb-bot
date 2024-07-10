@@ -4,18 +4,16 @@ const { assertError } = require("./utils");
 
 describe("Test app options", async function () {
     it("should use defaults", async function () {
-        const multiRpc = [
+        const rpcs = [
             "https://rpc.ankr.com/polygon",
-            // backup rpcs
-            "rpc2",
-            "rpc3",
+            "https://polygon-rpc.com",
         ];
         const config = await getConfig(
-            multiRpc[0], // main rpc
+            rpcs,
             "0x" + "1".repeat(64), // wallet key
             "0x" + "2".repeat(40), // ob address
             "0x" + "3".repeat(40), // arb address
-            { multiRpc }
+            {}
         );
 
         assert.equal(config.lps, undefined);
@@ -26,12 +24,12 @@ describe("Test app options", async function () {
         assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);
         assert.equal(config.gasCoveragePercentage, "100");
-        assert.deepEqual(config.multiRpc, multiRpc);
+        assert.deepEqual(config.rpc, rpcs);
     });
 
     it("should error if retries is not between 1-3", async function () {
         const configPromise = async() => await getConfig(
-            "https://rpc.ankr.com/polygon",
+            ["https://rpc.ankr.com/polygon"],
             "0x" + "1".repeat(64),
             "0x" + "2".repeat(40),
             "0x" + "3".repeat(40),

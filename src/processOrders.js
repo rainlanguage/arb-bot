@@ -66,11 +66,7 @@ const processOrders = async(
     ctx,
 ) => {
     const lps               = processLps(config.lps);
-    const viemClient        = createViemClient(
-        config.chain.id,
-        config.multiRpc && config.multiRpc.length ? config.multiRpc : [config.rpc],
-        false
-    );
+    const viemClient        = createViemClient(config.chain.id, config.rpc, false);
     const dataFetcher       = getDataFetcher(viemClient, lps, false);
     const signer            = config.signer;
     const flashbotSigner    = config.flashbotRpc
