@@ -128,7 +128,6 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                     retries              : options.retries,
                     poolUpdateInterval   : options.poolUpdateInterval,
                     gasCoveragePercentage: options.gasCoverage,
-                    multiRpc              : options.multiRpc,
                     liquidityProviders   : options.lps
                         ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                         : undefined,
