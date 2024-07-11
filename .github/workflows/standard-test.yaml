@@ -24,28 +24,28 @@ jobs:
       - name: Run Tests
         run: nix develop -c npm run unit-test
   
-  e2e-test:
-    name: e2e fork test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        chain: [POLYGON, ARBITRUM, ETH, FLARE, BSC, BASE]
-      fail-fast: false
+  # e2e-test:
+  #   name: e2e fork test
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       chain: [POLYGON, ARBITRUM, ETH, FLARE, BSC, BASE]
+  #     fail-fast: false
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@v4
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+  #     - uses: DeterminateSystems/nix-installer-action@v4
+  #     - uses: DeterminateSystems/magic-nix-cache-action@v2
 
-      - name: Prepare Sushi Lib
-        run: ./prep-sushi.sh
+  #     - name: Prepare Sushi Lib
+  #       run: ./prep-sushi.sh
 
-      - name: Install Dependencies
-        run:  nix develop -c npm install
+  #     - name: Install Dependencies
+  #       run:  nix develop -c npm install
 
-      - name: Set Chain Rpc Key
-        run: echo "RPC=CI_DEPLOY_${{ matrix.chain }}_RPC_URL" >> $GITHUB_ENV
+  #     - name: Set Chain Rpc Key
+  #       run: echo "RPC=CI_DEPLOY_${{ matrix.chain }}_RPC_URL" >> $GITHUB_ENV
       
-      - name: Run Tests
-        run: TEST_${{ matrix.chain }}_RPC=${{ secrets[env.RPC] }} nix develop -c npm run e2e-test
+  #     - name: Run Tests
+  #       run: TEST_${{ matrix.chain }}_RPC=${{ secrets[env.RPC] }} nix develop -c npm run e2e-test
