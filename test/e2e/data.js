@@ -110,7 +110,7 @@ module.exports = [
             "0x3776100a4b669Ef0d727a81FC69bF50DE74A976c",
         ],
         [
-            LiquidityProviders.SushiSwapV2,
+            // LiquidityProviders.SushiSwapV2,
             LiquidityProviders.UniswapV3,
         ],
         ["1", "100", "100"],
@@ -161,7 +161,7 @@ module.exports = [
     [
         ChainId.BSC,
         process?.env?.TEST_BSC_RPC,
-        39996830,
+        40360620,
         [
             WNATIVE[ChainId.BSC],
             new Token({

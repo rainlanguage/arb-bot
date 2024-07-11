@@ -570,7 +570,7 @@ const createViemClient = (chainId, rpcs, useFallbacs = false) => {
                 [...rpcs.map(v => http(v)), ...fallbacks[chainId].transport],
                 { rank: true, retryCount: 6 }
             )
-            : fallback(rpcs.map(v => http(v)), { retryCount: 6 });
+            : fallback(rpcs.map(v => http(v)), { rank: true, retryCount: 6 });
 
     return createPublicClient({
         chain: publicClientConfig[chainId]?.chain,
@@ -600,7 +600,7 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
                 ? configOrViemClient
                 : createViemClient(
                     configOrViemClient.chain.id,
-                    [configOrViemClient.rpc],
+                    configOrViemClient.rpc,
                     useFallbacks
                 )
             )

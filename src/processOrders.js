@@ -66,7 +66,7 @@ const processOrders = async(
     ctx,
 ) => {
     const lps               = processLps(config.lps);
-    const viemClient        = createViemClient(config.chain.id, [config.rpc], false);
+    const viemClient        = createViemClient(config.chain.id, config.rpc, false);
     const dataFetcher       = getDataFetcher(viemClient, lps, false);
     const signer            = config.signer;
     const flashbotSigner    = config.flashbotRpc
@@ -271,8 +271,8 @@ async function processPair(args) {
     try {
         // only for test case
         if (config.isTest && config.testType === "gas-price") throw "gas-price";
-
-        gasPrice = await signer.provider.getGasPrice();
+        const gasPriceBigInt = await viemClient.getGasPrice();
+        gasPrice = ethers.BigNumber.from(gasPriceBigInt);
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
@@ -359,6 +359,7 @@ async function processPair(args) {
                 arb,
                 ethPrice,
                 config,
+                viemClient,
             );
             ({
                 rawtx,
@@ -403,6 +404,7 @@ async function processPair(args) {
                     arb,
                     ethPrice,
                     config,
+                    viemClient,
                 )
             );
         }
@@ -484,7 +486,7 @@ async function processPair(args) {
     // get block number
     let blockNumber;
     try {
-        blockNumber = await signer.provider.getBlockNumber();
+        blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["details.blockNumber"] = blockNumber;
         spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
     } catch(e) {
@@ -633,6 +635,7 @@ async function dryrun(
     arb,
     ethPrice,
     config,
+    viemClient,
 ) {
     const spanAttributes = {};
     const result = {
@@ -743,7 +746,7 @@ async function dryrun(
                     gasPrice
                 };
 
-                let blockNumber = await signer.provider.getBlockNumber();
+                let blockNumber = Number(await viemClient.getBlockNumber());
                 hopAttrs["blockNumber"] = blockNumber;
 
                 let gasLimit;
@@ -794,7 +797,7 @@ async function dryrun(
                         ]
                     );
 
-                    blockNumber = await signer.provider.getBlockNumber();
+                    blockNumber = Number(await viemClient.getBlockNumber());
                     hopAttrs["blockNumber"] = blockNumber;
 
                     try {

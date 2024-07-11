@@ -93,7 +93,7 @@ describe("Test process pair", async function () {
 
         // set the rest of config
         config.isTest = true;
-        config.rpc = process?.env?.TEST_POLYGON_RPC;
+        config.rpc = [process?.env?.TEST_POLYGON_RPC];
         config.shuffle = false;
         config.hops = 2;
         config.bundle = false;
