@@ -139,9 +139,11 @@ const processOrders = async(
                     if (e.error) span.recordException(getSpanException(e.error));
                     span.setStatus({
                         code: SpanStatusCode.ERROR,
-                        message: `got low/no wallet balance error, current balance: ${
+                        message: `Recieved insufficient funds error, current balance: ${
                             ethers.utils.formatUnits(
-                                e.spanAttributes["details.currentWalletBalance"]
+                                ethers.BigNumber.from(
+                                    e.spanAttributes["details.currentWalletBalance"]
+                                )
                             )
                         }`
                     });
