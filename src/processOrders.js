@@ -336,9 +336,8 @@ async function processPair(args) {
         maximumInput,
         oppBlockNumber;
     try {
-        let findOppResult;
-        if (config.bundle) {
-            findOppResult = await findOpp({
+        const findOppResult = config.bundle
+            ? await findOpp({
                 mode: 0,
                 orderPairObject,
                 dataFetcher,
@@ -351,9 +350,8 @@ async function processPair(args) {
                 ethPrice,
                 config,
                 viemClient,
-            });
-        } else {
-            findOppResult = await findOppWithRetries({
+            })
+            : await findOppWithRetries({
                 orderPairObject,
                 dataFetcher,
                 fromToken,
@@ -366,7 +364,6 @@ async function processPair(args) {
                 config,
                 viemClient,
             });
-        }
         ({
             rawtx,
             gasCostInToken,
@@ -376,6 +373,8 @@ async function processPair(args) {
             maximumInput,
             oppBlockNumber,
         } = findOppResult.value);
+
+        // record span attrs
         for (attrKey in findOppResult.spanAttributes) {
             if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
                 spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];
