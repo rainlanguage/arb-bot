@@ -137,18 +137,18 @@ const processOrders = async(
                 if (e.reason === ProcessPairHaltReason.NoWalletFund) {
                     // in case that wallet has no more funds, terminate the process by breaking the loop
                     if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({
-                        code: SpanStatusCode.ERROR,
-                        message: `Recieved insufficient funds error, current balance: ${
-                            ethers.utils.formatUnits(
+                    const message = `Recieved insufficient funds error, current balance: ${
+                        e.spanAttributes["details.currentWalletBalance"]
+                            ? ethers.utils.formatUnits(
                                 ethers.BigNumber.from(
                                     e.spanAttributes["details.currentWalletBalance"]
                                 )
                             )
-                        }`
-                    });
+                            : "failed to get balance"
+                    }`;
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
                     span.end();
-                    throw "empty wallet";
+                    throw message;
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
                     const message = ["failed to get vault balance"];
                     if (e.error) {
