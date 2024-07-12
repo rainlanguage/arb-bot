@@ -140,7 +140,9 @@ const processOrders = async(
                     span.setStatus({
                         code: SpanStatusCode.ERROR,
                         message: `got low/no wallet balance error, current balance: ${
-                            e.spanAttributes["details.currentWalletBalance"]
+                            ethers.utils.formatUnits(
+                                e.spanAttributes["details.currentWalletBalance"]
+                            )
                         }`
                     });
                     span.end();
