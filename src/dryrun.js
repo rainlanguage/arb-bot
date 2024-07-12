@@ -158,6 +158,7 @@ async function dryrun({
                 || errorString.includes("insufficient funds for gas")
             ) {
                 result.reason = DryrunHaltReason.NoWalletFund;
+                spanAttributes["currentWalletBalance"] = (await signer.getBalance()).toString();
             } else {
                 result.reason = DryrunHaltReason.NoOpportunity;
             }
@@ -208,6 +209,7 @@ async function dryrun({
                     || errorString.includes("insufficient funds for gas")
                 ) {
                     result.reason = DryrunHaltReason.NoWalletFund;
+                    spanAttributes["currentWalletBalance"] = (await signer.getBalance()).toString();
                 } else {
                     result.reason = DryrunHaltReason.NoOpportunity;
                 }
@@ -297,6 +299,7 @@ async function findOpp({
             // reject early in case of no wallet fund
             if (e.reason === DryrunHaltReason.NoWalletFund) {
                 result.reason = DryrunHaltReason.NoWalletFund;
+                spanAttributes["currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
                 return Promise.reject(result);
             } else {
                 // the fail reason can only be no route in case all hops fail
@@ -396,6 +399,9 @@ async function findOppWithRetries({
         for (let i = 0; i < allPromises.length; i++) {
             if (allPromises[i].reason.reason === DryrunHaltReason.NoWalletFund) {
                 result.reason = DryrunHaltReason.NoWalletFund;
+                if (allPromises[i].reason.spanAttributes["currentWalletBalance"]) {
+                    spanAttributes["currentWalletBalance"] = allPromises[i].reason.spanAttributes["currentWalletBalance"];
+                }
                 throw result;
             }
             if (allPromises[i].reason.reason === DryrunHaltReason.NoRoute) {

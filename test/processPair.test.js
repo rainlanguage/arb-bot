@@ -286,6 +286,8 @@ describe("Test process pair", async function () {
             assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
             assert.exists(error.spanAttributes["details.ethPrice"]);
             assert.isTrue(typeof error.spanAttributes["details.ethPrice"] === "string");
+            assert.exists(error.spanAttributes["details.currentWalletBalance"]);
+            assert.isTrue(typeof error.spanAttributes["details.currentWalletBalance"] === "string");
             assert.deepEqual(
                 error.spanAttributes["details.orders"],
                 orderPairObject.takeOrders.map(v => v.id)
@@ -296,7 +298,8 @@ describe("Test process pair", async function () {
                 "details.orders",
                 "details.pair",
                 "details.gasPrice",
-                "details.ethPrice"
+                "details.ethPrice",
+                "details.currentWalletBalance"
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(

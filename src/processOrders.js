@@ -137,7 +137,12 @@ const processOrders = async(
                 if (e.reason === ProcessPairHaltReason.NoWalletFund) {
                     // in case that wallet has no more funds, terminate the process by breaking the loop
                     if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
+                    span.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: `got low/no wallet balance error, current balance: ${
+                            e.spanAttributes["details.currentWalletBalance"]
+                        }`
+                    });
                     span.end();
                     throw "empty wallet";
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
@@ -386,6 +391,9 @@ async function processPair(args) {
     } catch (e) {
         if (e.reason === DryrunHaltReason.NoWalletFund) {
             result.reason = ProcessPairHaltReason.NoWalletFund;
+            if (e.spanAttributes["currentWalletBalance"]) {
+                spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
+            }
             throw result;
         }
         if (e.reason === DryrunHaltReason.NoRoute) {
