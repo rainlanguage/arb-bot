@@ -284,7 +284,7 @@ async function processPair(args) {
     if (config.gasCoveragePercentage !== "0") {
         try {
             const options = {
-                fetchPoolsTimeout: 10000,
+                fetchPoolsTimeout: 30000,
                 memoize: true,
             };
             // pin block number for test case
@@ -317,7 +317,7 @@ async function processPair(args) {
         // only for test case
         if (config.isTest && config.testType === "pools") throw "pools";
         const options = {
-            fetchPoolsTimeout: 30000,
+            fetchPoolsTimeout: 90000,
             memoize: true,
         };
         // pin block number for test case

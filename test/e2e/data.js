@@ -35,9 +35,8 @@ module.exports = [
         // liq providers to use for test
         // ideally specify at least one for each univ2 and univ3 protocols
         [
-            LiquidityProviders.QuickSwap,
-            LiquidityProviders.SushiSwapV3,
-            LiquidityProviders.UniswapV3,
+            LiquidityProviders.QuickSwapV2,
+            LiquidityProviders.QuickSwapV3,
         ],
 
         // deposist amounts per token pair order
@@ -93,7 +92,7 @@ module.exports = [
     [
         ChainId.ETHEREUM,
         process?.env?.TEST_ETH_RPC,
-        20187810,
+        19829125,
         [
             WNATIVE[ChainId.ETHEREUM],
             USDT[ChainId.ETHEREUM],
