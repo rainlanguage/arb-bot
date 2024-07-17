@@ -158,7 +158,6 @@ describe("Test dryrun", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
-            console.log(error);
             const expected = {
                 value: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
