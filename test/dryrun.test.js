@@ -33,7 +33,8 @@ describe("Test dryrun", async function () {
             provider: {
                 getBlockNumber: async () => oppBlockNumber
             },
-            estimateGas: async () => gasLimitEstimation
+            estimateGas: async () => gasLimitEstimation,
+            getBalance: async () => ethers.BigNumber.from(0)
         };
         dataFetcher = {};
     });
@@ -164,6 +165,7 @@ describe("Test dryrun", async function () {
                     blockNumber: oppBlockNumber,
                     error: noFundError,
                     route: expectedRouteVisual,
+                    currentWalletBalance: "0",
                 }
             };
             assert.deepEqual(error, expected);
@@ -217,7 +219,8 @@ describe("Test find opp", async function () {
             provider: {
                 getBlockNumber: async () => oppBlockNumber
             },
-            estimateGas: async () => gasLimitEstimation
+            estimateGas: async () => gasLimitEstimation,
+            getBalance: async () => ethers.BigNumber.from(0)
         };
         dataFetcher = {};
     });
@@ -445,7 +448,7 @@ describe("Test find opp", async function () {
             const expected = {
                 value: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
-                spanAttributes: {},
+                spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);
         }
@@ -458,7 +461,8 @@ describe("Test find opp with retries", async function () {
             provider: {
                 getBlockNumber: async () => oppBlockNumber
             },
-            estimateGas: async () => gasLimitEstimation
+            estimateGas: async () => gasLimitEstimation,
+            getBalance: async () => ethers.BigNumber.from(0)
         };
         dataFetcher = {};
     });
@@ -621,7 +625,7 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 value: undefined,
                 reason: DryrunHaltReason.NoWalletFund,
-                spanAttributes: {},
+                spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);
         }
