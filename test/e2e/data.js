@@ -161,7 +161,7 @@ module.exports = [
     [
         ChainId.BSC,
         process?.env?.TEST_BSC_RPC,
-        40360620,
+        40393189,
         [
             WNATIVE[ChainId.BSC],
             new Token({
