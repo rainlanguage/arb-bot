@@ -77,10 +77,11 @@ const orderPairObject2 = {
             takeOrder: {
                 order: {
                     owner: hexlify(randomBytes(20)),
+                    nonce: `0x${"0".repeat(64)}`,
                     evaluable: {
                         interpreter: hexlify(randomBytes(20)),
                         store: hexlify(randomBytes(20)),
-                        expression: hexlify(randomBytes(20))
+                        bytecode: hexlify(randomBytes(20))
                     },
                     validInputs: [{
                         token: token1.address,
@@ -92,7 +93,6 @@ const orderPairObject2 = {
                         decimals: token2.decimals,
                         vaultId: hexlify(randomBytes(32))
                     }],
-                    handleIO: false
                 },
                 inputIOIndex: 0,
                 outputIOIndex: 0,
@@ -104,10 +104,11 @@ const orderPairObject2 = {
             takeOrder: {
                 order: {
                     owner: hexlify(randomBytes(20)),
+                    nonce: `0x${"0".repeat(64)}`,
                     evaluable: {
                         interpreter: hexlify(randomBytes(20)),
                         store: hexlify(randomBytes(20)),
-                        expression: hexlify(randomBytes(20))
+                        bytecode: hexlify(randomBytes(20))
                     },
                     validInputs: [{
                         token: token1.address,
@@ -119,11 +120,10 @@ const orderPairObject2 = {
                         decimals: token2.decimals,
                         vaultId: hexlify(randomBytes(32))
                     }],
-                    handleIO: false
                 },
                 inputIOIndex: 0,
                 outputIOIndex: 0,
-                signedContext: []
+                signedContext: [],
             }
         }
     ]
@@ -142,10 +142,11 @@ const orderPairObject1 = {
         takeOrder: {
             order: {
                 owner: hexlify(randomBytes(20)),
+                nonce: `0x${"0".repeat(64)}`,
                 evaluable: {
                     interpreter: hexlify(randomBytes(20)),
                     store: hexlify(randomBytes(20)),
-                    expression: hexlify(randomBytes(20))
+                    bytecode: hexlify(randomBytes(20))
                 },
                 validInputs: [{
                     token: token1.address,
@@ -156,8 +157,7 @@ const orderPairObject1 = {
                     token: token2.address,
                     decimals: token2.decimals,
                     vaultId: hexlify(randomBytes(32))
-                }],
-                handleIO: false
+                }]
             },
             inputIOIndex: 0,
             outputIOIndex: 0,
