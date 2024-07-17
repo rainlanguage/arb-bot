@@ -79,7 +79,7 @@ describe("Test process pair", async function () {
 
         // set the rest of config
         config.isTest = true;
-        config.rpc = process?.env?.TEST_POLYGON_RPC;
+        config.rpc = [process?.env?.TEST_POLYGON_RPC];
         config.shuffle = false;
         config.hops = 2;
         config.bundle = false;
@@ -273,6 +273,8 @@ describe("Test process pair", async function () {
             assert.isTrue(typeof error.spanAttributes["details.gasPrice"] === "string");
             assert.exists(error.spanAttributes["details.ethPrice"]);
             assert.isTrue(typeof error.spanAttributes["details.ethPrice"] === "string");
+            assert.exists(error.spanAttributes["details.currentWalletBalance"]);
+            assert.isTrue(typeof error.spanAttributes["details.currentWalletBalance"] === "string");
             assert.deepEqual(
                 error.spanAttributes["details.orders"],
                 orderPairObject.takeOrders.map(v => v.id)
@@ -283,7 +285,8 @@ describe("Test process pair", async function () {
                 "details.orders",
                 "details.pair",
                 "details.gasPrice",
-                "details.ethPrice"
+                "details.ethPrice",
+                "details.currentWalletBalance"
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
@@ -560,7 +563,13 @@ describe("Test process pair", async function () {
             assert.exists(error.spanAttributes["details.gasCostInToken"]);
             assert.isTrue(typeof error.spanAttributes["details.gasCostInToken"] === "string");
             assert.exists(error.spanAttributes["details.rawTx"]);
-            assert.exists(typeof error.spanAttributes["details.rawTx"] === "string");
+            assert.isTrue(typeof error.spanAttributes["details.rawTx"] === "string");
+            assert.exists(error.spanAttributes["details.blockNumberDiff"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumberDiff"] === "number");
+            assert.equal(
+                error.spanAttributes["details.blockNumberDiff"],
+                error.spanAttributes["details.blockNumber"] - error.spanAttributes["oppBlockNumber"]
+            );
 
 
             // check for unexpected keys/values in the spans attrs
@@ -576,6 +585,7 @@ describe("Test process pair", async function () {
                 "details.marketPrice",
                 "details.gasCostInToken",
                 "details.rawTx",
+                "details.blockNumberDiff"
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(
@@ -626,6 +636,12 @@ describe("Test process pair", async function () {
             assert.isTrue(typeof error.spanAttributes["details.txUrl"] === "string");
             assert.exists(error.spanAttributes["details.tx"]);
             assert.isTrue(typeof error.spanAttributes["details.tx"] === "string");
+            assert.exists(error.spanAttributes["details.blockNumberDiff"]);
+            assert.isTrue(typeof error.spanAttributes["details.blockNumberDiff"] === "number");
+            assert.equal(
+                error.spanAttributes["details.blockNumberDiff"],
+                error.spanAttributes["details.blockNumber"] - error.spanAttributes["oppBlockNumber"]
+            );
 
             // check for unexpected keys/values in the spans attrs
             const expectedSpanAttrsKeys = [
@@ -641,6 +657,7 @@ describe("Test process pair", async function () {
                 "details.gasCostInToken",
                 "details.txUrl",
                 "details.tx",
+                "details.blockNumberDiff",
             ];
             for (key in error.spanAttributes) {
                 if (!expectedSpanAttrsKeys.includes(key)) assert.fail(

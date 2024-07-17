@@ -174,7 +174,7 @@ for (let i = 0; i < testData.length; i++) {
 
                 // run the clearing process
                 config.isTest = true;
-                config.rpc = rpc;
+                config.rpc = [rpc];
                 config.shuffle = false;
                 config.signer = bot;
                 config.hops = 2;

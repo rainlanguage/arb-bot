@@ -1,15 +1,14 @@
 const ethers = require("ethers");
 const { BaseError } = require("viem");
-const { Router } = require("sushi/router");
 const { Token } = require("sushi/currency");
 const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
+const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     processLps,
     getEthPrice,
     getDataFetcher,
-    visualizeRoute,
     promiseTimeout,
     bundleOrders,
     getSpanException,
@@ -43,15 +42,6 @@ const ProcessPairReportStatus = {
 };
 
 /**
- * Specifies the reason that dryrun failed
- */
-const DryrunHaltReason = {
-    NoOpportunity: 1,
-    NoWalletFund: 2,
-    NoRoute: 3,
-};
-
-/**
  * Main function that processes all given orders and tries clearing them against onchain liquidity and reports the result
  *
  * @param {object} config - The configuration object
@@ -66,7 +56,7 @@ const processOrders = async(
     ctx,
 ) => {
     const lps               = processLps(config.lps);
-    const viemClient        = createViemClient(config.chain.id, [config.rpc], false);
+    const viemClient        = createViemClient(config.chain.id, config.rpc, false);
     const dataFetcher       = getDataFetcher(viemClient, lps, false);
     const signer            = config.signer;
     const flashbotSigner    = config.flashbotRpc
@@ -147,9 +137,18 @@ const processOrders = async(
                 if (e.reason === ProcessPairHaltReason.NoWalletFund) {
                     // in case that wallet has no more funds, terminate the process by breaking the loop
                     if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: "empty wallet" });
+                    const message = `Recieved insufficient funds error, current balance: ${
+                        e.spanAttributes["details.currentWalletBalance"]
+                            ? ethers.utils.formatUnits(
+                                ethers.BigNumber.from(
+                                    e.spanAttributes["details.currentWalletBalance"]
+                                )
+                            )
+                            : "failed to get balance"
+                    }`;
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
                     span.end();
-                    throw "empty wallet";
+                    throw message;
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
                     const message = ["failed to get vault balance"];
                     if (e.error) {
@@ -271,8 +270,8 @@ async function processPair(args) {
     try {
         // only for test case
         if (config.isTest && config.testType === "gas-price") throw "gas-price";
-
-        gasPrice = await signer.provider.getGasPrice();
+        const gasPriceBigInt = await viemClient.getGasPrice();
+        gasPrice = ethers.BigNumber.from(gasPriceBigInt);
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
@@ -285,7 +284,7 @@ async function processPair(args) {
     if (config.gasCoveragePercentage !== "0") {
         try {
             const options = {
-                fetchPoolsTimeout: 10000,
+                fetchPoolsTimeout: 30000,
                 memoize: true,
             };
             // pin block number for test case
@@ -318,7 +317,7 @@ async function processPair(args) {
         // only for test case
         if (config.isTest && config.testType === "pools") throw "pools";
         const options = {
-            fetchPoolsTimeout: 30000,
+            fetchPoolsTimeout: 90000,
             memoize: true,
         };
         // pin block number for test case
@@ -338,11 +337,17 @@ async function processPair(args) {
     }
 
     // execute maxInput discovery dryrun logic
-    let rawtx, gasCostInToken, takeOrdersConfigStruct, price, routeVisual, maximumInput;
-    if (config.bundle) {
-        try {
-            const dryrunResult = await dryrun(
-                0,
+    let rawtx,
+        gasCostInToken,
+        takeOrdersConfigStruct,
+        price,
+        routeVisual,
+        maximumInput,
+        oppBlockNumber;
+    try {
+        const findOppResult = config.bundle
+            ? await findOpp({
+                mode: 0,
                 orderPairObject,
                 dataFetcher,
                 fromToken,
@@ -353,107 +358,64 @@ async function processPair(args) {
                 arb,
                 ethPrice,
                 config,
-            );
-            ({
-                rawtx,
-                gasCostInToken,
-                takeOrdersConfigStruct,
-                price,
-                routeVisual,
-                maximumInput,
-            } = dryrunResult.value);
-            for (attrKey in dryrunResult.spanAttributes) {
-                spanAttributes[attrKey] = dryrunResult.spanAttributes[attrKey];
+                viemClient,
+            })
+            : await findOppWithRetries({
+                orderPairObject,
+                dataFetcher,
+                fromToken,
+                toToken,
+                signer,
+                vaultBalance,
+                gasPrice,
+                arb,
+                ethPrice,
+                config,
+                viemClient,
+            });
+        ({
+            rawtx,
+            gasCostInToken,
+            takeOrdersConfigStruct,
+            price,
+            routeVisual,
+            maximumInput,
+            oppBlockNumber,
+        } = findOppResult.value);
+
+        // record span attrs
+        for (attrKey in findOppResult.spanAttributes) {
+            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
+                spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];
             }
-        } catch(e) {
-            if (e.reason === DryrunHaltReason.NoWalletFund) {
-                result.reason = ProcessPairHaltReason.NoWalletFund;
-                throw result;
+            else {
+                spanAttributes[attrKey] = findOppResult.spanAttributes[attrKey];
             }
-            if (e.reason === DryrunHaltReason.NoRoute) {
-                result.reason = ProcessPairHaltReason.NoRoute;
-                throw result;
+        }
+    } catch (e) {
+        if (e.reason === DryrunHaltReason.NoWalletFund) {
+            result.reason = ProcessPairHaltReason.NoWalletFund;
+            if (e.spanAttributes["currentWalletBalance"]) {
+                spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
             }
-            // record all span attributes in case neither of above errors were present
-            for (attrKey in e.spanAttributes) {
+            throw result;
+        }
+        if (e.reason === DryrunHaltReason.NoRoute) {
+            result.reason = ProcessPairHaltReason.NoRoute;
+            throw result;
+        }
+        // record all span attributes in case neither of above errors were present
+        for (attrKey in e.spanAttributes) {
+            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
+                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
+            }
+            else {
                 spanAttributes[attrKey] = e.spanAttributes[attrKey];
             }
-            rawtx = undefined;
         }
-    } else {
-        const promises = [];
-        for (let j = 1; j < config.retries + 1; j++) {
-            promises.push(
-                dryrun(
-                    j,
-                    orderPairObject,
-                    dataFetcher,
-                    fromToken,
-                    toToken,
-                    signer,
-                    vaultBalance,
-                    gasPrice,
-                    arb,
-                    ethPrice,
-                    config,
-                )
-            );
-        }
-        const allPromises = await Promise.allSettled(promises);
-
-        let choice;
-        if (allPromises.some(v => v.status === "fulfilled")) {
-            for (let j = 0; j < allPromises.length; j++) {
-                if (allPromises[j].status === "fulfilled") {
-                    if (
-                        !choice ||
-                        choice.maximumInput.lt(allPromises[j].value.value.maximumInput)
-                    ) {
-                        for (attrKey in allPromises[j].value.spanAttributes) {
-                            spanAttributes[attrKey] = allPromises[j].value.spanAttributes[attrKey];
-                        }
-                        choice = allPromises[j].value.value;
-                    }
-                }
-            }
-        } else {
-            for (let j = 0; j < allPromises.length; j++) {
-                if (allPromises[j].reason.reason === DryrunHaltReason.NoWalletFund) {
-                    result.reason = ProcessPairHaltReason.NoWalletFund;
-                    throw result;
-                }
-                if (allPromises[j].reason.reason === DryrunHaltReason.NoRoute) {
-                    result.reason = ProcessPairHaltReason.NoRoute;
-                    throw result;
-                }
-            }
-            // record all retries span attributes in case neither of above errors were present
-            if (allPromises.length === 1) {
-                for (attrKey in allPromises[0].reason.spanAttributes) {
-                    spanAttributes[
-                        "details." + attrKey
-                    ] = allPromises[0].reason.spanAttributes[attrKey];
-                }
-            } else {
-                spanAttributes["details.retries"] = [];
-                for (let j = 0; j < allPromises.length; j++) {
-                    spanAttributes["details.retries"].push(
-                        JSON.stringify(allPromises[j].reason.spanAttributes)
-                    );
-                }
-            }
-        }
-        if (choice) {
-            ({
-                rawtx,
-                gasCostInToken,
-                takeOrdersConfigStruct,
-                price,
-                routeVisual,
-                maximumInput,
-            } = choice);
-        }
+        rawtx = undefined;
     }
+
     if (!rawtx) {
         result.report = {
             status: ProcessPairReportStatus.NoOpportunity,
@@ -476,8 +438,9 @@ async function processPair(args) {
     // get block number
     let blockNumber;
     try {
-        blockNumber = await signer.provider.getBlockNumber();
+        blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["details.blockNumber"] = blockNumber;
+        spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
     } catch(e) {
         // dont reject if getting block number fails but just record it,
         // since an opp is found and can ultimately be cleared
@@ -551,7 +514,7 @@ async function processPair(args) {
                 orderbook.address,
                 receipt
             );
-            const income = getIncome(signer, receipt);
+            const income = getIncome(await signer.getAddress(), receipt);
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
             ).mul(receipt.gasUsed);
@@ -610,257 +573,9 @@ async function processPair(args) {
     }
 }
 
-/**
- * Tries to find the maxInput for an arb tx by doing a binary search
- */
-async function dryrun(
-    mode,
-    bundledOrder,
-    dataFetcher,
-    fromToken,
-    toToken,
-    signer,
-    vaultBalance,
-    gasPrice,
-    arb,
-    ethPrice,
-    config,
-) {
-    const spanAttributes = {};
-    const result = {
-        value: undefined,
-        reason: undefined,
-        spanAttributes,
-    };
-    let noRoute = true;
-
-    const getRouteProcessorParamsVersion = {
-        "3": Router.routeProcessor3Params,
-        "3.1": Router.routeProcessor3_1Params,
-        "3.2": Router.routeProcessor3_2Params,
-        "4": Router.routeProcessor4Params,
-    };
-    let binarySearchLastHopSuccess = true;
-    let maximumInput = vaultBalance;
-
-    const allHopsAttributes = [];
-    for (let j = 1; j < config.hops + 1; j++) {
-        const hopAttrs = {};
-        hopAttrs["maxInput"] = maximumInput.toString();
-
-        const maximumInputFixed = maximumInput.mul(
-            "1" + "0".repeat(18 - bundledOrder.sellTokenDecimals)
-        );
-
-        const pcMap = dataFetcher.getCurrentPoolCodeMap(
-            fromToken,
-            toToken
-        );
-        const route = Router.findBestRoute(
-            pcMap,
-            config.chain.id,
-            fromToken,
-            maximumInput.toBigInt(),
-            toToken,
-            gasPrice.toNumber(),
-            // 30e9,
-            // providers,
-            // poolFilter
-        );
-        if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
-            hopAttrs["route"] = "no-way";
-            binarySearchLastHopSuccess = false;
-        }
-        else {
-            // if reached here, a route has been found at least once among all hops
-            noRoute = false;
-
-            const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
-                "1" + "0".repeat(18 - bundledOrder.buyTokenDecimals)
-            );
-            const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
-            hopAttrs["marketPrice"] = ethers.utils.formatEther(price);
-
-            const routeVisual = [];
-            try {
-                visualizeRoute(fromToken, toToken, route.legs).forEach(
-                    v => {routeVisual.push(v);}
-                );
-            } catch {
-                /**/
-            }
-
-            const rpParams = getRouteProcessorParamsVersion["4"](
-                pcMap,
-                route,
-                fromToken,
-                toToken,
-                arb.address,
-                config.routeProcessors["4"],
-                // permits
-                // "0.005"
-            );
-
-            const orders = mode === 0
-                ? bundledOrder.takeOrders.map(v => v.takeOrder)
-                : mode === 1
-                    ? [bundledOrder.takeOrders[0].takeOrder]
-                    : mode === 2
-                        ? [
-                            bundledOrder.takeOrders[0].takeOrder,
-                            bundledOrder.takeOrders[0].takeOrder
-                        ]
-                        : [
-                            bundledOrder.takeOrders[0].takeOrder,
-                            bundledOrder.takeOrders[0].takeOrder,
-                            bundledOrder.takeOrders[0].takeOrder
-                        ];
-
-            const takeOrdersConfigStruct = {
-                minimumInput: ethers.constants.One,
-                maximumInput,
-                maximumIORatio: config.maxRatio ? ethers.constants.MaxUint256 : price,
-                orders,
-                data: ethers.utils.defaultAbiCoder.encode(
-                    ["bytes"],
-                    [rpParams.routeCode]
-                )
-            };
-
-            // building and submit the transaction
-            try {
-                const rawtx = {
-                    data: arb.interface.encodeFunctionData(
-                        "arb2",
-                        [takeOrdersConfigStruct, "0", DefaultArbEvaluable,]
-                    ),
-                    to: arb.address,
-                    gasPrice
-                };
-
-                let blockNumber = await signer.provider.getBlockNumber();
-                hopAttrs["blockNumber"] = blockNumber;
-
-                let gasLimit;
-                try {
-                    if (config.isTest && config.testType === "no-fund") throw "insufficient funds for gas";
-                    gasLimit = await signer.estimateGas(rawtx);
-                }
-                catch(e) {
-                    const spanError = getSpanException(e);
-                    const errorString = JSON.stringify(spanError);
-                    if (
-                        errorString.includes("gas required exceeds allowance")
-                        || errorString.includes("insufficient funds for gas")
-                    ) {
-                        hopAttrs["error"] = spanError;
-                        result.reason = DryrunHaltReason.NoWalletFund;
-                        return Promise.reject(result);
-                    }
-                    // only record the last error for traces
-                    if (j === config.hops) {
-                        hopAttrs["route"] = routeVisual;
-                        hopAttrs["error"] = spanError;
-                    }
-                    throw "noopp";
-                }
-                gasLimit = gasLimit.mul("103").div("100");
-                rawtx.gasLimit = gasLimit;
-                const gasCost = gasLimit.mul(gasPrice);
-                const gasCostInToken = ethers.utils.parseUnits(
-                    ethPrice
-                ).mul(
-                    gasCost
-                ).div(
-                    "1" + "0".repeat(
-                        36 - bundledOrder.buyTokenDecimals
-                    )
-                );
-
-                if (config.gasCoveragePercentage !== "0") {
-                    const headroom = (
-                        Number(config.gasCoveragePercentage) * 1.05
-                    ).toFixed();
-                    rawtx.data = arb.interface.encodeFunctionData(
-                        "arb2",
-                        [
-                            takeOrdersConfigStruct,
-                            gasCostInToken.mul(headroom).div("100"),
-                            DefaultArbEvaluable,
-                        ]
-                    );
-
-                    blockNumber = await signer.provider.getBlockNumber();
-                    hopAttrs["blockNumber"] = blockNumber;
-
-                    try {
-                        await signer.estimateGas(rawtx);
-                    }
-                    catch(e) {
-                        const spanError = getSpanException(e);
-                        const errorString = JSON.stringify(spanError);
-                        if (
-                            errorString.includes("gas required exceeds allowance")
-                            || errorString.includes("insufficient funds for gas")
-                        ) {
-                            hopAttrs["error"] = spanError;
-                            result.reason = DryrunHaltReason.NoWalletFund;
-                            return Promise.reject(result);
-                        }
-                        if (j === config.hops) {
-                            hopAttrs["route"] = routeVisual;
-                            hopAttrs["gasCostInToken"] = ethers.utils.formatUnits(
-                                gasCostInToken,
-                                toToken.decimals
-                            );
-                            hopAttrs["error"] = spanError;
-                        }
-                        throw "noopp";
-                    }
-                }
-                binarySearchLastHopSuccess = true;
-                if (j == 1 || j == config.hops) {
-                    // we dont need allHopsAttributes in case an opp is found
-                    // since all those data will be available in the submitting tx
-                    spanAttributes["oppBlockNumber"] = blockNumber;
-                    spanAttributes["foundOpp"] = true;
-                    result.value = {
-                        rawtx,
-                        maximumInput,
-                        gasCostInToken,
-                        takeOrdersConfigStruct,
-                        price,
-                        routeVisual
-                    };
-                    return result;
-                }
-            }
-            catch (error) {
-                binarySearchLastHopSuccess = false;
-                if (error !== "noopp") {
-                    hopAttrs["error"] = getSpanException(error);
-                    // reason, code, method, transaction, error, stack, message
-                }
-            }
-        }
-        allHopsAttributes.push(JSON.stringify(hopAttrs));
-        maximumInput = binarySearchLastHopSuccess
-            ? maximumInput.add(vaultBalance.div(2 ** j))
-            : maximumInput.sub(vaultBalance.div(2 ** j));
-    }
-    // in case no opp is found, allHopsAttributes will be included
-    spanAttributes["hops"] = allHopsAttributes;
-
-    if (noRoute) result.reason = DryrunHaltReason.NoRoute;
-    else result.reason = DryrunHaltReason.NoOpportunity;
-
-    return Promise.reject(result);
-}
-
 module.exports = {
     processOrders,
     processPair,
     ProcessPairHaltReason,
     ProcessPairReportStatus,
-    DryrunHaltReason,
 };

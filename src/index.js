@@ -123,7 +123,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 /**
  * Get the general and network configuration required for the bot to operate
  *
- * @param {string} rpcUrl - The RPC URL
+ * @param {string[]} rpcUrls - The RPC URL array
  * @param {string} walletPrivateKey - The wallet private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
@@ -132,7 +132,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * @returns The configuration object
  */
 const getConfig = async(
-    rpcUrl,
+    rpcUrls,
     walletPrivateKey,
     orderbookAddress,
     arbAddress,
@@ -198,7 +198,8 @@ const getConfig = async(
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
-    const provider  = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
+    const provider  = new ethers.providers.FallbackProvider(allProviders);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
     const config    = getChainConfig(chainId);
@@ -207,7 +208,7 @@ const getConfig = async(
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
-    config.rpc                      = rpcUrl;
+    config.rpc                      = rpcUrls;
     config.signer                   = signer;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
