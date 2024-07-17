@@ -92,7 +92,7 @@ module.exports = [
     [
         ChainId.ETHEREUM,
         process?.env?.TEST_ETH_RPC,
-        20187810,
+        19829125,
         [
             WNATIVE[ChainId.ETHEREUM],
             USDT[ChainId.ETHEREUM],
