@@ -1,14 +1,21 @@
 const { assert } = require("chai");
 const { LiquidityProviders } = require("sushi");
 const { orderbookAbi } = require("../src/abis");
-const { arbDeploy } = require("./deploy/arbDeploy");
+const { bundleOrders } = require("../src/utils");
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
-const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
-const { mockSgFromEvent, getEventArgs, encodeMeta } = require("./utils");
-const { bundleOrders, getDataFetcher, getChainConfig } = require("../src/utils");
+const { getChainConfig, getDataFetcher } = require("../src/config");
 const { processPair, ProcessPairReportStatus, ProcessPairHaltReason } = require("../src/processOrders");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("./deploy/rainterpreterDeploy");
+const {
+    arbDeploy,
+    encodeMeta,
+    getEventArgs,
+    mockSgFromEvent,
+    deployOrderBookNPE2,
+    rainterpreterNPE2Deploy,
+    rainterpreterStoreNPE2Deploy,
+} = require("./utils");
+
 
 describe("Test process pair", async function () {
     let signers,

@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
-const { visualizeRoute, getSpanException } = require("./utils");
 const { DefaultArbEvaluable } = require("./abis");
+const { visualizeRoute, getSpanException } = require("./utils");
 
 /**
  * Specifies the reason that dryrun failed

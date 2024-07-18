@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { arbRound } = require("../arb-bot");
+const { arbRound } = require("../cli");
 const mockServer = require("mockttp").getLocal();
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");

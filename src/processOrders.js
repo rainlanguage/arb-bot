@@ -1,19 +1,18 @@
 const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
-const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
+const { createViemClient, getDataFetcher } = require("./config");
+const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     processLps,
     getEthPrice,
-    getDataFetcher,
     promiseTimeout,
     bundleOrders,
     getSpanException,
     getVaultBalance,
-    createViemClient,
     getActualClearAmount,
 } = require("./utils");
 

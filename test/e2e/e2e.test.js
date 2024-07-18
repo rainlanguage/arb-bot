@@ -5,20 +5,27 @@ const { ChainKey } = require("sushi");
 const { clear } = require("../../src");
 const { arbAbis } = require("../../src/abis");
 const { ethers, viem, network } = require("hardhat");
-const { arbDeploy } = require("../deploy/arbDeploy");
-const { getChainConfig } = require("../../src/utils");
+const { getChainConfig } = require("../../src/config");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
-const { deployOrderBookNPE2 } = require("../deploy/orderbookDeploy");
 const { ProcessPairReportStatus } = require("../../src/processOrders");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { randomUint256, mockSgFromEvent, getEventArgs, encodeMeta } = require("../utils");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { rainterpreterNPE2Deploy, rainterpreterStoreNPE2Deploy } = require("../deploy/rainterpreterDeploy");
+const {
+    arbDeploy,
+    encodeMeta,
+    getEventArgs,
+    randomUint256,
+    mockSgFromEvent,
+    deployOrderBookNPE2,
+    rainterpreterNPE2Deploy,
+    rainterpreterStoreNPE2Deploy
+} = require("../utils");
+
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {

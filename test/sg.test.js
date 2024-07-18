@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const { AxiosError } = require("axios");
-const { checkSgStatus, handleSgResults } = require("../src");
+const { checkSgStatus, handleSgResults } = require("../src/sg");
 
 describe("Test read subgraph", async function () {
     it("should check subgraph status", async function () {

@@ -1,9 +1,9 @@
 const { assert } = require("chai");
 const { OrderV3 } = require("../src/abis");
+const { deployOrderBookNPE2 } = require("./utils");
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { bundleOrders, getVaultBalance } = require("../src/utils");
-const { deployOrderBookNPE2 } = require("./deploy/orderbookDeploy");
 
 describe("Test order details", async function () {
     const order1 = {
