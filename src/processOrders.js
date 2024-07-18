@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
-const { arbAbis, orderbookAbi } = require("./abis");
+const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
@@ -456,10 +456,11 @@ async function processPair(args) {
         spanAttributes["details.gasCostInToken"] = ethers.utils.formatUnits(gasCostInToken, toToken.decimals);
 
         rawtx.data = arb.interface.encodeFunctionData(
-            "arb",
+            "arb2",
             [
                 takeOrdersConfigStruct,
-                gasCostInToken.mul(config.gasCoveragePercentage).div("100")
+                gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
+                DefaultArbEvaluable,
             ]
         );
 

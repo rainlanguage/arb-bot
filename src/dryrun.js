@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { visualizeRoute, getSpanException } = require("./utils");
+const { DefaultArbEvaluable } = require("./abis");
 
 /**
  * Specifies the reason that dryrun failed
@@ -65,7 +66,6 @@ async function dryrun({
         toToken,
         gasPrice.toNumber(),
     );
-
     if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
         spanAttributes["route"] = "no-way";
         result.reason = DryrunHaltReason.NoRoute;
@@ -124,7 +124,13 @@ async function dryrun({
         };
 
         const rawtx = {
-            data: arb.interface.encodeFunctionData("arb", [takeOrdersConfigStruct, "0"]),
+            data: arb.interface.encodeFunctionData(
+                "arb2", [
+                    takeOrdersConfigStruct,
+                    "0",
+                    DefaultArbEvaluable,
+                ]
+            ),
             to: arb.address,
             gasPrice
         };
@@ -185,10 +191,11 @@ async function dryrun({
                 Number(config.gasCoveragePercentage) * 1.05
             ).toFixed();
             rawtx.data = arb.interface.encodeFunctionData(
-                "arb",
+                "arb2",
                 [
                     takeOrdersConfigStruct,
-                    gasCostInToken.mul(headroom).div("100")
+                    gasCostInToken.mul(headroom).div("100"),
+                    DefaultArbEvaluable,
                 ]
             );
 

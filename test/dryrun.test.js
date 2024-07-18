@@ -2,6 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../src/dryrun");
+const { DefaultArbEvaluable } = require("../src/abis");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -69,12 +70,13 @@ describe("Test dryrun", async function () {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb",
+                        "arb2",
                         [
                             expectedTakeOrdersConfigStruct,
                             gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
                                 "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            )
+                            ),
+                            DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -254,12 +256,13 @@ describe("Test find opp", async function () {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb",
+                        "arb2",
                         [
                             expectedTakeOrdersConfigStruct,
                             gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
                                 "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            )
+                            ),
+                            DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -319,12 +322,13 @@ describe("Test find opp", async function () {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb",
+                        "arb2",
                         [
                             expectedTakeOrdersConfigStruct,
                             gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
                                 "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            )
+                            ),
+                            DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -505,12 +509,13 @@ describe("Test find opp with retries", async function () {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb",
+                        "arb2",
                         [
                             expectedTakeOrdersConfigStruct,
                             gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
                                 "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            )
+                            ),
+                            DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
