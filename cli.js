@@ -286,7 +286,7 @@ const main = async argv => {
             });
             try {
                 shuffleArray(options.rpc);
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
+                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
@@ -345,7 +345,7 @@ const main = async argv => {
             });
             try {
                 shuffleArray(options.rpc);
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
+                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
