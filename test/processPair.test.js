@@ -349,7 +349,7 @@ describe("Test process pair", async function () {
         }
     });
 
-    it("should fail to tx mine", async function () {
+    it("should fail to mine tx with rejection", async function () {
         const evmError = {
             status: 0,
             code: ethers.errors.CALL_EXCEPTION
@@ -400,6 +400,64 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
+                }
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+
+    it("should fail to mine tx with resolve", async function () {
+        const evmError = {
+            status: 0,
+            code: ethers.errors.CALL_EXCEPTION
+        };
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        signer.sendTransaction = async () => {
+            return {
+                hash: txHash,
+                wait: async () => { return evmError; }
+            };
+        };
+        try {
+            await processPair({
+                config,
+                orderPairObject,
+                viemClient,
+                dataFetcher,
+                signer,
+                flashbotSigner: undefined,
+                arb,
+                orderbook,
+                pair,
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch(error) {
+            const expected = {
+                report: {
+                    status: ProcessPairReportStatus.FoundOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                },
+                reason: ProcessPairHaltReason.TxMineFailed,
+                error: undefined,
+                spanAttributes: {
+                    "details.pair": pair,
+                    "details.orders": [orderPairObject.takeOrders[0].id],
+                    "details.gasPrice": gasPrice.toString(),
+                    "details.blockNumber": 123456,
+                    "details.blockNumberDiff": 0,
+                    "details.gasCostInToken": "0.0",
+                    "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
+                    "details.maxInput": vaultBalance.toString(),
+                    "oppBlockNumber": 123456,
+                    "details.route": expectedRouteVisual,
+                    "foundOpp": true,
+                    "details.tx": `{"hash":"${txHash}"}`,
+                    "details.txUrl": scannerUrl + "/tx/" + txHash,
+                    "details.receipt": JSON.stringify(evmError)
                 }
             };
             assert.deepEqual(error, expected);
