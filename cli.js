@@ -104,7 +104,7 @@ const getOptions = async argv => {
  * @param {import("@opentelemetry/api").Context} roundCtx
  * @param {*} options
  */
-const arbRound = async (tracer, roundCtx, options, lastError) => {
+const arbRound = async (tracer, roundCtx, options) => {
 
     if (!options.key)               throw "undefined wallet private key";
     if (!options.rpc)               throw "undefined RPC URL";
@@ -195,12 +195,7 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
             }
             span.setAttribute("didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message });
-            const error = getSpanException(e);
-            if (lastError && lastError === error) {
-                span.recordException("same as previous, see parent span links");
-            } else {
-                span.recordException(error);
-            }
+            span.recordException(getSpanException(e));
             span.end();
             return Promise.reject(message);
         }
@@ -270,8 +265,6 @@ const main = async argv => {
     let lastInterval = Date.now() + poolUpdateInterval;
 
     let counter = 0;
-    let lastError;
-    let lastSpanContext;
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
@@ -308,8 +301,6 @@ const main = async argv => {
                     roundSpan.setAttribute("didClear", false);
                 }
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
-                lastError = undefined;
-                lastSpanContext = undefined;
             }
             catch (error) {
                 let message = "";
@@ -322,15 +313,8 @@ const main = async argv => {
                         message = "unknown error type";
                     }
                 }
-                const newError = getSpanException(error);
-                if (!lastError || newError !== lastError) {
-                    lastSpanContext = roundSpan.spanContext();
-                    lastError = newError;
-                } else {
-                    if (!lastSpanContext) lastSpanContext = roundSpan.spanContext();
-                    else roundSpan.links = [{ context: lastSpanContext }];
-                }
                 roundSpan.setAttribute("didClear", false);
+                roundSpan.recordException(getSpanException(error));
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
@@ -376,8 +360,6 @@ const main = async argv => {
                     roundSpan.setAttribute("didClear", false);
                 }
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
-                lastError = undefined;
-                lastSpanContext = undefined;
             }
             catch (error) {
                 let message = "";
@@ -390,15 +372,8 @@ const main = async argv => {
                         message = "unknown error type";
                     }
                 }
-                const newError = getSpanException(error);
-                if (!lastError || newError !== lastError) {
-                    lastSpanContext = roundSpan.spanContext();
-                    lastError = newError;
-                } else {
-                    if (!lastSpanContext) lastSpanContext = roundSpan.spanContext();
-                    else roundSpan.links = [{ context: lastSpanContext }];
-                }
                 roundSpan.setAttribute("didClear", false);
+                roundSpan.recordException(getSpanException(error));
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
             if (i !== repetitions) console.log(
