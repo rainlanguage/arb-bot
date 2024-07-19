@@ -9,5 +9,5 @@ ENV DOCKER_TAG=$DOCKER_CHANNEL
 WORKDIR /arb-bot
 ADD . .
 RUN npm install
-CMD node arb-bot-cli
+CMD node arb-bot
 # ENTRYPOINT ["node" "arb-bot"]

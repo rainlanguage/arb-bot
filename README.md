@@ -62,7 +62,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 
 as well as at least one or both of below arguments:
 
-- `-o` or `--orders`, The path to a local json file containing the orders details, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
+- `-o` or `--orders`, The path to a local json file containing the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
  - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 
 Other optional arguments are:
@@ -161,7 +161,7 @@ ORDERBOOK_ADDRESS="0x123..."
 # for more than 1 subgraphs, seperate them by comma and a space
 SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
 
-# path to a .json file containing orders details, can be used in combination with SUBGRAPH 
+# path to a .json file containing encoded orders bytes as hex string, can be used in combination with SUBGRAPH 
 # OR e.g. the path to the volume mounted by docker compose
 ORDERS="/etc/rainprotocol/arb-bot/orders.json"
 

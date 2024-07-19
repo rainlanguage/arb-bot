@@ -1,6 +1,11 @@
 const { assert } = require("chai");
 const { ethers } = require("hardhat");
 const { OrderV3 } = require("../src/abis");
+const { DefaultArbEvaluable } = require("../src/abis");
+const OrderbookArtifact = require("./abis/OrderBook.json");
+const RainterpreterNPE2Artifact = require("./abis/RainterpreterNPE2.json");
+const RainterpreterStoreNPE2Artifact = require("./abis/RainterpreterStoreNPE2.json");
+const RouteProcessorOrderBookV4ArbOrderTakerArtifact = require("./abis/RouteProcessorOrderBookV4ArbOrderTaker.json");
 
 /**
  * Deploys a simple contracts that takes no arguments for deployment
@@ -14,6 +19,36 @@ exports.basicDeploy = async (artifact, ...args) => {
     const contract = await factory.deploy(...args);
     await contract.deployed();
     return contract;
+};
+
+exports.arbDeploy = async(
+    orderbookAddress,
+    rpAddress,
+) => {
+    return await this.basicDeploy(
+        RouteProcessorOrderBookV4ArbOrderTakerArtifact,
+        {
+            orderBook: orderbookAddress,
+            evaluable: DefaultArbEvaluable,
+            implementationData: ethers.utils.defaultAbiCoder.encode(["address"], [rpAddress])
+        }
+    );
+};
+
+exports.deployOrderBookNPE2 = async() => {
+    return await this.basicDeploy(OrderbookArtifact);
+};
+
+exports.rainterpreterNPE2Deploy = async () => {
+    return await this.basicDeploy(
+        RainterpreterNPE2Artifact
+    );
+};
+
+exports.rainterpreterStoreNPE2Deploy = async () => {
+    return await this.basicDeploy(
+        RainterpreterStoreNPE2Artifact
+    );
 };
 
 /**
