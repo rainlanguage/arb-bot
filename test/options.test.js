@@ -1,6 +1,7 @@
 const { assert } = require("chai");
 const { getConfig } = require("../src");
 const { assertError } = require("./utils");
+const { LiquidityProviders } = require("sushi");
 
 describe("Test app options", async function () {
     it("should use defaults", async function () {
@@ -13,10 +14,12 @@ describe("Test app options", async function () {
             "0x" + "1".repeat(64), // wallet key
             "0x" + "2".repeat(40), // ob address
             "0x" + "3".repeat(40), // arb address
-            {}
+            {
+                liquidityProviders: ["SUShIswapV2", "bIsWaP"]
+            }
         );
 
-        assert.equal(config.lps, undefined);
+        assert.deepEqual(config.lps, [LiquidityProviders.SushiSwapV2, LiquidityProviders.Biswap]);
         assert.equal(config.flashbotRpc, undefined);
         assert.equal(config.maxRatio, false);
         assert.equal(config.hops, 7);

@@ -3,11 +3,12 @@ const path = require("path");
 const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
-const { getChainConfig } = require("./config");
+const { processLps } = require("./utils");
 const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
 const { checkSgStatus, handleSgResults } = require("./sg");
 const { getOrderDetailsFromJson, getSpanException } = require("./utils");
+const { getChainConfig, createViemClient, getDataFetcher } = require("./config");
 
 /**
  * Options for getConfig()
@@ -200,10 +201,13 @@ const getConfig = async(
     }
 
     const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
-    const provider  = new ethers.providers.FallbackProvider(allProviders);
-    const signer    = new ethers.Wallet(walletPrivateKey, provider);
-    const chainId   = await signer.getChainId();
-    const config    = getChainConfig(chainId);
+    const provider = new ethers.providers.FallbackProvider(allProviders);
+    const signer = new ethers.Wallet(walletPrivateKey, provider);
+    const chainId = await signer.getChainId();
+    const config = getChainConfig(chainId);
+    const lps = processLps(options?.liquidityProviders);
+    const viemClient = createViemClient(chainId, rpcUrls, false);
+    const dataFetcher = getDataFetcher(viemClient, lps, false);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     config.bundle = true;
@@ -213,13 +217,15 @@ const getConfig = async(
     config.signer                   = signer;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
-    config.lps                      = options?.liquidityProviders;
     config.timeout                  = options?.timeout;
     config.flashbotRpc              = options?.flashbotRpc;
     config.maxRatio                 = !!options?.maxRatio;
     config.hops                     = hops;
     config.retries                  = retries;
     config.gasCoveragePercentage    = gasCoveragePercentage;
+    config.lps                      = lps;
+    config.viemClient               = viemClient;
+    config.dataFetcher              = dataFetcher;
 
     return config;
 };

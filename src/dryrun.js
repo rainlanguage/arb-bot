@@ -66,7 +66,7 @@ async function dryrun({
         toToken,
         gasPrice.toNumber(),
     );
-    if (route.status == "NoWay" || (config.isTest && config.testType === "no-route")) {
+    if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";
         result.reason = DryrunHaltReason.NoRoute;
         return Promise.reject(result);
@@ -139,8 +139,6 @@ async function dryrun({
         // minimum sender output and second to check the arb() with headroom
         let gasLimit, blockNumber;
         try {
-            if (config.isTest && config.testType === "no-fund") throw "insufficient funds for gas";
-
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
 

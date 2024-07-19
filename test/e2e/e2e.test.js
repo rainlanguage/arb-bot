@@ -5,13 +5,13 @@ const { ChainKey } = require("sushi");
 const { clear } = require("../../src");
 const { arbAbis } = require("../../src/abis");
 const { ethers, viem, network } = require("hardhat");
-const { getChainConfig } = require("../../src/config");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { ProcessPairReportStatus } = require("../../src/processOrders");
+const { getChainConfig, getDataFetcher } = require("../../src/config");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
@@ -70,7 +70,9 @@ for (let i = 0; i < testData.length; i++) {
             const rpVersion = rpVersions[j];
 
             it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+                config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
+                const dataFetcher = getDataFetcher(config, liquidityProviders, false);
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -181,7 +183,6 @@ for (let i = 0; i < testData.length; i++) {
 
                 // run the clearing process
                 config.isTest = true;
-                config.rpc = [rpc];
                 config.shuffle = false;
                 config.signer = bot;
                 config.hops = 2;
@@ -191,9 +192,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpVersion = rpVersion;
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
-                config.testViemClient = viemClient;
                 config.testBlockNumber = BigInt(blockNumber);
                 config.gasCoveragePercentage = "1";
+                config.viemClient = viemClient;
+                config.dataFetcher = dataFetcher;
                 const reports = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders

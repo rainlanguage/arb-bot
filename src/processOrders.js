@@ -2,12 +2,10 @@ const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { createViemClient, getDataFetcher } = require("./config");
 const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
-    processLps,
     getEthPrice,
     promiseTimeout,
     bundleOrders,
@@ -54,9 +52,8 @@ const processOrders = async(
     tracer,
     ctx,
 ) => {
-    const lps               = processLps(config.lps);
-    const viemClient        = createViemClient(config.chain.id, config.rpc, false);
-    const dataFetcher       = getDataFetcher(viemClient, lps, false);
+    const viemClient        = config.viemClient;
+    const dataFetcher       = config.dataFetcher;
     const signer            = config.signer;
     const flashbotSigner    = config.flashbotRpc
         ? new ethers.Wallet(
@@ -245,8 +242,7 @@ async function processPair(args) {
         vaultBalance = await getVaultBalance(
             orderPairObject,
             orderbook.address,
-            // if on test, use test hardhat viem client
-            config.isTest ? config.testViemClient : viemClient,
+            viemClient,
             config.isTest ? "0xcA11bde05977b3631167028862bE2a173976CA11" : undefined
         );
         if (vaultBalance.isZero()) {
@@ -267,8 +263,6 @@ async function processPair(args) {
     // get gas price
     let gasPrice;
     try {
-        // only for test case
-        if (config.isTest && config.testType === "gas-price") throw "gas-price";
         const gasPriceBigInt = await viemClient.getGasPrice();
         gasPrice = ethers.BigNumber.from(gasPriceBigInt);
         spanAttributes["details.gasPrice"] = gasPrice.toString();
@@ -313,8 +307,6 @@ async function processPair(args) {
 
     // get pool details
     try {
-        // only for test case
-        if (config.isTest && config.testType === "pools") throw "pools";
         const options = {
             fetchPoolsTimeout: 90000,
             memoize: true,
@@ -463,9 +455,6 @@ async function processPair(args) {
             ]
         );
 
-        // only for test case
-        if (config.isTest && config.testType === "tx-fail") throw "tx-fail";
-
         tx = config.timeout
             ? await promiseTimeout(
                 (flashbotSigner !== undefined
@@ -494,9 +483,6 @@ async function processPair(args) {
 
     // wait for tx receipt
     try {
-        // only for test case
-        if (config.isTest && config.testType === "tx-mine-fail") throw "tx-mine-fail";
-
         const receipt = config.timeout
             ? await promiseTimeout(
                 tx.wait(),
@@ -546,7 +532,7 @@ async function processPair(args) {
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
-                clearedAmount: clearActualAmount.toString(),
+                clearedAmount: clearActualAmount?.toString(),
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
                 actualGasCostInToken: ethers.utils.formatUnits(
                     actualGasCostInToken,
