@@ -5,10 +5,11 @@ This app requires NodeJS v18 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## The Case for Profitability
-Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` as the percentage of the gas cost of the transaction, denominated in receiving ERC20 token, the cost of the transaction is calculated in the receiving ERC20 token unit with current market best price.
+Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` arg as the percentage of the gas cost of the transaction, denominated in receiving ERC20 token, the cost of the transaction is calculated in the receiving ERC20 token unit with current market price of that token against chain's native token.
 
-- If set to 100, the receiving profit must be at least equal or greater than gas cost.
-- If set above 100, the receiving profit must be more than the amount of gas cost, for example a transaction costs 0.01 USDT (calculated from network's gas token i.e. ETH to receiving ERC20 token i.e. USDT or USDC or ...) and a value of 500 means the profit must be at least 5x the amount of gas used i.e. ≥0.05 USDT for the transaction to be successfull.
+for example:
+- If set to 100, the receiving profit must be at least equal or greater than tx gas cost.
+- If set above 100, the receiving profit must be more than the amount of gas cost, for example a transaction costs 0.01 USDT (calculated by current market price of ETH/USDT) and a value of 500 means the profit must be at least 5x the amount of gas used i.e. ≥0.05 USDT for the transaction to be successfull, so at least 0.04 USDT profit will be guaranteed.
 - If set to 0, profitablity becomes irrevelant meaning any match will be submitted irrespective of whether or not the transaction will be profitable. 
 
 ## Tutorial
@@ -71,7 +72,6 @@ Other optional arguments are:
 - `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
-- `--order-interpreter`, Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
@@ -180,9 +180,6 @@ ORDER_HASH=""
 # Option to filter the subgraph query results with a specific order owner address
 ORDER_OWNER=""
 
-# Option to filter the subgraph query results with a specific order interpreter address
-ORDER_INTERPRETER=""
-
 # Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 SLEEP=10
 
@@ -249,7 +246,7 @@ const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // arr
 const sgFilters     = {                                                   // filters for subgraph query (each filter is optional)
   orderHash         : "0x1234...",
   orderOwner        : "0x1234...",
-  orderInterpreter  : "0x1234..."
+  orderbook         : "0x1234..."
 }
 
 // get the order details from the sources
