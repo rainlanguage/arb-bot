@@ -108,7 +108,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                         query: getQuery(
                             sgFilters?.orderHash,
                             sgFilters?.orderOwner,
-                            sgFilters?.orderInterpreter
+                            sgFilters?.orderbook
                         )
                     },
                     { headers: { "Content-Type": "application/json" } }

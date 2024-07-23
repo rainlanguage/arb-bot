@@ -25,7 +25,6 @@ const ENV_OPTIONS = {
     repetitions         : process?.env?.REPETITIONS,
     orderHash           : process?.env?.ORDER_HASH,
     orderOwner          : process?.env?.ORDER_OWNER,
-    orderInterpreter    : process?.env?.ORDER_INTERPRETER,
     sleep               : process?.env?.SLEEP,
     maxRatio            : process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     bundle              : process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
@@ -55,7 +54,6 @@ const getOptions = async argv => {
         .option("--repetitions <integer>", "Option to run `number` of times, if unset will run for infinte number of times")
         .option("--order-hash <hash>", "Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables")
         .option("--order-owner <address>", "Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables")
-        .option("--order-interpreter <address>", "Option to filter the subgraph query results with a specific order's interpreter address, Will override the 'ORDER_INTERPRETER' in env variables")
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
         .option("--flashbot-rpc <url>", "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables")
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
@@ -87,7 +85,6 @@ const getOptions = async argv => {
     cmdOptions.orderHash          = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
     cmdOptions.orderOwner         = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
     cmdOptions.sleep              = cmdOptions.sleep              || ENV_OPTIONS.sleep;
-    cmdOptions.orderInterpreter   = cmdOptions.orderInterpreter   || ENV_OPTIONS.orderInterpreter;
     cmdOptions.maxRatio           = cmdOptions.maxRatio           || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc        = cmdOptions.flashbotRpc        || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout            = cmdOptions.timeout            || ENV_OPTIONS.timeout;
@@ -139,9 +136,9 @@ const arbRound = async (tracer, roundCtx, options) => {
                 options.orders,
                 config.signer,
                 {
-                    orderHash       : options.orderHash,
-                    orderOwner      : options.orderOwner,
-                    orderInterpreter: options.orderInterpreter
+                    orderHash: options.orderHash,
+                    orderOwner: options.orderOwner,
+                    orderbook: options.orderbookAddress,
                 },
                 span
             );
