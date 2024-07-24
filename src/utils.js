@@ -430,7 +430,6 @@ const promiseTimeout = async(promise, time, exception) => {
     );
 };
 
-
 /**
  * Gets the route for tokens
  *
@@ -466,7 +465,7 @@ const getRouteForTokens = async(
         decimals: toTokenDecimals,
         address: toTokenAddress
     });
-    const dataFetcher = getDataFetcher({chainId});
+    const dataFetcher = getDataFetcher({chain: {id: chainId}});
     await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
@@ -475,7 +474,7 @@ const getRouteForTokens = async(
         fromToken,
         amountIn,
         toToken,
-        30e9,
+        Number(await dataFetcher.web3Client.getGasPrice()),
         // providers,
         // poolFilter
     );

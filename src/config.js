@@ -47,7 +47,7 @@ function getChainConfig(chainId) {
  * @param {boolean} useFallbacs - If fallback RPCs should be used as well or not
  */
 function createViemClient(chainId, rpcs, useFallbacs = false) {
-    const transport = rpcs.includes("test") || rpcs.length === 0
+    const transport = !rpcs || rpcs?.includes("test") || rpcs?.length === 0
         ? fallback(fallbacks[chainId].transport, { rank: true, retryCount: 6 })
         : useFallbacs
             ? fallback(
