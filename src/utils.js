@@ -6,6 +6,9 @@ const BlackList = require("./pool-blacklist.json");
 const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { Router, LiquidityProviders } = require("sushi/router");
 
+function RPoolFilter(pool) {
+    return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
+}
 
 const PoolBlackList = {
     has: (pool) => BlackList.includes(pool) || BlackList.includes(pool.toLowerCase())
@@ -209,7 +212,7 @@ const getEthPrice = async(
         toToken,
         gasPrice.toNumber(),
         undefined,
-        PoolBlackList
+        RPoolFilter
         // 30e9,
         // providers,
         // poolFilter
@@ -748,4 +751,5 @@ module.exports = {
     bundleOrders,
     getVaultBalance,
     PoolBlackList,
+    RPoolFilter
 };

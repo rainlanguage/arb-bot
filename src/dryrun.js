@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { DefaultArbEvaluable } = require("./abis");
-const { visualizeRoute, getSpanException, PoolBlackList } = require("./utils");
+const { visualizeRoute, getSpanException, RPoolFilter } = require("./utils");
 
 /**
  * Specifies the reason that dryrun failed
@@ -66,7 +66,7 @@ async function dryrun({
         toToken,
         gasPrice.toNumber(),
         undefined,
-        PoolBlackList
+        RPoolFilter
     );
     if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";
