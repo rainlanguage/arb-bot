@@ -2,8 +2,14 @@ const { parseAbi } = require("viem");
 const { Token } = require("sushi/currency");
 const { getDataFetcher } = require("./config");
 const { ethers, BigNumber } = require("ethers");
+const BlackList = require("./pool-blacklist.json");
 const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { Router, LiquidityProviders } = require("sushi/router");
+
+
+const PoolBlackList = {
+    has: (pool) => BlackList.includes(pool) || BlackList.includes(pool.toLowerCase())
+};
 
 /**
  * Waits for provided miliseconds
@@ -164,7 +170,7 @@ const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePerce
  * @param {string} targetTokenAddress - The target token address
  * @param {number} targetTokenDecimals - The target token decimals
  * @param {BigNumber} gasPrice - The network gas price
- * @param {DataFetcher} dataFetcher - (optional) The DataFetcher instance
+ * @param {import("sushi/router").DataFetcher} dataFetcher - (optional) The DataFetcher instance
  * @param {import("sushi/router").DataFetcherOptions} options - (optional) The DataFetcher options
  */
 const getEthPrice = async(
@@ -193,7 +199,7 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken, undefined, options);
+    await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -201,7 +207,9 @@ const getEthPrice = async(
         fromToken,
         amountIn.toBigInt(),
         toToken,
-        gasPrice.toNumber()
+        gasPrice.toNumber(),
+        undefined,
+        PoolBlackList
         // 30e9,
         // providers,
         // poolFilter
@@ -739,4 +747,5 @@ module.exports = {
     getSpanException,
     bundleOrders,
     getVaultBalance,
+    PoolBlackList,
 };
