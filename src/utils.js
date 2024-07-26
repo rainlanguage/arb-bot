@@ -10,10 +10,6 @@ function RPoolFilter(pool) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
 }
 
-const PoolBlackList = {
-    has: (pool) => BlackList.includes(pool) || BlackList.includes(pool.toLowerCase())
-};
-
 /**
  * Waits for provided miliseconds
  * @param {number} ms - Miliseconds to wait
@@ -202,7 +198,15 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
+    await dataFetcher.fetchPoolsForToken(
+        fromToken,
+        toToken,
+        {
+            has: (pool) => BlackList.includes(pool)
+                || BlackList.includes(pool.toLowerCase())
+        },
+        options
+    );
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -750,6 +754,5 @@ module.exports = {
     getSpanException,
     bundleOrders,
     getVaultBalance,
-    PoolBlackList,
     RPoolFilter
 };

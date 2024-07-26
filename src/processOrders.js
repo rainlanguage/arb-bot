@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
+const BlackList = require("./pool-blacklist.json");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
@@ -9,7 +10,6 @@ const {
     getEthPrice,
     promiseTimeout,
     bundleOrders,
-    PoolBlackList,
     getSpanException,
     getVaultBalance,
     getActualClearAmount,
@@ -319,7 +319,10 @@ async function processPair(args) {
         await dataFetcher.fetchPoolsForToken(
             fromToken,
             toToken,
-            PoolBlackList,
+            {
+                has: (pool) => BlackList.includes(pool)
+                    || BlackList.includes(pool.toLowerCase())
+            },
             options
         );
     } catch(e) {
