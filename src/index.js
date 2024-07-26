@@ -5,7 +5,7 @@ const { ethers } = require("ethers");
 const { versions } = require("process");
 const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
-const { getOrderDetailsFromJson, getSpanException, getChainConfig } = require("./utils");
+const { getOrderDetailsFromJson, getSpanException, getChainConfig, shuffleArray } = require("./utils");
 
 
 /**
@@ -198,7 +198,9 @@ const getConfig = async(
         else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
-    const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
+    const rpcs = [...rpcUrls];
+    shuffleArray(rpcs);
+    const allProviders = rpcs.map(v => { return new ethers.providers.JsonRpcProvider(v); });
     const provider  = new ethers.providers.FallbackProvider(allProviders);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
@@ -208,7 +210,7 @@ const getConfig = async(
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
-    config.rpc                      = rpcUrls;
+    config.rpc                      = rpcs;
     config.signer                   = signer;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;

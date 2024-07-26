@@ -5,7 +5,7 @@ const { version } = require("./package.json");
 const { Resource } = require("@opentelemetry/resources");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { sleep, getSpanException, shuffleArray } = require("./src/utils");
+const { sleep, getSpanException } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
@@ -292,7 +292,7 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                shuffleArray(options.rpc);
+                // shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
@@ -360,7 +360,7 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                shuffleArray(options.rpc);
+                // shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
