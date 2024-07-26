@@ -200,13 +200,12 @@ const getConfig = async(
 
     const rpcs = [...rpcUrls];
     shuffleArray(rpcs);
-    const allProviders = rpcs.map(v => { return new ethers.providers.JsonRpcProvider(v); });
-    const provider  = new ethers.providers.FallbackProvider(allProviders);
+    // const allProviders = rpcs.map(v => { return new ethers.providers.JsonRpcProvider(v); });
+    const provider  = new ethers.providers.JsonRpcProvider(rpcs[0]);
     const signer    = new ethers.Wallet(walletPrivateKey, provider);
     const chainId   = await signer.getChainId();
     const config    = getChainConfig(chainId);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
-
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
