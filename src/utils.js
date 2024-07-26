@@ -600,7 +600,7 @@ const getDataFetcher = (configOrViemClient, liquidityProviders = [], useFallback
                 ? configOrViemClient
                 : createViemClient(
                     configOrViemClient.chain.id,
-                    configOrViemClient.rpc,
+                    [...configOrViemClient.rpc],
                     useFallbacks
                 )
             )
