@@ -9,6 +9,7 @@ const {
     getEthPrice,
     promiseTimeout,
     bundleOrders,
+    PoolBlackList,
     getSpanException,
     getVaultBalance,
     getActualClearAmount,
@@ -318,7 +319,7 @@ async function processPair(args) {
         await dataFetcher.fetchPoolsForToken(
             fromToken,
             toToken,
-            undefined,
+            PoolBlackList,
             options
         );
     } catch(e) {
