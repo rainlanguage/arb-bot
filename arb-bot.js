@@ -159,6 +159,9 @@ const arbRound = async (tracer, roundCtx, options, lastError) => {
                 tracer,
                 ctx,
             );
+            // config.signer.provider.removeAllListeners();
+            // config.signer.provider = null;
+            // config.signer = null;
             if (reports && reports.length) {
                 txs = reports.map(v => v.txUrl).filter(v => !!v);
                 if (txs.length) {
@@ -269,6 +272,11 @@ const main = async argv => {
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let lastInterval = Date.now() + poolUpdateInterval;
 
+    const gitinfo = {
+        gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
+        dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
+    };
+
     let counter = 0;
     let lastError;
     let lastSpanContext;
@@ -287,10 +295,7 @@ const main = async argv => {
                 }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
-            roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
-                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
-            });
+            roundSpan.setAttributes(gitinfo);
             try {
                 // shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
@@ -355,10 +360,7 @@ const main = async argv => {
                 }
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
-            roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
-                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
-            });
+            roundSpan.setAttributes(gitinfo);
             try {
                 // shuffleArray(options.rpc);
                 const { txs, foundOpp } = await arbRound(tracer, roundCtx, options, lastError);
