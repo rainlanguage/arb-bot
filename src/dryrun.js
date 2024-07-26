@@ -11,15 +11,15 @@ const DryrunHaltReason = {
     NoRoute: 3,
 };
 
-/**
- * Route Processor versions
- */
-const getRouteProcessorParamsVersion = {
-    "3": Router.routeProcessor3Params,
-    "3.1": Router.routeProcessor3_1Params,
-    "3.2": Router.routeProcessor3_2Params,
-    "4": Router.routeProcessor4Params,
-};
+// /**
+//  * Route Processor versions
+//  */
+// const getRouteProcessorParamsVersion = {
+//     "3": Router.routeProcessor3Params,
+//     "3.1": Router.routeProcessor3_1Params,
+//     "3.2": Router.routeProcessor3_2Params,
+//     "4": Router.routeProcessor4Params,
+// };
 
 /**
  * Executes a extimateGas call for an arb() tx, to determine if the tx is successfull ot not
@@ -87,6 +87,13 @@ async function dryrun({
             /**/
         }
         spanAttributes["route"] = routeVisual;
+
+        const getRouteProcessorParamsVersion = {
+            "3": Router.routeProcessor3Params,
+            "3.1": Router.routeProcessor3_1Params,
+            "3.2": Router.routeProcessor3_2Params,
+            "4": Router.routeProcessor4Params,
+        };
 
         const rpParams = getRouteProcessorParamsVersion["4"](
             pcMap,
@@ -422,5 +429,5 @@ module.exports = {
     dryrun,
     findOpp,
     findOppWithRetries,
-    DryrunHaltReason,
+    // DryrunHaltReason,
 };

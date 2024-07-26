@@ -3,7 +3,7 @@ const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
+const { findOpp, findOppWithRetries } = require("./dryrun");
 const {
     getIncome,
     processLps,
@@ -39,6 +39,15 @@ const ProcessPairReportStatus = {
     EmptyVault: 1,
     NoOpportunity: 2,
     FoundOpportunity: 3,
+};
+
+/**
+ * Specifies the reason that dryrun failed
+ */
+const DryrunHaltReason = {
+    NoOpportunity: 1,
+    NoWalletFund: 2,
+    NoRoute: 3,
 };
 
 /**

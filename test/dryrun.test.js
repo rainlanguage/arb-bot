@@ -1,7 +1,16 @@
 const { assert } = require("chai");
 const testData = require("./data");
 const { ethers, utils: { formatUnits } } = require("ethers");
-const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../src/dryrun");
+const { dryrun, findOpp, findOppWithRetries } = require("../src/dryrun");
+
+/**
+ * Specifies the reason that dryrun failed
+ */
+const DryrunHaltReason = {
+    NoOpportunity: 1,
+    NoWalletFund: 2,
+    NoRoute: 3,
+};
 
 // mocking signer and dataFetcher
 let signer = {};
