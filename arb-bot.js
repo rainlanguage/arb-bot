@@ -39,7 +39,9 @@ const ENV_OPTIONS = {
         : undefined,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
-        : undefined
+        : undefined,
+    gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
+    dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
 };
 
 const getOptions = async argv => {
@@ -95,6 +97,8 @@ const getOptions = async argv => {
     cmdOptions.retries            = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.gitCommitHash      = cmdOptions.gitCommitHash      || ENV_OPTIONS.gitCommitHash;
+    cmdOptions.dockerTag          = cmdOptions.dockerTag          || ENV_OPTIONS.dockerTag;
 
     return cmdOptions;
 };
@@ -273,8 +277,8 @@ const main = async argv => {
     let lastInterval = Date.now() + poolUpdateInterval;
 
     const gitinfo = {
-        gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
-        dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
+        gitCommitHash: options.gitCommitHash,
+        dockerTag: options.dockerTag,
     };
 
     let counter = 0;
