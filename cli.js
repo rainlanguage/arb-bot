@@ -6,11 +6,11 @@ const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
+const { manageAccounts, rotateProviders } = require("./src/account");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { initAccounts, manageAccounts, rotateProviders } = require("./src/account");
 
 
 /**
@@ -234,6 +234,7 @@ async function startup(argv) {
     // get config
     const config = await getConfig(
         options.rpc,
+        options.key ?? options.mnemonic,
         options.orderbookAddress,
         options.arbAddress,
         {
@@ -245,22 +246,13 @@ async function startup(argv) {
             retries              : options.retries,
             poolUpdateInterval   : options.poolUpdateInterval,
             gasCoveragePercentage: options.gasCoverage,
+            topupAmount          : options.topupAmount,
+            walletCount          : options.walletCount,
             liquidityProviders   : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
         }
     );
-
-    // init accounts
-    const { mainAccount, accounts } = await initAccounts(
-        options.key ?? options.mnemonic,
-        config.provider,
-        options.topupAmount,
-        config.viemClient,
-        options.walletCount
-    );
-    config.mainAccount = mainAccount;
-    config.accounts = accounts;
 
     return {
         roundGap,

@@ -4,6 +4,7 @@ const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
 const { processLps } = require("./utils");
+const { initAccounts } = require("./account");
 const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
 const { checkSgStatus, handleSgResults } = require("./sg");
@@ -126,6 +127,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * Get the general and network configuration required for the bot to operate
  *
  * @param {string[]} rpcUrls - The RPC URL array
+ * @param {string} walletKey - The wallet mnemonic phrase or private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
@@ -134,6 +136,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  */
 const getConfig = async(
     rpcUrls,
+    walletKey,
     orderbookAddress,
     arbAddress,
     options = configOptions
@@ -221,6 +224,17 @@ const getConfig = async(
     config.lps                      = lps;
     config.viemClient               = viemClient;
     config.dataFetcher              = dataFetcher;
+
+    // init accounts
+    const { mainAccount, accounts } = await initAccounts(
+        walletKey,
+        config.provider,
+        options?.topupAmount,
+        config.viemClient,
+        options?.walletCount
+    );
+    config.mainAccount = mainAccount;
+    config.accounts = accounts;
 
     return config;
 };

@@ -183,7 +183,7 @@ describe("Test cli", async function () {
             "--arb-address",
             `0x${"1".repeat(40)}`,
             "--orderbook-address",
-            `0x${"1".repeat(40)}`,
+            `0x${"2".repeat(40)}`,
         ]);
         const expected = {
             roundGap: 10000,
@@ -192,8 +192,8 @@ describe("Test cli", async function () {
             config: {
                 chain: { id: 137 },
                 rpc: [ "https://rpc.ankr.com/polygon" ],
-                orderbookAddress: "0x1111111111111111111111111111111111111111",
-                arbAddress: "0x1111111111111111111111111111111111111111",
+                orderbookAddress: `0x${"2".repeat(40)}`,
+                arbAddress: `0x${"1".repeat(40)}`,
             }
         };
         assert.equal(result.roundGap, expected.roundGap);
