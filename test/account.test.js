@@ -58,7 +58,7 @@ describe("Test accounts", async function () {
         };
         const provider = (await ethers.getSigner()).provider;
         const mnemonic = "test test test test test test test test test test test junk";
-        const { mainAccount, accounts } = await initAccounts(mnemonic, provider, "100", viemClient, 2);
+        const { mainAccount, accounts } = await initAccounts(mnemonic, provider, "0.0000000000000001", viemClient, 2);
 
         const expected = [
             {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "9800"},

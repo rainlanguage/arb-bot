@@ -53,7 +53,7 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
 
     // incase of excess accounts, top them up from main account
     if (accounts.length) {
-        const topupAmountBn = ethers.BigNumber.from(topupAmount);
+        const topupAmountBn = ethers.utils.parseUnits(topupAmount);
         let cumulativeTopupAmount = ethers.constants.Zero;
         for (let i = 1; i < balances.length; i++) {
             if (topupAmountBn.sub(balances[i]).gte(0)) {

@@ -47,8 +47,8 @@ const ENV_OPTIONS = {
 
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
-        .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables, one of this or --mnemonic should be specified")
-        .option("-m, --mnemonic <mnemonic-phrase>", "Mnemonic phrase of wallet that performs the transactions. Will override the 'MNEMONIC' in env variables, one of this or --key should be specified")
+        .option("-k, --key <private-key>", "Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
+        .option("-m, --mnemonic <mnemonic-phrase>", "Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires '--wallet-count' and '--topup-amount'. Will override the 'MNEMONIC' in env variables")
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing an array of the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
@@ -67,8 +67,8 @@ const getOptions = async argv => {
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
-        .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, required with --mnemonic. Will override the 'WALLET_COUNT' in env variables")
-        .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, required with --mnemonic. Will override the 'TOPUP_AMOUNT' in env variables")
+        .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
+        .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -200,8 +200,18 @@ async function startup(argv) {
     ) {
         throw "undefined wallet, only one of key or mnemonic should be specified";
     }
-    if (options.mnemonic && (!options.walletCount || !options.topupAmount)) {
-        throw "--wallet-count and --toptup-amount are required when using mnemonic option";
+    if (options.mnemonic) {
+        if ((!options.walletCount || !options.topupAmount)) {
+            throw "--wallet-count and --toptup-amount are required when using mnemonic option";
+        }
+        if (!/^[0-9]+$/.test(options.walletCount)) {
+            throw "invalid --wallet-count, it should be an integer greater than equal 0";
+        } else {
+            options.walletCount = Number(options.walletCount);
+        }
+        if (!/^[0-9]+(.[0-9]+)?$/.test(options.topupAmount)) {
+            throw "invalid --topup-amount, it should be an number greater than equal 0";
+        }
     }
     if (options.key) {
         if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";

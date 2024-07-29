@@ -56,7 +56,8 @@ For starting the app:
 node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
 ```
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
-- `-k` or `--key`, Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
@@ -80,6 +81,8 @@ Other optional arguments are:
 - `--hops`, Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
+- `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
+- `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -144,6 +147,9 @@ Alternatively all variables can be specified in env variables with below keys:
 # private key of the matchmaker bot's wallet
 BOT_WALLET_PRIVATEKEY="123..."
 
+# mnemonic phrase
+MNEMONIC=""
+
 # RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
@@ -206,6 +212,12 @@ RETRIES=1
 
 # Option to specify time (in minutes) between pools updates, default is 15 minutes
 POOL_UPDATE_INTERVAL=
+
+# number of excess wallets for submitting txs, requires mnemonic option
+WALLET_COUNT=
+
+# topup amount for excess accounts, requires mnemonic option
+TOPUP_AMOUNT=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
