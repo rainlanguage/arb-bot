@@ -14,6 +14,7 @@ const {
     getVaultBalance,
     getActualClearAmount,
 } = require("./utils");
+const { rotateAccounts } = require("./account");
 
 /**
  * Specifies reason that order process halted
@@ -55,19 +56,14 @@ const processOrders = async(
 ) => {
     const viemClient        = config.viemClient;
     const dataFetcher       = config.dataFetcher;
-    const signer            = config.signer;
-    const flashbotSigner    = config.flashbotRpc
-        ? new ethers.Wallet(
-            signer.privateKey,
-            new ethers.providers.JsonRpcProvider(config.flashbotRpc)
-        )
-        : undefined;
+    const accounts          = config.accounts;
+    const mainAccount       = config.mainAccount;
 
     // instantiating arb contract
-    const arb = new ethers.Contract(config.arbAddress, arbAbis, signer);
+    const arb = new ethers.Contract(config.arbAddress, arbAbis);
 
     // instantiating orderbook contract
-    const orderbook = new ethers.Contract(config.orderbookAddress, orderbookAbi, signer);
+    const orderbook = new ethers.Contract(config.orderbookAddress, orderbookAbi);
 
     // prepare orders
     const bundledOrders = bundleOrders(
@@ -78,7 +74,16 @@ const processOrders = async(
     if (!bundledOrders.length) return;
 
     const reports = [];
+    let avgGasCost;
     for (let i = 0; i < bundledOrders.length; i++) {
+        const signer = accounts.length ? accounts[0] : mainAccount;
+        const flashbotSigner = config.flashbotRpc
+            ? new ethers.Wallet(
+                signer.privateKey,
+                new ethers.providers.JsonRpcProvider(config.flashbotRpc)
+            )
+            : undefined;
+
         const pair = `${bundledOrders[i].buyTokenSymbol}/${bundledOrders[i].sellTokenSymbol}`;
 
         // instantiate a span for this pair
@@ -100,7 +105,19 @@ const processOrders = async(
                 arb,
                 orderbook,
                 pair,
+                mainAccount,
+                accounts,
             });
+
+            // keep track of avggas cost
+            if (result.gasCost) {
+                if (!avgGasCost) {
+                    avgGasCost = result.gasCost;
+                } else {
+                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
+                }
+            }
+
             reports.push(result.report);
 
             // set the span attributes with the values gathered at processPair()
@@ -118,6 +135,16 @@ const processOrders = async(
                 span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
         } catch(e) {
+
+            // keep track of avggas cost
+            if (e.gasCost) {
+                if (!avgGasCost) {
+                    avgGasCost = result.gasCost;
+                } else {
+                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
+                }
+            }
+
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
@@ -194,7 +221,7 @@ const processOrders = async(
         }
         span.end();
     }
-    return reports;
+    return { reports, avgGasCost };
 };
 
 /**
@@ -211,13 +238,18 @@ async function processPair(args) {
         arb,
         orderbook,
         pair,
+        mainAccount,
+        accounts,
     } = args;
+
+    (mainAccount);
 
     const spanAttributes = {};
     const result = {
         reason: undefined,
         error: undefined,
         report: undefined,
+        gasCost: undefined,
         spanAttributes,
     };
 
@@ -442,6 +474,9 @@ async function processPair(args) {
     // submit the tx
     let tx, txUrl;
     try {
+        // rotate the accounts once they are used once
+        rotateAccounts(accounts);
+
         spanAttributes["details.route"] = routeVisual;
         spanAttributes["details.maxInput"] = maximumInput.toString();
         spanAttributes["details.marketPrice"] = ethers.utils.formatEther(price);
@@ -500,7 +535,7 @@ async function processPair(args) {
                 orderbook.address,
                 receipt
             );
-            const income = getIncome(await signer.getAddress(), receipt);
+            const income = getIncome(signer.address, receipt);
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
             ).mul(receipt.gasUsed);
@@ -545,14 +580,64 @@ async function processPair(args) {
                     v => v.id
                 ),
             };
+
+            // keep track of gas consumption of the account and bounty token
+            result.gasCost = actualGasCost;
+            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+            if (!signer.BOUNTY.includes(orderPairObject.buyToken)) {
+                signer.BOUNTY.push(orderPairObject.buyToken);
+            }
+
             return result;
         }
         else {
+            let actualGasCost;
+            try {
+                actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
+                    .mul(receipt.gasUsed);
+
+                // keep track of gas consumption of the account
+                result.gasCost = actualGasCost;
+                signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+            } catch {
+                /**/
+            }
+            result.report = {
+                status: ProcessPairReportStatus.FoundOpportunity,
+                txUrl,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            };
+            if (actualGasCost) {
+                result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
+            }
             spanAttributes["details.receipt"] = JSON.stringify(receipt);
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
         }
     } catch(e) {
+        let actualGasCost;
+        try {
+            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice)
+                .mul(e.receipt.gasUsed);
+
+            // keep track of gas consumption of the account
+            result.gasCost = actualGasCost;
+            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+        } catch {
+            /**/
+        }
+        result.report = {
+            status: ProcessPairReportStatus.FoundOpportunity,
+            txUrl,
+            tokenPair: pair,
+            buyToken: orderPairObject.buyToken,
+            sellToken: orderPairObject.sellToken,
+        };
+        if (actualGasCost) {
+            result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
+        }
         result.error = e;
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;

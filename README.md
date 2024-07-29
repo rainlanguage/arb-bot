@@ -238,7 +238,7 @@ const configOptions = {
 }
 
 // to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, walletPrivateKey, orderbookAddress, arbAddress, ...[configOptions]);
+const config = await RainArbBot.getConfig(rpcUrl, orderbookAddress, arbAddress, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 

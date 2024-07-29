@@ -126,7 +126,6 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * Get the general and network configuration required for the bot to operate
  *
  * @param {string[]} rpcUrls - The RPC URL array
- * @param {string} walletPrivateKey - The wallet private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
@@ -135,7 +134,6 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  */
 const getConfig = async(
     rpcUrls,
-    walletPrivateKey,
     orderbookAddress,
     arbAddress,
     options = configOptions
@@ -143,8 +141,6 @@ const getConfig = async(
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
-
-    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
 
     if (options.timeout !== undefined){
         if (typeof options.timeout === "number") {
@@ -202,8 +198,7 @@ const getConfig = async(
 
     const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
     const provider = new ethers.providers.FallbackProvider(allProviders);
-    const signer = new ethers.Wallet(walletPrivateKey, provider);
-    const chainId = await signer.getChainId();
+    const chainId = (await provider.getNetwork()).chainId;
     const config = getChainConfig(chainId);
     const lps = processLps(options?.liquidityProviders);
     const viemClient = createViemClient(chainId, rpcUrls, false);
@@ -214,7 +209,7 @@ const getConfig = async(
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
     config.rpc                      = rpcUrls;
-    config.signer                   = signer;
+    config.provider                 = provider;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
     config.timeout                  = options?.timeout;

@@ -30,14 +30,18 @@ const sleep = async(ms, msg = "") => {
 /**
  * Extracts the income (received token value) from transaction receipt
  *
- * @param {ethers.Wallet} signerAddress - The signer address
+ * @param {string} signerAddress - The signer address
  * @param {any} receipt - The transaction receipt
+ * @param {string} token - The token address that was transfered
  * @returns The income value or undefined if cannot find any valid value
  */
-const getIncome = (signerAddress, receipt) => {
+const getIncome = (signerAddress, receipt, token) => {
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
     if (receipt.events) return receipt.events.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        v =>
+            (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+            && v.topics[2]
+            && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
     ).map(v => {
         try{
             return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
@@ -47,7 +51,10 @@ const getIncome = (signerAddress, receipt) => {
         }
     })[0]?.value;
     else if (receipt.logs) return receipt.logs.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        v =>
+            (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+            && v.topics[2]
+            && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
     ).map(v => {
         try{
             return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
@@ -751,5 +758,5 @@ module.exports = {
     bundleOrders,
     getVaultBalance,
     PoolBlackList,
-    RPoolFilter
+    RPoolFilter,
 };

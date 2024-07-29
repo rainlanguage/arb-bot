@@ -84,6 +84,8 @@ for (let i = 0; i < testData.length; i++) {
                     ? await ethers.getImpersonatedSigner(botAddress)
                     : await ethers.getImpersonatedSigner("0x22025257BeF969A81eDaC0b343ce82d777931327");
                 await network.provider.send("hardhat_setBalance", [bot.address, "0x4563918244F40000"]);
+                bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
+                bot.BOUNTY = [];
 
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
@@ -196,7 +198,9 @@ for (let i = 0; i < testData.length; i++) {
                 config.gasCoveragePercentage = "1";
                 config.viemClient = viemClient;
                 config.dataFetcher = dataFetcher;
-                const reports = await clear(config, orders, tracer, ctx);
+                config.accounts = [bot];
+                config.mainAccount = bot;
+                const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
                 assert.ok(
@@ -257,6 +261,9 @@ for (let i = 0; i < testData.length; i++) {
                     ),
                     "Unexpected bot bounty"
                 );
+
+                assert.deepEqual(bot.BOUNTY, [tokens[0].address.toLowerCase()]);
+                assert.ok(bot.BALANCE.lt("0x4563918244F40000"));
 
                 testSpan.end();
             });
