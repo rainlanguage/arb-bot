@@ -7,7 +7,7 @@ const { getDataFetcher, createViemClient } = require("./config");
 /** Standard base path for eth accounts */
 const BasePath = "m/44'/60'/0'/0/";
 
-/** Main derivation index */
+/** Main account derivation index */
 const MainAccountDerivationIndex = 0;
 
 /**
@@ -32,6 +32,7 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
             .connect(provider);
     }
 
+    // if the provided key is mnemonic, generate new accounts
     if (isMnemonic) {
         for (let derivationIndex = 1; derivationIndex <= count; derivationIndex++) {
             accounts.push(
@@ -40,6 +41,9 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
             );
         }
     }
+
+    // reaed current eth balances of the accounts, this will be
+    // tracked on through the bot's process whenever a tx is submitted
     const balances = await getBatchEthBalance(
         [mainAccount.address, ...accounts.map(v => v.address)],
         viemClient
@@ -63,6 +67,9 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
             throw "low on funds to topup excess wallets";
         } else {
             for (let i = 0; i < accounts.length; i++) {
+                accounts[i].BOUNTY = [];
+                accounts[i].BALANCE = balances[i + 1];
+
                 // only topup those accounts that have lower than expected funds
                 const transferAmount = topupAmountBn.sub(balances[i + 1]);
                 if (transferAmount.gte(0)) {
@@ -72,15 +79,11 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
                             value: transferAmount
                         });
                         await tx.wait();
-                        accounts[i].BOUNTY = [];
                         accounts[i].BALANCE = topupAmountBn;
                         mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
                     } catch (error) {
                         return Promise.reject(`failed to toptup wallets, reason: ${error.reason}`);
                     }
-                } else {
-                    accounts[i].BOUNTY = [];
-                    accounts[i].BALANCE = balances[i + 1];
                 }
             }
         }
@@ -89,11 +92,12 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
 }
 
 /**
- * Manages accounts
+ * Manages accounts by removing the ones that are out of gas from circulation
+ * and replaces them with new ones while topping them up with x6 of avg gas cost
+ * of the arb() transactions, returns the last index used for new wallets.
  * @param {string} mnemonic - The mnemonic phrase
  * @param {ethers.Wallet} mainAccount - Other wallets
  * @param {ethers.Wallet[]} accounts - Other wallets
- * @param {import("viem").PublicClient} viemClient - The viem client
  * @param {ethers.providers.Provider} provider - The ethers provider
  * @param {number} lastIndex - The last index used for wallets
  * @param {ethers.BigNumber} avgGasCost - Avg gas cost of arb txs
@@ -118,7 +122,11 @@ async function manageAccounts(mnemonic, mainAccount ,accounts, provider, lastInd
             acc.BALANCE = avgGasCost.mul(6);
             mainAccount.BALANCE = mainAccount.BALANCE.sub(avgGasCost.mul(6));
         } catch (error) {
-            throw "lacks balance to fund new wallets";
+            if (error.code === ethers.errors.INSUFFICIENT_FUNDS) {
+                throw "low on funds to top up new wallets";
+            } else {
+                throw `failed to top up new wallet, reason: ${error.reason ?? error.message}`;
+            }
         }
         accounts.push(acc);
     }
@@ -126,7 +134,7 @@ async function manageAccounts(mnemonic, mainAccount ,accounts, provider, lastInd
 }
 
 /**
- * Rotates the providers for viem and ethers clients
+ * Rotates the providers rpcs for viem and ethers clients
  * @param {any} config - The config object
  */
 function rotateProviders(config) {
@@ -139,7 +147,6 @@ function rotateProviders(config) {
     config.provider = provider;
     config.viemClient = viemClient;
     config.dataFetcher = dataFetcher;
-
     config.mainAccount = config.mainAccount.connect(provider);
     for (let i = 0; i < config.accounts.length; i++) {
         config.accounts[i] = config.accounts[i].connect(provider);

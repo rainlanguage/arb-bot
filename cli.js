@@ -200,7 +200,6 @@ async function startup(argv) {
     ) {
         throw "undefined wallet, only one of key or mnemonic should be specified";
     }
-
     if (options.mnemonic && (!options.walletCount || !options.topupAmount)) {
         throw "--wallet-count and --toptup-amount are required when using mnemonic option";
     }
@@ -254,11 +253,11 @@ async function startup(argv) {
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(
-        options.key,
+        options.key ?? options.mnemonic,
         config.provider,
-        options.initAmount,
+        options.topupAmount,
         config.viemClient,
-        options.wallets
+        options.walletCount
     );
     config.mainAccount = mainAccount;
     config.accounts = accounts;
