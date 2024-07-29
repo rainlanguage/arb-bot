@@ -36,34 +36,39 @@ const sleep = async(ms, msg = "") => {
  * @returns The income value or undefined if cannot find any valid value
  */
 const getIncome = (signerAddress, receipt, token) => {
+    let result;
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    if (receipt.events) return receipt.events.filter(
-        v =>
-            (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
-            && v.topics[2]
-            && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
-    ).map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    })[0]?.value;
-    else if (receipt.logs) return receipt.logs.filter(
-        v =>
-            (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
-            && v.topics[2]
-            && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
-    ).map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    })[0]?.value;
-    else return undefined;
+    try {
+        if (receipt.events) result = receipt.events.filter(
+            v =>
+                (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+                && v.topics[2]
+                && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        ).map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        })?.[0]?.value;
+        if (!result && receipt.logs) result = receipt.logs.filter(
+            v =>
+                (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+                && v.topics[2]
+                && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        ).map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        })?.[0]?.value;
+    } catch {
+        /**/
+    }
+    return result;
 };
 
 /**
