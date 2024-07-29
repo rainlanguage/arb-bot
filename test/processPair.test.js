@@ -434,9 +434,11 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to mine tx with resolve", async function () {
-        const evmError = {
+        const errorReceipt = {
             status: 0,
-            code: ethers.errors.CALL_EXCEPTION
+            code: ethers.errors.CALL_EXCEPTION,
+            gasUsed,
+            effectiveGasPrice,
         };
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
@@ -444,7 +446,7 @@ describe("Test process pair", async function () {
         signer.sendTransaction = async () => {
             return {
                 hash: txHash,
-                wait: async () => { return evmError; }
+                wait: async () => { return errorReceipt; }
             };
         };
         try {
@@ -470,10 +472,11 @@ describe("Test process pair", async function () {
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
                     txUrl: scannerUrl + "/tx/" + txHash,
+                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
                 error: undefined,
-                gasCost: undefined,
+                gasCost: effectiveGasPrice.mul(gasUsed),
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
@@ -488,7 +491,7 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(evmError)
+                    "details.receipt": JSON.stringify(errorReceipt)
                 }
             };
             assert.deepEqual(error, expected);

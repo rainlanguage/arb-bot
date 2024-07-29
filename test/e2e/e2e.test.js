@@ -210,6 +210,7 @@ for (let i = 0; i < testData.length; i++) {
 
                 // validate each cleared order
                 let profit = ethers.constants.Zero;
+                let gasSpent = ethers.constants.Zero;
                 for (let i = 0; i < reports.length; i++) {
                     assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
                     assert.equal(reports[i].clearedOrders.length, 1);
@@ -250,8 +251,9 @@ for (let i = 0; i < testData.length; i++) {
                         `Unexpected current bot ${tokens[i + 1].symbol} balance`
                     );
 
-                    // collect all bot's income (bounty)
+                    // collect all bot's income (bounty) and gas cost
                     profit = profit.add(reports[i].income);
+                    gasSpent = gasSpent.add(ethers.utils.parseUnits(reports[i].actualGasCost));
                 }
 
                 // all bounties (+ old balance) should be equal to current bot's balance
@@ -262,8 +264,10 @@ for (let i = 0; i < testData.length; i++) {
                     "Unexpected bot bounty"
                 );
 
+                // bot's gas token balance and bounty tokens should be correct
                 assert.deepEqual(bot.BOUNTY, [tokens[0].address.toLowerCase()]);
-                assert.ok(bot.BALANCE.lt("0x4563918244F40000"));
+                assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
+                assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
                 testSpan.end();
             });

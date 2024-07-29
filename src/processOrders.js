@@ -591,17 +591,11 @@ async function processPair(args) {
             return result;
         }
         else {
-            let actualGasCost;
-            try {
-                actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
-                    .mul(receipt.gasUsed);
-
-                // keep track of gas consumption of the account
-                result.gasCost = actualGasCost;
-                signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-            } catch {
-                /**/
-            }
+            // keep track of gas consumption of the account
+            const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
+                .mul(receipt.gasUsed);
+            result.gasCost = actualGasCost;
+            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -617,12 +611,11 @@ async function processPair(args) {
             return Promise.reject(result);
         }
     } catch(e) {
+        // keep track of gas consumption of the account
         let actualGasCost;
         try {
             actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice)
                 .mul(e.receipt.gasUsed);
-
-            // keep track of gas consumption of the account
             result.gasCost = actualGasCost;
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
         } catch {
