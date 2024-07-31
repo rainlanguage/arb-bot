@@ -55,6 +55,7 @@ describe("Test accounts", async function () {
         const viemClient = {
             chain: { id: 137 },
             multicall: async () => [10000n, 0n, 0n],
+            getGasPrice: async() => 3000000n
         };
         const provider = (await ethers.getSigner()).provider;
         const mnemonic = "test test test test test test test test test test test junk";
@@ -104,9 +105,9 @@ describe("Test accounts", async function () {
         const accounts = [acc1, acc2];
         const result = await manageAccounts(mnemonic, mainAccount, accounts, provider, 20, ethers.BigNumber.from("100"));
         const expectedAccounts = [
-            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "8800"},
-            {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D", BALANCE: "600"},
-            {address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE", BALANCE: "600"},
+            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "7800"},
+            {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D", BALANCE: "1100"},
+            {address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE", BALANCE: "1100"},
         ];
 
         assert.equal(result, 22);

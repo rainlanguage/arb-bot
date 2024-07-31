@@ -274,6 +274,7 @@ async function startup(argv) {
 }
 
 const main = async argv => {
+    // startup otel to collect span, logs, etc
     // diag otel
     diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
 
@@ -306,7 +307,7 @@ const main = async argv => {
     provider.register();
     const tracer = provider.getTracer("arb-bot-tracer");
 
-    // startup
+    // parse cli args and startup bot configuration
     const {
         roundGap,
         repetitions,
@@ -319,7 +320,7 @@ const main = async argv => {
             startupSpan.setStatus({ code: SpanStatusCode.OK });
             startupSpan.end();
             return result;
-        } catch (error) {
+        } catch (e) {
             let message = "";
             if (e instanceof Error) {
                 if ("reason" in e) message = e.reason;
@@ -334,9 +335,18 @@ const main = async argv => {
                 }
             }
             startupSpan.setStatus({ code: SpanStatusCode.ERROR, message });
-            startupSpan.recordException(error);
+            startupSpan.recordException(getSpanException(e));
+
+            // end this span and wait for it to finish
             startupSpan.end();
-            return Promise.reject(error);
+            await sleep(20000);
+
+            // flush and close the otel connection.
+            await exporter.shutdown();
+            await sleep(10000);
+
+            // reject the promise that makes the cli process to exit with error
+            return Promise.reject(e);
         }
     });
 
@@ -345,6 +355,7 @@ const main = async argv => {
     let avgGasCost;
     let counter = 0;
 
+    // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
@@ -367,7 +378,7 @@ const main = async argv => {
             try {
                 rotateProviders(config);
                 const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
-                    await arbRound(tracer, roundCtx, options);
+                    await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
@@ -384,10 +395,10 @@ const main = async argv => {
 
                 // keep avg gas cost
                 if (roundAvgGasCost) {
-                    if (!avgGasCost) {
-                        avgGasCost = roundAvgGasCost;
-                    } else {
+                    if (avgGasCost) {
                         avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
+                    } else {
+                        avgGasCost = roundAvgGasCost;
                     }
                 }
 
@@ -451,7 +462,7 @@ const main = async argv => {
             try {
                 rotateProviders(config);
                 const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
-                    await arbRound(tracer, roundCtx, options);
+                    await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
@@ -468,10 +479,10 @@ const main = async argv => {
 
                 // keep avg gas cost
                 if (roundAvgGasCost) {
-                    if (!avgGasCost) {
-                        avgGasCost = roundAvgGasCost;
-                    } else {
+                    if (avgGasCost) {
                         avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
+                    } else {
+                        avgGasCost = roundAvgGasCost;
                     }
                 }
 

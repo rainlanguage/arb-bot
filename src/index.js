@@ -52,7 +52,6 @@ const configOptions = {
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
- *
  * @param {string[]} sgs - The subgraph endpoint URL(s) to query for orders' details
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
@@ -125,7 +124,6 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 
 /**
  * Get the general and network configuration required for the bot to operate
- *
  * @param {string[]} rpcUrls - The RPC URL array
  * @param {string} walletKey - The wallet mnemonic phrase or private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
@@ -241,7 +239,6 @@ const getConfig = async(
 
 /**
  * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
- *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''

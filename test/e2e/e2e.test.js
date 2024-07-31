@@ -198,7 +198,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.gasCoveragePercentage = "1";
                 config.viemClient = viemClient;
                 config.dataFetcher = dataFetcher;
-                config.accounts = [bot];
+                config.accounts = [];
                 config.mainAccount = bot;
                 const { reports } = await clear(config, orders, tracer, ctx);
 

@@ -1,20 +1,20 @@
 const ethers = require("ethers");
 const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
+const { rotateAccounts } = require("./account");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
 const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
-    promiseTimeout,
     bundleOrders,
     PoolBlackList,
-    getSpanException,
+    promiseTimeout,
     getVaultBalance,
+    getSpanException,
     getActualClearAmount,
 } = require("./utils");
-const { rotateAccounts } = require("./account");
 
 /**
  * Specifies reason that order process halted
@@ -54,10 +54,10 @@ const processOrders = async(
     tracer,
     ctx,
 ) => {
-    const viemClient        = config.viemClient;
-    const dataFetcher       = config.dataFetcher;
-    const accounts          = config.accounts;
-    const mainAccount       = config.mainAccount;
+    const viemClient = config.viemClient;
+    const dataFetcher = config.dataFetcher;
+    const accounts = config.accounts;
+    const mainAccount = config.mainAccount;
 
     // instantiating arb contract
     const arb = new ethers.Contract(config.arbAddress, arbAbis);

@@ -20,23 +20,20 @@ const MainAccountDerivationIndex = 0;
  * @returns Array of ethers Wallets derived from the given menomonic phrase and standard derivation path
  */
 async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemClient, count = 0) {
-    let mainAccount;
     const accounts = [];
-    let isMnemonic = false;
-    if (/^(0x)?[a-fA-F0-9]{64}$/.test(mnemonicOrPrivateKey)) {
-        mainAccount = new ethers.Wallet(mnemonicOrPrivateKey, provider);
-    } else {
-        isMnemonic = true;
-        mainAccount = ethers.Wallet
+    const isMnemonic = !/^(0x)?[a-fA-F0-9]{64}$/.test(mnemonicOrPrivateKey);
+    const mainAccount = isMnemonic
+        ? ethers.Wallet
             .fromMnemonic(mnemonicOrPrivateKey, BasePath + MainAccountDerivationIndex)
-            .connect(provider);
-    }
+            .connect(provider)
+        : new ethers.Wallet(mnemonicOrPrivateKey, provider);
 
     // if the provided key is mnemonic, generate new accounts
     if (isMnemonic) {
         for (let derivationIndex = 1; derivationIndex <= count; derivationIndex++) {
             accounts.push(
-                ethers.Wallet.fromMnemonic(mnemonicOrPrivateKey, BasePath + derivationIndex)
+                ethers.Wallet
+                    .fromMnemonic(mnemonicOrPrivateKey, BasePath + derivationIndex)
                     .connect(provider)
             );
         }
@@ -56,33 +53,48 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
         const topupAmountBn = ethers.utils.parseUnits(topupAmount);
         let cumulativeTopupAmount = ethers.constants.Zero;
         for (let i = 1; i < balances.length; i++) {
-            if (topupAmountBn.sub(balances[i]).gte(0)) {
+            if (topupAmountBn.gt(balances[i])) {
                 cumulativeTopupAmount = cumulativeTopupAmount.add(
                     topupAmountBn.sub(balances[i])
                 );
             }
         }
-
         if (cumulativeTopupAmount.gt(balances[0])) {
-            throw "low on funds to topup excess wallets";
+            throw "low on funds to topup excess wallets with specified initial topup amount";
         } else {
+            const gasPrice = ethers.BigNumber.from(await viemClient.getGasPrice());
             for (let i = 0; i < accounts.length; i++) {
                 accounts[i].BOUNTY = [];
                 accounts[i].BALANCE = balances[i + 1];
 
                 // only topup those accounts that have lower than expected funds
                 const transferAmount = topupAmountBn.sub(balances[i + 1]);
-                if (transferAmount.gte(0)) {
+                if (transferAmount.gt(0)) {
                     try {
                         const tx = await mainAccount.sendTransaction({
                             to: accounts[i].address,
-                            value: transferAmount
+                            value: transferAmount,
+                            gasPrice,
                         });
                         await tx.wait();
                         accounts[i].BALANCE = topupAmountBn;
                         mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
-                    } catch (error) {
-                        return Promise.reject(`failed to toptup wallets, reason: ${error.reason}`);
+                    } catch (e) {
+                        const prefixMsg = "failed to topup wallets, ";
+                        if (e instanceof Error) {
+                            if (e.reason) {
+                                if (e?.error?.message) {
+                                    e.reason = prefixMsg + e.error.message + ", " + e.reason;
+                                } else {
+                                    e.reason = prefixMsg + e.reason ;
+                                }
+                            } else {
+                                e.message = prefixMsg + e.message;
+                            }
+                        } else if (typeof e === "string") {
+                            return Promise.reject(prefixMsg + e);
+                        }
+                        return Promise.reject(e);
                     }
                 }
             }
@@ -93,7 +105,7 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
 
 /**
  * Manages accounts by removing the ones that are out of gas from circulation
- * and replaces them with new ones while topping them up with x6 of avg gas cost
+ * and replaces them with new ones while topping them up with x11 of avg gas cost
  * of the arb() transactions, returns the last index used for new wallets.
  * @param {string} mnemonic - The mnemonic phrase
  * @param {ethers.Wallet} mainAccount - Other wallets
@@ -102,7 +114,7 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
  * @param {number} lastIndex - The last index used for wallets
  * @param {ethers.BigNumber} avgGasCost - Avg gas cost of arb txs
  */
-async function manageAccounts(mnemonic, mainAccount ,accounts, provider, lastIndex, avgGasCost) {
+async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastIndex, avgGasCost) {
     let accountsToAdd = 0;
     for (let i = accounts.length - 1; i >= 0; i--) {
         if (accounts[i].BALANCE.lt(avgGasCost)) {
@@ -110,25 +122,43 @@ async function manageAccounts(mnemonic, mainAccount ,accounts, provider, lastInd
             accounts.splice(i, 1);
         }
     }
-    for (let i = 0; i < accountsToAdd; i++) {
-        const acc = ethers.Wallet.fromMnemonic(mnemonic, BasePath + (++lastIndex))
-            .connect(provider);
-        try {
-            const tx = await mainAccount.sendTransaction({
-                to: acc.address,
-                value: avgGasCost.mul(6)
-            });
-            await tx.wait();
-            acc.BALANCE = avgGasCost.mul(6);
-            mainAccount.BALANCE = mainAccount.BALANCE.sub(avgGasCost.mul(6));
-        } catch (error) {
-            if (error.code === ethers.errors.INSUFFICIENT_FUNDS) {
-                throw "low on funds to top up new wallets";
-            } else {
-                throw `failed to top up new wallet, reason: ${error.reason ?? error.message}`;
+    if (accountsToAdd > 0) {
+        const gasPrice = await mainAccount.getGasPrice();
+        for (let i = 0; i < accountsToAdd; i++) {
+            const acc = ethers.Wallet.fromMnemonic(mnemonic, BasePath + (++lastIndex))
+                .connect(provider);
+            const balance = await acc.getBalance();
+            if (avgGasCost.mul(11).gt(balance)) {
+                try {
+                    const transferAmount = avgGasCost.mul(11).sub(balance);
+                    const tx = await mainAccount.sendTransaction({
+                        to: acc.address,
+                        value: transferAmount,
+                        gasPrice
+                    });
+                    await tx.wait();
+                    acc.BALANCE = avgGasCost.mul(11);
+                    mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
+                } catch (e) {
+                    const prefixMsg = "failed to topup wallets, ";
+                    if (e instanceof Error) {
+                        if (e.reason) {
+                            if (e.error?.message) {
+                                e.reason = prefixMsg + e.error.message + ", " + e.reason;
+                            } else {
+                                e.reason = prefixMsg + e.reason ;
+                            }
+                        } else {
+                            e.message = prefixMsg + e.message;
+                        }
+                    } else if (typeof e === "string") {
+                        return Promise.reject(prefixMsg + e);
+                    }
+                    return Promise.reject(e);
+                }
             }
+            accounts.push(acc);
         }
-        accounts.push(acc);
     }
     return lastIndex;
 }
