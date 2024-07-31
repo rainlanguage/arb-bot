@@ -187,4 +187,27 @@ module.exports = [
         ],
         ["1", "10000", "10000"]
     ],
+    [
+        ChainId.LINEA,
+        process?.env?.TEST_LINEA_RPC,
+        7497194,
+        [
+            WNATIVE[ChainId.LINEA],
+            new Token({
+                chainId: ChainId.LINEA,
+                address: "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
+                decimals: 6,
+                symbol: "USDT"
+            }),
+        ],
+        [
+            "0xE9C59fA9069fa49af0445E0476C9a41603fD5E51",
+            "0xd47f645078d115c2a83781784236ed14734d8D9A",
+        ],
+        [
+            LiquidityProviders.LynexV1,
+            LiquidityProviders.LynexV2
+        ],
+        ["1", "10000"]
+    ],
 ];
