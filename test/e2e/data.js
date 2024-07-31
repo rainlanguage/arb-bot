@@ -193,6 +193,7 @@ module.exports = [
         7497194,
         [
             WNATIVE[ChainId.LINEA],
+            USDC[ChainId.LINEA],
             new Token({
                 chainId: ChainId.LINEA,
                 address: "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
@@ -202,11 +203,12 @@ module.exports = [
         ],
         [
             "0xE9C59fA9069fa49af0445E0476C9a41603fD5E51",
+            "0x555CE236C0220695b68341bc48C68d52210cC35b",
             "0xd47f645078d115c2a83781784236ed14734d8D9A",
         ],
         [
             LiquidityProviders.LynexV1,
-            LiquidityProviders.LynexV2
+            LiquidityProviders.LynexV2,
         ],
         ["1", "10000"]
     ],
