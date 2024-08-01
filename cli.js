@@ -422,6 +422,8 @@ const main = async argv => {
 
             // manage account by removing those that have ran out of gas
             // and issuing a new one into circulation
+            roundSpan.setAttribute("avgGas", avgGasCost.toString());
+            roundSpan.setAttribute("accounts", config.accounts.map(v => v.address));
             if (avgGasCost && config.accounts.length) {
                 lastUsedAccountIndex = await manageAccounts(
                     options.mnemonic,
