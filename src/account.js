@@ -116,21 +116,47 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
  */
 async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastIndex, avgGasCost) {
     let accountsToAdd = 0;
+    let gasLimit;
+    const gasPrice = await mainAccount.getGasPrice();
     for (let i = accounts.length - 1; i >= 0; i--) {
-        if (accounts[i].BALANCE.lt(avgGasCost)) {
+        if (accounts[i].BALANCE.lt(avgGasCost.mul(2))) {
+            try {
+                if (!gasLimit) {
+                    gasLimit = await accounts[i].estimateGas({
+                        to: mainAccount.address,
+                        value: accounts[i].BALANCE,
+                        gasPrice
+                    });
+                }
+                const transferAmount = accounts[i].BALANCE.sub(gasPrice.mul(gasLimit));
+                const tx = await accounts[i].sendTransaction({
+                    to: mainAccount.address,
+                    value: transferAmount,
+                    gasPrice
+                });
+                await tx.wait();
+                mainAccount.BALANCE = mainAccount.BALANCE.add(transferAmount);
+                accounts[i].BALANCE = ethers.constants.Zero;
+            } catch {
+                /**/
+            }
             accountsToAdd++;
             accounts.splice(i, 1);
         }
     }
     if (accountsToAdd > 0) {
-        const gasPrice = await mainAccount.getGasPrice();
         for (let i = 0; i < accountsToAdd; i++) {
             const acc = ethers.Wallet.fromMnemonic(mnemonic, BasePath + (++lastIndex))
                 .connect(provider);
             const balance = await acc.getBalance();
             if (avgGasCost.mul(11).gt(balance)) {
+                const transferAmount = avgGasCost.mul(11).sub(balance);
+                if (mainAccount.BALANCE.lt(transferAmount)) {
+                    throw `main account lacks suffecient funds to topup wallets, current balance: ${
+                        ethers.utils.formatUnits(mainAccount.BALANCE)
+                    }`;
+                }
                 try {
-                    const transferAmount = avgGasCost.mul(11).sub(balance);
                     const tx = await mainAccount.sendTransaction({
                         to: acc.address,
                         value: transferAmount,
@@ -139,22 +165,8 @@ async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastInd
                     await tx.wait();
                     acc.BALANCE = avgGasCost.mul(11);
                     mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
-                } catch (e) {
-                    const prefixMsg = "failed to topup wallets, ";
-                    if (e instanceof Error) {
-                        if (e.reason) {
-                            if (e.error?.message) {
-                                e.reason = prefixMsg + e.error.message + ", " + e.reason;
-                            } else {
-                                e.reason = prefixMsg + e.reason ;
-                            }
-                        } else {
-                            e.message = prefixMsg + e.message;
-                        }
-                    } else if (typeof e === "string") {
-                        return Promise.reject(prefixMsg + e);
-                    }
-                    return Promise.reject(e);
+                } catch {
+                    /**/
                 }
             }
             accounts.push(acc);
@@ -168,18 +180,34 @@ async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastInd
  * @param {any} config - The config object
  */
 function rotateProviders(config) {
-    shuffleArray(config.rpc);
-    const allProviders = config.rpc.map(v => { return new ethers.providers.JsonRpcProvider(v); });
-    const provider = new ethers.providers.FallbackProvider(allProviders);
-    const viemClient = createViemClient(config.chain.id, config.rpc, false);
-    const dataFetcher = getDataFetcher(viemClient, config.lps, false);
+    if (config.rpc?.length > 1) {
+        shuffleArray(config.rpc);
+        const allProviders = config.rpc.map(v => new ethers.providers.JsonRpcProvider(v));
+        const provider = new ethers.providers.FallbackProvider(allProviders);
+        const viemClient = createViemClient(config.chain.id, config.rpc, false);
+        const dataFetcher = getDataFetcher(viemClient, config.lps, false);
 
-    config.provider = provider;
-    config.viemClient = viemClient;
-    config.dataFetcher = dataFetcher;
-    config.mainAccount = config.mainAccount.connect(provider);
-    for (let i = 0; i < config.accounts.length; i++) {
-        config.accounts[i] = config.accounts[i].connect(provider);
+        config.provider = provider;
+        config.viemClient = viemClient;
+        config.dataFetcher = dataFetcher;
+
+        // rotate main account's provider
+        const mainAccBalance = config.mainAccount.BALANCE;
+        const mainAccBounty = config.mainAccount.BOUNTY;
+        const mainAcc = config.mainAccount.connect(provider);
+        mainAcc.BALANCE = mainAccBalance;
+        mainAcc.BOUNTY = mainAccBounty;
+        config.mainAccount = mainAcc;
+
+        // rotate other accounts' provider
+        for (let i = 0; i < config.accounts.length; i++) {
+            const balance = config.accounts[i].BALANCE;
+            const bounty = config.accounts[i].BOUNTY;
+            const acc = config.accounts[i].connect(provider);
+            acc.BALANCE = balance;
+            acc.BOUNTY = bounty;
+            config.accounts[i] = acc;
+        }
     }
 }
 
@@ -189,7 +217,7 @@ function rotateProviders(config) {
  */
 function rotateAccounts(accounts) {
     if (accounts && Array.isArray(accounts) && accounts.length > 1) {
-        accounts.push(...accounts.splice(0, 1));
+        accounts.push(accounts.shift());
     }
 }
 

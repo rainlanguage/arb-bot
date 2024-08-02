@@ -139,9 +139,9 @@ const processOrders = async(
             // keep track of avggas cost
             if (e.gasCost) {
                 if (!avgGasCost) {
-                    avgGasCost = result.gasCost;
+                    avgGasCost = e.gasCost;
                 } else {
-                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
+                    avgGasCost = avgGasCost.add(e.gasCost).div(2);
                 }
             }
 
@@ -220,6 +220,9 @@ const processOrders = async(
             }
         }
         span.end();
+
+        // rotate the accounts once they are used once
+        rotateAccounts(accounts);
     }
     return { reports, avgGasCost };
 };
@@ -238,11 +241,7 @@ async function processPair(args) {
         arb,
         orderbook,
         pair,
-        mainAccount,
-        accounts,
     } = args;
-
-    (mainAccount);
 
     const spanAttributes = {};
     const result = {
@@ -474,9 +473,6 @@ async function processPair(args) {
     // submit the tx
     let tx, txUrl;
     try {
-        // rotate the accounts once they are used once
-        rotateAccounts(accounts);
-
         spanAttributes["details.route"] = routeVisual;
         spanAttributes["details.maxInput"] = maximumInput.toString();
         spanAttributes["details.marketPrice"] = ethers.utils.formatEther(price);

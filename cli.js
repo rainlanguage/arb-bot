@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
 const { Resource } = require("@opentelemetry/resources");
@@ -156,6 +157,9 @@ const arbRound = async (tracer, roundCtx, options, config) => {
             }
             else {
                 span.setAttribute("didClear", false);
+            }
+            if (avgGasCost) {
+                span.setAttribute("avgGasCost", avgGasCost.toString());
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
@@ -400,6 +404,18 @@ const main = async argv => {
                     } else {
                         avgGasCost = roundAvgGasCost;
                     }
+                    // manage account by removing those that have ran out of gas
+                    // and issuing a new one into circulation
+                    if (config.accounts.length) {
+                        lastUsedAccountIndex = await manageAccounts(
+                            options.mnemonic,
+                            config.mainAccount,
+                            config.accounts,
+                            config.provider,
+                            lastUsedAccountIndex,
+                            avgGasCost,
+                        );
+                    }
                 }
 
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
@@ -420,19 +436,12 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
 
-            // manage account by removing those that have ran out of gas
-            // and issuing a new one into circulation
-            roundSpan.setAttribute("avgGas", avgGasCost.toString());
-            roundSpan.setAttribute("accounts", config.accounts.map(v => v.address));
-            if (avgGasCost && config.accounts.length) {
-                lastUsedAccountIndex = await manageAccounts(
-                    options.mnemonic,
-                    config.mainAccount,
-                    config.accounts,
-                    config.provider,
-                    lastUsedAccountIndex,
-                    avgGasCost
-                );
+            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
+            if (config.accounts.length) {
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+            }
+            if (avgGasCost) {
+                roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
 
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
@@ -486,6 +495,18 @@ const main = async argv => {
                     } else {
                         avgGasCost = roundAvgGasCost;
                     }
+                    // manage account by removing those that have ran out of gas
+                    // and issuing a new one into circulation
+                    if (config.accounts.length) {
+                        lastUsedAccountIndex = await manageAccounts(
+                            options.mnemonic,
+                            config.mainAccount,
+                            config.accounts,
+                            config.provider,
+                            lastUsedAccountIndex,
+                            avgGasCost,
+                        );
+                    }
                 }
 
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
@@ -506,17 +527,12 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
 
-            // manage account by removing those that have ran out of gas
-            // and issuing a new one into circulation
-            if (avgGasCost && config.accounts.length) {
-                lastUsedAccountIndex = await manageAccounts(
-                    options.mnemonic,
-                    config.mainAccount,
-                    config.accounts,
-                    config.provider,
-                    lastUsedAccountIndex,
-                    avgGasCost
-                );
+            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
+            if (config.accounts.length) {
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+            }
+            if (avgGasCost) {
+                roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
 
             if (i !== repetitions) console.log(
