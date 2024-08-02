@@ -15,10 +15,10 @@ module.exports = {
                 url: process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon", // avalanche network to run the test on
                 blockNumber: 56738134
             },
-            // mining: {
-            //     auto: false,
-            //     interval: 250
-            // },
+            mining: {
+                auto: true,
+                interval: 50
+            },
             gasPrice: "auto",
             blockGasLimit: 100000000,
             allowUnlimitedContractSize: true

@@ -517,11 +517,11 @@ async function processPair(args) {
     try {
         const receipt = config.timeout
             ? await promiseTimeout(
-                tx.wait(),
+                tx.wait(2),
                 config.timeout,
                 `Transaction failed to mine after ${config.timeout}ms`
             )
-            : await tx.wait();
+            : await tx.wait(2);
 
         if (receipt.status === 1) {
             spanAttributes["didClear"] = true;
@@ -590,7 +590,6 @@ async function processPair(args) {
             // keep track of gas consumption of the account
             const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
                 .mul(receipt.gasUsed);
-            result.gasCost = actualGasCost;
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
@@ -612,7 +611,6 @@ async function processPair(args) {
         try {
             actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice)
                 .mul(e.receipt.gasUsed);
-            result.gasCost = actualGasCost;
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
         } catch {
             /**/

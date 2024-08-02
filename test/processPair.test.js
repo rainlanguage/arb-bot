@@ -476,7 +476,7 @@ describe("Test process pair", async function () {
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
                 error: undefined,
-                gasCost: effectiveGasPrice.mul(gasUsed),
+                gasCost: undefined,
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],

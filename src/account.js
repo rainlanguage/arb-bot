@@ -76,7 +76,7 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
                             value: transferAmount,
                             gasPrice,
                         });
-                        await tx.wait();
+                        await tx.wait(6);
                         accounts[i].BALANCE = topupAmountBn;
                         mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
                     } catch (e) {
@@ -124,15 +124,18 @@ async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastInd
                 if (!gasLimit) {
                     gasLimit = await accounts[i].estimateGas({
                         to: mainAccount.address,
-                        value: accounts[i].BALANCE,
+                        value: "0",
                         gasPrice
                     });
                 }
-                const transferAmount = accounts[i].BALANCE.sub(gasPrice.mul(gasLimit));
+                const transferAmount = accounts[i].BALANCE.sub(
+                    gasPrice.mul(gasLimit).mul(101).div(100)
+                );
                 const tx = await accounts[i].sendTransaction({
                     to: mainAccount.address,
                     value: transferAmount,
-                    gasPrice
+                    gasPrice,
+                    gasLimit
                 });
                 await tx.wait();
                 mainAccount.BALANCE = mainAccount.BALANCE.add(transferAmount);
@@ -162,7 +165,7 @@ async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastInd
                         value: transferAmount,
                         gasPrice
                     });
-                    await tx.wait();
+                    await tx.wait(6);
                     acc.BALANCE = avgGasCost.mul(11);
                     mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount);
                 } catch {
@@ -240,7 +243,7 @@ async function withdrawBounty(from, to, token, receipt, viemClient) {
         })).data);
     }
     const tx = await token.connect(from).transfer(to.address, amount);
-    await tx.wait();
+    await tx.wait(2);
 }
 
 /**
