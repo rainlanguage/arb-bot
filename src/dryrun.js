@@ -164,7 +164,7 @@ async function dryrun({
                 || errorString.includes("insufficient funds for gas")
             ) {
                 result.reason = DryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = (await signer.getBalance()).toString();
+                spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
             } else {
                 result.reason = DryrunHaltReason.NoOpportunity;
             }
@@ -216,7 +216,7 @@ async function dryrun({
                     || errorString.includes("insufficient funds for gas")
                 ) {
                     result.reason = DryrunHaltReason.NoWalletFund;
-                    spanAttributes["currentWalletBalance"] = (await signer.getBalance()).toString();
+                    spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
                 } else {
                     result.reason = DryrunHaltReason.NoOpportunity;
                 }

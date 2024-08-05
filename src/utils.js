@@ -29,39 +29,49 @@ const sleep = async(ms, msg = "") => {
 
 /**
  * Extracts the income (received token value) from transaction receipt
- *
- * @param {ethers.Wallet} signerAddress - The signer address
+ * @param {string} signerAddress - The signer address
  * @param {any} receipt - The transaction receipt
+ * @param {string} token - The token address that was transfered
  * @returns The income value or undefined if cannot find any valid value
  */
-const getIncome = (signerAddress, receipt) => {
+const getIncome = (signerAddress, receipt, token) => {
+    let result;
     const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    if (receipt.events) return receipt.events.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
-    ).map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    })[0]?.value;
-    else if (receipt.logs) return receipt.logs.filter(
-        v => v.topics[2] && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
-    ).map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
-            return undefined;
-        }
-    })[0]?.value;
-    else return undefined;
+    try {
+        if (receipt.events) result = receipt.events.filter(
+            v =>
+                (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+                && v.topics[2]
+                && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        ).map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        })?.[0]?.value;
+        if (!result && receipt.logs) result = receipt.logs.filter(
+            v =>
+                (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true)
+                && v.topics[2]
+                && ethers.BigNumber.from(v.topics[2]).eq(signerAddress)
+        ).map(v => {
+            try{
+                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+            }
+            catch {
+                return undefined;
+            }
+        })?.[0]?.value;
+    } catch {
+        /**/
+    }
+    return result;
 };
 
 /**
  * Extracts the actual clear amount (received token value) from transaction receipt
- *
  * @param {string} arbAddress - The arb contract address
  * @param {any} receipt - The transaction receipt
  * @returns The actual clear amount
@@ -97,7 +107,6 @@ const getActualClearAmount = (arbAddress, obAddress, receipt) => {
 
 /**
  * Calculates the actual clear price from transactioin event
- *
  * @param {any} receipt - The transaction receipt
  * @param {string} orderbook - The Orderbook contract address
  * @param {string} arb - The Arb contract address
@@ -139,36 +148,7 @@ const getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
 };
 
 /**
- * Estimates the profit for a single bundled orders struct
- *
- * @param {string} pairPrice - The price token pair
- * @param {string} ethPrice - Price of ETH to buy token
- * @param {object} bundledOrder - The bundled order object
- * @param {ethers.BigNumber} gas - The estimated gas cost in ETH
- * @param {string} gasCoveragePercentage - Percentage of gas to cover, default is 100,i.e. full gas coverage
- * @returns The estimated profit
- */
-const estimateProfit = (pairPrice, ethPrice, bundledOrder, gas, gasCoveragePercentage = "100") => {
-    let income = ethers.constants.Zero;
-    const price = ethers.utils.parseUnits(pairPrice);
-    const gasCost = ethers.utils.parseEther(ethPrice)
-        .mul(gas)
-        .div(ethers.utils.parseUnits("1"))
-        .mul(gasCoveragePercentage)
-        .div("100");
-    for (const takeOrder of bundledOrder.takeOrders) {
-        income = price
-            .sub(takeOrder.ratio)
-            .mul(takeOrder.quoteAmount)
-            .div(ethers.utils.parseUnits("1"))
-            .add(income);
-    }
-    return income.sub(gasCost);
-};
-
-/**
  * Gets ETH price against a target token
- *
  * @param {any} config - The network config data
  * @param {string} targetTokenAddress - The target token address
  * @param {number} targetTokenDecimals - The target token decimals
@@ -223,7 +203,6 @@ const getEthPrice = async(
 
 /**
  * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
- *
  * @param {string[]} liquidityProviders - List of liquidity providers
  */
 const processLps = (liquidityProviders) => {
@@ -302,7 +281,6 @@ const getOrderDetailsFromJson = async(jsonContent, signer) => {
 
 /**
  * Method to shorten data fields of items that are logged and optionally hide sensitive data
- *
  * @param {boolean} scrub - Option to scrub sensitive data
  * @param {...any} data - The optinnal data to hide
  */
@@ -422,7 +400,6 @@ const appGlobalLogger = (scrub, ...data) => {
 
 /**
  * Method to put a timeout on a promise, throws the exception if promise is not settled within the time
- *
  * @param {Promise} promise - The Promise to put timeout on
  * @param {number} time - The time in milliseconds
  * @param {string | number | bigint | symbol | boolean} exception - The exception value to reject with if the promise is not settled within time
@@ -443,7 +420,6 @@ const promiseTimeout = async(promise, time, exception) => {
 
 /**
  * Gets the route for tokens
- *
  * @param {number} chainId - The network chain id
  * @param {ethers.BigNumber} sellAmount - The sell amount, should be in onchain token value
  * @param {string} fromTokenAddress - The from token address
@@ -532,7 +508,6 @@ const getRouteForTokens = async(
 
 /**
  * Method to visualize the routes, returns array of route strings sorted from highest to lowest percentage
- *
  * @param {string} fromToken - The from token address
  * @param {string} toToken - The to token address
  * @param {any[]} legs - The legs of the route
@@ -581,6 +556,10 @@ const visualizeRoute = (fromToken, toToken, legs) => {
     );
 };
 
+/**
+ * Shuffles an array
+ * @param {*} array - The array
+ */
 const shuffleArray = (array) => {
     let currentIndex = array.length;
     let randomIndex = 0;
@@ -605,6 +584,10 @@ const shuffleArray = (array) => {
     return array;
 };
 
+/**
+ * Prepares an etherjs error for otel span consumption
+ * @param {*} error - The ethersjs error
+ */
 function getSpanException(error) {
     if (error instanceof Error && Object.keys(error).length && error.message.includes("providers/5.7.0")) {
         const parsedError = JSON.parse(JSON.stringify(error));
@@ -619,7 +602,6 @@ function getSpanException(error) {
 
 /**
  * Builds and bundles orders which their details are queried from a orderbook subgraph
- *
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @param {boolean} _bundle = If orders should be bundled based on token pair
@@ -737,7 +719,6 @@ module.exports = {
     sleep,
     getIncome,
     getActualPrice,
-    estimateProfit,
     getEthPrice,
     processLps,
     getOrderDetailsFromJson,
@@ -751,5 +732,5 @@ module.exports = {
     bundleOrders,
     getVaultBalance,
     PoolBlackList,
-    RPoolFilter
+    RPoolFilter,
 };

@@ -4,7 +4,8 @@
 const erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
     "function symbol() public view returns (string memory)",
-    "function transfer(address to, uint256 amount) external returns (bool)"
+    "function transfer(address to, uint256 amount) external returns (bool)",
+    "function balanceOf(address account) external view returns (uint256)"
 ];
 
 // structs used in the orderbook and arb abis
@@ -65,6 +66,10 @@ const arbAbis = [
     `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`
 ];
 
+const multicall3Abi = [
+    "function getEthBalance(address addr) external view returns (uint256 balance)"
+];
+
 // an empty evaluable mainly used as default evaluable for arb contracts
 const DefaultArbEvaluable = {
     interpreter: "0x" + "0".repeat(40),
@@ -87,4 +92,5 @@ module.exports = {
     OrderConfigV3,
     TakeOrdersConfigV3,
     DefaultArbEvaluable,
+    multicall3Abi,
 };

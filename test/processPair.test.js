@@ -33,6 +33,8 @@ describe("Test process pair", async function () {
     beforeEach(() => {
         config.gasCoveragePercentage = "0";
         signer = {
+            BALANCE: ethers.BigNumber.from(0),
+            BOUNTY: [],
             getAddress: () => "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
             provider: {
                 getBlockNumber: async () => 123456,
@@ -79,6 +81,8 @@ describe("Test process pair", async function () {
             arb,
             orderbook,
             pair,
+            mainAccount: signer,
+            accounts: [signer]
         });
         const expected = {
             report: {
@@ -96,6 +100,7 @@ describe("Test process pair", async function () {
             },
             reason: undefined,
             error: undefined,
+            gasCost: gasPrice.mul(gasUsed),
             spanAttributes: {
                 "details.blockNumber": 123456,
                 "details.blockNumberDiff": 0,
@@ -131,10 +136,13 @@ describe("Test process pair", async function () {
             arb,
             orderbook,
             pair,
+            mainAccount: signer,
+            accounts: [signer]
         });
         const expected = {
             reason: undefined,
             error: undefined,
+            gasCost: undefined,
             report: {
                 status: ProcessPairReportStatus.EmptyVault,
                 tokenPair: pair,
@@ -165,11 +173,14 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
             const expected = {
                 report: undefined,
+                gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetVaultBalance,
                 error: evmError,
                 spanAttributes: {
@@ -197,11 +208,14 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
             const expected = {
                 report: undefined,
+                gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetGasPrice,
                 error: evmError,
                 spanAttributes: {
@@ -229,11 +243,14 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
             const expected = {
                 report: undefined,
+                gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetEthPrice,
                 error: undefined,
                 spanAttributes: {
@@ -262,11 +279,14 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
             const expected = {
                 report: undefined,
+                gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetPools,
                 error: evmError,
                 spanAttributes: {
@@ -298,6 +318,8 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -329,6 +351,7 @@ describe("Test process pair", async function () {
                     sellToken: orderPairObject.sellToken,
                 },
                 reason: ProcessPairHaltReason.TxFailed,
+                gasCost: undefined,
                 error: evmError,
                 spanAttributes: {
                     "details.pair": pair,
@@ -374,6 +397,8 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -383,9 +408,11 @@ describe("Test process pair", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
+                    txUrl: scannerUrl + "/tx/" + txHash,
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
                 error: evmError,
+                gasCost: undefined,
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
@@ -407,9 +434,11 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to mine tx with resolve", async function () {
-        const evmError = {
+        const errorReceipt = {
             status: 0,
-            code: ethers.errors.CALL_EXCEPTION
+            code: ethers.errors.CALL_EXCEPTION,
+            gasUsed,
+            effectiveGasPrice,
         };
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
@@ -417,7 +446,7 @@ describe("Test process pair", async function () {
         signer.sendTransaction = async () => {
             return {
                 hash: txHash,
-                wait: async () => { return evmError; }
+                wait: async () => { return errorReceipt; }
             };
         };
         try {
@@ -431,6 +460,8 @@ describe("Test process pair", async function () {
                 arb,
                 orderbook,
                 pair,
+                mainAccount: signer,
+                accounts: [signer]
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -440,9 +471,12 @@ describe("Test process pair", async function () {
                     tokenPair: pair,
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
+                    txUrl: scannerUrl + "/tx/" + txHash,
+                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
                 error: undefined,
+                gasCost: undefined,
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
@@ -457,7 +491,7 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(evmError)
+                    "details.receipt": JSON.stringify(errorReceipt)
                 }
             };
             assert.deepEqual(error, expected);

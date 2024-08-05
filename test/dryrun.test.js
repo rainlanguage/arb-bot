@@ -140,6 +140,7 @@ describe("Test dryrun", async function () {
         signer.estimateGas = async () => {
             return Promise.reject(noFundError);
         };
+        signer.BALANCE = ethers.constants.Zero;
         try {
             await dryrun({
                 mode: 0,
@@ -432,6 +433,7 @@ describe("Test find opp", async function () {
         signer.estimateGas = async () => {
             return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
         };
+        signer.BALANCE = ethers.constants.Zero;
         try {
             await findOpp({
                 mode: 0,
@@ -611,6 +613,7 @@ describe("Test find opp with retries", async function () {
         signer.estimateGas = async () => {
             return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
         };
+        signer.BALANCE = ethers.constants.Zero;
         try {
             await findOppWithRetries({
                 orderPairObject,

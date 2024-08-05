@@ -4,6 +4,7 @@ const axios = require("axios");
 const { ethers } = require("ethers");
 const { versions } = require("process");
 const { processLps } = require("./utils");
+const { initAccounts } = require("./account");
 const { processOrders } = require("./processOrders");
 const { getQuery, statusCheckQuery } = require("./query");
 const { checkSgStatus, handleSgResults } = require("./sg");
@@ -51,7 +52,6 @@ const configOptions = {
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
- *
  * @param {string[]} sgs - The subgraph endpoint URL(s) to query for orders' details
  * @param {string} json - Path to a json file containing orders structs
  * @param {ethers.signer} signer - The ethers signer
@@ -124,9 +124,8 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 
 /**
  * Get the general and network configuration required for the bot to operate
- *
  * @param {string[]} rpcUrls - The RPC URL array
- * @param {string} walletPrivateKey - The wallet private key
+ * @param {string} walletKey - The wallet mnemonic phrase or private key
  * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
@@ -135,7 +134,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  */
 const getConfig = async(
     rpcUrls,
-    walletPrivateKey,
+    walletKey,
     orderbookAddress,
     arbAddress,
     options = configOptions
@@ -143,8 +142,6 @@ const getConfig = async(
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
-
-    if (!/^(0x)?[a-fA-F0-9]{64}$/.test(walletPrivateKey)) throw "invalid wallet private key";
 
     if (options.timeout !== undefined){
         if (typeof options.timeout === "number") {
@@ -202,8 +199,7 @@ const getConfig = async(
 
     const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
     const provider = new ethers.providers.FallbackProvider(allProviders);
-    const signer = new ethers.Wallet(walletPrivateKey, provider);
-    const chainId = await signer.getChainId();
+    const chainId = (await provider.getNetwork()).chainId;
     const config = getChainConfig(chainId);
     const lps = processLps(options?.liquidityProviders);
     const viemClient = createViemClient(chainId, rpcUrls, false);
@@ -214,7 +210,7 @@ const getConfig = async(
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
     config.rpc                      = rpcUrls;
-    config.signer                   = signer;
+    config.provider                 = provider;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
     config.timeout                  = options?.timeout;
@@ -227,12 +223,22 @@ const getConfig = async(
     config.viemClient               = viemClient;
     config.dataFetcher              = dataFetcher;
 
+    // init accounts
+    const { mainAccount, accounts } = await initAccounts(
+        walletKey,
+        config.provider,
+        options?.topupAmount,
+        config.viemClient,
+        options?.walletCount
+    );
+    config.mainAccount = mainAccount;
+    config.accounts = accounts;
+
     return config;
 };
 
 /**
  * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
- *
  * @param {object} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
  * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''

@@ -1,11 +1,13 @@
 require("dotenv").config();
 const fs = require("fs");
+const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
 const { Resource } = require("@opentelemetry/resources");
+const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { sleep, getSpanException, shuffleArray } = require("./src/utils");
+const { manageAccounts, rotateProviders } = require("./src/account");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
@@ -17,6 +19,7 @@ const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpan
  */
 const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
+    mnemonic            : process?.env?.MNEMONIC,
     arbAddress          : process?.env?.ARB_ADDRESS,
     orderbookAddress    : process?.env?.ORDERBOOK_ADDRESS,
     orders              : process?.env?.ORDERS,
@@ -33,6 +36,8 @@ const ENV_OPTIONS = {
     hops                : process?.env?.HOPS,
     retries             : process?.env?.RETRIES,
     poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
+    walletCount         : process?.env?.WALLET_COUNT,
+    topupAmount         : process?.env?.TOPUP_AMOUNT,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -43,7 +48,8 @@ const ENV_OPTIONS = {
 
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
-        .option("-k, --key <private-key>", "Private key of wallet that performs the transactions. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
+        .option("-k, --key <private-key>", "Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
+        .option("-m, --mnemonic <mnemonic-phrase>", "Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires '--wallet-count' and '--topup-amount'. Will override the 'MNEMONIC' in env variables")
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing an array of the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
@@ -62,6 +68,8 @@ const getOptions = async argv => {
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
+        .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -74,6 +82,7 @@ const getOptions = async argv => {
 
     // assigning specified options from cli/env
     cmdOptions.key                = cmdOptions.key                || ENV_OPTIONS.key;
+    cmdOptions.mnemonic           = cmdOptions.mnemonic           || ENV_OPTIONS.mnemonic;
     cmdOptions.rpc                = cmdOptions.rpc                || ENV_OPTIONS.rpc;
     cmdOptions.arbAddress         = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
     cmdOptions.orderbookAddress   = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
@@ -91,6 +100,8 @@ const getOptions = async argv => {
     cmdOptions.hops               = cmdOptions.hops               || ENV_OPTIONS.hops;
     cmdOptions.retries            = cmdOptions.retries            || ENV_OPTIONS.retries;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
+    cmdOptions.walletCount        = cmdOptions.walletCount        || ENV_OPTIONS.walletCount;
+    cmdOptions.topupAmount        = cmdOptions.topupAmount        || ENV_OPTIONS.topupAmount;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
@@ -101,40 +112,14 @@ const getOptions = async argv => {
  * @param {import("@opentelemetry/api").Context} roundCtx
  * @param {*} options
  */
-const arbRound = async (tracer, roundCtx, options) => {
-
-    if (!options.key)               throw "undefined wallet private key";
-    if (!options.rpc)               throw "undefined RPC URL";
-    if (!options.arbAddress)        throw "undefined arb contract address";
-    if (!options.orderbookAddress)  throw "undefined orderbook contract address";
-
+const arbRound = async (tracer, roundCtx, options, config) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
         try {
-            const config = await getConfig(
-                options.rpc,
-                options.key,
-                options.orderbookAddress,
-                options.arbAddress,
-                {
-                    maxRatio             : options.maxRatio,
-                    flashbotRpc          : options.flashbotRpc,
-                    timeout              : options.timeout,
-                    bundle               : options.bundle,
-                    hops                 : options.hops,
-                    retries              : options.retries,
-                    poolUpdateInterval   : options.poolUpdateInterval,
-                    gasCoveragePercentage: options.gasCoverage,
-                    liquidityProviders   : options.lps
-                        ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
-                        : undefined,
-                }
-            );
-
             const ordersDetails = await getOrderDetails(
                 options.subgraph,
                 options.orders,
-                config.signer,
+                config.mainAccount,
                 {
                     orderHash: options.orderHash,
                     orderOwner: options.orderOwner,
@@ -145,12 +130,12 @@ const arbRound = async (tracer, roundCtx, options) => {
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
-                return { txs: [], foundOpp: false };
+                return { txs: [], foundOpp: false, avgGasCost: undefined };
             }
 
             let txs;
             let foundOpp = false;
-            const reports = await clear(
+            const { reports, avgGasCost } = await clear(
                 config,
                 ordersDetails,
                 tracer,
@@ -173,9 +158,12 @@ const arbRound = async (tracer, roundCtx, options) => {
             else {
                 span.setAttribute("didClear", false);
             }
+            if (avgGasCost) {
+                span.setAttribute("avgGasCost", avgGasCost.toString());
+            }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
-            return { txs, foundOpp };
+            return { txs, foundOpp, avgGasCost };
         } catch(e) {
             let message = "";
             if (e instanceof Error) {
@@ -199,7 +187,98 @@ const arbRound = async (tracer, roundCtx, options) => {
     });
 };
 
+/**
+ * CLI startup function
+ * @param {*} argv - cli args
+ */
+async function startup(argv) {
+    let roundGap = 10000;
+    let repetitions = -1;
+    let _poolUpdateInterval = 15;
+
+    const options = await getOptions(argv);
+
+    if (
+        (!options.key && !options.mnemonic)
+        || (options.key && options.mnemonic)
+    ) {
+        throw "undefined wallet, only one of key or mnemonic should be specified";
+    }
+    if (options.mnemonic) {
+        if ((!options.walletCount || !options.topupAmount)) {
+            throw "--wallet-count and --toptup-amount are required when using mnemonic option";
+        }
+        if (!/^[0-9]+$/.test(options.walletCount)) {
+            throw "invalid --wallet-count, it should be an integer greater than equal 0";
+        } else {
+            options.walletCount = Number(options.walletCount);
+        }
+        if (!/^[0-9]+(.[0-9]+)?$/.test(options.topupAmount)) {
+            throw "invalid --topup-amount, it should be an number greater than equal 0";
+        }
+    }
+    if (options.key) {
+        if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
+    }
+    if (!options.rpc) throw "undefined RPC URL";
+    if (!options.arbAddress) throw "undefined arb contract address";
+    if (!options.orderbookAddress) throw "undefined orderbook contract address";
+    if (options.repetitions) {
+        if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
+        else throw "invalid repetitions, must be an integer greater than equal 0";
+    }
+    if (options.sleep) {
+        if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
+        else throw "invalid sleep value, must be an integer greater than equal 0";
+    }
+    if (options.poolUpdateInterval) {
+        if (typeof options.poolUpdateInterval === "number") {
+            _poolUpdateInterval = options.poolUpdateInterval;
+            if (_poolUpdateInterval === 0 || !Number.isInteger(_poolUpdateInterval))
+                throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+        }
+        else if (typeof options.poolUpdateInterval === "string" && /^[0-9]+$/.test(options.poolUpdateInterval)) {
+            _poolUpdateInterval = Number(options.poolUpdateInterval);
+            if (_poolUpdateInterval === 0) throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+        }
+        else throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+    }
+    const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
+
+    // get config
+    const config = await getConfig(
+        options.rpc,
+        options.key ?? options.mnemonic,
+        options.orderbookAddress,
+        options.arbAddress,
+        {
+            maxRatio             : options.maxRatio,
+            flashbotRpc          : options.flashbotRpc,
+            timeout              : options.timeout,
+            bundle               : options.bundle,
+            hops                 : options.hops,
+            retries              : options.retries,
+            poolUpdateInterval   : options.poolUpdateInterval,
+            gasCoveragePercentage: options.gasCoverage,
+            topupAmount          : options.topupAmount,
+            walletCount          : options.walletCount,
+            liquidityProviders   : options.lps
+                ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
+                : undefined,
+        }
+    );
+
+    return {
+        roundGap,
+        repetitions,
+        options,
+        poolUpdateInterval,
+        config,
+    };
+}
+
 const main = async argv => {
+    // startup otel to collect span, logs, etc
     // diag otel
     diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
 
@@ -232,36 +311,55 @@ const main = async argv => {
     provider.register();
     const tracer = provider.getTracer("arb-bot-tracer");
 
-    let repetitions = -1;
-    const options = await getOptions(argv);
-    if (!options.rpc) throw "undefined RPC URL";
-    let roundGap = 10000;
+    // parse cli args and startup bot configuration
+    const {
+        roundGap,
+        repetitions,
+        options,
+        poolUpdateInterval,
+        config,
+    } = await tracer.startActiveSpan("startup", async (startupSpan) => {
+        try {
+            const result = await startup(argv);
+            startupSpan.setStatus({ code: SpanStatusCode.OK });
+            startupSpan.end();
+            return result;
+        } catch (e) {
+            let message = "";
+            if (e instanceof Error) {
+                if ("reason" in e) message = e.reason;
+                else message = e.message;
+            }
+            else if (typeof e === "string") message = e;
+            else {
+                try {
+                    message = e.toString();
+                } catch {
+                    message = "unknown error type";
+                }
+            }
+            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message });
+            startupSpan.recordException(getSpanException(e));
 
-    if (options.repetitions) {
-        if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
-        else throw "invalid repetitions, must be an integer greater than equal 0";
-    }
-    if (options.sleep) {
-        if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
-        else throw "invalid sleep value, must be an integer greater than equal 0";
-    }
-    let _poolUpdateInterval = 15;
-    if (options.poolUpdateInterval) {
-        if (typeof options.poolUpdateInterval === "number") {
-            _poolUpdateInterval = options.poolUpdateInterval;
-            if (_poolUpdateInterval === 0 || !Number.isInteger(_poolUpdateInterval))
-                throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+            // end this span and wait for it to finish
+            startupSpan.end();
+            await sleep(20000);
+
+            // flush and close the otel connection.
+            await exporter.shutdown();
+            await sleep(10000);
+
+            // reject the promise that makes the cli process to exit with error
+            return Promise.reject(e);
         }
-        else if (typeof options.poolUpdateInterval === "string" && /^[0-9]+$/.test(options.poolUpdateInterval)) {
-            _poolUpdateInterval = Number(options.poolUpdateInterval);
-            if (_poolUpdateInterval === 0) throw "invalid poolUpdateInterval value, must be an integer greater than zero";
-        }
-        else throw "invalid poolUpdateInterval value, must be an integer greater than zero";
-    }
-    const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
+    });
+
     let lastInterval = Date.now() + poolUpdateInterval;
-
+    let lastUsedAccountIndex = config.accounts.length;
+    let avgGasCost;
     let counter = 0;
+
+    // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
@@ -282,8 +380,9 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                shuffleArray(options.rpc);
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options);
+                rotateProviders(config);
+                const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
+                    await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
@@ -297,6 +396,28 @@ const main = async argv => {
                     roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
                 }
+
+                // keep avg gas cost
+                if (roundAvgGasCost) {
+                    if (avgGasCost) {
+                        avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
+                    } else {
+                        avgGasCost = roundAvgGasCost;
+                    }
+                    // manage account by removing those that have ran out of gas
+                    // and issuing a new one into circulation
+                    if (config.accounts.length) {
+                        lastUsedAccountIndex = await manageAccounts(
+                            options.mnemonic,
+                            config.mainAccount,
+                            config.accounts,
+                            config.provider,
+                            lastUsedAccountIndex,
+                            avgGasCost,
+                        );
+                    }
+                }
+
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
             }
             catch (error) {
@@ -314,6 +435,15 @@ const main = async argv => {
                 roundSpan.recordException(getSpanException(error));
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
+
+            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
+            if (config.accounts.length) {
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+            }
+            if (avgGasCost) {
+                roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
+            }
+
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();
             await sleep(roundGap);
@@ -341,8 +471,9 @@ const main = async argv => {
                 dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                shuffleArray(options.rpc);
-                const { txs, foundOpp } = await arbRound(tracer, roundCtx, options);
+                rotateProviders(config);
+                const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
+                    await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
@@ -356,6 +487,28 @@ const main = async argv => {
                     roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
                 }
+
+                // keep avg gas cost
+                if (roundAvgGasCost) {
+                    if (avgGasCost) {
+                        avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
+                    } else {
+                        avgGasCost = roundAvgGasCost;
+                    }
+                    // manage account by removing those that have ran out of gas
+                    // and issuing a new one into circulation
+                    if (config.accounts.length) {
+                        lastUsedAccountIndex = await manageAccounts(
+                            options.mnemonic,
+                            config.mainAccount,
+                            config.accounts,
+                            config.provider,
+                            lastUsedAccountIndex,
+                            avgGasCost,
+                        );
+                    }
+                }
+
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
             }
             catch (error) {
@@ -373,6 +526,15 @@ const main = async argv => {
                 roundSpan.recordException(getSpanException(error));
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
+
+            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
+            if (config.accounts.length) {
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+            }
+            if (avgGasCost) {
+                roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
+            }
+
             if (i !== repetitions) console.log(
                 `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
             );
@@ -390,5 +552,6 @@ const main = async argv => {
 
 module.exports = {
     arbRound,
-    main
+    startup,
+    main,
 };
