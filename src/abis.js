@@ -5,7 +5,8 @@ const erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
     "function symbol() public view returns (string memory)",
     "function transfer(address to, uint256 amount) external returns (bool)",
-    "function balanceOf(address account) external view returns (uint256)"
+    "function balanceOf(address account) external view returns (uint256)",
+    "function approve(address spender, uint256 amount) external returns (bool)"
 ];
 
 // structs used in the orderbook and arb abis
