@@ -549,6 +549,8 @@ const visualizeRoute = (fromToken, toToken, legs) => {
                 + (e.tokenFrom.symbol ?? (e.tokenFrom.address.toLowerCase() === fromToken.address.toLowerCase() ? fromToken.symbol : "unknownSymbol"))
                 + " ("
                 + e.poolName
+                + " "
+                + e.poolAddress
                 + ")"
         ).join(
             " >> "
