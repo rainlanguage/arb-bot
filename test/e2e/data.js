@@ -190,26 +190,26 @@ module.exports = [
     [
         ChainId.LINEA,
         process?.env?.TEST_LINEA_RPC,
-        7497194,
+        7879600,
         [
             WNATIVE[ChainId.LINEA],
             USDC[ChainId.LINEA],
             new Token({
                 chainId: ChainId.LINEA,
-                address: "0xA219439258ca9da29E9Cc4cE5596924745e12B93",
-                decimals: 6,
-                symbol: "USDT"
+                address: "0x4Ea77a86d6E70FfE8Bb947FC86D68a7F086f198a",
+                decimals: 18,
+                symbol: "CLIP"
             }),
         ],
         [
             "0xE9C59fA9069fa49af0445E0476C9a41603fD5E51",
             "0x555CE236C0220695b68341bc48C68d52210cC35b",
-            "0xd47f645078d115c2a83781784236ed14734d8D9A",
+            "0x0000619b2b909a6a422c18eb804b92f798370705"
         ],
         [
             LiquidityProviders.LynexV1,
             LiquidityProviders.LynexV2,
         ],
-        ["1", "10000"]
+        ["1", "100"]
     ],
 ];
