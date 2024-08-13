@@ -371,67 +371,71 @@ describe("Test order details", async function () {
     });
 
     it("should quote orders", async function () {
-        const orderDetails = [{
-            orderbook: `0x${"2".repeat(40)}`,
-            takeOrders: [
-                {
-                    id: `0x${"1".repeat(64)}`,
-                    takeOrder: {
-                        order: {
-                            owner: `0x${"2".repeat(40)}`,
-                            evaluable: {
-                                interpreter: `0x${"2".repeat(40)}`,
-                                store: `0x${"2".repeat(40)}`,
-                                bytecode: "0x",
+        const orderbook = `0x${"2".repeat(40)}`;
+        const orderDetails = {
+            [orderbook]: [{
+                orderbook: orderbook,
+                takeOrders: [
+                    {
+                        id: `0x${"1".repeat(64)}`,
+                        takeOrder: {
+                            order: {
+                                owner: `0x${"2".repeat(40)}`,
+                                evaluable: {
+                                    interpreter: `0x${"2".repeat(40)}`,
+                                    store: `0x${"2".repeat(40)}`,
+                                    bytecode: "0x",
+                                },
+                                validInputs: [{
+                                    token:`0x${"2".repeat(40)}`,
+                                    decimals: 18,
+                                    vaultId: ethers.BigNumber.from("1"),
+                                }],
+                                validOutputs: [{
+                                    token: `0x${"2".repeat(40)}`,
+                                    decimals: 18,
+                                    vaultId: ethers.BigNumber.from("1"),
+                                }],
+                                nonce: "1",
                             },
-                            validInputs: [{
-                                token:`0x${"2".repeat(40)}`,
-                                decimals: 18,
-                                vaultId: ethers.BigNumber.from("1"),
-                            }],
-                            validOutputs: [{
-                                token: `0x${"2".repeat(40)}`,
-                                decimals: 18,
-                                vaultId: ethers.BigNumber.from("1"),
-                            }],
-                            nonce: "1",
-                        },
-                        inputIOIndex: 0,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                },
-                {
-                    id: `0x${"2".repeat(64)}`,
-                    takeOrder: {
-                        order: {
-                            owner: `0x${"2".repeat(40)}`,
-                            evaluable: {
-                                interpreter: `0x${"2".repeat(40)}`,
-                                store: `0x${"2".repeat(40)}`,
-                                bytecode: "0x"
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: []
+                        }
+                    },
+                    {
+                        id: `0x${"2".repeat(64)}`,
+                        takeOrder: {
+                            order: {
+                                owner: `0x${"2".repeat(40)}`,
+                                evaluable: {
+                                    interpreter: `0x${"2".repeat(40)}`,
+                                    store: `0x${"2".repeat(40)}`,
+                                    bytecode: "0x"
+                                },
+                                validInputs: [{
+                                    token:`0x${"2".repeat(40)}`,
+                                    decimals: 18,
+                                    vaultId: ethers.BigNumber.from("1"),
+                                }],
+                                validOutputs: [{
+                                    token: `0x${"2".repeat(40)}`,
+                                    decimals: 18,
+                                    vaultId: ethers.BigNumber.from("1"),
+                                }],
+                                nonce: "1",
                             },
-                            validInputs: [{
-                                token:`0x${"2".repeat(40)}`,
-                                decimals: 18,
-                                vaultId: ethers.BigNumber.from("1"),
-                            }],
-                            validOutputs: [{
-                                token: `0x${"2".repeat(40)}`,
-                                decimals: 18,
-                                vaultId: ethers.BigNumber.from("1"),
-                            }],
-                            nonce: "1",
-                        },
-                        inputIOIndex: 0,
-                        outputIOIndex: 0,
-                        signedContext: []
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: []
+                        }
                     }
-                }
-            ]
-        }];
-        // mock response with encoded data
-        // first order: successfull, second order: fail
+                ]
+            }]
+        };
+        // mock response with encoded data as:
+        // first order: successfull (maxout 1, ratio 2)
+        // second order: fail
         await mockServer
             .forPost("/rpc")
             .thenSendJsonRpcResult("0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000");
@@ -439,16 +443,18 @@ describe("Test order details", async function () {
             orderDetails,
             [mockServer.url + "/rpc"]
         );
-        const expected = [{
-            orderbook: orderDetails[0].orderbook,
-            takeOrders: [{
-                ...orderDetails[0].takeOrders[0],
-                quote: {
-                    maxOutput: ethers.BigNumber.from(1),
-                    ratio: ethers.BigNumber.from(2),
-                }
+        const expected = {
+            [orderbook]: [{
+                orderbook: orderDetails[orderbook][0].orderbook,
+                takeOrders: [{
+                    ...orderDetails[orderbook][0].takeOrders[0],
+                    quote: {
+                        maxOutput: ethers.BigNumber.from(1),
+                        ratio: ethers.BigNumber.from(2),
+                    }
+                }]
             }]
-        }];
+        };
         assert.deepEqual(result, expected);
     });
 });

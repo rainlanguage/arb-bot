@@ -738,38 +738,47 @@ async function quoteOrders(
     blockNumber,
     multicallAddressOverride,
 ) {
-    let result;
-    for (let i = 0; i < rpcs.length; i++) {
-        const rpc = rpcs[i];
-        const targets = orderDetails.flatMap(v => v.takeOrders.map(e => ({
-            orderbook: v.orderbook,
+    let quoteResults;
+    const orderDetailsList = Object.values(orderDetails);
+    const targets = orderDetailsList.flatMap(
+        v => v.flatMap(list => list.takeOrders.map(orderConfig => ({
+            orderbook: list.orderbook,
             quoteConfig: {
                 order: {
-                    owner: e.takeOrder.order.owner,
+                    owner: orderConfig.takeOrder.order.owner,
+                    nonce: orderConfig.takeOrder.order.nonce,
                     evaluable: {
-                        interpreter: e.takeOrder.order.evaluable.interpreter,
-                        store: e.takeOrder.order.evaluable.store,
-                        bytecode: ethers.utils.arrayify(e.takeOrder.order.evaluable.bytecode),
+                        interpreter: orderConfig.takeOrder.order.evaluable.interpreter,
+                        store: orderConfig.takeOrder.order.evaluable.store,
+                        bytecode: ethers.utils.arrayify(
+                            orderConfig.takeOrder.order.evaluable.bytecode
+                        ),
                     },
-                    validInputs: e.takeOrder.order.validInputs.map(v => ({
-                        token: v.token,
-                        decimals: v.decimals,
-                        vaultId: v.vaultId.toHexString(),
+                    validInputs: orderConfig.takeOrder.order.validInputs.map(input => ({
+                        token: input.token,
+                        decimals: input.decimals,
+                        vaultId: typeof input.vaultId == "string"
+                            ? input.vaultId
+                            : input.vaultId.toHexString(),
                     })),
-                    validOutputs: e.takeOrder.order.validOutputs.map(v => ({
-                        token: v.token,
-                        decimals: v.decimals,
-                        vaultId: v.vaultId.toHexString(),
+                    validOutputs: orderConfig.takeOrder.order.validOutputs.map(output => ({
+                        token: output.token,
+                        decimals: output.decimals,
+                        vaultId: typeof output.vaultId == "string"
+                            ? output.vaultId
+                            : output.vaultId.toHexString(),
                     })),
-                    nonce: e.takeOrder.order.nonce,
                 },
-                inputIOIndex: e.takeOrder.inputIOIndex.toString(),
-                outputIOIndex: e.takeOrder.outputIOIndex.toString(),
-                signedContext: e.takeOrder.signedContext,
+                inputIOIndex: orderConfig.takeOrder.inputIOIndex.toString(),
+                outputIOIndex: orderConfig.takeOrder.outputIOIndex.toString(),
+                signedContext: orderConfig.takeOrder.signedContext,
             }
-        })));
+        })))
+    );
+    for (let i = 0; i < rpcs.length; i++) {
+        const rpc = rpcs[i];
         try {
-            result = await doQuoteTargets(
+            quoteResults = await doQuoteTargets(
                 targets,
                 rpc,
                 blockNumber,
@@ -777,29 +786,36 @@ async function quoteOrders(
             );
             break;
         } catch(e) {
-            /**/
+            // throw only after every available rpc has been tried and failed
+            if (i === rpcs.length - 1) throw e;
         }
     }
-    if (result) {
-        for (const pair of orderDetails) {
+
+    // map results to the original obj
+    for (const orderbookOrders of orderDetailsList) {
+        for (const pair of orderbookOrders) {
             for (const order of pair.takeOrders) {
-                const orderQuoteResult = result.shift();
-                if (orderQuoteResult) {
-                    if (typeof orderQuoteResult !== "string") {
+                const quoteResult = quoteResults.shift();
+                if (quoteResult) {
+                    if (typeof quoteResult !== "string") {
                         order.quote = {
-                            maxOutput: ethers.BigNumber.from(orderQuoteResult.maxOutput),
-                            ratio: ethers.BigNumber.from(orderQuoteResult.ratio),
+                            maxOutput: ethers.BigNumber.from(quoteResult.maxOutput),
+                            ratio: ethers.BigNumber.from(quoteResult.ratio),
                         };
                     }
                 }
             }
         }
     }
+
     // filter out those that failed quote or have 0 maxoutput
-    for (const pair of orderDetails) {
-        pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
+    for (const orderbook in orderDetails) {
+        for (const pair of orderDetails[orderbook]) {
+            pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
+        }
+        orderDetails[orderbook] = orderDetails[orderbook].filter(v => v.takeOrders.length > 0);
     }
-    orderDetails = orderDetails.filter(v => v.takeOrders.length > 0);
+
     return orderDetails;
 }
 
