@@ -75,17 +75,17 @@ module.exports = [
             WNATIVE[ChainId.FLARE],
             USDT[ChainId.FLARE],
             ENOSYS_HLN,
-            ENOSYS_BNZ,
         ],
         [
             "0x2258e7Ad1D8AC70FAB053CF59c027960e94DB7d1",
             "0x980Db8443D19B64B1d4616980ebbD44e7DD30C2E",
             "0x2e574D0802F433E71F7dC91650aB2C23aDeb0D81",
-            "0x311613c3339bBd4B91a0b498E43dc63ACC1f2740",
         ],
         [
             LiquidityProviders.Enosys,
             LiquidityProviders.BlazeSwap,
+            LiquidityProviders.SparkDexV2,
+            LiquidityProviders.SparkDexV3
         ],
         ["1", "100", "100", "100"]
     ],
