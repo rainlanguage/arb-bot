@@ -70,7 +70,7 @@ module.exports = [
     [
         ChainId.FLARE,
         process?.env?.TEST_FLARE_RPC,
-        25902360,
+        28269400,
         [
             WNATIVE[ChainId.FLARE],
             USDT[ChainId.FLARE],
@@ -78,7 +78,7 @@ module.exports = [
         ],
         [
             "0x2258e7Ad1D8AC70FAB053CF59c027960e94DB7d1",
-            "0x980Db8443D19B64B1d4616980ebbD44e7DD30C2E",
+            "0x51cD71ec61487A3359993922A5BBac294934A628",
             "0x2e574D0802F433E71F7dC91650aB2C23aDeb0D81",
         ],
         [
