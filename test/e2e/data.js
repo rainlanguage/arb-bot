@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { ChainId, LiquidityProviders } = require("sushi");
-const { USDT, WNATIVE, USDC, ENOSYS_BNZ, ENOSYS_HLN, Token } = require("sushi/currency");
+const { USDT, WNATIVE, USDC, ENOSYS_HLN, Token } = require("sushi/currency");
 
 module.exports = [
     [
