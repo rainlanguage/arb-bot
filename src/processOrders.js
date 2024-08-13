@@ -62,167 +62,181 @@ const processOrders = async(
     // instantiating arb contract
     const arb = new ethers.Contract(config.arbAddress, arbAbis);
 
-    // instantiating orderbook contract
-    const orderbook = new ethers.Contract(config.orderbookAddress, orderbookAbi);
-
     // prepare orders
     const bundledOrders = bundleOrders(
         ordersDetails,
         config.shuffle,
         config.bundle,
     );
-    if (!bundledOrders.length) return;
+    if (!Object.keys(bundledOrders).length) return;
 
     const reports = [];
     let avgGasCost;
-    for (let i = 0; i < bundledOrders.length; i++) {
-        const signer = accounts.length ? accounts[0] : mainAccount;
-        const flashbotSigner = config.flashbotRpc
-            ? new ethers.Wallet(
-                signer.privateKey,
-                new ethers.providers.JsonRpcProvider(config.flashbotRpc)
-            )
-            : undefined;
+    for (const orderbookAddress in bundledOrders) {
+        // instantiating orderbook contract
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi);
 
-        const pair = `${bundledOrders[i].buyTokenSymbol}/${bundledOrders[i].sellTokenSymbol}`;
+        for (const pairOrders of bundledOrders[orderbookAddress]) {
+            for (let i = 0; i < pairOrders.takeOrders.length; i++) {
+                const orderPairObject = {
+                    orderbook: pairOrders.orderbook,
+                    buyToken: pairOrders.buyToken,
+                    buyTokenSymbol: pairOrders.buyToken,
+                    buyTokenDecimals: pairOrders.buyTokenDecimals,
+                    sellToken: pairOrders.sellToken,
+                    sellTokenSymbol: pairOrders.sellTokenSymbol,
+                    sellTokenDecimals: pairOrders.sellTokenDecimals,
+                    takeOrders: config.bundle ? pairOrders.takeOrders : [pairOrders.takeOrders[i]]
+                };
+                const signer = accounts.length ? accounts[0] : mainAccount;
+                const flashbotSigner = config.flashbotRpc
+                    ? new ethers.Wallet(
+                        signer.privateKey,
+                        new ethers.providers.JsonRpcProvider(config.flashbotRpc)
+                    )
+                    : undefined;
 
-        // instantiate a span for this pair
-        const span = tracer.startSpan(
-            (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
-            undefined,
-            ctx
-        );
+                const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
 
-        // process the pair
-        try {
-            const result = await processPair({
-                config,
-                orderPairObject: bundledOrders[i],
-                viemClient,
-                dataFetcher,
-                signer,
-                flashbotSigner,
-                arb,
-                orderbook,
-                pair,
-                mainAccount,
-                accounts,
-            });
+                // instantiate a span for this pair
+                const span = tracer.startSpan(
+                    (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
+                    undefined,
+                    ctx
+                );
 
-            // keep track of avggas cost
-            if (result.gasCost) {
-                if (!avgGasCost) {
-                    avgGasCost = result.gasCost;
-                } else {
-                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
-                }
-            }
+                // process the pair
+                try {
+                    const result = await processPair({
+                        config,
+                        orderPairObject,
+                        viemClient,
+                        dataFetcher,
+                        signer,
+                        flashbotSigner,
+                        arb,
+                        orderbook,
+                        pair,
+                        mainAccount,
+                        accounts,
+                    });
 
-            reports.push(result.report);
-
-            // set the span attributes with the values gathered at processPair()
-            span.setAttributes(result.spanAttributes);
-
-            // set the otel span status based on report status
-            if (result.report.status === ProcessPairReportStatus.EmptyVault) {
-                span.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
-            } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
-                span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
-            } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
-                span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
-            } else {
-                // set the span status to unexpected error
-                span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
-            }
-        } catch(e) {
-
-            // keep track of avggas cost
-            if (e.gasCost) {
-                if (!avgGasCost) {
-                    avgGasCost = e.gasCost;
-                } else {
-                    avgGasCost = avgGasCost.add(e.gasCost).div(2);
-                }
-            }
-
-            // set the span attributes with the values gathered at processPair()
-            span.setAttributes(e.spanAttributes);
-
-            // record otel span status based on reported reason
-            if (e.reason) {
-                // report the error reason along with the rest of report
-                reports.push({
-                    ...e.report,
-                    error: e.error,
-                    reason: e.reason,
-                });
-
-                // set the otel span status based on returned reason
-                if (e.reason === ProcessPairHaltReason.NoWalletFund) {
-                    // in case that wallet has no more funds, terminate the process by breaking the loop
-                    if (e.error) span.recordException(getSpanException(e.error));
-                    const message = `Recieved insufficient funds error, current balance: ${
-                        e.spanAttributes["details.currentWalletBalance"]
-                            ? ethers.utils.formatUnits(
-                                ethers.BigNumber.from(
-                                    e.spanAttributes["details.currentWalletBalance"]
-                                )
-                            )
-                            : "failed to get balance"
-                    }`;
-                    span.setStatus({ code: SpanStatusCode.ERROR, message });
-                    span.end();
-                    throw message;
-                } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                    const message = ["failed to get vault balance"];
-                    if (e.error) {
-                        if (e.error instanceof BaseError) {
-                            if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
-                            if (e.error.name) message.push("Error: " + e.error.name);
-                            if (e.error.details) message.push("Details: " + e.error.details);
-                        } else if (e.error instanceof Error) {
-                            if (e.error.message) message.push("Reason: " + e.error.message);
+                    // keep track of avggas cost
+                    if (result.gasCost) {
+                        if (!avgGasCost) {
+                            avgGasCost = result.gasCost;
+                        } else {
+                            avgGasCost = avgGasCost.add(result.gasCost).div(2);
                         }
-                        span.recordException(getSpanException(e.error));
                     }
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
-                } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                    if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
-                } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
-                    if (e.error) span.recordException(getSpanException(e.error));
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
-                } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
-                    // set OK status because a token might not have a pool and as a result eth price cannot
-                    // be fetched for it and if it is set to ERROR it will constantly error on each round
-                    // resulting in lots of false positives
-                    if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                    span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
-                } else {
-                    // set the otel span status as OK as an unsuccessfull clear, this can happen for example
-                    // because of mev front running or false positive opportunities, etc
-                    if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                    span.setStatus({ code: SpanStatusCode.OK });
-                    span.setAttribute("unsuccessfullClear", true);
-                }
-            } else {
-                // record the error for the span
-                if (e.error) span.recordException(getSpanException(e.error));
 
-                // report the unexpected error reason
-                reports.push({
-                    ...e.report,
-                    error: e.error,
-                    reason: ProcessPairHaltReason.UnexpectedError,
-                });
-                // set the span status to unexpected error
-                span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
+                    reports.push(result.report);
+
+                    // set the span attributes with the values gathered at processPair()
+                    span.setAttributes(result.spanAttributes);
+
+                    // set the otel span status based on report status
+                    if (result.report.status === ProcessPairReportStatus.EmptyVault) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
+                    } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                    } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
+                    } else {
+                        // set the span status to unexpected error
+                        span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
+                    }
+                } catch(e) {
+
+                    // keep track of avggas cost
+                    if (e.gasCost) {
+                        if (!avgGasCost) {
+                            avgGasCost = e.gasCost;
+                        } else {
+                            avgGasCost = avgGasCost.add(e.gasCost).div(2);
+                        }
+                    }
+
+                    // set the span attributes with the values gathered at processPair()
+                    span.setAttributes(e.spanAttributes);
+
+                    // record otel span status based on reported reason
+                    if (e.reason) {
+                        // report the error reason along with the rest of report
+                        reports.push({
+                            ...e.report,
+                            error: e.error,
+                            reason: e.reason,
+                        });
+
+                        // set the otel span status based on returned reason
+                        if (e.reason === ProcessPairHaltReason.NoWalletFund) {
+                            // in case that wallet has no more funds, terminate the process by breaking the loop
+                            if (e.error) span.recordException(getSpanException(e.error));
+                            const message = `Recieved insufficient funds error, current balance: ${
+                                e.spanAttributes["details.currentWalletBalance"]
+                                    ? ethers.utils.formatUnits(
+                                        ethers.BigNumber.from(
+                                            e.spanAttributes["details.currentWalletBalance"]
+                                        )
+                                    )
+                                    : "failed to get balance"
+                            }`;
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            span.end();
+                            throw message;
+                        } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
+                            const message = ["failed to get vault balance"];
+                            if (e.error) {
+                                if (e.error instanceof BaseError) {
+                                    if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
+                                    if (e.error.name) message.push("Error: " + e.error.name);
+                                    if (e.error.details) message.push("Details: " + e.error.details);
+                                } else if (e.error instanceof Error) {
+                                    if (e.error.message) message.push("Reason: " + e.error.message);
+                                }
+                                span.recordException(getSpanException(e.error));
+                            }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
+                        } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
+                            if (e.error) span.recordException(getSpanException(e.error));
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
+                        } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
+                            if (e.error) span.recordException(getSpanException(e.error));
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
+                        } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
+                            // set OK status because a token might not have a pool and as a result eth price cannot
+                            // be fetched for it and if it is set to ERROR it will constantly error on each round
+                            // resulting in lots of false positives
+                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
+                            span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                        } else {
+                            // set the otel span status as OK as an unsuccessfull clear, this can happen for example
+                            // because of mev front running or false positive opportunities, etc
+                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
+                            span.setStatus({ code: SpanStatusCode.OK });
+                            span.setAttribute("unsuccessfullClear", true);
+                        }
+                    } else {
+                        // record the error for the span
+                        if (e.error) span.recordException(getSpanException(e.error));
+
+                        // report the unexpected error reason
+                        reports.push({
+                            ...e.report,
+                            error: e.error,
+                            reason: ProcessPairHaltReason.UnexpectedError,
+                        });
+                        // set the span status to unexpected error
+                        span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
+                    }
+                }
+                span.end();
+
+                // rotate the accounts once they are used once
+                rotateAccounts(accounts);
             }
         }
-        span.end();
-
-        // rotate the accounts once they are used once
-        rotateAccounts(accounts);
     }
     return { reports, avgGasCost };
 };

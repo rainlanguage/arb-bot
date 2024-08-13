@@ -5,6 +5,7 @@ const { ethers, BigNumber } = require("ethers");
 const BlackList = require("./pool-blacklist.json");
 const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { Router, LiquidityProviders } = require("sushi/router");
+const { doQuoteTargets } = require("@rainlanguage/orderbook/quote");
 
 function RPoolFilter(pool) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -614,9 +615,10 @@ const bundleOrders = (
     _shuffle = true,
     _bundle = true,
 ) => {
-    const bundledOrders = [];
+    const bundledOrders = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
+        const orderbook = orderDetails.orderbook.id;
         const orderStruct = ethers.utils.defaultAbiCoder.decode(
             [OrderV3],
             orderDetails.orderBytes
@@ -635,9 +637,13 @@ const bundleOrders = (
                 ).token.symbol;
 
                 if (_output.token.toLowerCase() !== _input.token.toLowerCase()) {
-                    const pair = bundledOrders.find(v =>
+                    if (!bundledOrders[orderbook]) {
+                        bundledOrders[orderbook] = [];
+                    }
+                    const pair = bundledOrders[orderbook].find(v =>
                         v.sellToken === _output.token.toLowerCase() &&
                         v.buyToken === _input.token.toLowerCase()
+
                     );
                     if (pair && _bundle) pair.takeOrders.push({
                         id: orderDetails.orderHash,
@@ -648,7 +654,8 @@ const bundleOrders = (
                             signedContext: []
                         }
                     });
-                    else bundledOrders.push({
+                    else bundledOrders[orderbook].push({
+                        orderbook,
                         buyToken: _input.token.toLowerCase(),
                         buyTokenSymbol: _inputSymbol,
                         buyTokenDecimals: _input.decimals,
@@ -671,11 +678,12 @@ const bundleOrders = (
         }
     }
     if (_shuffle) {
-        // shuffle take orders for each pair
-        if (_bundle) bundledOrders.forEach(v => shuffleArray(v.takeOrders));
-
         // shuffle bundled orders pairs
-        shuffleArray(bundledOrders);
+        if (_bundle) {
+            for (ob in bundledOrders) {
+                shuffleArray(bundledOrders[ob]);
+            }
+        }
     }
     return bundledOrders;
 };
@@ -717,6 +725,100 @@ async function getVaultBalance(
     return result;
 }
 
+/**
+ * Quotes order details that are already fetched and bundled by bundleOrder()
+ * @param {any} orderDetails - Order details to quote
+ * @param {string[]} rpcs - RPC urls
+ * @param {bigint} blockNumber - Optional block number
+ * @param {string} multicallAddressOverride - Optional multicall address
+ */
+async function quoteOrders(
+    orderDetails,
+    rpcs,
+    blockNumber,
+    multicallAddressOverride,
+) {
+    let quoteResults;
+    const orderDetailsList = Object.values(orderDetails);
+    const targets = orderDetailsList.flatMap(
+        v => v.flatMap(list => list.takeOrders.map(orderConfig => ({
+            orderbook: list.orderbook,
+            quoteConfig: {
+                order: {
+                    owner: orderConfig.takeOrder.order.owner,
+                    nonce: orderConfig.takeOrder.order.nonce,
+                    evaluable: {
+                        interpreter: orderConfig.takeOrder.order.evaluable.interpreter,
+                        store: orderConfig.takeOrder.order.evaluable.store,
+                        bytecode: ethers.utils.arrayify(
+                            orderConfig.takeOrder.order.evaluable.bytecode
+                        ),
+                    },
+                    validInputs: orderConfig.takeOrder.order.validInputs.map(input => ({
+                        token: input.token,
+                        decimals: input.decimals,
+                        vaultId: typeof input.vaultId == "string"
+                            ? input.vaultId
+                            : input.vaultId.toHexString(),
+                    })),
+                    validOutputs: orderConfig.takeOrder.order.validOutputs.map(output => ({
+                        token: output.token,
+                        decimals: output.decimals,
+                        vaultId: typeof output.vaultId == "string"
+                            ? output.vaultId
+                            : output.vaultId.toHexString(),
+                    })),
+                },
+                inputIOIndex: orderConfig.takeOrder.inputIOIndex,
+                outputIOIndex: orderConfig.takeOrder.outputIOIndex,
+                signedContext: orderConfig.takeOrder.signedContext,
+            }
+        })))
+    );
+    for (let i = 0; i < rpcs.length; i++) {
+        const rpc = rpcs[i];
+        try {
+            quoteResults = await doQuoteTargets(
+                targets,
+                rpc,
+                blockNumber,
+                multicallAddressOverride
+            );
+            break;
+        } catch(e) {
+            // throw only after every available rpc has been tried and failed
+            if (i === rpcs.length - 1) throw e;
+        }
+    }
+
+    // map results to the original obj
+    for (const orderbookOrders of orderDetailsList) {
+        for (const pair of orderbookOrders) {
+            for (const order of pair.takeOrders) {
+                const quoteResult = quoteResults.shift();
+                if (quoteResult) {
+                    if (typeof quoteResult !== "string") {
+                        order.quote = {
+                            maxOutput: ethers.BigNumber.from(quoteResult.maxOutput),
+                            ratio: ethers.BigNumber.from(quoteResult.ratio),
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // filter out those that failed quote or have 0 maxoutput
+    for (const orderbook in orderDetails) {
+        for (const pair of orderDetails[orderbook]) {
+            pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
+        }
+        orderDetails[orderbook] = orderDetails[orderbook].filter(v => v.takeOrders.length > 0);
+    }
+
+    return orderDetails;
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -735,4 +837,5 @@ module.exports = {
     getVaultBalance,
     PoolBlackList,
     RPoolFilter,
+    quoteOrders,
 };
