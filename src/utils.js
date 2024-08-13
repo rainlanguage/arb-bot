@@ -769,8 +769,8 @@ async function quoteOrders(
                             : output.vaultId.toHexString(),
                     })),
                 },
-                inputIOIndex: orderConfig.takeOrder.inputIOIndex.toString(),
-                outputIOIndex: orderConfig.takeOrder.outputIOIndex.toString(),
+                inputIOIndex: orderConfig.takeOrder.inputIOIndex,
+                outputIOIndex: orderConfig.takeOrder.outputIOIndex,
                 signedContext: orderConfig.takeOrder.signedContext,
             }
         })))
