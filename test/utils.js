@@ -206,6 +206,9 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
         orderBytes: ethers.utils.defaultAbiCoder.encode([OrderV3], [eventArgs.order]),
         active: true,
         nonce: eventArgs.order.nonce,
+        orderbook: {
+            id: orderbook.address.toLowerCase()
+        },
         inputs: eventArgs.order.validInputs.map((v, i) => {
             return {
                 token: {

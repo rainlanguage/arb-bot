@@ -6,16 +6,20 @@
  * @returns the query string
  */
 const getQuery = (orderHash, owner, orderbook) => {
-    const ownerFilter = owner ? `, owner :"${owner.toLowerCase()}"` : "";
-    const orderHashFilter = orderHash ? `, orderHash :"${orderHash.toLowerCase()}"` : "";
+    const ownerFilter = owner ? `, owner: "${owner.toLowerCase()}"` : "";
+    const orderHashFilter = orderHash ? `, orderHash: "${orderHash.toLowerCase()}"` : "";
+    const orderbookFilter = orderbook ? `, orderbook: "${orderbook.toLowerCase()}"` : "";
     return `{
-    orders(where: {active: true, orderbook: "${orderbook.toLowerCase()}"${orderHashFilter}${ownerFilter}}) {
+    orders(where: {active: true, orderbook: "${orderbookFilter}"${orderHashFilter}${ownerFilter}}) {
         id
         owner
         orderHash
         orderBytes
         active
         nonce
+        orderbook {
+            id
+        }
         inputs {
             balance
             vaultId

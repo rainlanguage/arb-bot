@@ -1,11 +1,15 @@
 const { assert } = require("chai");
 const { OrderV3 } = require("../src/abis");
+const mockServer = require("mockttp").getLocal();
 const { deployOrderBookNPE2 } = require("./utils");
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
-const { bundleOrders, getVaultBalance } = require("../src/utils");
+const { bundleOrders, getVaultBalance, quoteOrders } = require("../src/utils");
 
 describe("Test order details", async function () {
+    beforeEach(() => mockServer.start(8081));
+    afterEach(() => mockServer.stop());
+
     const order1 = {
         id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
         orderHash: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
@@ -13,6 +17,9 @@ describe("Test order details", async function () {
         orderBytes: "",
         active: true,
         nonce: `0x${"0".repeat(64)}`,
+        orderbook: {
+            id: `0x${"2".repeat(40)}`
+        },
         inputs: [{
             balance: "1",
             vaultId: "1",
@@ -43,6 +50,9 @@ describe("Test order details", async function () {
         orderBytes: "",
         active: true,
         nonce: `0x${"0".repeat(64)}`,
+        orderbook: {
+            id: `0x${"2".repeat(40)}`
+        },
         inputs: [
             {
                 balance: "1",
@@ -90,82 +100,18 @@ describe("Test order details", async function () {
 
     it("should return correct order details", async function () {
         const unbundledResult = bundleOrders([order1, order2], false, false);
-        const unbundledExpected = [
-            {
-                buyToken: orderStruct1.validInputs[0].token,
-                buyTokenSymbol: order1.inputs[0].token.symbol,
-                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
-                sellToken: orderStruct1.validOutputs[0].token,
-                sellTokenSymbol: order1.outputs[0].token.symbol,
-                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
-                takeOrders: [{
-                    id: order1.orderHash,
-                    takeOrder: {
-                        order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3],
-                            orderBytes1
-                        )[0],
-                        inputIOIndex: 0,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                }]
-            },
-            {
-                buyToken: orderStruct2.validInputs[1].token,
-                buyTokenSymbol: order2.inputs[1].token.symbol,
-                buyTokenDecimals: orderStruct2.validInputs[1].decimals,
-                sellToken: orderStruct2.validOutputs[0].token,
-                sellTokenSymbol: order2.outputs[0].token.symbol,
-                sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
-                takeOrders: [{
-                    id: order2.orderHash,
-                    takeOrder: {
-                        order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3],
-                            orderBytes2
-                        )[0],
-                        inputIOIndex: 1,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                }]
-            },
-            {
-                buyToken: orderStruct2.validInputs[0].token,
-                buyTokenSymbol: order2.inputs[0].token.symbol,
-                buyTokenDecimals: orderStruct2.validInputs[0].decimals,
-                sellToken: orderStruct2.validOutputs[1].token,
-                sellTokenSymbol: order2.outputs[1].token.symbol,
-                sellTokenDecimals: orderStruct2.validOutputs[1].decimals,
-                takeOrders: [{
-                    id: order2.orderHash,
-                    takeOrder: {
-                        order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3],
-                            orderBytes2
-                        )[0],
-                        inputIOIndex: 0,
-                        outputIOIndex: 1,
-                        signedContext: []
-                    }
-                }]
-            },
-        ];
-        assert.deepEqual(unbundledResult, unbundledExpected);
-
-        const bundledResult = bundleOrders([order1, order2], false, true);
-        const bundledExpected = [
-            {
-                buyToken: orderStruct1.validInputs[0].token,
-                buyTokenSymbol: order1.inputs[0].token.symbol,
-                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
-                sellToken: orderStruct1.validOutputs[0].token,
-                sellTokenSymbol: order1.outputs[0].token.symbol,
-                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
-                takeOrders: [
-                    {
-                        id: order1.id,
+        const unbundledExpected = {
+            [`0x${"2".repeat(40)}`]: [
+                {
+                    buyToken: orderStruct1.validInputs[0].token,
+                    buyTokenSymbol: order1.inputs[0].token.symbol,
+                    buyTokenDecimals: orderStruct1.validInputs[0].decimals,
+                    sellToken: orderStruct1.validOutputs[0].token,
+                    sellTokenSymbol: order1.outputs[0].token.symbol,
+                    sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                    orderbook: `0x${"2".repeat(40)}`,
+                    takeOrders: [{
+                        id: order1.orderHash,
                         takeOrder: {
                             order: ethers.utils.defaultAbiCoder.decode(
                                 [OrderV3],
@@ -175,8 +121,38 @@ describe("Test order details", async function () {
                             outputIOIndex: 0,
                             signedContext: []
                         }
-                    },
-                    {
+                    }]
+                },
+                {
+                    buyToken: orderStruct2.validInputs[1].token,
+                    buyTokenSymbol: order2.inputs[1].token.symbol,
+                    buyTokenDecimals: orderStruct2.validInputs[1].decimals,
+                    sellToken: orderStruct2.validOutputs[0].token,
+                    sellTokenSymbol: order2.outputs[0].token.symbol,
+                    sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
+                    orderbook: `0x${"2".repeat(40)}`,
+                    takeOrders: [{
+                        id: order2.orderHash,
+                        takeOrder: {
+                            order: ethers.utils.defaultAbiCoder.decode(
+                                [OrderV3],
+                                orderBytes2
+                            )[0],
+                            inputIOIndex: 1,
+                            outputIOIndex: 0,
+                            signedContext: []
+                        }
+                    }]
+                },
+                {
+                    buyToken: orderStruct2.validInputs[0].token,
+                    buyTokenSymbol: order2.inputs[0].token.symbol,
+                    buyTokenDecimals: orderStruct2.validInputs[0].decimals,
+                    sellToken: orderStruct2.validOutputs[1].token,
+                    sellTokenSymbol: order2.outputs[1].token.symbol,
+                    sellTokenDecimals: orderStruct2.validOutputs[1].decimals,
+                    orderbook: `0x${"2".repeat(40)}`,
+                    takeOrders: [{
                         id: order2.orderHash,
                         takeOrder: {
                             order: ethers.utils.defaultAbiCoder.decode(
@@ -187,30 +163,73 @@ describe("Test order details", async function () {
                             outputIOIndex: 1,
                             signedContext: []
                         }
-                    }
-                ]
-            },
-            {
-                buyToken: orderStruct2.validInputs[1].token,
-                buyTokenSymbol: order2.inputs[1].token.symbol,
-                buyTokenDecimals: orderStruct2.validInputs[1].decimals,
-                sellToken: orderStruct2.validOutputs[0].token,
-                sellTokenSymbol: order2.outputs[0].token.symbol,
-                sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
-                takeOrders: [{
-                    id: order2.orderHash,
-                    takeOrder: {
-                        order: ethers.utils.defaultAbiCoder.decode(
-                            [OrderV3],
-                            orderBytes2
-                        )[0],
-                        inputIOIndex: 1,
-                        outputIOIndex: 0,
-                        signedContext: []
-                    }
-                }]
-            },
-        ];
+                    }]
+                },
+            ]
+        };
+        assert.deepEqual(unbundledResult, unbundledExpected);
+
+        const bundledResult = bundleOrders([order1, order2], false, true);
+        const bundledExpected = {
+            [`0x${"2".repeat(40)}`]: [
+                {
+                    buyToken: orderStruct1.validInputs[0].token,
+                    buyTokenSymbol: order1.inputs[0].token.symbol,
+                    buyTokenDecimals: orderStruct1.validInputs[0].decimals,
+                    sellToken: orderStruct1.validOutputs[0].token,
+                    sellTokenSymbol: order1.outputs[0].token.symbol,
+                    sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                    orderbook: `0x${"2".repeat(40)}`,
+                    takeOrders: [
+                        {
+                            id: order1.id,
+                            takeOrder: {
+                                order: ethers.utils.defaultAbiCoder.decode(
+                                    [OrderV3],
+                                    orderBytes1
+                                )[0],
+                                inputIOIndex: 0,
+                                outputIOIndex: 0,
+                                signedContext: []
+                            }
+                        },
+                        {
+                            id: order2.orderHash,
+                            takeOrder: {
+                                order: ethers.utils.defaultAbiCoder.decode(
+                                    [OrderV3],
+                                    orderBytes2
+                                )[0],
+                                inputIOIndex: 0,
+                                outputIOIndex: 1,
+                                signedContext: []
+                            }
+                        }
+                    ]
+                },
+                {
+                    buyToken: orderStruct2.validInputs[1].token,
+                    buyTokenSymbol: order2.inputs[1].token.symbol,
+                    buyTokenDecimals: orderStruct2.validInputs[1].decimals,
+                    sellToken: orderStruct2.validOutputs[0].token,
+                    sellTokenSymbol: order2.outputs[0].token.symbol,
+                    sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
+                    orderbook: `0x${"2".repeat(40)}`,
+                    takeOrders: [{
+                        id: order2.orderHash,
+                        takeOrder: {
+                            order: ethers.utils.defaultAbiCoder.decode(
+                                [OrderV3],
+                                orderBytes2
+                            )[0],
+                            inputIOIndex: 1,
+                            outputIOIndex: 0,
+                            signedContext: []
+                        }
+                    }]
+                },
+            ]
+        };
         assert.deepEqual(bundledResult, bundledExpected);
     });
 
@@ -320,10 +339,13 @@ describe("Test order details", async function () {
             owner2UsdtDepositAmount,
             owner2WmaticDepositAmount,
         ];
+        order1.orderbook.id = orderbook.address.toLowerCase();
+        order2.orderbook.id = orderbook.address.toLowerCase();
         const noBundleOrders = bundleOrders([order1, order2], false, false);
+
         for (let i = 0; i < noBundleOrders.length; i++) {
             const vaultBalance = await getVaultBalance(
-                noBundleOrders[i],
+                noBundleOrders[orderbook.address.toLowerCase()][i],
                 orderbook.address,
                 viemClient,
                 "0xcA11bde05977b3631167028862bE2a173976CA11"
@@ -339,13 +361,95 @@ describe("Test order details", async function () {
         const bundledOrders = bundleOrders([order1, order2], false, true);
         for (let i = 0; i < bundleOrders.length; i++) {
             const vaultBalance = await getVaultBalance(
-                bundledOrders[i],
+                bundledOrders[orderbook.address.toLowerCase()][i],
                 orderbook.address,
                 viemClient,
                 "0xcA11bde05977b3631167028862bE2a173976CA11"
             );
             assert.deepEqual(vaultBalance, expectedBalancesBundled[i]);
         }
+    });
+
+    it("should quote orders", async function () {
+        const orderDetails = [{
+            orderbook: `0x${"2".repeat(40)}`,
+            takeOrders: [
+                {
+                    id: `0x${"1".repeat(64)}`,
+                    takeOrder: {
+                        order: {
+                            owner: `0x${"2".repeat(40)}`,
+                            evaluable: {
+                                interpreter: `0x${"2".repeat(40)}`,
+                                store: `0x${"2".repeat(40)}`,
+                                bytecode: "0x",
+                            },
+                            validInputs: [{
+                                token:`0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            validOutputs: [{
+                                token: `0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            nonce: "1",
+                        },
+                        inputIOIndex: 0,
+                        outputIOIndex: 0,
+                        signedContext: []
+                    }
+                },
+                {
+                    id: `0x${"2".repeat(64)}`,
+                    takeOrder: {
+                        order: {
+                            owner: `0x${"2".repeat(40)}`,
+                            evaluable: {
+                                interpreter: `0x${"2".repeat(40)}`,
+                                store: `0x${"2".repeat(40)}`,
+                                bytecode: "0x"
+                            },
+                            validInputs: [{
+                                token:`0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            validOutputs: [{
+                                token: `0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            nonce: "1",
+                        },
+                        inputIOIndex: 0,
+                        outputIOIndex: 0,
+                        signedContext: []
+                    }
+                }
+            ]
+        }];
+        // mock response with encoded data
+        // first order: successfull, second order: fail
+        await mockServer
+            .forPost("/rpc")
+            .thenSendJsonRpcResult("0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000");
+        const result = await quoteOrders(
+            orderDetails,
+            [mockServer.url + "/rpc"]
+        );
+        const expected = [{
+            orderbook: orderDetails[0].orderbook,
+            takeOrders: [{
+                ...orderDetails[0].takeOrders[0],
+                quote: {
+                    maxOutput: ethers.BigNumber.from(1),
+                    ratio: ethers.BigNumber.from(2),
+                }
+            }]
+        }];
+        assert.deepEqual(result, expected);
     });
 });
 
