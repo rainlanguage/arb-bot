@@ -84,16 +84,18 @@ describe("Test dryrun", async function () {
                     gasLimit: gasLimitEstimation.mul("103").div("100"),
                 },
                 maximumInput: vaultBalance,
-                gasCostInToken: gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                    "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                ),
-                takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber, foundOpp: true }
+            spanAttributes: {
+                oppBlockNumber,
+                foundOpp: true,
+                maxInput: vaultBalance.toString(),
+                marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                route: expectedRouteVisual,
+            }
         };
         assert.deepEqual(result, expected);
     });
@@ -270,16 +272,18 @@ describe("Test find opp", async function () {
                     gasLimit: gasLimitEstimation.mul("103").div("100"),
                 },
                 maximumInput: vaultBalance,
-                gasCostInToken: gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                    "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                ),
-                takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber, foundOpp: true }
+            spanAttributes: {
+                oppBlockNumber,
+                foundOpp: true,
+                maxInput: vaultBalance.toString(),
+                marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                route: expectedRouteVisual,
+            }
         };
         assert.deepEqual(result, expected);
     });
@@ -335,16 +339,20 @@ describe("Test find opp", async function () {
                     gasLimit: gasLimitEstimation.mul("103").div("100"),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
-                gasCostInToken: gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                    "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                ),
-                takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
                 price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber, foundOpp: true }
+            spanAttributes: {
+                oppBlockNumber,
+                foundOpp: true,
+                maxInput: vaultBalance.mul(3).div(4).toString(),
+                marketPrice: ethers.utils.formatUnits(
+                    getCurrentPrice(vaultBalance.sub(vaultBalance.div(4)))
+                ),
+                route: expectedRouteVisual,
+            }
         };
         assert.deepEqual(result, expected);
     });
@@ -519,16 +527,18 @@ describe("Test find opp with retries", async function () {
                     gasLimit: gasLimitEstimation.mul("103").div("100"),
                 },
                 maximumInput: vaultBalance,
-                gasCostInToken: gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                    "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                ),
-                takeOrdersConfigStruct: expectedTakeOrdersConfigStruct,
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber
             },
             reason: undefined,
-            spanAttributes: { oppBlockNumber, foundOpp: true }
+            spanAttributes: {
+                oppBlockNumber,
+                foundOpp: true,
+                maxInput: vaultBalance.toString(),
+                marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                route: expectedRouteVisual,
+            }
         };
         assert.deepEqual(result, expected);
     });

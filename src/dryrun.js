@@ -208,6 +208,14 @@ async function dryrun({
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
                 await signer.estimateGas(rawtx);
+                rawtx.data = arb.interface.encodeFunctionData(
+                    "arb2",
+                    [
+                        takeOrdersConfigStruct,
+                        gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
+                        DefaultArbEvaluable,
+                    ]
+                );
             }
             catch(e) {
                 const spanError = getSpanException(e);
@@ -231,15 +239,12 @@ async function dryrun({
 
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
-        result.spanAttributes = {
-            oppBlockNumber: blockNumber,
-            foundOpp: true,
-        };
+        spanAttributes["oppBlockNumber"] = blockNumber;
+        spanAttributes["foundOpp"] = true;
+        delete spanAttributes["blockNumber"];
         result.value = {
             rawtx,
             maximumInput,
-            gasCostInToken,
-            takeOrdersConfigStruct,
             price,
             routeVisual,
             oppBlockNumber: blockNumber,

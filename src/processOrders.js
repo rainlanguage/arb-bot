@@ -1,9 +1,9 @@
 const ethers = require("ethers");
 const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
+const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
-const { findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
+const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
@@ -105,11 +105,7 @@ const processOrders = async(
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
 
                 // instantiate a span for this pair
-                const span = tracer.startSpan(
-                    (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
-                    undefined,
-                    ctx
-                );
+                const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
 
                 // process the pair
                 try {
@@ -341,49 +337,21 @@ async function processPair(args) {
     }
 
     // execute maxInput discovery dryrun logic
-    let rawtx,
-        gasCostInToken,
-        takeOrdersConfigStruct,
-        price,
-        routeVisual,
-        maximumInput,
-        oppBlockNumber;
+    let rawtx, oppBlockNumber;
     try {
-        const findOppResult = config.bundle
-            ? await findOpp({
-                mode: 0,
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            })
-            : await findOppWithRetries({
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            });
-        ({
-            rawtx,
-            gasCostInToken,
-            takeOrdersConfigStruct,
-            price,
-            routeVisual,
-            maximumInput,
-            oppBlockNumber,
-        } = findOppResult.value);
+        const findOppResult = await findOppWithRetries({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            arb,
+            ethPrice,
+            config,
+            viemClient,
+        });
+        ({ rawtx, oppBlockNumber } = findOppResult.value);
 
         // record span attrs
         for (attrKey in findOppResult.spanAttributes) {
@@ -452,20 +420,6 @@ async function processPair(args) {
     // submit the tx
     let tx, txUrl;
     try {
-        spanAttributes["details.route"] = routeVisual;
-        spanAttributes["details.maxInput"] = maximumInput.toString();
-        spanAttributes["details.marketPrice"] = ethers.utils.formatEther(price);
-        spanAttributes["details.gasCostInToken"] = ethers.utils.formatUnits(gasCostInToken, toToken.decimals);
-
-        rawtx.data = arb.interface.encodeFunctionData(
-            "arb2",
-            [
-                takeOrdersConfigStruct,
-                gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
-                DefaultArbEvaluable,
-            ]
-        );
-
         tx = config.timeout
             ? await promiseTimeout(
                 (flashbotSigner !== undefined
