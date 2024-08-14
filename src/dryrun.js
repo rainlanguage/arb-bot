@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { DefaultArbEvaluable } = require("./abis");
-const { visualizeRoute, getSpanException, RPoolFilter } = require("./utils");
+const { visualizeRoute, getSpanException, RPoolFilter, clone } = require("./utils");
 
 /**
  * Specifies the reason that dryrun failed
@@ -89,6 +89,12 @@ async function dryrun({
             /**/
         }
         spanAttributes["route"] = routeVisual;
+
+        // exit early if market price is lower than order quote ratio
+        if (price.lt(orderPairObject.takeOrders[0].quote.ratio)) {
+            result.reason = DryrunHaltReason.NoOpportunity;
+            return Promise.reject(result);
+        }
 
         const rpParams = getRouteProcessorParamsVersion["4"](
             pcMap,
@@ -255,7 +261,6 @@ async function findOpp({
     fromToken,
     toToken,
     signer,
-    vaultBalance,
     gasPrice,
     arb,
     ethPrice,
@@ -270,7 +275,11 @@ async function findOpp({
     };
 
     let noRoute = true;
-    let maximumInput = vaultBalance;
+    const initAmount = orderPairObject.takeOrders.reduce(
+        (a, b) => a.add(b.quote.maxOutput),
+        ethers.constants.Zero
+    );
+    let maximumInput = clone(initAmount);
 
     const allSuccessHops = [];
     const allHopsAttributes = [];
@@ -301,7 +310,7 @@ async function findOpp({
                 allSuccessHops.push(dryrunResult);
             }
             // set the maxInput for next hop by increasing
-            maximumInput = maximumInput.add(vaultBalance.div(2 ** i));
+            maximumInput = maximumInput.add(initAmount.div(2 ** i));
         } catch(e) {
             // reject early in case of no wallet fund
             if (e.reason === DryrunHaltReason.NoWalletFund) {
@@ -321,7 +330,7 @@ async function findOpp({
             }
 
             // set the maxInput for next hop by decreasing
-            maximumInput = maximumInput.sub(vaultBalance.div(2 ** i));
+            maximumInput = maximumInput.sub(initAmount.div(2 ** i));
         }
     }
 
@@ -348,7 +357,6 @@ async function findOppWithRetries({
     fromToken,
     toToken,
     signer,
-    vaultBalance,
     gasPrice,
     arb,
     ethPrice,
@@ -372,7 +380,6 @@ async function findOppWithRetries({
                 fromToken,
                 toToken,
                 signer,
-                vaultBalance,
                 gasPrice,
                 arb,
                 ethPrice,

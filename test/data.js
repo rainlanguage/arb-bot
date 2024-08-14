@@ -74,6 +74,10 @@ const orderPairObject2 = {
     takeOrders: [
         {
             id: hexlify(randomBytes(32)),
+            quote: {
+                maxOutput: vaultBalance1,
+                ratio: ethers.constants.Zero
+            },
             takeOrder: {
                 order: {
                     owner: hexlify(randomBytes(20)),
@@ -101,6 +105,10 @@ const orderPairObject2 = {
         },
         {
             id: hexlify(randomBytes(32)),
+            quote: {
+                maxOutput: vaultBalance2,
+                ratio: ethers.constants.Zero
+            },
             takeOrder: {
                 order: {
                     owner: hexlify(randomBytes(20)),
@@ -139,6 +147,10 @@ const orderPairObject1 = {
     sellTokenDecimals: token2.decimals,
     takeOrders: [{
         id: hexlify(randomBytes(32)),
+        quote: {
+            maxOutput: vaultBalance,
+            ratio: ethers.constants.Zero
+        },
         takeOrder: {
             order: {
                 owner: hexlify(randomBytes(20)),

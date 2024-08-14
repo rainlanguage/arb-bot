@@ -200,6 +200,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.dataFetcher = dataFetcher;
                 config.accounts = [];
                 config.mainAccount = bot;
+                config.mockedQuotes = tokens.slice(1).map(v => ({
+                    maxOutput: v.depositAmount,
+                    ratio: ethers.constants.Zero
+                }));
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders

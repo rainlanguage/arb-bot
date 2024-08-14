@@ -643,7 +643,6 @@ const bundleOrders = (
                     const pair = bundledOrders[orderbook].find(v =>
                         v.sellToken === _output.token.toLowerCase() &&
                         v.buyToken === _input.token.toLowerCase()
-
                     );
                     if (pair && _bundle) pair.takeOrders.push({
                         id: orderDetails.orderHash,
@@ -680,12 +679,18 @@ const bundleOrders = (
     if (_shuffle) {
         // shuffle bundled orders pairs
         if (_bundle) {
-            for (ob in bundledOrders) {
+            for (ob of bundledOrders) {
                 shuffleArray(bundledOrders[ob]);
             }
         }
+
+        // shuffle orderbooks
+        const result = Object.values(bundledOrders);
+        shuffleArray(result);
+
+        return result;
     }
-    return bundledOrders;
+    return Object.values(bundledOrders);
 };
 
 /**
@@ -739,8 +744,7 @@ async function quoteOrders(
     multicallAddressOverride,
 ) {
     let quoteResults;
-    const orderDetailsList = Object.values(orderDetails);
-    const targets = orderDetailsList.flatMap(
+    const targets = orderDetails.flatMap(
         v => v.flatMap(list => list.takeOrders.map(orderConfig => ({
             orderbook: list.orderbook,
             quoteConfig: {
@@ -792,7 +796,7 @@ async function quoteOrders(
     }
 
     // map results to the original obj
-    for (const orderbookOrders of orderDetailsList) {
+    for (const orderbookOrders of orderDetails) {
         for (const pair of orderbookOrders) {
             for (const order of pair.takeOrders) {
                 const quoteResult = quoteResults.shift();
@@ -809,14 +813,45 @@ async function quoteOrders(
     }
 
     // filter out those that failed quote or have 0 maxoutput
-    for (const orderbook in orderDetails) {
-        for (const pair of orderDetails[orderbook]) {
+    for (let i = 0; i < orderDetails.length; i++) {
+        for (const pair of orderDetails[i]) {
             pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
+            pair.takeOrders.sort((a, b) => a.quote.ratio.lt(b.quote.ratio)
+                ? -1
+                : a.quote.ratio.gt(b.quote.ratio)
+                    ? 1
+                    : 0
+            );
         }
-        orderDetails[orderbook] = orderDetails[orderbook].filter(v => v.takeOrders.length > 0);
+        orderDetails[i] = orderDetails[i].filter(v => v.takeOrders.length > 0);
     }
 
     return orderDetails;
+}
+
+
+/**
+ * Clones the given object
+ * @param {any} obj - Object to clone
+ * @returns A new copy of the object
+ */
+function clone(obj) {
+    if (obj instanceof ethers.BigNumber) {
+        return ethers.BigNumber.from(obj.toString());
+    }
+    else if (Array.isArray(obj)) {
+        return obj.map((item) => deepCopy(item));
+    }
+    else if (typeof obj === "object") {
+        const result = {};
+        for (const key in obj) {
+            const value = obj[key];
+            result[key] = deepCopy(value);
+        }
+        return result;
+    } else {
+        return obj;
+    }
 }
 
 module.exports = {
@@ -838,4 +873,5 @@ module.exports = {
     PoolBlackList,
     RPoolFilter,
     quoteOrders,
+    clone,
 };

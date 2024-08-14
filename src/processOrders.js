@@ -1,5 +1,4 @@
 const ethers = require("ethers");
-const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { SpanStatusCode } = require("@opentelemetry/api");
@@ -8,10 +7,10 @@ const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
+    quoteOrders,
     bundleOrders,
     PoolBlackList,
     promiseTimeout,
-    getVaultBalance,
     getSpanException,
     getActualClearAmount,
 } = require("./utils");
@@ -22,22 +21,20 @@ const {
 const ProcessPairHaltReason = {
     NoWalletFund: 1,
     NoRoute: 2,
-    FailedToGetVaultBalance: 3,
-    FailedToGetGasPrice: 4,
-    FailedToGetEthPrice: 5,
-    FailedToGetPools: 6,
-    TxFailed: 7,
-    TxMineFailed: 8,
-    UnexpectedError: 9,
+    FailedToGetGasPrice: 3,
+    FailedToGetEthPrice: 4,
+    FailedToGetPools: 5,
+    TxFailed: 6,
+    TxMineFailed: 7,
+    UnexpectedError: 8,
 };
 
 /**
  * Specifies status of an processed order report
  */
 const ProcessPairReportStatus = {
-    EmptyVault: 1,
-    NoOpportunity: 2,
-    FoundOpportunity: 3,
+    NoOpportunity: 1,
+    FoundOpportunity: 2,
 };
 
 /**
@@ -66,17 +63,26 @@ const processOrders = async(
     const bundledOrders = bundleOrders(
         ordersDetails,
         config.shuffle,
-        config.bundle,
+        true,
     );
-    if (!Object.keys(bundledOrders).length) return;
 
-    const reports = [];
+    // mock quote result only for e2e tests since the local hh
+    // forked network is not exposed as rpc, so wasm quote crate
+    // cannot execute the quoting fn
+    if (config.isTest && config.mockedQuotes) {
+        applyMockedQuotes(bundledOrders, config.mockedQuotes);
+    } else {
+        await quoteOrders(bundledOrders, config.rpc);
+    }
+    if (!bundledOrders.length) return;
+
     let avgGasCost;
-    for (const orderbookAddress in bundledOrders) {
+    const reports = [];
+    for (const orderbookOrders of bundledOrders) {
         // instantiating orderbook contract
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi);
+        const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
 
-        for (const pairOrders of bundledOrders[orderbookAddress]) {
+        for (const pairOrders of orderbookOrders) {
             for (let i = 0; i < pairOrders.takeOrders.length; i++) {
                 const orderPairObject = {
                     orderbook: pairOrders.orderbook,
@@ -86,7 +92,7 @@ const processOrders = async(
                     sellToken: pairOrders.sellToken,
                     sellTokenSymbol: pairOrders.sellTokenSymbol,
                     sellTokenDecimals: pairOrders.sellTokenDecimals,
-                    takeOrders: config.bundle ? pairOrders.takeOrders : [pairOrders.takeOrders[i]]
+                    takeOrders: [pairOrders.takeOrders[i]]
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
                 const flashbotSigner = config.flashbotRpc
@@ -136,9 +142,7 @@ const processOrders = async(
                     span.setAttributes(result.spanAttributes);
 
                     // set the otel span status based on report status
-                    if (result.report.status === ProcessPairReportStatus.EmptyVault) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
-                    } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
+                    if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
@@ -185,19 +189,6 @@ const processOrders = async(
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.end();
                             throw message;
-                        } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                            const message = ["failed to get vault balance"];
-                            if (e.error) {
-                                if (e.error instanceof BaseError) {
-                                    if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
-                                    if (e.error.name) message.push("Error: " + e.error.name);
-                                    if (e.error.details) message.push("Details: " + e.error.details);
-                                } else if (e.error instanceof Error) {
-                                    if (e.error.message) message.push("Reason: " + e.error.message);
-                                }
-                                span.recordException(getSpanException(e.error));
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             if (e.error) span.recordException(getSpanException(e.error));
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
@@ -281,30 +272,6 @@ async function processPair(args) {
         address: orderPairObject.buyToken,
         symbol: orderPairObject.buyTokenSymbol
     });
-
-    // get vault balance
-    let vaultBalance;
-    try {
-        vaultBalance = await getVaultBalance(
-            orderPairObject,
-            orderbook.address,
-            viemClient,
-            config.isTest ? "0xcA11bde05977b3631167028862bE2a173976CA11" : undefined
-        );
-        if (vaultBalance.isZero()) {
-            result.report = {
-                status: ProcessPairReportStatus.EmptyVault,
-                tokenPair: pair,
-                buyToken: orderPairObject.buyToken,
-                sellToken: orderPairObject.sellToken,
-            };
-            return result;
-        }
-    } catch(e) {
-        result.error = e;
-        result.reason = ProcessPairHaltReason.FailedToGetVaultBalance;
-        throw result;
-    }
 
     // get gas price
     let gasPrice;
@@ -390,7 +357,6 @@ async function processPair(args) {
                 fromToken,
                 toToken,
                 signer,
-                vaultBalance,
                 gasPrice,
                 arb,
                 ethPrice,
@@ -403,7 +369,6 @@ async function processPair(args) {
                 fromToken,
                 toToken,
                 signer,
-                vaultBalance,
                 gasPrice,
                 arb,
                 ethPrice,
@@ -642,6 +607,25 @@ async function processPair(args) {
         result.error = e;
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
+    }
+}
+
+function applyMockedQuotes(bundledOrders, testQuote) {
+    let counter = -1;
+    for (const ob in bundledOrders) {
+        for (const pair of bundledOrders[ob]) {
+            for (const order of pair.takeOrders) {
+                const quote = testQuote[++counter];
+                if (quote) {
+                    if (typeof quote !== "string") {
+                        order.quote = {
+                            maxOutput: quote.maxOutput,
+                            ratio: quote.ratio,
+                        };
+                    }
+                }
+            }
+        }
     }
 }
 
