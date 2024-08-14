@@ -3,7 +3,7 @@ const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
-const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
+const { findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
@@ -395,14 +395,14 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        if (e.reason === DryrunHaltReason.NoWalletFund) {
+        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
             result.reason = ProcessPairHaltReason.NoWalletFund;
             if (e.spanAttributes["currentWalletBalance"]) {
                 spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
             }
             throw result;
         }
-        if (e.reason === DryrunHaltReason.NoRoute) {
+        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
             result.reason = ProcessPairHaltReason.NoRoute;
             throw result;
         }

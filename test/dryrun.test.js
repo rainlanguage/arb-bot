@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
-const { dryrun, findOpp, findOppWithRetries, DryrunHaltReason } = require("../src/dryrun");
+const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/dryrun");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -122,7 +122,7 @@ describe("Test dryrun", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoRoute,
+                reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {
                     maxInput: vaultBalance.toString(),
                     route: "no-way"
@@ -161,7 +161,7 @@ describe("Test dryrun", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoWalletFund,
+                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
                 spanAttributes: {
                     marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
@@ -202,7 +202,7 @@ describe("Test dryrun", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoOpportunity,
+                reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
@@ -374,7 +374,7 @@ describe("Test find opp", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoOpportunity,
+                reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
@@ -409,7 +409,7 @@ describe("Test find opp", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoRoute,
+                reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"${vaultBalance.toString()}","route":"no-way"}`,
@@ -448,7 +448,7 @@ describe("Test find opp", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoWalletFund,
+                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
                 spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);
@@ -557,7 +557,7 @@ describe("Test find opp with retries", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoOpportunity,
+                reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
                         `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
@@ -591,7 +591,7 @@ describe("Test find opp with retries", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoRoute,
+                reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {}
             };
             assert.deepEqual(error, expected);
@@ -623,7 +623,7 @@ describe("Test find opp with retries", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: DryrunHaltReason.NoWalletFund,
+                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
                 spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);

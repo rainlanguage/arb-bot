@@ -201,7 +201,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.mockedQuotes = tokens.slice(1).map(v => ({
-                    maxOutput: v.depositAmount,
+                    maxOutput: v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)),
                     ratio: ethers.constants.Zero
                 }));
                 const { reports } = await clear(config, orders, tracer, ctx);

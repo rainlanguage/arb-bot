@@ -6,7 +6,7 @@ const { visualizeRoute, getSpanException, RPoolFilter, clone } = require("./util
 /**
  * Specifies the reason that dryrun failed
  */
-const DryrunHaltReason = {
+const RouteProcessorDryrunHaltReason = {
     NoOpportunity: 1,
     NoWalletFund: 2,
     NoRoute: 3,
@@ -32,7 +32,7 @@ async function dryrun({
     fromToken,
     toToken,
     signer,
-    maximumInput,
+    maximumInput: maximumInputFixed,
     gasPrice,
     arb,
     ethPrice,
@@ -47,11 +47,10 @@ async function dryrun({
         spanAttributes,
     };
 
-    spanAttributes["maxInput"] = maximumInput.toString();
-
-    const maximumInputFixed = maximumInput.mul(
+    const maximumInput = maximumInputFixed.div(
         "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals)
     );
+    spanAttributes["maxInput"] = maximumInput.toString();
 
     // get route details from sushi dataFetcher
     const pcMap = dataFetcher.getCurrentPoolCodeMap(
@@ -70,7 +69,7 @@ async function dryrun({
     );
     if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";
-        result.reason = DryrunHaltReason.NoRoute;
+        result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
     }
     else {
@@ -92,7 +91,7 @@ async function dryrun({
 
         // exit early if market price is lower than order quote ratio
         if (price.lt(orderPairObject.takeOrders[0].quote.ratio)) {
-            result.reason = DryrunHaltReason.NoOpportunity;
+            result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             return Promise.reject(result);
         }
 
@@ -169,10 +168,10 @@ async function dryrun({
                 || errorString.includes("gas required exceeds allowance")
                 || errorString.includes("insufficient funds for gas")
             ) {
-                result.reason = DryrunHaltReason.NoWalletFund;
+                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
                 spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
             } else {
-                result.reason = DryrunHaltReason.NoOpportunity;
+                result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             }
             return Promise.reject(result);
         }
@@ -221,10 +220,10 @@ async function dryrun({
                     || errorString.includes("gas required exceeds allowance")
                     || errorString.includes("insufficient funds for gas")
                 ) {
-                    result.reason = DryrunHaltReason.NoWalletFund;
+                    result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
                     spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
                 } else {
-                    result.reason = DryrunHaltReason.NoOpportunity;
+                    result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
                 }
                 return Promise.reject(result);
             }
@@ -313,14 +312,14 @@ async function findOpp({
             maximumInput = maximumInput.add(initAmount.div(2 ** i));
         } catch(e) {
             // reject early in case of no wallet fund
-            if (e.reason === DryrunHaltReason.NoWalletFund) {
-                result.reason = DryrunHaltReason.NoWalletFund;
+            if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
+                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
                 spanAttributes["currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
                 return Promise.reject(result);
             } else {
                 // the fail reason can only be no route in case all hops fail
                 // reasons are no route
-                if (e.reason !== DryrunHaltReason.NoRoute) noRoute = false;
+                if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
 
                 // record this hop attributes
                 // error attr is only recorded for first hop,
@@ -341,8 +340,8 @@ async function findOpp({
         // in case of no successfull hop, allHopsAttributes will be included
         spanAttributes["hops"] = allHopsAttributes;
 
-        if (noRoute) result.reason = DryrunHaltReason.NoRoute;
-        else result.reason = DryrunHaltReason.NoOpportunity;
+        if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
+        else result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
 
         return Promise.reject(result);
     }
@@ -411,15 +410,15 @@ async function findOppWithRetries({
         return result;
     } else {
         for (let i = 0; i < allPromises.length; i++) {
-            if (allPromises[i].reason.reason === DryrunHaltReason.NoWalletFund) {
-                result.reason = DryrunHaltReason.NoWalletFund;
+            if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
+                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
                 if (allPromises[i].reason.spanAttributes["currentWalletBalance"]) {
                     spanAttributes["currentWalletBalance"] = allPromises[i].reason.spanAttributes["currentWalletBalance"];
                 }
                 throw result;
             }
-            if (allPromises[i].reason.reason === DryrunHaltReason.NoRoute) {
-                result.reason = DryrunHaltReason.NoRoute;
+            if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoRoute) {
+                result.reason = RouteProcessorDryrunHaltReason.NoRoute;
                 throw result;
             }
         }
@@ -427,7 +426,7 @@ async function findOppWithRetries({
         for (attrKey in allPromises[0].reason.spanAttributes) {
             spanAttributes[attrKey] = allPromises[0].reason.spanAttributes[attrKey];
         }
-        result.reason = DryrunHaltReason.NoOpportunity;
+        result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
         throw result;
     }
 }
@@ -436,5 +435,5 @@ module.exports = {
     dryrun,
     findOpp,
     findOppWithRetries,
-    DryrunHaltReason,
+    RouteProcessorDryrunHaltReason,
 };
