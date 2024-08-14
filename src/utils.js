@@ -840,13 +840,13 @@ function clone(obj) {
         return ethers.BigNumber.from(obj.toString());
     }
     else if (Array.isArray(obj)) {
-        return obj.map((item) => deepCopy(item));
+        return obj.map((item) => clone(item));
     }
     else if (typeof obj === "object") {
         const result = {};
         for (const key in obj) {
             const value = obj[key];
-            result[key] = deepCopy(value);
+            result[key] = clone(value);
         }
         return result;
     } else {
