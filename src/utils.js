@@ -164,6 +164,7 @@ const getEthPrice = async(
     gasPrice,
     dataFetcher = undefined,
     options = undefined,
+    fetchPools = true,
 ) => {
     if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
@@ -183,7 +184,12 @@ const getEthPrice = async(
         address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
-    await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
+    if (fetchPools) await dataFetcher.fetchPoolsForToken(
+        fromToken,
+        toToken,
+        PoolBlackList,
+        options
+    );
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -854,6 +860,43 @@ function clone(obj) {
     }
 }
 
+/**
+ * Get total income in native chain's token units
+ * @param {ethers.BigNumber | undefined} inputTokenIncome
+ * @param {ethers.BigNumber | undefined} outputTokenIncome
+ * @param {string} inputTokenPrice
+ * @param {string} outputTokenPrice
+ * @param {number} inputTokenDecimals
+ * @param {number} outputTokenDecimals
+ */
+function getTotalIncome(
+    inputTokenIncome,
+    outputTokenIncome,
+    inputTokenPrice,
+    outputTokenPrice,
+    inputTokenDecimals,
+    outputTokenDecimals
+) {
+    if (inputTokenIncome && outputTokenIncome) {
+        const inputTokenIncomeInEth = ethers.utils.parseUnits(inputTokenPrice)
+            .mul(inputTokenIncome)
+            .div("1" + "0".repeat(inputTokenDecimals));
+        const outputTokenIncomeInEth = ethers.utils.parseUnits(outputTokenPrice)
+            .mul(outputTokenIncome)
+            .div("1" + "0".repeat(outputTokenDecimals));
+        return inputTokenIncomeInEth.add(outputTokenIncomeInEth);
+    } else if (inputTokenIncome && !outputTokenIncome) {
+        return ethers.utils.parseUnits(inputTokenPrice)
+            .mul(inputTokenIncome)
+            .div("1" + "0".repeat(inputTokenDecimals));
+    } else if (!inputTokenIncome && outputTokenIncome) {
+        return ethers.utils.parseUnits(outputTokenPrice)
+            .mul(outputTokenIncome)
+            .div("1" + "0".repeat(outputTokenDecimals));
+    }
+    return undefined;
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -874,4 +917,5 @@ module.exports = {
     RPoolFilter,
     quoteOrders,
     clone,
+    getTotalIncome,
 };

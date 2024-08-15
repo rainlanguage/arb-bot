@@ -18,6 +18,7 @@ const OrderV3 = `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, 
 const TakeOrderConfigV3 = `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)`;
 const OrderConfigV3 = `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)`;
 const TakeOrdersConfigV3 = `(uint256 minimumInput, uint256 maximumInput, uint256 maximumIORatio, ${TakeOrderConfigV3}[] orders, bytes data)`;
+const ClearConfig = "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uint256 bobInputIOIndex, uint256 bobOutputIOIndex, uint256 aliceBountyVaultId, uint256 bobBountyVaultId)";
 
 /**
  * Minimal ABI for Orderbook contract only including vaultBalance() function
@@ -31,6 +32,9 @@ const orderbookAbi = [
     `function withdraw2(address token, uint256 vaultId, uint256 targetAmount, ${ActionV1}[] calldata post) external`,
     "function orderExists(bytes32 orderHash) external view returns (bool exists)",
     `function removeOrder2(${OrderV3} calldata order, ${ActionV1}[] calldata post) external returns (bool stateChanged)`,
+    "function multicall(bytes[] calldata data) external returns (bytes[] memory results)",
+    `function takeOrders2(${TakeOrdersConfigV3} memory config) external returns (uint256 totalInput, uint256 totalOutput)`,
+    `function clear2(${OrderV3} memory aliceOrder, ${OrderV3} memory bobOrder, ${ClearConfig} calldata clearConfig, ${SignedContextV1}[] memory aliceSignedContext, ${SignedContextV1}[] memory bobSignedContext) external`,
 ];
 
 /**

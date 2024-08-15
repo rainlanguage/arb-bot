@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
-const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/dryrun");
+const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/find/routeProcessor");
 
 // mocking signer and dataFetcher
 let signer = {};

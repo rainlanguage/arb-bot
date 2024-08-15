@@ -3,7 +3,7 @@ const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
+const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./find/routeProcessor");
 const {
     getIncome,
     getEthPrice,
@@ -11,6 +11,7 @@ const {
     bundleOrders,
     PoolBlackList,
     promiseTimeout,
+    getTotalIncome,
     getSpanException,
     getActualClearAmount,
 } = require("./utils");
@@ -78,6 +79,7 @@ const processOrders = async(
 
     let avgGasCost;
     const reports = [];
+    const fetchedPairPools = [];
     for (const orderbookOrders of bundledOrders) {
         // instantiating orderbook contract
         const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
@@ -121,6 +123,7 @@ const processOrders = async(
                         pair,
                         mainAccount,
                         accounts,
+                        fetchedPairPools,
                     });
 
                     // keep track of avggas cost
@@ -242,6 +245,7 @@ async function processPair(args) {
         arb,
         orderbook,
         pair,
+        fetchedPairPools,
     } = args;
 
     const spanAttributes = {};
@@ -281,8 +285,39 @@ async function processPair(args) {
         throw result;
     }
 
+    // get pool details
+    if (!fetchedPairPools.includes(pair)) {
+        try {
+            const options = {
+                fetchPoolsTimeout: 90000,
+                memoize: true,
+            };
+            // pin block number for test case
+            if (config.isTest && config.testBlockNumber) {
+                options.blockNumber = config.testBlockNumber;
+            }
+            await dataFetcher.fetchPoolsForToken(
+                fromToken,
+                toToken,
+                PoolBlackList,
+                options
+            );
+            fetchedPairPools.push(
+                `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`
+            );
+            fetchedPairPools.push(
+                `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`
+            );
+        } catch(e) {
+            result.reason = ProcessPairHaltReason.FailedToGetPools;
+            result.error = e;
+            throw result;
+        }
+    }
+
     // get eth price
-    let ethPrice;
+    let ethPriceToInput;
+    let ethPriceToOutput;
     if (config.gasCoveragePercentage !== "0") {
         try {
             const options = {
@@ -293,47 +328,41 @@ async function processPair(args) {
             if (config.isTest && config.testBlockNumber) {
                 options.blockNumber = config.testBlockNumber;
             }
-            ethPrice = await getEthPrice(
+            ethPriceToInput = await getEthPrice(
                 config,
                 orderPairObject.buyToken,
                 orderPairObject.buyTokenDecimals,
                 gasPrice,
                 dataFetcher,
-                options
+                options,
+                false,
             );
-            if (!ethPrice) {
+            ethPriceToOutput = await getEthPrice(
+                config,
+                orderPairObject.sellToken,
+                orderPairObject.sellTokenDecimals,
+                gasPrice,
+                dataFetcher,
+                options,
+                false
+            );
+            if (!ethPriceToInput || !ethPriceToOutput) {
                 result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
                 return Promise.reject(result);
             }
-            else spanAttributes["details.ethPrice"] = ethPrice;
+            else {
+                spanAttributes["details.ethPriceToInput"] = ethPriceToInput;
+                spanAttributes["details.ethPriceToOutput"] = ethPriceToOutput;
+            }
         } catch(e) {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
             result.error = e;
             throw result;
         }
     }
-    else ethPrice = "0";
-
-    // get pool details
-    try {
-        const options = {
-            fetchPoolsTimeout: 90000,
-            memoize: true,
-        };
-        // pin block number for test case
-        if (config.isTest && config.testBlockNumber) {
-            options.blockNumber = config.testBlockNumber;
-        }
-        await dataFetcher.fetchPoolsForToken(
-            fromToken,
-            toToken,
-            PoolBlackList,
-            options
-        );
-    } catch(e) {
-        result.reason = ProcessPairHaltReason.FailedToGetPools;
-        result.error = e;
-        throw result;
+    else {
+        ethPriceToInput = "0";
+        ethPriceToOutput = "0";
     }
 
     // execute maxInput discovery dryrun logic
@@ -347,7 +376,7 @@ async function processPair(args) {
             signer,
             gasPrice,
             arb,
-            ethPrice,
+            ethPrice: ethPriceToInput,
             config,
             viemClient,
         });
@@ -363,6 +392,7 @@ async function processPair(args) {
             }
         }
     } catch (e) {
+        console.log(e);
         if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
             result.reason = ProcessPairHaltReason.NoWalletFund;
             if (e.spanAttributes["currentWalletBalance"]) {
@@ -464,21 +494,22 @@ async function processPair(args) {
                 orderbook.address,
                 receipt
             );
-            const income = getIncome(signer.address, receipt, orderPairObject.buyToken);
+            const inputTokenIncome = getIncome(signer.address, receipt, orderPairObject.buyToken);
+            const outputTokenIncome = getIncome(signer.address, receipt, orderPairObject.sellToken);
+            const income = getTotalIncome(
+                inputTokenIncome,
+                outputTokenIncome,
+                ethPriceToInput,
+                ethPriceToOutput,
+                orderPairObject.buyTokenDecimals,
+                orderPairObject.sellTokenDecimals
+            );
+
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
             ).mul(receipt.gasUsed);
-            const actualGasCostInToken = ethers.utils.parseUnits(
-                ethPrice
-            ).mul(
-                actualGasCost
-            ).div(
-                "1" + "0".repeat(
-                    36 - orderPairObject.buyTokenDecimals
-                )
-            );
             const netProfit = income
-                ? income.sub(actualGasCostInToken)
+                ? income.sub(actualGasCost)
                 : undefined;
 
             if (income) {
@@ -499,10 +530,6 @@ async function processPair(args) {
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: clearActualAmount?.toString(),
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
-                actualGasCostInToken: ethers.utils.formatUnits(
-                    actualGasCostInToken,
-                    orderPairObject.buyTokenDecimals
-                ),
                 income,
                 netProfit,
                 clearedOrders: orderPairObject.takeOrders.map(

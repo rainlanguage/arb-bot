@@ -103,6 +103,34 @@ function getDataFetcher(configOrViemClient, liquidityProviders = [], useFallback
 }
 
 /**
+ * Get the bounty check ensure task bytecode
+ * @param {import("ethers").BigNumber} ethToInputPrice - ETH to input token price
+ * @param {import("ethers").BigNumber} ethToOutputPrice - ETH to output token price
+ * @param {import("ethers").BigNumber} minimumOutput - Minimum expected amount
+ */
+function getBountyEnsureBytecode(
+    ethToInputPrice,
+    ethToOutputPrice,
+    minimumOutput,
+) {
+    const inputPrice = ethToInputPrice.toHexString().substring(2).padStart(64, "0");
+    const outputPrice = ethToOutputPrice.toHexString().substring(2).padStart(64, "0");
+    const minimum = minimumOutput.toHexString().substring(2).padStart(64, "0");
+    // rainlang bytecode:
+    // :ensure(
+    //   greater-than-or-equal-to(
+    //     add(
+    //       mul(ethToInputPrice context<0 0>())
+    //       mul(ethToOutputPrice context<0 1>())
+    //     )
+    //     minimumOutput
+    //   )
+    //   \"minimum sender output\"
+    // );
+    return `0x0000000000000000000000000000000000000000000000000000000000000004${inputPrice}${outputPrice}${minimum}956d696e696d756d2073656e646572206f75747075740000000000000000000000000000000000000000000000000000000000000000000000000000000000330100000b050000011000030110000203100100011000013d12000003100000011000003d1200002b120000211200001d020000`;
+}
+
+/**
  * Chain specific fallback data
  */
 const fallbacks = {
@@ -372,5 +400,6 @@ module.exports = {
     getDataFetcher,
     createViemClient,
     getChainConfig,
+    getBountyEnsureBytecode,
     fallbacks,
 };

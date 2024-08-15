@@ -82,7 +82,8 @@ describe("Test process pair", async function () {
             orderbook,
             pair,
             mainAccount: signer,
-            accounts: [signer]
+            accounts: [signer],
+            fetchedPairPools: [],
         });
         const expected = {
             report: {
@@ -93,7 +94,6 @@ describe("Test process pair", async function () {
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: undefined,
                 actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
-                actualGasCostInToken: "0.0",
                 income: undefined,
                 netProfit: undefined,
                 clearedOrders: [orderPairObject.takeOrders[0].id],
@@ -137,7 +137,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -172,7 +173,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -208,7 +210,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -247,7 +250,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -325,7 +329,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -387,7 +392,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
