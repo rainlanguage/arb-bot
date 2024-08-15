@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
-const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/find/routeProcessor");
+const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -28,7 +28,7 @@ const {
     getCurrentPrice,
 } = testData;
 
-describe("Test dryrun", async function () {
+describe("Test route processor dryrun", async function () {
     beforeEach(() => {
         signer = {
             provider: {
@@ -218,7 +218,7 @@ describe("Test dryrun", async function () {
     });
 });
 
-describe("Test find opp", async function () {
+describe("Test route processor find opp", async function () {
     beforeEach(() => {
         signer = {
             provider: {

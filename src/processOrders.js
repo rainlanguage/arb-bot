@@ -3,7 +3,7 @@ const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./find/routeProcessor");
+const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./modes/routeProcessor");
 const {
     getIncome,
     getEthPrice,
