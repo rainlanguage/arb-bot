@@ -36,8 +36,9 @@ const ProcessPairHaltReason = {
  * Specifies status of an processed order report
  */
 const ProcessPairReportStatus = {
-    NoOpportunity: 1,
-    FoundOpportunity: 2,
+    ZeroOutput: 1,
+    NoOpportunity: 2,
+    FoundOpportunity: 3,
 };
 
 /**
@@ -144,7 +145,9 @@ const processOrders = async(
                     span.setAttributes(result.spanAttributes);
 
                     // set the otel span status based on report status
-                    if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
+                    if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
+                    } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
@@ -191,6 +194,11 @@ const processOrders = async(
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.end();
                             throw message;
+                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                            if (e.error) {
+                                span.recordException(getSpanException(e.error));
+                            }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to quote order" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             if (e.error) span.recordException(getSpanException(e.error));
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
@@ -290,24 +298,26 @@ async function processPair(args) {
         symbol: orderPairObject.buyTokenSymbol
     });
 
-    try {
-        await quoteSingleOrder(
-            orderPairObject,
-            config.rpc
-        );
-        if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
-            result.report = {
-                status: ProcessPairReportStatus.EmptyVault,
-                tokenPair: pair,
-                buyToken: orderPairObject.buyToken,
-                sellToken: orderPairObject.sellToken,
-            };
-            return result;
+    if (!config.isTest) {
+        try {
+            await quoteSingleOrder(
+                orderPairObject,
+                config.rpc
+            );
+            if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
+                result.report = {
+                    status: ProcessPairReportStatus.ZeroOutput,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                };
+                return result;
+            }
+        } catch(e) {
+            result.error = e;
+            result.reason = ProcessPairHaltReason.FailedToQuote;
+            throw result;
         }
-    } catch(e) {
-        result.error = e;
-        result.reason = ProcessPairHaltReason.FailedToQuote;
-        throw result;
     }
 
     // get gas price

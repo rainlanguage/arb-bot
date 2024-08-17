@@ -753,36 +753,7 @@ async function quoteOrders(
     const targets = orderDetails.flatMap(
         v => v.flatMap(list => list.takeOrders.map(orderConfig => ({
             orderbook: list.orderbook,
-            quoteConfig: {
-                order: {
-                    owner: orderConfig.takeOrder.order.owner,
-                    nonce: orderConfig.takeOrder.order.nonce,
-                    evaluable: {
-                        interpreter: orderConfig.takeOrder.order.evaluable.interpreter,
-                        store: orderConfig.takeOrder.order.evaluable.store,
-                        bytecode: ethers.utils.arrayify(
-                            orderConfig.takeOrder.order.evaluable.bytecode
-                        ),
-                    },
-                    validInputs: orderConfig.takeOrder.order.validInputs.map(input => ({
-                        token: input.token,
-                        decimals: input.decimals,
-                        vaultId: typeof input.vaultId == "string"
-                            ? input.vaultId
-                            : input.vaultId.toHexString(),
-                    })),
-                    validOutputs: orderConfig.takeOrder.order.validOutputs.map(output => ({
-                        token: output.token,
-                        decimals: output.decimals,
-                        vaultId: typeof output.vaultId == "string"
-                            ? output.vaultId
-                            : output.vaultId.toHexString(),
-                    })),
-                },
-                inputIOIndex: orderConfig.takeOrder.inputIOIndex,
-                outputIOIndex: orderConfig.takeOrder.outputIOIndex,
-                signedContext: orderConfig.takeOrder.signedContext,
-            }
+            quoteConfig: getQuoteConfig(orderConfig)
         })))
     );
     for (let i = 0; i < rpcs.length; i++) {
@@ -848,48 +819,14 @@ async function quoteSingleOrder(
     blockNumber,
     multicallAddressOverride,
 ) {
-    const target = {
-        orderbook: orderDetails.orderbook,
-        quoteConfig: {
-            order: {
-                owner: orderDetails.takeOrders[0].takeOrder.order.owner,
-                nonce: orderDetails.takeOrders[0].takeOrder.order.nonce,
-                evaluable: {
-                    interpreter: orderDetails.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                    store: orderDetails.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: ethers.utils.arrayify(
-                        orderDetails.takeOrders[0].takeOrder.order.evaluable.bytecode
-                    ),
-                },
-                validInputs: orderDetails.takeOrders[0].takeOrder.order.validInputs.map(
-                    input => ({
-                        token: input.token,
-                        decimals: input.decimals,
-                        vaultId: typeof input.vaultId == "string"
-                            ? input.vaultId
-                            : input.vaultId.toHexString(),
-                    })
-                ),
-                validOutputs: orderDetails.takeOrders[0].takeOrder.order.validOutputs.map(
-                    output => ({
-                        token: output.token,
-                        decimals: output.decimals,
-                        vaultId: typeof output.vaultId == "string"
-                            ? output.vaultId
-                            : output.vaultId.toHexString(),
-                    })
-                ),
-            },
-            inputIOIndex: orderDetails.takeOrders[0].takeOrder.inputIOIndex,
-            outputIOIndex: orderDetails.takeOrders[0].takeOrder.outputIOIndex,
-            signedContext: orderDetails.takeOrders[0].takeOrder.signedContext,
-        }
-    };
     for (let i = 0; i < rpcs.length; i++) {
         const rpc = rpcs[i];
         try {
             const quoteResult = (await doQuoteTargets(
-                [target],
+                [{
+                    orderbook: orderDetails.orderbook,
+                    quoteConfig: getQuoteConfig(orderDetails.takeOrders[0])
+                }],
                 rpc,
                 blockNumber,
                 multicallAddressOverride
@@ -901,13 +838,50 @@ async function quoteSingleOrder(
                 };
                 return;
             } else {
-                throw `failed to quote order, reason: ${quoteResult}`;
+                return Promise.reject(`failed to quote order, reason: ${quoteResult}`);
             }
         } catch(e) {
             // throw only after every available rpc has been tried and failed
-            if (i === rpcs.length - 1) throw e;
+            if (i === rpcs.length - 1) throw e?.message;
         }
     }
+}
+
+function getQuoteConfig(orderDetails) {
+    return {
+        order: {
+            owner: orderDetails.takeOrder.order.owner,
+            nonce: orderDetails.takeOrder.order.nonce,
+            evaluable: {
+                interpreter: orderDetails.takeOrder.order.evaluable.interpreter,
+                store: orderDetails.takeOrder.order.evaluable.store,
+                bytecode: ethers.utils.arrayify(
+                    orderDetails.takeOrder.order.evaluable.bytecode
+                ),
+            },
+            validInputs: orderDetails.takeOrder.order.validInputs.map(
+                input => ({
+                    token: input.token,
+                    decimals: input.decimals,
+                    vaultId: typeof input.vaultId == "string"
+                        ? input.vaultId
+                        : input.vaultId.toHexString(),
+                })
+            ),
+            validOutputs: orderDetails.takeOrder.order.validOutputs.map(
+                output => ({
+                    token: output.token,
+                    decimals: output.decimals,
+                    vaultId: typeof output.vaultId == "string"
+                        ? output.vaultId
+                        : output.vaultId.toHexString(),
+                })
+            ),
+        },
+        inputIOIndex: orderDetails.takeOrder.inputIOIndex,
+        outputIOIndex: orderDetails.takeOrder.outputIOIndex,
+        signedContext: orderDetails.takeOrder.signedContext,
+    };
 }
 
 /**
