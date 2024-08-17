@@ -4,6 +4,7 @@ const testData = require("./data");
 const { ChainKey } = require("sushi");
 const { clear } = require("../../src");
 const { arbAbis } = require("../../src/abis");
+const mockServer = require("mockttp").getLocal();
 const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
@@ -21,6 +22,7 @@ const {
     getEventArgs,
     randomUint256,
     mockSgFromEvent,
+    encodeQuoteResponse,
     deployOrderBookNPE2,
     rainterpreterNPE2Deploy,
     rainterpreterStoreNPE2Deploy
@@ -46,6 +48,9 @@ for (let i = 0; i < testData.length; i++) {
     if (!rpc) continue;
 
     describe(`Rain Arb Bot E2E Tests on "${ChainKey[chainId]}" Network`, async function () {
+        before(() => mockServer.start(8080));
+        after(() => mockServer.stop());
+
         // get config for the chain
         const config = getChainConfig(chainId);
 
@@ -183,6 +188,23 @@ for (let i = 0; i < testData.length; i++) {
                     ));
                 }
 
+                // mock quote responses with vault balance as maxoutput
+                await mockServer
+                    .forPost("/rpc")
+                    .once()
+                    .thenSendJsonRpcResult(
+                        encodeQuoteResponse(
+                            tokens.slice(1).map(v => v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)))
+                        )
+                    );
+                for (let i = 1; i < tokens.length; i++) {
+                    const output = tokens[i].depositAmount.mul("1" + "0".repeat(18 - tokens[i].decimals));
+                    await mockServer
+                        .forPost("/rpc")
+                        .withBodyIncluding(owners[i].address.substring(2).toLowerCase())
+                        .thenSendJsonRpcResult(encodeQuoteResponse([output]));
+                }
+
                 // run the clearing process
                 config.isTest = true;
                 config.shuffle = false;
@@ -200,10 +222,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.dataFetcher = dataFetcher;
                 config.accounts = [];
                 config.mainAccount = bot;
-                config.mockedQuotes = tokens.slice(1).map(v => ({
-                    maxOutput: v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)),
-                    ratio: ethers.constants.Zero
-                }));
+                config.quoteRpc = [mockServer.url + "/rpc"];
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders

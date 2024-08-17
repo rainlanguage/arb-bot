@@ -68,15 +68,10 @@ const processOrders = async(
         config.shuffle,
         true,
     );
-
-    // mock quote result only for e2e tests since the local hh
-    // forked network is not exposed as rpc, so wasm quote crate
-    // cannot execute the quoting fn
-    if (config.isTest && config.mockedQuotes) {
-        applyMockedQuotes(bundledOrders, config.mockedQuotes);
-    } else {
-        await quoteOrders(bundledOrders, config.rpc);
-    }
+    await quoteOrders(
+        bundledOrders,
+        config.isTest ? config.quoteRpc : config.rpc
+    );
     if (!bundledOrders.length) return;
 
     let avgGasCost;
@@ -279,26 +274,24 @@ async function processPair(args) {
         symbol: orderPairObject.buyTokenSymbol
     });
 
-    if (!config.isTest) {
-        try {
-            await quoteSingleOrder(
-                orderPairObject,
-                config.rpc
-            );
-            if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
-                result.report = {
-                    status: ProcessPairReportStatus.ZeroOutput,
-                    tokenPair: pair,
-                    buyToken: orderPairObject.buyToken,
-                    sellToken: orderPairObject.sellToken,
-                };
-                return result;
-            }
-        } catch(e) {
-            result.error = e;
-            result.reason = ProcessPairHaltReason.FailedToQuote;
-            throw result;
+    try {
+        await quoteSingleOrder(
+            orderPairObject,
+            config.isTest ? config.quoteRpc : config.rpc
+        );
+        if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
+            result.report = {
+                status: ProcessPairReportStatus.ZeroOutput,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            };
+            return result;
         }
+    } catch(e) {
+        result.error = e;
+        result.reason = ProcessPairHaltReason.FailedToQuote;
+        throw result;
     }
 
     // get gas price
@@ -593,25 +586,6 @@ async function processPair(args) {
         result.error = e;
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
-    }
-}
-
-function applyMockedQuotes(bundledOrders, testQuote) {
-    let counter = -1;
-    for (const ob in bundledOrders) {
-        for (const pair of bundledOrders[ob]) {
-            for (const order of pair.takeOrders) {
-                const quote = testQuote[++counter];
-                if (quote) {
-                    if (typeof quote !== "string") {
-                        order.quote = {
-                            maxOutput: quote.maxOutput,
-                            ratio: quote.ratio,
-                        };
-                    }
-                }
-            }
-        }
     }
 }
 
