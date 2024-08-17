@@ -4,7 +4,7 @@ const mockServer = require("mockttp").getLocal();
 const { deployOrderBookNPE2 } = require("./utils");
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
-const { bundleOrders, getVaultBalance, quoteOrders } = require("../src/utils");
+const { bundleOrders, getVaultBalance, quoteOrders, quoteSingleOrder } = require("../src/utils");
 
 describe("Test order details", async function () {
     beforeEach(() => mockServer.start(8081));
@@ -452,6 +452,59 @@ describe("Test order details", async function () {
             }]
         }]];
         assert.deepEqual(result, expected);
+    });
+
+    it("should single quote order", async function () {
+        const orderbook = `0x${"2".repeat(40)}`;
+        const orderDetails = {
+            orderbook: orderbook,
+            takeOrders: [
+                {
+                    id: `0x${"1".repeat(64)}`,
+                    quote: {
+                        maxOutput: ethers.BigNumber.from("33"),
+                        ratio: ethers.BigNumber.from("44"),
+                    },
+                    takeOrder: {
+                        order: {
+                            owner: `0x${"2".repeat(40)}`,
+                            evaluable: {
+                                interpreter: `0x${"2".repeat(40)}`,
+                                store: `0x${"2".repeat(40)}`,
+                                bytecode: "0x",
+                            },
+                            validInputs: [{
+                                token:`0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            validOutputs: [{
+                                token: `0x${"2".repeat(40)}`,
+                                decimals: 18,
+                                vaultId: ethers.BigNumber.from("1"),
+                            }],
+                            nonce: "1",
+                        },
+                        inputIOIndex: 0,
+                        outputIOIndex: 0,
+                        signedContext: []
+                    }
+                }
+            ]
+        };
+        // mock response with encoded data
+        await mockServer
+            .forPost("/rpc")
+            .thenSendJsonRpcResult("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002");
+        await quoteSingleOrder(
+            orderDetails,
+            [mockServer.url + "/rpc"]
+        );
+        const expected = {
+            maxOutput: ethers.BigNumber.from(1),
+            ratio: ethers.BigNumber.from(2),
+        };
+        assert.deepEqual(orderDetails.takeOrders[0].quote, expected);
     });
 });
 

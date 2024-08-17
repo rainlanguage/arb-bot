@@ -13,6 +13,7 @@ const {
     promiseTimeout,
     getSpanException,
     getActualClearAmount,
+    quoteSingleOrder,
 } = require("./utils");
 
 /**
@@ -21,20 +22,22 @@ const {
 const ProcessPairHaltReason = {
     NoWalletFund: 1,
     NoRoute: 2,
-    FailedToGetGasPrice: 3,
-    FailedToGetEthPrice: 4,
-    FailedToGetPools: 5,
-    TxFailed: 6,
-    TxMineFailed: 7,
-    UnexpectedError: 8,
+    FailedToQuote: 3,
+    FailedToGetGasPrice: 4,
+    FailedToGetEthPrice: 5,
+    FailedToGetPools: 6,
+    TxFailed: 7,
+    TxMineFailed: 8,
+    UnexpectedError: 9,
 };
 
 /**
  * Specifies status of an processed order report
  */
 const ProcessPairReportStatus = {
-    NoOpportunity: 1,
-    FoundOpportunity: 2,
+    ZeroOutput: 1,
+    NoOpportunity: 2,
+    FoundOpportunity: 3,
 };
 
 /**
@@ -138,7 +141,9 @@ const processOrders = async(
                     span.setAttributes(result.spanAttributes);
 
                     // set the otel span status based on report status
-                    if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
+                    if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
+                    } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
@@ -197,6 +202,11 @@ const processOrders = async(
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                             span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                            if (e.error) {
+                                span.recordException(getSpanException(e.error));
+                            }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to get vault balance" });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
@@ -268,6 +278,28 @@ async function processPair(args) {
         address: orderPairObject.buyToken,
         symbol: orderPairObject.buyTokenSymbol
     });
+
+    if (!config.isTest) {
+        try {
+            await quoteSingleOrder(
+                orderPairObject,
+                config.rpc
+            );
+            if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
+                result.report = {
+                    status: ProcessPairReportStatus.ZeroOutput,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                };
+                return result;
+            }
+        } catch(e) {
+            result.error = e;
+            result.reason = ProcessPairHaltReason.FailedToQuote;
+            throw result;
+        }
+    }
 
     // get gas price
     let gasPrice;

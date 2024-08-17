@@ -65,6 +65,7 @@ const config = {
 const vaultBalance1 = BigNumber.from("10000000000000000000");
 const vaultBalance2 = BigNumber.from("20000000000000000000");
 const orderPairObject2 = {
+    orderbook: orderbookAddress,
     buyToken: token1.address,
     buyTokenSymbol: token1.symbol,
     buyTokenDecimals: token1.decimals,
@@ -139,6 +140,7 @@ const orderPairObject2 = {
 
 const vaultBalance = BigNumber.from("10000000000000000000");
 const orderPairObject1 = {
+    orderbook: orderbookAddress,
     buyToken: token1.address,
     buyTokenSymbol: token1.symbol,
     buyTokenDecimals: token1.decimals,

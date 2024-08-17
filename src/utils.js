@@ -747,36 +747,7 @@ async function quoteOrders(
     const targets = orderDetails.flatMap(
         v => v.flatMap(list => list.takeOrders.map(orderConfig => ({
             orderbook: list.orderbook,
-            quoteConfig: {
-                order: {
-                    owner: orderConfig.takeOrder.order.owner,
-                    nonce: orderConfig.takeOrder.order.nonce,
-                    evaluable: {
-                        interpreter: orderConfig.takeOrder.order.evaluable.interpreter,
-                        store: orderConfig.takeOrder.order.evaluable.store,
-                        bytecode: ethers.utils.arrayify(
-                            orderConfig.takeOrder.order.evaluable.bytecode
-                        ),
-                    },
-                    validInputs: orderConfig.takeOrder.order.validInputs.map(input => ({
-                        token: input.token,
-                        decimals: input.decimals,
-                        vaultId: typeof input.vaultId == "string"
-                            ? input.vaultId
-                            : input.vaultId.toHexString(),
-                    })),
-                    validOutputs: orderConfig.takeOrder.order.validOutputs.map(output => ({
-                        token: output.token,
-                        decimals: output.decimals,
-                        vaultId: typeof output.vaultId == "string"
-                            ? output.vaultId
-                            : output.vaultId.toHexString(),
-                    })),
-                },
-                inputIOIndex: orderConfig.takeOrder.inputIOIndex,
-                outputIOIndex: orderConfig.takeOrder.outputIOIndex,
-                signedContext: orderConfig.takeOrder.signedContext,
-            }
+            quoteConfig: getQuoteConfig(orderConfig)
         })))
     );
     for (let i = 0; i < rpcs.length; i++) {
@@ -829,6 +800,83 @@ async function quoteOrders(
     return orderDetails;
 }
 
+/**
+ * Quotes a single order
+ * @param {any} orderDetails - Order details to quote
+ * @param {string[]} rpcs - RPC urls
+ * @param {bigint} blockNumber - Optional block number
+ * @param {string} multicallAddressOverride - Optional multicall address
+ */
+async function quoteSingleOrder(
+    orderDetails,
+    rpcs,
+    blockNumber,
+    multicallAddressOverride,
+) {
+    for (let i = 0; i < rpcs.length; i++) {
+        const rpc = rpcs[i];
+        try {
+            const quoteResult = (await doQuoteTargets(
+                [{
+                    orderbook: orderDetails.orderbook,
+                    quoteConfig: getQuoteConfig(orderDetails.takeOrders[0])
+                }],
+                rpc,
+                blockNumber,
+                multicallAddressOverride
+            ))[0];
+            if (typeof quoteResult !== "string") {
+                orderDetails.takeOrders[0].quote = {
+                    maxOutput: ethers.BigNumber.from(quoteResult.maxOutput),
+                    ratio: ethers.BigNumber.from(quoteResult.ratio),
+                };
+                return;
+            } else {
+                return Promise.reject(`failed to quote order, reason: ${quoteResult}`);
+            }
+        } catch(e) {
+            // throw only after every available rpc has been tried and failed
+            if (i === rpcs.length - 1) throw e?.message;
+        }
+    }
+}
+
+function getQuoteConfig(orderDetails) {
+    return {
+        order: {
+            owner: orderDetails.takeOrder.order.owner,
+            nonce: orderDetails.takeOrder.order.nonce,
+            evaluable: {
+                interpreter: orderDetails.takeOrder.order.evaluable.interpreter,
+                store: orderDetails.takeOrder.order.evaluable.store,
+                bytecode: ethers.utils.arrayify(
+                    orderDetails.takeOrder.order.evaluable.bytecode
+                ),
+            },
+            validInputs: orderDetails.takeOrder.order.validInputs.map(
+                input => ({
+                    token: input.token,
+                    decimals: input.decimals,
+                    vaultId: typeof input.vaultId == "string"
+                        ? input.vaultId
+                        : input.vaultId.toHexString(),
+                })
+            ),
+            validOutputs: orderDetails.takeOrder.order.validOutputs.map(
+                output => ({
+                    token: output.token,
+                    decimals: output.decimals,
+                    vaultId: typeof output.vaultId == "string"
+                        ? output.vaultId
+                        : output.vaultId.toHexString(),
+                })
+            ),
+        },
+        inputIOIndex: orderDetails.takeOrder.inputIOIndex,
+        outputIOIndex: orderDetails.takeOrder.outputIOIndex,
+        signedContext: orderDetails.takeOrder.signedContext,
+    };
+}
 
 /**
  * Clones the given object
@@ -874,4 +922,5 @@ module.exports = {
     RPoolFilter,
     quoteOrders,
     clone,
+    quoteSingleOrder,
 };

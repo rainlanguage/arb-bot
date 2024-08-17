@@ -1,8 +1,10 @@
 const { assert } = require("chai");
 const fixtures = require("./data");
+const mockServer = require("mockttp").getLocal();
 const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { processPair, ProcessPairHaltReason, ProcessPairReportStatus } = require("../src/processOrders");
+const { clone } = require("../src/utils");
 
 describe("Test process pair", async function () {
     // mock dataFecther, ethers signer and viem client
@@ -29,8 +31,11 @@ describe("Test process pair", async function () {
         expectedRouteData
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
+    config.rpc = ["http://localhost:8082/rpc"];
+    const quoteresponse = `0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001${vaultBalance.toHexString().substring(2).padStart(64, "0")}0000000000000000000000000000000000000000000000000000000000000002`;
 
     beforeEach(() => {
+        mockServer.start(8082);
         config.gasCoveragePercentage = "0";
         signer = {
             BALANCE: ethers.BigNumber.from(0),
@@ -66,8 +71,10 @@ describe("Test process pair", async function () {
             getBlockNumber: async () => 123456n,
         };
     });
+    afterEach(() => mockServer.stop());
 
     it("should process pair successfully", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
@@ -120,7 +127,77 @@ describe("Test process pair", async function () {
         assert.deepEqual(result, expected);
     });
 
+    it("should have no output", async function () {
+        // set vault balance to zero
+        await mockServer
+            .forPost("/rpc")
+            .thenSendJsonRpcResult("0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002");
+        const orderPairObjectCopy = clone(orderPairObject);
+        const result = await processPair({
+            config,
+            orderPairObject: orderPairObjectCopy,
+            viemClient,
+            dataFetcher,
+            signer,
+            flashbotSigner: undefined,
+            arb,
+            orderbook,
+            pair,
+            mainAccount: signer,
+            accounts: [signer]
+        });
+        const expected = {
+            reason: undefined,
+            error: undefined,
+            gasCost: undefined,
+            report: {
+                status: ProcessPairReportStatus.ZeroOutput,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            },
+            spanAttributes: {
+                "details.orders": [orderPairObject.takeOrders[0].id],
+                "details.pair": pair
+            }
+        };
+        assert.deepEqual(result, expected);
+    });
+
+    it("should fail to quote order", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcError();
+        try {
+            await processPair({
+                config,
+                orderPairObject,
+                viemClient,
+                dataFetcher,
+                signer,
+                flashbotSigner: undefined,
+                arb,
+                orderbook,
+                pair,
+                mainAccount: signer,
+                accounts: [signer]
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch(error) {
+            const expected = {
+                report: undefined,
+                gasCost: undefined,
+                reason: ProcessPairHaltReason.FailedToQuote,
+                error: "Execution reverted with unknown error. Data: \"\" ",
+                spanAttributes: {
+                    "details.pair": pair,
+                    "details.orders": [orderPairObject.takeOrders[0].id]
+                }
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+
     it("should fail to get gas price", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         const evmError = { code: ethers.errors.CALL_EXCEPTION };
         viemClient.getGasPrice = async () => {
             return Promise.reject(evmError);
@@ -156,6 +233,7 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to get eth price", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         config.gasCoveragePercentage = "100";
         dataFetcher.getCurrentPoolCodeMap = () => {
             return new Map();
@@ -192,6 +270,7 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to get pools", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         const evmError = { code: ethers.errors.CALL_EXCEPTION };
         dataFetcher.fetchPoolsForToken = () => {
             return Promise.reject(evmError);
@@ -228,6 +307,7 @@ describe("Test process pair", async function () {
     });
 
     it("should fail tx", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         const evmError = { code: ethers.errors.CALL_EXCEPTION };
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
@@ -300,6 +380,7 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to mine tx with rejection", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         const evmError = {
             status: 0,
             code: ethers.errors.CALL_EXCEPTION
@@ -360,6 +441,7 @@ describe("Test process pair", async function () {
     });
 
     it("should fail to mine tx with resolve", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteresponse);
         const errorReceipt = {
             status: 0,
             code: ethers.errors.CALL_EXCEPTION,
