@@ -190,6 +190,11 @@ const processOrders = async(
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.end();
                             throw message;
+                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                            if (e.error) {
+                                span.recordException(getSpanException(e.error));
+                            }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to quote order" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             if (e.error) span.recordException(getSpanException(e.error));
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
@@ -202,11 +207,6 @@ const processOrders = async(
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                             span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
-                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
-                            if (e.error) {
-                                span.recordException(getSpanException(e.error));
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to get vault balance" });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
