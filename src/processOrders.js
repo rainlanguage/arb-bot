@@ -14,14 +14,16 @@ const {
     getTotalIncome,
     getSpanException,
     getActualClearAmount,
+    quoteSingleOrder,
 } = require("./utils");
+const { findOpp } = require("./modes");
 
 /**
  * Specifies reason that order process halted
  */
 const ProcessPairHaltReason = {
     NoWalletFund: 1,
-    NoRoute: 2,
+    FailedToQuote: 2,
     FailedToGetGasPrice: 3,
     FailedToGetEthPrice: 4,
     FailedToGetPools: 5,
@@ -124,6 +126,7 @@ const processOrders = async(
                         mainAccount,
                         accounts,
                         fetchedPairPools,
+                        orderbooksOrders: bundledOrders
                     });
 
                     // keep track of avggas cost
@@ -200,6 +203,19 @@ const processOrders = async(
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                             span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                            const message = ["failed to get vault balance"];
+                            if (e.error) {
+                                if (e.error instanceof BaseError) {
+                                    if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
+                                    if (e.error.name) message.push("Error: " + e.error.name);
+                                    if (e.error.details) message.push("Details: " + e.error.details);
+                                } else if (e.error instanceof Error) {
+                                    if (e.error.message) message.push("Reason: " + e.error.message);
+                                }
+                                span.recordException(getSpanException(e.error));
+                            }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
@@ -246,6 +262,7 @@ async function processPair(args) {
         orderbook,
         pair,
         fetchedPairPools,
+        orderbooksOrders,
     } = args;
 
     const spanAttributes = {};
@@ -272,6 +289,26 @@ async function processPair(args) {
         address: orderPairObject.buyToken,
         symbol: orderPairObject.buyTokenSymbol
     });
+
+    try {
+        await quoteSingleOrder(
+            orderPairObject,
+            config.rpc
+        );
+        if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
+            result.report = {
+                status: ProcessPairReportStatus.EmptyVault,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            };
+            return result;
+        }
+    } catch(e) {
+        result.error = e;
+        result.reason = ProcessPairHaltReason.FailedToQuote;
+        throw result;
+    }
 
     // get gas price
     let gasPrice;
@@ -365,10 +402,10 @@ async function processPair(args) {
         ethPriceToOutput = "0";
     }
 
-    // execute maxInput discovery dryrun logic
+    // execute process to find opp through different modes
     let rawtx, oppBlockNumber;
     try {
-        const findOppResult = await findOppWithRetries({
+        const findOppResult = await findOpp({
             orderPairObject,
             dataFetcher,
             fromToken,
@@ -376,9 +413,11 @@ async function processPair(args) {
             signer,
             gasPrice,
             arb,
-            ethPrice: ethPriceToInput,
             config,
             viemClient,
+            ethPriceToInput,
+            ethPriceToOutput,
+            orderbooksOrders,
         });
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
@@ -392,28 +431,27 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        console.log(e);
-        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-            result.reason = ProcessPairHaltReason.NoWalletFund;
-            if (e.spanAttributes["currentWalletBalance"]) {
-                spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
-            }
-            throw result;
+        // if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
+        result.reason = ProcessPairHaltReason.NoWalletFund;
+        if (e.spanAttributes["currentWalletBalance"]) {
+            spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
         }
-        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
-            result.reason = ProcessPairHaltReason.NoRoute;
-            throw result;
-        }
-        // record all span attributes in case neither of above errors were present
-        for (attrKey in e.spanAttributes) {
-            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
-                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
-            }
-            else {
-                spanAttributes[attrKey] = e.spanAttributes[attrKey];
-            }
-        }
-        rawtx = undefined;
+        throw result;
+        // }
+        // if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
+        //     result.reason = ProcessPairHaltReason.NoRoute;
+        //     throw result;
+        // }
+        // // record all span attributes in case neither of above errors were present
+        // for (attrKey in e.spanAttributes) {
+        //     if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
+        //         spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
+        //     }
+        //     else {
+        //         spanAttributes[attrKey] = e.spanAttributes[attrKey];
+        //     }
+        // }
+        // rawtx = undefined;
     }
 
     if (!rawtx) {

@@ -835,6 +835,80 @@ async function quoteOrders(
     return orderDetails;
 }
 
+/**
+ * Quotes a single order
+ * @param {any} orderDetails - Order details to quote
+ * @param {string[]} rpcs - RPC urls
+ * @param {bigint} blockNumber - Optional block number
+ * @param {string} multicallAddressOverride - Optional multicall address
+ */
+async function quoteSingleOrder(
+    orderDetails,
+    rpcs,
+    blockNumber,
+    multicallAddressOverride,
+) {
+    const target = {
+        orderbook: orderDetails.orderbook,
+        quoteConfig: {
+            order: {
+                owner: orderDetails.takeOrders[0].takeOrder.order.owner,
+                nonce: orderDetails.takeOrders[0].takeOrder.order.nonce,
+                evaluable: {
+                    interpreter: orderDetails.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                    store: orderDetails.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: ethers.utils.arrayify(
+                        orderDetails.takeOrders[0].takeOrder.order.evaluable.bytecode
+                    ),
+                },
+                validInputs: orderDetails.takeOrders[0].takeOrder.order.validInputs.map(
+                    input => ({
+                        token: input.token,
+                        decimals: input.decimals,
+                        vaultId: typeof input.vaultId == "string"
+                            ? input.vaultId
+                            : input.vaultId.toHexString(),
+                    })
+                ),
+                validOutputs: orderDetails.takeOrders[0].takeOrder.order.validOutputs.map(
+                    output => ({
+                        token: output.token,
+                        decimals: output.decimals,
+                        vaultId: typeof output.vaultId == "string"
+                            ? output.vaultId
+                            : output.vaultId.toHexString(),
+                    })
+                ),
+            },
+            inputIOIndex: orderDetails.takeOrders[0].takeOrder.inputIOIndex,
+            outputIOIndex: orderDetails.takeOrders[0].takeOrder.outputIOIndex,
+            signedContext: orderDetails.takeOrders[0].takeOrder.signedContext,
+        }
+    };
+    for (let i = 0; i < rpcs.length; i++) {
+        const rpc = rpcs[i];
+        try {
+            const quoteResult = (await doQuoteTargets(
+                [target],
+                rpc,
+                blockNumber,
+                multicallAddressOverride
+            ))[0];
+            if (typeof quoteResult !== "string") {
+                orderDetails.takeOrders[0].quote = {
+                    maxOutput: ethers.BigNumber.from(quoteResult.maxOutput),
+                    ratio: ethers.BigNumber.from(quoteResult.ratio),
+                };
+                return;
+            } else {
+                throw `failed to quote order, reason: ${quoteResult}`;
+            }
+        } catch(e) {
+            // throw only after every available rpc has been tried and failed
+            if (i === rpcs.length - 1) throw e;
+        }
+    }
+}
 
 /**
  * Clones the given object
@@ -918,4 +992,12 @@ module.exports = {
     quoteOrders,
     clone,
     getTotalIncome,
+    quoteSingleOrder,
 };
+// const a = {
+//     aa: undefined,
+//     b: 123
+// };
+// let b;
+// ({ b } = a.aa);
+// console.log(b);
