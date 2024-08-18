@@ -435,11 +435,11 @@ exports.assertError = async function (f, s, e) {
     assert.ok(didError, e);
 };
 
-exports.encodeQuoteResponse = function (outputs) {
-    const bytes = outputs.map(v =>
+exports.encodeQuoteResponse = function (quoteValue) {
+    const bytes = quoteValue.map(v =>
         ethers.utils.defaultAbiCoder.encode(
             ["(bool,uint256,uint256)"],
-            [[ true, v, ethers.constants.One ]]
+            [[ v[0], v[1], v[2] ]]
         )
     );
     return ethers.utils.defaultAbiCoder.encode(

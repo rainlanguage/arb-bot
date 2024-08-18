@@ -188,13 +188,17 @@ for (let i = 0; i < testData.length; i++) {
                     ));
                 }
 
-                // mock quote responses with vault balance as maxoutput
+                // mock quote responses
                 await mockServer
                     .forPost("/rpc")
                     .once()
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse(
-                            tokens.slice(1).map(v => v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)))
+                            tokens.slice(1).map(v => [
+                                true, // success
+                                v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
+                                ethers.constants.Zero, // ratio
+                            ])
                         )
                     );
                 for (let i = 1; i < tokens.length; i++) {
@@ -202,7 +206,11 @@ for (let i = 0; i < testData.length; i++) {
                     await mockServer
                         .forPost("/rpc")
                         .withBodyIncluding(owners[i].address.substring(2).toLowerCase())
-                        .thenSendJsonRpcResult(encodeQuoteResponse([output]));
+                        .thenSendJsonRpcResult(encodeQuoteResponse([[
+                            true,
+                            output,
+                            ethers.constants.Zero
+                        ]]));
                 }
 
                 // run the clearing process
