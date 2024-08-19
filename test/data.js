@@ -223,7 +223,7 @@ const opposingOrderPairObject = {
         }
     }]
 };
-const orderbooksOrders = [opposingOrderPairObject];
+const orderbooksOrders = [[opposingOrderPairObject]];
 
 const poolAddress = hexlify(randomBytes(20));
 const poolCodeMap = new Map([[

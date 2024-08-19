@@ -21,8 +21,8 @@ async function dryrun({
     maximumInput: maximumInputFixed,
     gasPrice,
     arb,
-    ethPriceToInput,
-    ethPriceToOutput,
+    inputToEthPrice,
+    outputToEthPrice,
     config,
     viemClient,
 }) {
@@ -127,8 +127,8 @@ async function dryrun({
             Number(config.gasCoveragePercentage) * 1.05
         ).toFixed();
         task.evaluable.bytecode = getBountyEnsureBytecode(
-            ethers.utils.parseUnits(ethPriceToInput),
-            ethers.utils.parseUnits(ethPriceToOutput),
+            ethers.utils.parseUnits(inputToEthPrice),
+            ethers.utils.parseUnits(outputToEthPrice),
             gasCost.mul(headroom).div("100"),
         );
         rawtx.data = arb.interface.encodeFunctionData(
@@ -168,8 +168,8 @@ async function dryrun({
     // if reached here, it means there was a success and found opp
     // rest of span attr are not needed since they are present in the result.data
     task.evaluable.bytecode = getBountyEnsureBytecode(
-        ethers.utils.parseUnits(ethPriceToInput),
-        ethers.utils.parseUnits(ethPriceToOutput),
+        ethers.utils.parseUnits(inputToEthPrice),
+        ethers.utils.parseUnits(outputToEthPrice),
         gasCost
     );
     rawtx.data = arb.interface.encodeFunctionData(
@@ -201,8 +201,8 @@ async function findOpp({
     signer,
     gasPrice,
     arb,
-    ethPriceToInput,
-    ethPriceToOutput,
+    inputToEthPrice,
+    outputToEthPrice,
     config,
     viemClient,
     orderbooksOrders,
@@ -239,8 +239,8 @@ async function findOpp({
                 ),
                 gasPrice,
                 arb,
-                ethPriceToInput,
-                ethPriceToOutput,
+                inputToEthPrice,
+                outputToEthPrice,
                 config,
                 viemClient,
                 knownGas

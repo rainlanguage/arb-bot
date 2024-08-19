@@ -87,10 +87,6 @@ describe("Test route processor dryrun", async function () {
                             orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
                             task,
-                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            // ),
-                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -289,10 +285,6 @@ describe("Test route processor find opp", async function () {
                             orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
                             task,
-                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            // ),
-                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -370,10 +362,6 @@ describe("Test route processor find opp", async function () {
                             orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
                             task,
-                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            // ),
-                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -572,10 +560,6 @@ describe("Test find opp with retries", async function () {
                             orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
                             task,
-                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            // ),
-                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
