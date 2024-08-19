@@ -104,26 +104,26 @@ function getDataFetcher(configOrViemClient, liquidityProviders = [], useFallback
 
 /**
  * Get the bounty check ensure task bytecode
- * @param {import("ethers").BigNumber} ethToInputPrice - ETH to input token price
- * @param {import("ethers").BigNumber} ethToOutputPrice - ETH to output token price
- * @param {import("ethers").BigNumber} minimumOutput - Minimum expected amount
+ * @param {import("ethers").BigNumber} inputToEthPrice - Input token to Eth price
+ * @param {import("ethers").BigNumber} outputToEthPrice - Output token to Eth price
+ * @param {import("ethers").BigNumber} minimumExcepted - Minimum expected amount
  */
 function getBountyEnsureBytecode(
-    ethToInputPrice,
-    ethToOutputPrice,
-    minimumOutput,
+    inputToEthPrice,
+    outputToEthPrice,
+    minimumExcepted,
 ) {
-    const inputPrice = ethToInputPrice.toHexString().substring(2).padStart(64, "0");
-    const outputPrice = ethToOutputPrice.toHexString().substring(2).padStart(64, "0");
-    const minimum = minimumOutput.toHexString().substring(2).padStart(64, "0");
+    const inputPrice = inputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const outputPrice = outputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
     // rainlang bytecode:
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
-    //       mul(ethToInputPrice context<0 0>())
-    //       mul(ethToOutputPrice context<0 1>())
+    //       mul(inputToEthPrice context<0 0>())
+    //       mul(outputToEthPrice context<0 1>())
     //     )
-    //     minimumOutput
+    //     minimumExcepted
     //   )
     //   \"minimum sender output\"
     // );

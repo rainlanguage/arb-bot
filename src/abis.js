@@ -13,7 +13,7 @@ const erc20Abi = [
 const IO = "(address token, uint8 decimals, uint256 vaultId)";
 const EvaluableV3 = "(address interpreter, address store, bytes bytecode)";
 const SignedContextV1 = "(address signer, uint256[] context, bytes signature)";
-const ActionV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)`;
+const TaskV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)`;
 const OrderV3 = `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce)`;
 const TakeOrderConfigV3 = `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)`;
 const OrderConfigV3 = `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)`;
@@ -26,12 +26,12 @@ const ClearConfig = "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uin
 const orderbookAbi = [
     `event AddOrderV2(address sender, bytes32 orderHash, ${OrderV3} order)`,
     "function vaultBalance(address owner, address token, uint256 vaultId) external view returns (uint256 balance)",
-    `function deposit2(address token, uint256 vaultId, uint256 amount, ${ActionV1}[] calldata post) external`,
-    `function addOrder2(${OrderConfigV3} calldata config, ${ActionV1}[] calldata post) external returns (bool stateChanged)`,
-    `function enact(${ActionV1}[] calldata actions) external`,
-    `function withdraw2(address token, uint256 vaultId, uint256 targetAmount, ${ActionV1}[] calldata post) external`,
+    `function deposit2(address token, uint256 vaultId, uint256 amount, ${TaskV1}[] calldata tasks) external`,
+    `function addOrder2(${OrderConfigV3} calldata config, ${TaskV1}[] calldata tasks) external returns (bool stateChanged)`,
+    `function entask(${TaskV1}[] calldata tasks) external`,
+    `function withdraw2(address token, uint256 vaultId, uint256 targetAmount, ${TaskV1}[] calldata tasks) external`,
     "function orderExists(bytes32 orderHash) external view returns (bool exists)",
-    `function removeOrder2(${OrderV3} calldata order, ${ActionV1}[] calldata post) external returns (bool stateChanged)`,
+    `function removeOrder2(${OrderV3} calldata order, ${TaskV1}[] calldata tasks) external returns (bool stateChanged)`,
     "function multicall(bytes[] calldata data) external returns (bytes[] memory results)",
     `function takeOrders2(${TakeOrdersConfigV3} memory config) external returns (uint256 totalInput, uint256 totalOutput)`,
     `function clear2(${OrderV3} memory aliceOrder, ${OrderV3} memory bobOrder, ${ClearConfig} calldata clearConfig, ${SignedContextV1}[] memory aliceSignedContext, ${SignedContextV1}[] memory bobSignedContext) external`,
@@ -68,7 +68,8 @@ const routeProcessor3Abi = [
  * Minimal ABI for Arb contract
  */
 const arbAbis = [
-    `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`
+    `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`,
+    `function arb3(address orderBook, ${TakeOrdersConfigV3} calldata takeOrders, ${TaskV1} calldata task)`
 ];
 
 const multicall3Abi = [
@@ -91,7 +92,7 @@ module.exports = {
     IO,
     EvaluableV3,
     SignedContextV1,
-    ActionV1,
+    ActionV1: TaskV1,
     OrderV3,
     TakeOrderConfigV3,
     OrderConfigV3,

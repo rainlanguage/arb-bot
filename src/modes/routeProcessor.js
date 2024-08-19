@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
-const { DefaultArbEvaluable } = require("../abis");
+const { getBountyEnsureBytecode } = require("../config");
 const { visualizeRoute, getSpanException, RPoolFilter, clone } = require("../utils");
 
 /**
@@ -38,7 +38,6 @@ async function dryrun({
     ethPrice,
     config,
     viemClient,
-    knownInitGas,
 }) {
     const spanAttributes = {};
     const result = {
@@ -130,12 +129,21 @@ async function dryrun({
             )
         };
 
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: "0x",
+            },
+            signedContext: []
+        };
         const rawtx = {
             data: arb.interface.encodeFunctionData(
-                "arb2", [
+                "arb3",
+                [
+                    orderPairObject.orderbook,
                     takeOrdersConfigStruct,
-                    "0",
-                    DefaultArbEvaluable,
+                    task
                 ]
             ),
             to: arb.address,
@@ -148,15 +156,10 @@ async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-
-            if (knownInitGas.value) {
-                gasLimit = knownInitGas.value;
-            } else {
-                gasLimit = await signer.estimateGas(rawtx);
-                knownInitGas.value = gasLimit;
-            }
+            gasLimit = await signer.estimateGas(rawtx);
         }
         catch(e) {
+            console.log(e);
             // reason, code, method, transaction, error, stack, message
             const spanError = getSpanException(e);
             const errorString = JSON.stringify(spanError);
@@ -178,15 +181,6 @@ async function dryrun({
         gasLimit = gasLimit.mul("103").div("100");
         rawtx.gasLimit = gasLimit;
         const gasCost = gasLimit.mul(gasPrice);
-        const gasCostInToken = ethers.utils.parseUnits(
-            ethPrice
-        ).mul(
-            gasCost
-        ).div(
-            "1" + "0".repeat(
-                36 - orderPairObject.buyTokenDecimals
-            )
-        );
 
         // repeat the same process with heaedroom if gas
         // coverage is not 0, 0 gas coverage means 0 minimum
@@ -195,12 +189,17 @@ async function dryrun({
             const headroom = (
                 Number(config.gasCoveragePercentage) * 1.05
             ).toFixed();
+            task.evaluable.bytecode = getBountyEnsureBytecode(
+                ethers.utils.parseUnits(ethPrice),
+                ethers.constants.Zero,
+                gasCost.mul(headroom).div("100")
+            );
             rawtx.data = arb.interface.encodeFunctionData(
-                "arb2",
+                "arb3",
                 [
+                    orderPairObject.orderbook,
                     takeOrdersConfigStruct,
-                    gasCostInToken.mul(headroom).div("100"),
-                    DefaultArbEvaluable,
+                    task,
                 ]
             );
 
@@ -208,16 +207,22 @@ async function dryrun({
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
                 await signer.estimateGas(rawtx);
+                task.evaluable.bytecode = getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasCost.mul(config.gasCoveragePercentage).div("100"),
+                );
                 rawtx.data = arb.interface.encodeFunctionData(
-                    "arb2",
+                    "arb3",
                     [
+                        orderPairObject.orderbook,
                         takeOrdersConfigStruct,
-                        gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
-                        DefaultArbEvaluable,
+                        task,
                     ]
                 );
             }
             catch(e) {
+                console.log(e);
                 const spanError = getSpanException(e);
                 const errorString = JSON.stringify(spanError);
                 spanAttributes["error"] = spanError;

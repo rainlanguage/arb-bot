@@ -3,7 +3,6 @@ const fixtures = require("./data");
 const { clone } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
 const { encodeQuoteResponse } = require("./utils");
-const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { processPair, ProcessPairHaltReason, ProcessPairReportStatus } = require("../src/processOrders");
 
@@ -29,7 +28,8 @@ describe("Test process pair", async function () {
         gasUsed,
         scannerUrl,
         getCurrentPrice,
-        expectedRouteData
+        expectedRouteData,
+        getCurrentInputToEthPrice,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
     config.rpc = ["http://localhost:8082/rpc"];
@@ -122,7 +122,9 @@ describe("Test process pair", async function () {
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
-                "didClear": true
+                "didClear": true,
+                "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
+                "details.ethPriceToOutput": "1",
             }
         };
         assert.deepEqual(result, expected);
@@ -345,13 +347,24 @@ describe("Test process pair", async function () {
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData
             };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject
+                        .takeOrders[0].takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
             const rawtx = {
                 data: arb.interface.encodeFunctionData(
-                    "arb2",
+                    "arb3",
                     [
+                        orderPairObject.orderbook,
                         expectedTakeOrdersConfigStruct,
-                        ethers.BigNumber.from(0),
-                        DefaultArbEvaluable
+                        task,
+                        // ethers.BigNumber.from(0),
+                        // DefaultArbEvaluable
                     ]
                 ),
                 to: arb.address,
@@ -379,7 +392,9 @@ describe("Test process pair", async function () {
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
-                    "details.rawTx": JSON.stringify(rawtx)
+                    "details.rawTx": JSON.stringify(rawtx),
+                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
+                    "details.ethPriceToOutput": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -442,6 +457,8 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
+                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
+                    "details.ethPriceToOutput": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -507,7 +524,9 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(errorReceipt)
+                    "details.receipt": JSON.stringify(errorReceipt),
+                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
+                    "details.ethPriceToOutput": "1",
                 }
             };
             assert.deepEqual(error, expected);

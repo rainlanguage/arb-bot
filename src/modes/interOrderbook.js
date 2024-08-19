@@ -1,8 +1,7 @@
 const ethers = require("ethers");
-const { DefaultArbEvaluable } = require("./abis");
-const { getSpanException } = require("./utils");
-const { getBountyEnsureBytecode } = require("../config");
 const { orderbookAbi } = require("../abis");
+const { getSpanException } = require("../utils");
+const { getBountyEnsureBytecode } = require("../config");
 
 /**
  * Specifies the reason that dryrun failed
@@ -26,7 +25,6 @@ async function dryrun({
     ethPriceToOutput,
     config,
     viemClient,
-    knownGas
 }) {
     const spanAttributes = {};
     const result = {
@@ -69,11 +67,22 @@ async function dryrun({
         )
     };
 
-    const task = [];
+    const task = {
+        evaluable: {
+            interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+            store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+            bytecode: "0x"
+        },
+        signedContext: []
+    };
     const rawtx = {
         data: arb.interface.encodeFunctionData(
-            "arb2",
-            [takeOrdersConfigStruct, DefaultArbEvaluable, task]
+            "arb3",
+            [
+                orderPairObject.orderbook,
+                takeOrdersConfigStruct,
+                task
+            ]
         ),
         to: arb.address,
         gasPrice
@@ -85,13 +94,7 @@ async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-
-        if (knownGas.value) {
-            gasLimit = knownGas.value;
-        } else {
-            gasLimit = await signer.estimateGas(rawtx);
-            knownGas.value = gasLimit;
-        }
+        gasLimit = await signer.estimateGas(rawtx);
     }
     catch(e) {
         // reason, code, method, transaction, error, stack, message
@@ -123,24 +126,16 @@ async function dryrun({
         const headroom = (
             Number(config.gasCoveragePercentage) * 1.05
         ).toFixed();
-        const gasCostWithHeadroom = gasCost.mul(headroom).div("100");
-        task.push({
-            evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getBountyEnsureBytecode(
-                    ethers.utils.parseUnits(ethPriceToInput),
-                    ethers.utils.parseUnits(ethPriceToOutput),
-                    gasCostWithHeadroom
-                ),
-            },
-            signedContext: []
-        });
+        task.evaluable.bytecode = getBountyEnsureBytecode(
+            ethers.utils.parseUnits(ethPriceToInput),
+            ethers.utils.parseUnits(ethPriceToOutput),
+            gasCost.mul(headroom).div("100"),
+        );
         rawtx.data = arb.interface.encodeFunctionData(
-            "arb2",
+            "arb3",
             [
+                orderPairObject.orderbook,
                 takeOrdersConfigStruct,
-                DefaultArbEvaluable,
                 task
             ]
         );
@@ -172,16 +167,16 @@ async function dryrun({
 
     // if reached here, it means there was a success and found opp
     // rest of span attr are not needed since they are present in the result.data
-    task[0].evaluable.bytecode = getBountyEnsureBytecode(
+    task.evaluable.bytecode = getBountyEnsureBytecode(
         ethers.utils.parseUnits(ethPriceToInput),
         ethers.utils.parseUnits(ethPriceToOutput),
         gasCost
     );
     rawtx.data = arb.interface.encodeFunctionData(
-        "arb2",
+        "arb3",
         [
+            orderPairObject.orderbook,
             takeOrdersConfigStruct,
-            DefaultArbEvaluable,
             task
         ]
     );

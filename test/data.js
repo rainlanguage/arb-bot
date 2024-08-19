@@ -20,8 +20,8 @@ const rp3_2 = hexlify(randomBytes(20));
 const arbAddress = hexlify(randomBytes(20));
 const orderbookAddress = hexlify(randomBytes(20));
 const opposingOrderbookAddress = hexlify(randomBytes(20));
-const ethPrice = "0.5";
-const ethPriceToOutput = "2";
+const inputToEthPrice = "0.5";
+const outputToEthPrice = "2";
 const gasPrice = BigNumber.from("30000000");
 const gasLimitEstimation = BigNumber.from("456789");
 const arb = new ethers.Contract(arbAddress, arbAbis);
@@ -281,6 +281,24 @@ function getCurrentPrice(amountIn) {
     return price;
 }
 
+function getCurrentInputToEthPrice() {
+    const amountIn = BigNumber.from("1" + "0".repeat(toToken.decimals));
+    const amountInFixed = amountIn.mul("1" + "0".repeat(18 - toToken.decimals));
+    const route = Router.findBestRoute(
+        poolCodeMap,
+        chainId,
+        toToken,
+        amountIn.toBigInt(),
+        fromToken,
+        gasPrice.toNumber(),
+    );
+    const amountOutFixed = BigNumber.from(route.amountOutBI).mul(
+        "1" + "0".repeat(18 - fromToken.decimals)
+    );
+    const price = amountOutFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+    return price;
+}
+
 module.exports = {
     config,
     token1,
@@ -288,7 +306,7 @@ module.exports = {
     arbAddress,
     orderbookAddress,
     rp3_2,
-    ethPrice,
+    inputToEthPrice,
     gasPrice,
     gasLimitEstimation,
     arb,
@@ -314,6 +332,7 @@ module.exports = {
     opposingVaultBalance,
     opposingOrderPairObject,
     orderbooksOrders,
-    ethPriceToOutput,
+    outputToEthPrice,
     opposingOrderbookAddress,
+    getCurrentInputToEthPrice,
 };

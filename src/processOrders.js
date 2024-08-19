@@ -16,7 +16,6 @@ const {
     getActualClearAmount,
     quoteSingleOrder,
 } = require("./utils");
-const { findOpp } = require("./modes");
 
 /**
  * Specifies reason that order process halted
@@ -206,19 +205,6 @@ const processOrders = async(
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
                             span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
-                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
-                            const message = ["failed to get vault balance"];
-                            if (e.error) {
-                                if (e.error instanceof BaseError) {
-                                    if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
-                                    if (e.error.name) message.push("Error: " + e.error.name);
-                                    if (e.error.details) message.push("Details: " + e.error.details);
-                                } else if (e.error instanceof Error) {
-                                    if (e.error.message) message.push("Reason: " + e.error.message);
-                                }
-                                span.recordException(getSpanException(e.error));
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
@@ -265,7 +251,7 @@ async function processPair(args) {
         orderbook,
         pair,
         fetchedPairPools,
-        orderbooksOrders,
+        // orderbooksOrders,
     } = args;
 
     const spanAttributes = {};
@@ -355,60 +341,65 @@ async function processPair(args) {
         }
     }
 
-    // get eth price
-    let ethPriceToInput;
-    let ethPriceToOutput;
-    if (config.gasCoveragePercentage !== "0") {
-        try {
-            const options = {
-                fetchPoolsTimeout: 30000,
-                memoize: true,
-            };
-            // pin block number for test case
-            if (config.isTest && config.testBlockNumber) {
-                options.blockNumber = config.testBlockNumber;
-            }
-            ethPriceToInput = await getEthPrice(
-                config,
-                orderPairObject.buyToken,
-                orderPairObject.buyTokenDecimals,
-                gasPrice,
-                dataFetcher,
-                options,
-                false,
-            );
-            ethPriceToOutput = await getEthPrice(
-                config,
-                orderPairObject.sellToken,
-                orderPairObject.sellTokenDecimals,
-                gasPrice,
-                dataFetcher,
-                options,
-                false
-            );
-            if (!ethPriceToInput || !ethPriceToOutput) {
-                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-                return Promise.reject(result);
-            }
-            else {
-                spanAttributes["details.ethPriceToInput"] = ethPriceToInput;
-                spanAttributes["details.ethPriceToOutput"] = ethPriceToOutput;
-            }
-        } catch(e) {
-            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-            result.error = e;
-            throw result;
+    // get in/out tokens to eth price
+    let inputToEthPrice, outputToEthPrice;
+    try {
+        const options = {
+            fetchPoolsTimeout: 30000,
+            memoize: true,
+        };
+        // pin block number for test case
+        if (config.isTest && config.testBlockNumber) {
+            options.blockNumber = config.testBlockNumber;
         }
-    }
-    else {
-        ethPriceToInput = "0";
-        ethPriceToOutput = "0";
+        inputToEthPrice = await getEthPrice(
+            config,
+            orderPairObject.buyToken,
+            orderPairObject.buyTokenDecimals,
+            gasPrice,
+            dataFetcher,
+            options,
+            // false,
+        );
+        outputToEthPrice = await getEthPrice(
+            config,
+            orderPairObject.sellToken,
+            orderPairObject.sellTokenDecimals,
+            gasPrice,
+            dataFetcher,
+            options,
+            // false
+        );
+        if (!inputToEthPrice || !outputToEthPrice) {
+            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            return Promise.reject(result);
+        }
+        else {
+            spanAttributes["details.ethPriceToInput"] = inputToEthPrice;
+            spanAttributes["details.ethPriceToOutput"] = outputToEthPrice;
+        }
+    } catch(e) {
+        result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+        result.error = e;
+        throw result;
     }
 
     // execute process to find opp through different modes
     let rawtx, oppBlockNumber;
     try {
-        const findOppResult = await findOpp({
+        const findOppResult = await findOppWithRetries({
+            // orderPairObject,
+            // dataFetcher,
+            // fromToken,
+            // toToken,
+            // signer,
+            // gasPrice,
+            // arb,
+            // config,
+            // viemClient,
+            // ethPriceToInput,
+            // ethPriceToOutput,
+            // orderbooksOrders,
             orderPairObject,
             dataFetcher,
             fromToken,
@@ -416,11 +407,9 @@ async function processPair(args) {
             signer,
             gasPrice,
             arb,
+            ethPrice: inputToEthPrice,
             config,
             viemClient,
-            ethPriceToInput,
-            ethPriceToOutput,
-            orderbooksOrders,
         });
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
@@ -434,27 +423,27 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        // if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-        result.reason = ProcessPairHaltReason.NoWalletFund;
-        if (e.spanAttributes["currentWalletBalance"]) {
-            spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
+        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
+            result.reason = ProcessPairHaltReason.NoWalletFund;
+            // if (e.spanAttributes["currentWalletBalance"]) {
+            //     spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
+            // }
+            throw result;
         }
-        throw result;
-        // }
-        // if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
-        //     result.reason = ProcessPairHaltReason.NoRoute;
-        //     throw result;
-        // }
-        // // record all span attributes in case neither of above errors were present
-        // for (attrKey in e.spanAttributes) {
-        //     if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
-        //         spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
-        //     }
-        //     else {
-        //         spanAttributes[attrKey] = e.spanAttributes[attrKey];
-        //     }
-        // }
-        // rawtx = undefined;
+        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
+            result.reason = ProcessPairHaltReason.NoRoute;
+            throw result;
+        }
+        // record all span attributes in case neither of above errors were present
+        for (attrKey in e.spanAttributes) {
+            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
+                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
+            }
+            else {
+                spanAttributes[attrKey] = e.spanAttributes[attrKey];
+            }
+        }
+        rawtx = undefined;
     }
 
     if (!rawtx) {
@@ -540,8 +529,8 @@ async function processPair(args) {
             const income = getTotalIncome(
                 inputTokenIncome,
                 outputTokenIncome,
-                ethPriceToInput,
-                ethPriceToOutput,
+                inputToEthPrice,
+                outputToEthPrice,
                 orderPairObject.buyTokenDecimals,
                 orderPairObject.sellTokenDecimals
             );

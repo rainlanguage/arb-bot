@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
+const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
 
 // mocking signer and dataFetcher
@@ -13,7 +13,7 @@ const viemClient = {
 
 const oppBlockNumber = 123456;
 const {
-    ethPrice,
+    inputToEthPrice: ethPrice,
     gasPrice,
     gasLimitEstimation,
     arb,
@@ -66,17 +66,31 @@ describe("Test route processor dryrun", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
+                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                            // ),
+                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -254,17 +268,31 @@ describe("Test route processor find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
+                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                            // ),
+                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -321,17 +349,31 @@ describe("Test route processor find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
+                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                            // ),
+                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,
@@ -509,17 +551,31 @@ describe("Test find opp with retries", async function () {
             ],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
+                            // gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
+                            //     "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+                            // ),
+                            // DefaultArbEvaluable
                         ]
                     ),
                     to: arb.address,

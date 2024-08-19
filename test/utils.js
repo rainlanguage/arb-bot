@@ -5,7 +5,7 @@ const { DefaultArbEvaluable } = require("../src/abis");
 const OrderbookArtifact = require("./abis/OrderBook.json");
 const RainterpreterNPE2Artifact = require("./abis/RainterpreterNPE2.json");
 const RainterpreterStoreNPE2Artifact = require("./abis/RainterpreterStoreNPE2.json");
-// const GenericPoolOrderBookV4ArbOrderTakerArtifact = require("./abis/GenericPoolOrderBookV4ArbOrderTaker.json");
+const GenericPoolOrderBookV4ArbOrderTakerArtifact = require("./abis/GenericPoolOrderBookV4ArbOrderTaker.json");
 const RouteProcessorOrderBookV4ArbOrderTakerArtifact = require("./abis/RouteProcessorOrderBookV4ArbOrderTaker.json");
 
 /**
@@ -29,23 +29,29 @@ exports.arbDeploy = async(
     return await this.basicDeploy(
         RouteProcessorOrderBookV4ArbOrderTakerArtifact,
         {
-            orderBook: orderbookAddress,
-            evaluable: DefaultArbEvaluable,
+            orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
+            task: {
+                evaluable: DefaultArbEvaluable,
+                signedContext: []
+            },
             implementationData: ethers.utils.defaultAbiCoder.encode(["address"], [rpAddress])
         }
     );
 };
 
-// exports.genericArbrbDeploy = async(orderbookAddress) => {
-//     return await basicDeploy(
-//         GenericPoolOrderBookV4ArbOrderTakerArtifact,
-//         {
-//             orderBook: orderbookAddress,
-//             evaluable: DefaultArbEvaluable,
-//             implementationData: "0x"
-//         }
-//     );
-// };
+exports.genericArbrbDeploy = async(orderbookAddress) => {
+    return await basicDeploy(
+        GenericPoolOrderBookV4ArbOrderTakerArtifact,
+        {
+            orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
+            task: {
+                evaluable: DefaultArbEvaluable,
+                signedContext: []
+            },
+            implementationData: "0x"
+        }
+    );
+};
 
 exports.deployOrderBookNPE2 = async() => {
     return await this.basicDeploy(OrderbookArtifact);

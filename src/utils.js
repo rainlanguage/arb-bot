@@ -149,39 +149,37 @@ const getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
 };
 
 /**
- * Gets ETH price against a target token
+ * Gets token price against ETH
  * @param {any} config - The network config data
- * @param {string} targetTokenAddress - The target token address
- * @param {number} targetTokenDecimals - The target token decimals
+ * @param {string} fromTokenAddress - The token address
+ * @param {number} fromTokenDecimals - The token decimals
  * @param {BigNumber} gasPrice - The network gas price
  * @param {import("sushi/router").DataFetcher} dataFetcher - (optional) The DataFetcher instance
  * @param {import("sushi/router").DataFetcherOptions} options - (optional) The DataFetcher options
  */
 const getEthPrice = async(
     config,
-    targetTokenAddress,
-    targetTokenDecimals,
+    fromTokenAddress,
+    fromTokenDecimals,
     gasPrice,
     dataFetcher = undefined,
     options = undefined,
     fetchPools = true,
 ) => {
-    if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
+    if(fromTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
     }
-    const amountIn = BigNumber.from(
-        "1" + "0".repeat(config.nativeWrappedToken.decimals)
-    );
-    const fromToken = new Token({
+    const amountIn = BigNumber.from("1" + "0".repeat(fromTokenDecimals));
+    const toToken = new Token({
         chainId: config.chain.id,
         decimals: config.nativeWrappedToken.decimals,
         address: config.nativeWrappedToken.address,
         symbol: config.nativeWrappedToken.symbol
     });
-    const toToken = new Token({
+    const fromToken = new Token({
         chainId: config.chain.id,
-        decimals: targetTokenDecimals,
-        address: targetTokenAddress
+        decimals: fromTokenDecimals,
+        address: fromTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
     if (fetchPools) await dataFetcher.fetchPoolsForToken(
@@ -205,7 +203,7 @@ const getEthPrice = async(
         // poolFilter
     );
     if (route.status == "NoWay") return undefined;
-    else return ethers.utils.formatUnits(route.amountOutBI, targetTokenDecimals);
+    else return ethers.utils.formatUnits(route.amountOutBI);
 };
 
 /**
@@ -968,10 +966,3 @@ module.exports = {
     getTotalIncome,
     quoteSingleOrder,
 };
-// const a = {
-//     aa: undefined,
-//     b: 123
-// };
-// let b;
-// ({ b } = a.aa);
-// console.log(b);
