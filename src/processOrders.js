@@ -1,9 +1,9 @@
 const ethers = require("ethers");
+const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./modes/routeProcessor");
 const {
     getIncome,
     getEthPrice,
@@ -61,6 +61,10 @@ const processOrders = async(
 
     // instantiating arb contract
     const arb = new ethers.Contract(config.arbAddress, arbAbis);
+    let genericArb;
+    if (config.genericArbAddress) {
+        genericArb = new ethers.Contract(config.genericArbAddress, arbAbis);
+    }
 
     // prepare orders
     const bundledOrders = bundleOrders(
@@ -116,6 +120,7 @@ const processOrders = async(
                         signer,
                         flashbotSigner,
                         arb,
+                        genericArb,
                         orderbook,
                         pair,
                         mainAccount,
@@ -248,10 +253,11 @@ async function processPair(args) {
         signer,
         flashbotSigner,
         arb,
+        genericArb,
         orderbook,
         pair,
         fetchedPairPools,
-        // orderbooksOrders,
+        orderbooksOrders,
     } = args;
 
     const spanAttributes = {};
@@ -359,7 +365,7 @@ async function processPair(args) {
             gasPrice,
             dataFetcher,
             options,
-            // false,
+            false,
         );
         outputToEthPrice = await getEthPrice(
             config,
@@ -368,7 +374,7 @@ async function processPair(args) {
             gasPrice,
             dataFetcher,
             options,
-            // false
+            false,
         );
         if (!inputToEthPrice || !outputToEthPrice) {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
@@ -387,29 +393,20 @@ async function processPair(args) {
     // execute process to find opp through different modes
     let rawtx, oppBlockNumber;
     try {
-        const findOppResult = await findOppWithRetries({
-            // orderPairObject,
-            // dataFetcher,
-            // fromToken,
-            // toToken,
-            // signer,
-            // gasPrice,
-            // arb,
-            // config,
-            // viemClient,
-            // ethPriceToInput,
-            // ethPriceToOutput,
-            // orderbooksOrders,
+        const findOppResult = await findOpp({
             orderPairObject,
             dataFetcher,
+            arb,
+            genericArb,
             fromToken,
             toToken,
             signer,
             gasPrice,
-            arb,
-            ethPrice: inputToEthPrice,
             config,
             viemClient,
+            inputToEthPrice,
+            outputToEthPrice,
+            orderbooksOrders,
         });
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
@@ -423,37 +420,22 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-            result.reason = ProcessPairHaltReason.NoWalletFund;
-            // if (e.spanAttributes["currentWalletBalance"]) {
-            //     spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
-            // }
-            throw result;
-        }
-        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
-            result.reason = ProcessPairHaltReason.NoRoute;
-            throw result;
-        }
-        // record all span attributes in case neither of above errors were present
+        // record all span attributes
         for (attrKey in e.spanAttributes) {
-            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
-                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
-            }
-            else {
-                spanAttributes[attrKey] = e.spanAttributes[attrKey];
-            }
+            spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
-        rawtx = undefined;
-    }
-
-    if (!rawtx) {
-        result.report = {
-            status: ProcessPairReportStatus.NoOpportunity,
-            tokenPair: pair,
-            buyToken: orderPairObject.buyToken,
-            sellToken: orderPairObject.sellToken,
-        };
-        return result;
+        if ("rawtx" in e) {
+            result.report = {
+                status: ProcessPairReportStatus.NoOpportunity,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            };
+            return result;
+        } else {
+            result.reason = ProcessPairHaltReason.NoWalletFund;
+            throw result;
+        }
     }
 
     // from here on we know an opp is found, so record it in report and in otel span attributes
@@ -520,7 +502,7 @@ async function processPair(args) {
             spanAttributes["didClear"] = true;
 
             const clearActualAmount = getActualClearAmount(
-                arb.address,
+                rawtx.to,
                 orderbook.address,
                 receipt
             );

@@ -41,8 +41,9 @@ async function dryrun({
     const opposingMaxInput = maximumInputFixed
         .mul(orderPairObject.takeOrders[0].quote.ratio)
         .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-    const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
-        .div(orderPairObject.takeOrders[0].quote.ratio);
+    const opposingMaxIORatio = orderPairObject.takeOrders[0].quote.ratio.isZero()
+        ? ethers.constants.Zero
+        : ethers.BigNumber.from(`1${"0".repeat(36)}`).div(orderPairObject.takeOrders[0].quote.ratio);
 
     // encode takeOrders2()
     const obInterface = new ethers.utils.Interface(orderbookAbi);
@@ -115,7 +116,7 @@ async function dryrun({
         }
         return Promise.reject(result);
     }
-    gasLimit = gasLimit.mul("103").div("100");
+    gasLimit = gasLimit.mul("107").div("100");
     rawtx.gasLimit = gasLimit;
     const gasCost = gasLimit.mul(gasPrice);
 
@@ -214,7 +215,6 @@ async function findOpp({
         spanAttributes,
     };
 
-    const knownGas = { value: undefined };
     const opposingOrderbookOrders = orderbooksOrders.map(v => {
         if (v[0].orderbook !== orderPairObject.orderbook) {
             return v.find(e =>
@@ -227,26 +227,45 @@ async function findOpp({
     }).filter(v => v !== undefined);
 
     if (!opposingOrderbookOrders.length) throw undefined;
+    let maximumInput = orderPairObject.takeOrders.reduce(
+        (a, b) => a.add(b.quote.maxOutput),
+        ethers.constants.Zero
+    );
     try {
+        // try full maxoutput for all available orderbooks before trying binary search
         return await Promise.any(opposingOrderbookOrders.map(
             v => dryrun({
                 orderPairObject,
                 opposingOrders: v,
                 signer,
-                maximumInput: orderPairObject.takeOrders.reduce(
-                    (a, b) => a.add(b.quote.maxOutput),
-                    ethers.constants.Zero
-                ),
+                maximumInput,
                 gasPrice,
                 arb,
                 inputToEthPrice,
                 outputToEthPrice,
                 config,
                 viemClient,
-                knownGas
             })
         ));
     } catch (e) {
+        maximumInput = maximumInput.div(2);
+        try {
+            // try to find the first resolving binary search
+            return await Promise.any(opposingOrderbookOrders.map(
+                v => binarySearch({
+                    orderPairObject,
+                    opposingOrders: v,
+                    signer,
+                    maximumInput,
+                    gasPrice,
+                    arb,
+                    inputToEthPrice,
+                    outputToEthPrice,
+                    config,
+                    viemClient,
+                })
+            ));
+        } catch { /**/ }
         if (e.errors.some(v => v.reason === InterOrderbookDryrunHaltReason.NoWalletFund)) {
             result.reason = InterOrderbookDryrunHaltReason.NoWalletFund;
             spanAttributes["currentWalletBalance"] = e.errors[0].spanAttributes["currentWalletBalance"];
@@ -260,6 +279,57 @@ async function findOpp({
             }
             spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
         }
+        return Promise.reject(result);
+    }
+}
+
+/**
+ * Finds best maximumInput by doing a binary search
+ */
+async function binarySearch({
+    orderPairObject,
+    opposingOrders,
+    signer,
+    maximumInput,
+    gasPrice,
+    arb,
+    inputToEthPrice,
+    outputToEthPrice,
+    config,
+    viemClient,
+}) {
+    const result = {
+        value: undefined,
+        reason: undefined,
+    };
+    const allSuccessHops = [];
+    const initAmount = ethers.BigNumber.from(maximumInput.toString());
+    for (let i = 1; i < config.hops; i++) {
+        try {
+            allSuccessHops.push(await dryrun({
+                orderPairObject,
+                opposingOrders,
+                signer,
+                maximumInput,
+                gasPrice,
+                arb,
+                inputToEthPrice,
+                outputToEthPrice,
+                config,
+                viemClient,
+            }));
+            // set the maxInput for next hop by increasing
+            maximumInput = maximumInput.add(initAmount.div(2 ** i));
+        } catch(e) {
+            // set the maxInput for next hop by decreasing
+            maximumInput = maximumInput.sub(initAmount.div(2 ** i));
+        }
+    }
+    if (allSuccessHops.length) {
+        return allSuccessHops[allSuccessHops.length - 1];
+    }
+    else {
+        result.reason = InterOrderbookDryrunHaltReason.NoOpportunity;
         return Promise.reject(result);
     }
 }

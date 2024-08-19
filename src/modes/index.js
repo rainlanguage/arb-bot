@@ -4,83 +4,81 @@ const { findOppWithRetries } = require("./routeProcessor");
 async function findOpp({
     orderPairObject,
     dataFetcher,
+    arb,
+    genericArb,
     fromToken,
     toToken,
     signer,
     gasPrice,
-    arb,
     config,
     viemClient,
-    ethPriceToInput,
-    ethPriceToOutput,
+    inputToEthPrice,
+    outputToEthPrice,
     orderbooksOrders,
 }) {
-    const spanAttributes = {};
-    const result = {
-        value: undefined,
-        spanAttributes,
-    };
-
-    const allResults = await Promise.allSettled([
-        findOppWithRetries({
-            orderPairObject,
-            dataFetcher,
-            fromToken,
-            toToken,
-            signer,
-            gasPrice,
-            arb,
-            ethPrice: ethPriceToInput,
-            config,
-            viemClient,
-        }),
-        findInterObOpp({
-            orderPairObject,
-            signer,
-            gasPrice,
-            arb,
-            ethPriceToInput,
-            ethPriceToOutput,
-            config,
-            viemClient,
-            orderbooksOrders,
-        })
-    ]);
+    const promises = [findOppWithRetries({
+        orderPairObject,
+        dataFetcher,
+        fromToken,
+        toToken,
+        signer,
+        gasPrice,
+        arb,
+        ethPrice: inputToEthPrice,
+        config,
+        viemClient,
+    })];
+    if (genericArb) promises.push(findInterObOpp({
+        orderPairObject,
+        signer,
+        gasPrice,
+        arb: genericArb,
+        inputToEthPrice,
+        outputToEthPrice,
+        config,
+        viemClient,
+        orderbooksOrders,
+    }));
+    const allResults = await Promise.allSettled(promises);
 
     if (allResults.some(v => v.status === "fulfilled")) {
-        if (allResults.every(v => v.status === "fulfilled")) {
+        if (allResults.length > 1 && allResults.every(v => v.status === "fulfilled")) {
             return allResults[0].value.value.maximumInput.gt(allResults[1].value.value.maximumInput)
                 ? allResults[0].value
                 : allResults[1].value;
-        } else {
-            return allResults.find(v => v.status === "fulfilled").value;
+        } else if (allResults[0].status === "fulfilled") {
+            return allResults[0].value;
+        } else if (allResults[1].status === "fulfilled") {
+            return allResults[0].value;
         }
     } else {
-        if (allResults[0].value?.reason === 2 || allResults[1].value?.reason === 2) {
-            if (allResults[0].value?.spanAttributes?.["currentWalletBalance"]) {
+        const spanAttributes = {};
+        const result = { spanAttributes };
+        if (allResults[0].reason?.reason === 2 || allResults[1]?.reason?.reason === 2) {
+            if (allResults[0].reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
-                ] = allResults[0].value.spanAttributes["currentWalletBalance"];
+                ] = allResults[0].reason.spanAttributes["currentWalletBalance"];
             }
-            if (allResults[1].value?.spanAttributes?.["currentWalletBalance"]) {
+            if (allResults[1].reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
-                ] = allResults[1].value.spanAttributes["currentWalletBalance"];
+                ] = allResults[1].reason.spanAttributes["currentWalletBalance"];
             }
             throw result;
         }
-        if (allResults[0].value?.spanAttributes) {
-            spanAttributes["route-processor"] = JSON.stringify(allResults[0].value.spanAttributes);
+        if (allResults[0].reason?.spanAttributes) {
+            spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }
-        if (allResults[1].value?.spanAttributes) {
-            spanAttributes["inter-orderbook"] = JSON.stringify(allResults[1].value.spanAttributes);
+        if (allResults[1]?.reason?.spanAttributes) {
+            spanAttributes["inter-orderbook"] = JSON.stringify(allResults[1].reason.spanAttributes);
         }
         result.rawtx = undefined;
         result.oppBlockNumber = undefined;
-        return result;
+        throw result;
     }
 }
 
 module.exports = {
-    findOpp
+    findOpp,
 };

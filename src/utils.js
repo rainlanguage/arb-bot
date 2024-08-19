@@ -202,7 +202,18 @@ const getEthPrice = async(
         // providers,
         // poolFilter
     );
-    if (route.status == "NoWay") return undefined;
+    if (route.status == "NoWay") {
+        if (!fetchPools) return await getEthPrice(
+            config,
+            targetTokenAddress,
+            targetTokenDecimals,
+            gasPrice,
+            dataFetcher,
+            options,
+            true,
+        );
+        else return undefined;
+    }
     else return ethers.utils.formatUnits(route.amountOutBI);
 };
 

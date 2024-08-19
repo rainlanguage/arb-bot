@@ -73,7 +73,7 @@ describe("Test route processor dryrun", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
                 )
             },
             signedContext: []
@@ -91,7 +91,7 @@ describe("Test route processor dryrun", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -271,7 +271,7 @@ describe("Test route processor find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
                 )
             },
             signedContext: []
@@ -289,7 +289,7 @@ describe("Test route processor find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -348,7 +348,7 @@ describe("Test route processor find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
                 )
             },
             signedContext: []
@@ -366,7 +366,7 @@ describe("Test route processor find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
@@ -546,7 +546,7 @@ describe("Test find opp with retries", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul("103").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
                 )
             },
             signedContext: []
@@ -564,7 +564,7 @@ describe("Test find opp with retries", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),

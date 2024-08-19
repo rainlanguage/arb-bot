@@ -178,7 +178,7 @@ async function dryrun({
             }
             return Promise.reject(result);
         }
-        gasLimit = gasLimit.mul("103").div("100");
+        gasLimit = gasLimit.mul("107").div("100");
         rawtx.gasLimit = gasLimit;
         const gasCost = gasLimit.mul(gasPrice);
 
