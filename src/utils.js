@@ -151,25 +151,25 @@ const getActualPrice = (receipt, orderbook, arb, amount, buyDecimals) => {
 /**
  * Gets token price against ETH
  * @param {any} config - The network config data
- * @param {string} fromTokenAddress - The token address
- * @param {number} fromTokenDecimals - The token decimals
+ * @param {string} targetTokenAddress - The token address
+ * @param {number} targetTokenDecimals - The token decimals
  * @param {BigNumber} gasPrice - The network gas price
  * @param {import("sushi/router").DataFetcher} dataFetcher - (optional) The DataFetcher instance
  * @param {import("sushi/router").DataFetcherOptions} options - (optional) The DataFetcher options
  */
 const getEthPrice = async(
     config,
-    fromTokenAddress,
-    fromTokenDecimals,
+    targetTokenAddress,
+    targetTokenDecimals,
     gasPrice,
     dataFetcher = undefined,
     options = undefined,
     fetchPools = true,
 ) => {
-    if(fromTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
+    if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
     }
-    const amountIn = BigNumber.from("1" + "0".repeat(fromTokenDecimals));
+    const amountIn = BigNumber.from("1" + "0".repeat(targetTokenDecimals));
     const toToken = new Token({
         chainId: config.chain.id,
         decimals: config.nativeWrappedToken.decimals,
@@ -178,8 +178,8 @@ const getEthPrice = async(
     });
     const fromToken = new Token({
         chainId: config.chain.id,
-        decimals: fromTokenDecimals,
-        address: fromTokenAddress
+        decimals: targetTokenDecimals,
+        address: targetTokenAddress
     });
     if (!dataFetcher) dataFetcher = getDataFetcher(config);
     if (fetchPools) await dataFetcher.fetchPoolsForToken(
