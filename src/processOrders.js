@@ -381,8 +381,8 @@ async function processPair(args) {
             return Promise.reject(result);
         }
         else {
-            spanAttributes["details.ethPriceToInput"] = inputToEthPrice;
-            spanAttributes["details.ethPriceToOutput"] = outputToEthPrice;
+            spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
+            spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetEthPrice;

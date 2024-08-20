@@ -489,16 +489,11 @@ for (let i = 0; i < testData.length; i++) {
                                 v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
                                 ethers.constants.Zero, // ratio
                             ]),
-                            [
-                                true, // success
-                                tokens[0].depositAmount.mul("1" + "0".repeat(18 - tokens[0].decimals)), //maxout
-                                ethers.constants.Zero, // ratio
-                            ],
-                            [
-                                true, // success
-                                tokens[0].depositAmount.mul("1" + "0".repeat(18 - tokens[0].decimals)), //maxout
-                                ethers.constants.Zero, // ratio
-                            ]
+                            ...tokens.slice(1).map(() => [
+                                true,
+                                tokens[0].depositAmount.mul("1" + "0".repeat(18 - tokens[0].decimals)),
+                                ethers.constants.Zero,
+                            ]),
                         ])
                     );
                 for (let i = 1; i < tokens.length; i++) {

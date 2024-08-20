@@ -126,8 +126,8 @@ describe("Test process pair", async function () {
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
                 "didClear": true,
-                "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
-                "details.ethPriceToOutput": "1",
+                "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                "details.outputToEthPrice": "1",
             }
         };
         assert.deepEqual(result, expected);
@@ -183,8 +183,8 @@ describe("Test process pair", async function () {
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
                 "didClear": true,
-                "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
-                "details.ethPriceToOutput": "1",
+                "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                "details.outputToEthPrice": "1",
             }
         };
         assert.deepEqual(result, expected);
@@ -453,8 +453,8 @@ describe("Test process pair", async function () {
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
                     "details.rawTx": JSON.stringify(rawtx),
-                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
-                    "details.ethPriceToOutput": "1",
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -517,8 +517,8 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
-                    "details.ethPriceToOutput": "1",
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -585,8 +585,8 @@ describe("Test process pair", async function () {
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
                     "details.receipt": JSON.stringify(errorReceipt),
-                    "details.ethPriceToInput": formatUnits(getCurrentInputToEthPrice()),
-                    "details.ethPriceToOutput": "1",
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);
