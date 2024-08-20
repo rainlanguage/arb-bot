@@ -38,9 +38,11 @@ async function dryrun({
     );
     spanAttributes["maxInput"] = maximumInput.toString();
 
-    const opposingMaxInput = maximumInputFixed
-        .mul(orderPairObject.takeOrders[0].quote.ratio)
-        .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
+    const opposingMaxInput = orderPairObject.takeOrders[0].quote.ratio.isZero()
+        ? ethers.constants.MaxUint256
+        : maximumInputFixed
+            .mul(orderPairObject.takeOrders[0].quote.ratio)
+            .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
 
     const opposingMaxIORatio = orderPairObject.takeOrders[0].quote.ratio.isZero()
         ? ethers.constants.MaxUint256

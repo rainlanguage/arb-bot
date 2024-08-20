@@ -159,7 +159,6 @@ async function dryrun({
             gasLimit = await signer.estimateGas(rawtx);
         }
         catch(e) {
-            console.log(e);
             // reason, code, method, transaction, error, stack, message
             const spanError = getSpanException(e);
             const errorString = JSON.stringify(spanError);
@@ -222,7 +221,6 @@ async function dryrun({
                 );
             }
             catch(e) {
-                console.log(e);
                 const spanError = getSpanException(e);
                 const errorString = JSON.stringify(spanError);
                 spanAttributes["error"] = spanError;

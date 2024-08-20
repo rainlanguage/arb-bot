@@ -506,6 +506,7 @@ async function processPair(args) {
                 orderbook.address,
                 receipt
             );
+
             const inputTokenIncome = getIncome(signer.address, receipt, orderPairObject.buyToken);
             const outputTokenIncome = getIncome(signer.address, receipt, orderPairObject.sellToken);
             const income = getTotalIncome(
@@ -534,6 +535,19 @@ async function processPair(args) {
                     orderPairObject.buyTokenDecimals
                 );
             }
+            if (inputTokenIncome) {
+                spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
+                    inputTokenIncome,
+                    orderPairObject.buyTokenDecimals
+                );
+            }
+            if (outputTokenIncome) {
+                spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
+                    outputTokenIncome,
+                    orderPairObject.buyTokenDecimals
+                );
+            }
+
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -543,6 +557,12 @@ async function processPair(args) {
                 clearedAmount: clearActualAmount?.toString(),
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
                 income,
+                inputTokenIncome: inputTokenIncome
+                    ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
+                    : undefined,
+                outputTokenIncome: outputTokenIncome
+                    ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
+                    : undefined,
                 netProfit,
                 clearedOrders: orderPairObject.takeOrders.map(
                     v => v.id

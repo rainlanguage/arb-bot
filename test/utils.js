@@ -40,7 +40,7 @@ exports.arbDeploy = async(
 };
 
 exports.genericArbrbDeploy = async(orderbookAddress) => {
-    return await basicDeploy(
+    return await this.basicDeploy(
         GenericPoolOrderBookV4ArbOrderTakerArtifact,
         {
             orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
