@@ -1,6 +1,13 @@
 const { findOpp: findInterObOpp } = require("./interOrderbook");
 const { findOppWithRetries } = require("./routeProcessor");
 
+/**
+ * The main entrypoint for the main logic to find opps.
+ * Find opps with different modes (RP, inter-ob) async, and returns the
+ * span attributes and a built ready to send tx object if found any or the
+ * the one that clears the most for the target order, or rejects if no opp
+ * is found by returning the details in span attributes.
+ */
 async function findOpp({
     orderPairObject,
     dataFetcher,

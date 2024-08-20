@@ -12,7 +12,7 @@ const InterOrderbookDryrunHaltReason = {
 };
 
 /**
- * Executes a extimateGas call for an arb() tx, to determine if the tx is successfull ot not
+ * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
  */
 async function dryrun({
     orderPairObject,
@@ -41,9 +41,11 @@ async function dryrun({
     const opposingMaxInput = maximumInputFixed
         .mul(orderPairObject.takeOrders[0].quote.ratio)
         .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
+
     const opposingMaxIORatio = orderPairObject.takeOrders[0].quote.ratio.isZero()
-        ? ethers.constants.Zero
-        : ethers.BigNumber.from(`1${"0".repeat(36)}`).div(orderPairObject.takeOrders[0].quote.ratio);
+        ? ethers.constants.MaxUint256
+        : ethers.BigNumber.from(`1${"0".repeat(36)}`)
+            .div(orderPairObject.takeOrders[0].quote.ratio);
 
     // encode takeOrders2()
     const obInterface = new ethers.utils.Interface(orderbookAbi);
@@ -193,9 +195,7 @@ async function dryrun({
 }
 
 /**
- * Tries to find an opp by doing a binary search for the maxInput of an arb tx
- * it calls dryrun() on each iteration and based on the outcome, +/- the maxInput
- * until the binary search is over and returns teh final result
+ * Tries to find an opp by doing a binary search for the maxInput of an inter-orderbook arb tx
  */
 async function findOpp({
     orderPairObject,

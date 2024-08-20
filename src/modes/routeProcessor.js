@@ -292,7 +292,6 @@ async function findOpp({
 
     const allSuccessHops = [];
     const allHopsAttributes = [];
-    const knownInitGas = { value: undefined };
     for (let i = 1; i < config.hops + 1; i++) {
         try {
             const dryrunResult = await dryrun({
@@ -308,7 +307,6 @@ async function findOpp({
                 ethPrice,
                 config,
                 viemClient,
-                knownInitGas,
             });
 
             // return early if there was success on first attempt (ie full vault balance)
