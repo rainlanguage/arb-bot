@@ -73,37 +73,66 @@ const getIncome = (signerAddress, receipt, token) => {
 
 /**
  * Extracts the actual clear amount (received token value) from transaction receipt
- * @param {string} arbAddress - The arb contract address
+ * @param {string} toAddress - The to address
  * @param {any} receipt - The transaction receipt
  * @returns The actual clear amount
  */
-const getActualClearAmount = (arbAddress, obAddress, receipt) => {
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    if (receipt.logs) return receipt.logs.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
+const getActualClearAmount = (toAddress, obAddress, receipt) => {
+    if (toAddress.toLowerCase() !== obAddress.toLowerCase()) {
+        const erc20Interface = new ethers.utils.Interface(erc20Abi);
+        try {
+            if (receipt.logs) return receipt.logs.map(v => {
+                try{
+                    return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v =>
+                v !== undefined &&
+                BigNumber.from(v.to).eq(toAddress) &&
+                BigNumber.from(v.from).eq(obAddress)
+            )[0]?.value;
+            else if (receipt.events) return receipt.events.map(v => {
+                try{
+                    return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v =>
+                v !== undefined &&
+                BigNumber.from(v.to).eq(toAddress) &&
+                BigNumber.from(v.from).eq(obAddress)
+            )[0]?.value;
+            else return undefined;
+        } catch {
             return undefined;
         }
-    }).filter(v =>
-        v !== undefined &&
-        BigNumber.from(v.to).eq(arbAddress) &&
-        BigNumber.from(v.from).eq(obAddress)
-    )[0]?.value;
-    else if (receipt.events) receipt.events.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
+    } else {
+        const obInterface = new ethers.utils.Interface(orderbookAbi);
+        try {
+            if (receipt.logs) return receipt.logs.map(v => {
+                try{
+                    return obInterface.decodeEventLog("AfterClear", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v => v !== undefined)[0]?.clearStateChange?.aliceOutput;
+            else if (receipt.events) return receipt.events.map(v => {
+                try{
+                    return obInterface.decodeEventLog("AfterClear", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v => v !== undefined)[0]?.clearStateChange?.aliceOutput;
+            else return undefined;
+        } catch {
             return undefined;
         }
-    }).filter(v =>
-        v !== undefined &&
-        BigNumber.from(v.to).eq(arbAddress) &&
-        BigNumber.from(v.from).eq(obAddress)
-    )[0]?.value;
-    else return undefined;
+    }
 };
 
 /**
@@ -1024,7 +1053,6 @@ function estimateProfit(
                     ? orderMaxInput
                     : opposingOrders.quote.maxOutput;
             const opposingInput = opposingOutput.mul(opposingOrders.quote.ratio).div(One);
-            console.log(orderInput, orderOutput, opposingInput, opposingOutput);
 
             let outputProfit = orderOutput.sub(opposingInput);
             if (outputProfit.lt(0)) outputProfit = ethers.constants.Zero;

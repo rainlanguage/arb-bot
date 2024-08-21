@@ -36,14 +36,6 @@ async function dryrun({
     const inputBountyVaultId = "1";
     const outputBountyVaultId = "1";
     const obInterface = new ethers.utils.Interface(orderbookAbi);
-    const task = {
-        evaluable: {
-            interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-            store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-            bytecode: "0x"
-        },
-        signedContext: []
-    };
     const withdrawInputCalldata = obInterface.encodeFunctionData(
         "withdraw2",
         [
@@ -97,7 +89,6 @@ async function dryrun({
         gasLimit = await signer.estimateGas(rawtx);
     }
     catch(e) {
-        console.log(e);
         // reason, code, method, transaction, error, stack, message
         const spanError = getSpanException(e);
         const errorString = JSON.stringify(spanError);
@@ -109,16 +100,14 @@ async function dryrun({
             || errorString.includes("gas required exceeds allowance")
             || errorString.includes("insufficient funds for gas")
         ) {
-            console.log("qweqweqwe");
             result.reason = IntraOrderbookDryrunHaltReason.NoWalletFund;
             spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
         } else {
-            console.log("oiuoiuoiuo");
             result.reason = IntraOrderbookDryrunHaltReason.NoOpportunity;
         }
         return Promise.reject(result);
     }
-    gasLimit = gasLimit.mul("400").div("100");
+    gasLimit = gasLimit.mul("107").div("100");
     rawtx.gasLimit = gasLimit;
     const gasCost = gasLimit.mul(gasPrice);
 
@@ -126,20 +115,26 @@ async function dryrun({
     // coverage is not 0, 0 gas coverage means 0 minimum
     // sender output which is already called above
     if (config.gasCoveragePercentage !== "0") {
-        console.log("bbbbbbb");
         const headroom = (
             Number(config.gasCoveragePercentage) * 1.05
         ).toFixed();
-        task.evaluable.bytecode = getWithdrawEnsureBytecode(
-            signer.address,
-            orderPairObject.buyToken,
-            orderPairObject.sellToken,
-            inputBalance,
-            outputBalance,
-            ethers.utils.parseUnits(inputToEthPrice),
-            ethers.utils.parseUnits(outputToEthPrice),
-            gasCost.mul(headroom).div("100"),
-        );
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getWithdrawEnsureBytecode(
+                    signer.address,
+                    orderPairObject.buyToken,
+                    orderPairObject.sellToken,
+                    inputBalance,
+                    outputBalance,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    gasCost.mul(headroom).div("100"),
+                )
+            },
+            signedContext: []
+        };
         withdrawOutputCalldata = obInterface.encodeFunctionData(
             "withdraw2",
             [
@@ -158,9 +153,31 @@ async function dryrun({
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
             await signer.estimateGas(rawtx);
+            task.evaluable.bytecode = getWithdrawEnsureBytecode(
+                signer.address,
+                orderPairObject.buyToken,
+                orderPairObject.sellToken,
+                inputBalance,
+                outputBalance,
+                ethers.utils.parseUnits(inputToEthPrice),
+                ethers.utils.parseUnits(outputToEthPrice),
+                gasCost.mul(config.gasCoveragePercentage).div("100"),
+            );
+            withdrawOutputCalldata = obInterface.encodeFunctionData(
+                "withdraw2",
+                [
+                    orderPairObject.sellToken,
+                    outputBountyVaultId,
+                    ethers.constants.MaxUint256,
+                    [task]
+                ]
+            );
+            rawtx.data = obInterface.encodeFunctionData(
+                "multicall",
+                [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
+            );
         }
         catch(e) {
-            console.log(e);
             const spanError = getSpanException(e);
             const errorString = JSON.stringify(spanError);
             spanAttributes["error"] = spanError;
@@ -171,11 +188,9 @@ async function dryrun({
                 || errorString.includes("gas required exceeds allowance")
                 || errorString.includes("insufficient funds for gas")
             ) {
-                console.log("qweqweqwe");
                 result.reason = IntraOrderbookDryrunHaltReason.NoWalletFund;
                 spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
             } else {
-                console.log("oiuoiuoiuo");
                 result.reason = IntraOrderbookDryrunHaltReason.NoOpportunity;
             }
             return Promise.reject(result);
@@ -183,29 +198,6 @@ async function dryrun({
     }
 
     // if reached here, it means there was a success and found opp
-    task.evaluable.bytecode = getWithdrawEnsureBytecode(
-        signer.address,
-        orderPairObject.buyToken,
-        orderPairObject.sellToken,
-        inputBalance,
-        outputBalance,
-        ethers.utils.parseUnits(inputToEthPrice),
-        ethers.utils.parseUnits(outputToEthPrice),
-        gasCost.mul(config.gasCoveragePercentage).div("100"),
-    );
-    withdrawOutputCalldata = obInterface.encodeFunctionData(
-        "withdraw2",
-        [
-            orderPairObject.sellToken,
-            outputBountyVaultId,
-            ethers.constants.MaxUint256,
-            [task]
-        ]
-    );
-    rawtx.data = obInterface.encodeFunctionData(
-        "multicall",
-        [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
-    );
     spanAttributes["oppBlockNumber"] = blockNumber;
     spanAttributes["foundOpp"] = true;
     delete spanAttributes["blockNumber"];
@@ -260,8 +252,8 @@ async function findOpp({
             v => v.quote.ratio.mul(orderPairObject.takeOrders[0].quote.ratio).div(One).lt(One)
         );
 
-    console.log(opposingOrders);
     if (!opposingOrders) throw undefined;
+
     const allErrorAttributes = [];
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const inputBalance = ethers.BigNumber.from((await viemClient.call({

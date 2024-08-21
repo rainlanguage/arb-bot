@@ -149,6 +149,19 @@ async function dryrun({
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
             await signer.estimateGas(rawtx);
+            task.evaluable.bytecode = getBountyEnsureBytecode(
+                ethers.utils.parseUnits(inputToEthPrice),
+                ethers.utils.parseUnits(outputToEthPrice),
+                gasCost
+            );
+            rawtx.data = arb.interface.encodeFunctionData(
+                "arb3",
+                [
+                    orderPairObject.orderbook,
+                    takeOrdersConfigStruct,
+                    task
+                ]
+            );
         }
         catch(e) {
             const spanError = getSpanException(e);
@@ -171,20 +184,6 @@ async function dryrun({
     }
 
     // if reached here, it means there was a success and found opp
-    // rest of span attr are not needed since they are present in the result.data
-    task.evaluable.bytecode = getBountyEnsureBytecode(
-        ethers.utils.parseUnits(inputToEthPrice),
-        ethers.utils.parseUnits(outputToEthPrice),
-        gasCost
-    );
-    rawtx.data = arb.interface.encodeFunctionData(
-        "arb3",
-        [
-            orderPairObject.orderbook,
-            takeOrdersConfigStruct,
-            task
-        ]
-    );
     spanAttributes["oppBlockNumber"] = blockNumber;
     spanAttributes["foundOpp"] = true;
     delete spanAttributes["blockNumber"];

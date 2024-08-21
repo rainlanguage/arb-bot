@@ -72,7 +72,6 @@ const processOrders = async(
         config.shuffle,
         true,
     );
-    console.log(bundledOrders.map(v => v.map(e => e.takeOrders.map(c => JSON.stringify({id: c.id, s1: e.buyTokenSymbol, s2: e.sellTokenSymbol})))));
     await quoteOrders(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
@@ -378,17 +377,27 @@ async function processPair(args) {
             false,
         );
         if (!inputToEthPrice || !outputToEthPrice) {
-            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-            return Promise.reject(result);
+            if (config.gasCoveragePercentage === "0") {
+                inputToEthPrice = "0";
+                outputToEthPrice = "0";
+            } else {
+                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+                return Promise.reject(result);
+            }
         }
         else {
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
     } catch(e) {
-        result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-        result.error = e;
-        throw result;
+        if (config.gasCoveragePercentage === "0") {
+            inputToEthPrice = "0";
+            outputToEthPrice = "0";
+        } else {
+            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            result.error = e;
+            throw result;
+        }
     }
 
     // execute process to find opp through different modes
@@ -409,7 +418,6 @@ async function processPair(args) {
             outputToEthPrice,
             orderbooksOrders,
         });
-        // console.log(findOppResult);
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
         // record span attrs
@@ -499,7 +507,6 @@ async function processPair(args) {
                 `Transaction failed to mine after ${config.timeout}ms`
             )
             : await tx.wait(2);
-            // console.log(receipt);
 
         if (receipt.status === 1) {
             spanAttributes["didClear"] = true;
@@ -520,7 +527,6 @@ async function processPair(args) {
                 orderPairObject.buyTokenDecimals,
                 orderPairObject.sellTokenDecimals
             );
-            console.log("bro", inputTokenIncome, outputTokenIncome, income);
 
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
@@ -576,8 +582,19 @@ async function processPair(args) {
             // keep track of gas consumption of the account and bounty token
             result.gasCost = actualGasCost;
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-            if (!signer.BOUNTY.includes(orderPairObject.buyToken)) {
+            if (
+                inputTokenIncome &&
+                inputTokenIncome.gt(0) &&
+                !signer.BOUNTY.includes(orderPairObject.buyToken)
+            ) {
                 signer.BOUNTY.push(orderPairObject.buyToken);
+            }
+            if (
+                outputTokenIncome &&
+                outputTokenIncome.gt(0) &&
+                !signer.BOUNTY.includes(orderPairObject.sellToken)
+            ) {
+                signer.BOUNTY.push(orderPairObject.sellToken);
             }
 
             return result;

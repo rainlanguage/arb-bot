@@ -25,18 +25,18 @@ async function findOpp({
     orderbooksOrders,
 }) {
     const promises = [
-        // findOppWithRetries({
-        //     orderPairObject,
-        //     dataFetcher,
-        //     fromToken,
-        //     toToken,
-        //     signer,
-        //     gasPrice,
-        //     arb,
-        //     ethPrice: inputToEthPrice,
-        //     config,
-        //     viemClient,
-        // }),
+        findOppWithRetries({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            arb,
+            ethPrice: inputToEthPrice,
+            config,
+            viemClient,
+        }),
         findIntraObOpp({
             orderPairObject,
             signer,
@@ -60,9 +60,8 @@ async function findOpp({
         orderbooksOrders,
     }));
     const allResults = await Promise.allSettled(promises);
-console.log(allResults.map(v => v?.value?.value?.estimatedProfit));
+
     if (allResults.some(v => v.status === "fulfilled")) {
-        console.log("aazazazazazaz");
         const result = allResults
             .filter(v => v.status === "fulfilled")
             .sort(
@@ -82,7 +81,6 @@ console.log(allResults.map(v => v?.value?.value?.estimatedProfit));
             || allResults[1]?.reason?.reason === 2
             || allResults[2]?.reason?.reason === 2
         ) {
-            console.log("mnmnbnmbm");
             if (allResults[0].reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
@@ -100,7 +98,6 @@ console.log(allResults.map(v => v?.value?.value?.estimatedProfit));
             }
             throw result;
         }
-        console.log("oknkonokknnonon");
         if (allResults[0]?.reason?.spanAttributes) {
             spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }

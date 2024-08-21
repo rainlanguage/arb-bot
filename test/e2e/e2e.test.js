@@ -609,14 +609,14 @@ for (let i = 0; i < testData.length; i++) {
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, [tokens[0].address.toLowerCase()]);
+                assert.deepEqual(bot.BOUNTY, tokens.map(v => v.address.toLowerCase()));
                 assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
                 testSpan.end();
             });
 
-            it.only("should clear orders successfully using intra-orderbook", async function () {
+            it("should clear orders successfully using intra-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = getDataFetcher(config, liquidityProviders, false);
@@ -705,15 +705,15 @@ for (let i = 0; i < testData.length; i++) {
                             []
                         );
 
-                    // prebuild bytecode: "_ _: 0 max; :;"
-                    const ratio = "0".repeat(63) + 1; // 0
-                    const maxOutput = "f".repeat(64); // max
-                    const bytecode = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput}${ratio}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
+                    // prebuild bytecode: "_ _: 0.5 max; :;"
+                    const ratio1 = ethers.BigNumber.from("500000000000000000").toHexString().substring(2).padStart(64, "0"); // 0.5
+                    const maxOutput1 = "f".repeat(64); // max
+                    const bytecode1 = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput1}${ratio1}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
                     const addOrderConfig1 = {
                         evaluable: {
                             interpreter: interpreter.address,
                             store: store.address,
-                            bytecode,
+                            bytecode: bytecode1,
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
@@ -739,7 +739,6 @@ for (let i = 0; i < testData.length; i++) {
                     ));
 
                     // opposing orders
-                    console.log(tokens[0].depositAmount.toString());
                     const depositConfigStruct2 = {
                         token: tokens[0].address,
                         vaultId: tokens[0].vaultIds[i - 1],
@@ -757,11 +756,16 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct2.amount,
                             []
                         );
+
+                    // prebuild bytecode: "_ _: 1 max; :;"
+                    const ratio2 = ethers.BigNumber.from("1000000000000000000").toHexString().substring(2).padStart(64, "0"); // 1
+                    const maxOutput2 = "f".repeat(64); // max
+                    const bytecode2 = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput2}${ratio2}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
                     const addOrderConfig2 = {
                         evaluable: {
                             interpreter: interpreter.address,
                             store: store.address,
-                            bytecode,
+                            bytecode: bytecode2,
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
@@ -845,69 +849,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
-                console.log("\nvaults before clear:");
-                let ob0Token0Owner0OutputVault = await orderbook.vaultBalance(
-                    owners[1].address,
-                    tokens[1].address,
-                    tokens[1].vaultId
-                );
-                let ob0Token1Owner0InputVault = await orderbook.vaultBalance(
-                    owners[1].address,
-                    tokens[0].address,
-                    tokens[0].vaultId
-                );
-                let ob1Token1Owner1OutputVault = await orderbook.vaultBalance(
-                    owners[2].address,
-                    tokens[2].address,
-                    tokens[2].vaultId
-                );
-                let ob1Token0Owner1InputVault = await orderbook.vaultBalance(
-                    owners[2].address,
-                    tokens[0].address,
-                    tokens[0].vaultId
-                );
-                console.log("owner0, token0, output vault", ob0Token0Owner0OutputVault);
-                console.log("owner0, token1, input vault", ob0Token1Owner0InputVault);
-                console.log("owner1, token1, output vault", ob1Token1Owner1OutputVault);
-                console.log("owner1, token0, input vault", ob1Token0Owner1InputVault);
                 const { reports } = await clear(config, orders, tracer, ctx);
-
-                console.log("vaults after clear:");
-                ob0Token0Owner0OutputVault = await orderbook.vaultBalance(
-                    owners[1].address,
-                    tokens[1].address,
-                    tokens[1].vaultId
-                );
-                ob0Token1Owner0InputVault = await orderbook.vaultBalance(
-                    owners[1].address,
-                    tokens[0].address,
-                    tokens[0].vaultId
-                );
-                ob1Token1Owner1OutputVault = await orderbook.vaultBalance(
-                    owners[2].address,
-                    tokens[2].address,
-                    tokens[2].vaultId
-                );
-                ob1Token0Owner1InputVault = await orderbook.vaultBalance(
-                    owners[2].address,
-                    tokens[0].address,
-                    tokens[0].vaultId
-                );
-                console.log("owner0, token0, output vault", ob0Token0Owner0OutputVault);
-                console.log("owner0, token1, input vault", ob0Token1Owner0InputVault);
-                console.log("owner1, token1, output vault", ob1Token1Owner1OutputVault);
-                console.log("owner1, token0, input vault", ob1Token0Owner1InputVault);
-                console.log("\n");
-                let c = 0;
-                for (const t of tokens) {
-                    console.log(c);
-                    console.log(
-                        originalBotTokenBalances[c++],
-                        await t.contract.balanceOf(bot.address)
-                    );
-                    // originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
-                }
-
 
                 // should have cleared correct number of orders
                 assert.ok(
@@ -916,25 +858,27 @@ for (let i = 0; i < testData.length; i++) {
                 );
 
                 // validate each cleared order
+                let c = 1;
                 let gasSpent = ethers.constants.Zero;
                 let inputProfit = ethers.constants.Zero;
-                for (let i = 0; i < reports.length / 2; i++) {
+                for (let i = 0; i < reports.length; i++) {
+                    if (i % 2 !== 0) continue;
                     assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
                     assert.equal(reports[i].clearedOrders.length, 1);
 
-                    const pair = `${tokens[0].symbol}/${tokens[i + 1].symbol}`;
+                    const pair = `${tokens[0].symbol}/${tokens[c].symbol}`;
                     const clearedAmount = ethers.BigNumber.from(reports[i].clearedAmount);
                     const outputVault = await orderbook.vaultBalance(
-                        owners[i + 1].address,
-                        tokens[i + 1].address,
-                        tokens[i + 1].vaultId
+                        owners[c].address,
+                        tokens[c].address,
+                        tokens[c].vaultId
                     );
                     const inputVault = await orderbook.vaultBalance(
                         owners[0].address,
                         tokens[0].address,
                         tokens[0].vaultId
                     );
-                    const botTokenBalance = await tokens[i + 1].contract
+                    const botTokenBalance = await tokens[c].contract
                         .connect(bot)
                         .balanceOf(bot.address);
 
@@ -942,27 +886,20 @@ for (let i = 0; i < testData.length; i++) {
 
                     // should have cleared equal to vault balance or lower
                     assert.ok(
-                        tokens[i + 1].depositAmount.gte(clearedAmount),
+                        tokens[c].depositAmount.gte(clearedAmount),
                         `Did not clear expected amount for: ${pair}`
                     );
                     assert.ok(
-                        outputVault.eq(tokens[i + 1].depositAmount.sub(clearedAmount)),
+                        outputVault.eq(tokens[c].depositAmount.sub(clearedAmount)),
                         `Unexpected current output vault balance: ${pair}`
                     );
                     assert.ok(
                         inputVault.eq(0),
                         `Unexpected current input vault balance: ${pair}`
                     );
-
-                    // output bounties should equal to current bot's token balance
                     assert.ok(
-                        originalBotTokenBalances[i + 1]
-                            .add(ethers.utils.parseUnits(
-                                reports[i].outputTokenIncome,
-                                tokens[i + 1].decimals
-                            ))
-                            .eq(botTokenBalance),
-                        `Unexpected current bot ${tokens[i + 1].symbol} balance`
+                        originalBotTokenBalances[c].eq(botTokenBalance),
+                        `Unexpected current bot ${tokens[c].symbol} balance`
                     );
 
                     // collect all bot's input income (bounty) and gas cost
@@ -970,8 +907,8 @@ for (let i = 0; i < testData.length; i++) {
                         ethers.utils.parseUnits(reports[i].inputTokenIncome)
                     );
                     gasSpent = gasSpent.add(ethers.utils.parseUnits(reports[i].actualGasCost));
+                    c++;
                 }
-
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
                     originalBotTokenBalances[0].add(inputProfit).eq(
