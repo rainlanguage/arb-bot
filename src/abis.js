@@ -14,6 +14,7 @@ const IO = "(address token, uint8 decimals, uint256 vaultId)";
 const EvaluableV3 = "(address interpreter, address store, bytes bytecode)";
 const SignedContextV1 = "(address signer, uint256[] context, bytes signature)";
 const TaskV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)`;
+const ClearStateChange = "(uint256 aliceOutput, uint256 bobOutput, uint256 aliceInput, uint256 bobInput)";
 const OrderV3 = `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce)`;
 const TakeOrderConfigV3 = `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)`;
 const OrderConfigV3 = `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)`;
@@ -25,6 +26,7 @@ const ClearConfig = "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uin
  */
 const orderbookAbi = [
     `event AddOrderV2(address sender, bytes32 orderHash, ${OrderV3} order)`,
+    `event AfterClear(address sender, ${ClearStateChange} clearStateChange)`,
     "function vaultBalance(address owner, address token, uint256 vaultId) external view returns (uint256 balance)",
     `function deposit2(address token, uint256 vaultId, uint256 amount, ${TaskV1}[] calldata tasks) external`,
     `function addOrder2(${OrderConfigV3} calldata config, ${TaskV1}[] calldata tasks) external returns (bool stateChanged)`,

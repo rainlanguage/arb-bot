@@ -2,6 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { ethers } = require("ethers");
 const { orderbookAbi } = require("../src/abis");
+const { estimateProfit } = require("../src/utils");
 const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp, InterOrderbookDryrunHaltReason } = require("../src/modes/interOrderbook");
 
@@ -105,6 +106,14 @@ describe("Test inter-orderbook dryrun", async function () {
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    opposingOrderPairObject,
+                    undefined,
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -265,6 +274,14 @@ describe("Test inter-orderbook find opp", async function () {
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    opposingOrderPairObject,
+                    undefined,
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -353,6 +370,14 @@ describe("Test inter-orderbook find opp", async function () {
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    opposingOrderPairObject,
+                    undefined,
+                    vaultBalance.mul(3).div(4)
+                )
             },
             reason: undefined,
             spanAttributes: {

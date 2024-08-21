@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { orderbookAbi } = require("../abis");
-const { getSpanException } = require("../utils");
 const { getBountyEnsureBytecode } = require("../config");
+const { getSpanException, estimateProfit } = require("../utils");
 
 /**
  * Specifies the reason that dryrun failed
@@ -192,6 +192,14 @@ async function dryrun({
         rawtx,
         maximumInput,
         oppBlockNumber: blockNumber,
+        estimatedProfit: estimateProfit(
+            orderPairObject,
+            ethers.utils.parseUnits(inputToEthPrice),
+            ethers.utils.parseUnits(outputToEthPrice),
+            opposingOrders,
+            undefined,
+            maximumInputFixed
+        )
     };
     return result;
 }

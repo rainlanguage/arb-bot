@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { getBountyEnsureBytecode } = require("../config");
-const { visualizeRoute, getSpanException, RPoolFilter, clone } = require("../utils");
+const { visualizeRoute, getSpanException, RPoolFilter, clone, estimateProfit } = require("../utils");
 
 /**
  * Specifies the reason that dryrun failed
@@ -251,6 +251,14 @@ async function dryrun({
             price,
             routeVisual,
             oppBlockNumber: blockNumber,
+            estimatedProfit: estimateProfit(
+                orderPairObject,
+                ethers.utils.parseUnits(ethPrice),
+                undefined,
+                undefined,
+                price,
+                maximumInputFixed
+            )
         };
         return result;
     }

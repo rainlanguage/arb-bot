@@ -1,7 +1,7 @@
-const { arbAbis } = require("../src/abis");
 const { Token } = require("sushi/currency");
 const { visualizeRoute } = require("../src/utils");
 const { ConstantProductRPool } = require("sushi/tines");
+const { arbAbis, orderbookAbi } = require("../src/abis");
 const { ConstantProductPoolCode, Router } = require("sushi");
 const { ethers, BigNumber, utils: { hexlify, randomBytes } } = require("ethers");
 
@@ -25,7 +25,7 @@ const outputToEthPrice = "2";
 const gasPrice = BigNumber.from("30000000");
 const gasLimitEstimation = BigNumber.from("456789");
 const arb = new ethers.Contract(arbAddress, arbAbis);
-const orderbook = new ethers.Contract(orderbookAddress, arbAbis);
+const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi);
 const pair = token1.symbol + "/" + token2.symbol;
 const txHash = hexlify(randomBytes(32));
 const effectiveGasPrice = BigNumber.from("30000000");

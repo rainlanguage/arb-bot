@@ -72,6 +72,7 @@ const processOrders = async(
         config.shuffle,
         true,
     );
+    console.log(bundledOrders.map(v => v.map(e => e.takeOrders.map(c => JSON.stringify({id: c.id, s1: e.buyTokenSymbol, s2: e.sellTokenSymbol})))));
     await quoteOrders(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
@@ -408,6 +409,7 @@ async function processPair(args) {
             outputToEthPrice,
             orderbooksOrders,
         });
+        // console.log(findOppResult);
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
         // record span attrs
@@ -497,6 +499,7 @@ async function processPair(args) {
                 `Transaction failed to mine after ${config.timeout}ms`
             )
             : await tx.wait(2);
+            // console.log(receipt);
 
         if (receipt.status === 1) {
             spanAttributes["didClear"] = true;
@@ -517,6 +520,7 @@ async function processPair(args) {
                 orderPairObject.buyTokenDecimals,
                 orderPairObject.sellTokenDecimals
             );
+            console.log("bro", inputTokenIncome, outputTokenIncome, income);
 
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice

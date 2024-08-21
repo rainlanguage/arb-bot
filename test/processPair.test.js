@@ -135,8 +135,12 @@ describe("Test process pair", async function () {
 
     it("should process pair successfully from inter-orderbook", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
+        let count = 0;
         dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
+            if (count < 1) {
+                count++;
+                return poolCodeMap;
+            } else return new Map();
         };
         const result = await processPair({
             config,
