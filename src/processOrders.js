@@ -377,17 +377,27 @@ async function processPair(args) {
             false,
         );
         if (!inputToEthPrice || !outputToEthPrice) {
-            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-            return Promise.reject(result);
+            if (config.gasCoveragePercentage === "0") {
+                inputToEthPrice = "0";
+                outputToEthPrice = "0";
+            } else {
+                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+                return Promise.reject(result);
+            }
         }
         else {
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
     } catch(e) {
-        result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-        result.error = e;
-        throw result;
+        if (config.gasCoveragePercentage === "0") {
+            inputToEthPrice = "0";
+            outputToEthPrice = "0";
+        } else {
+            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            result.error = e;
+            throw result;
+        }
     }
 
     // execute process to find opp through different modes
