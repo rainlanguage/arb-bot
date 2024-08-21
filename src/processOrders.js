@@ -1,19 +1,19 @@
 const ethers = require("ethers");
-const { BaseError } = require("viem");
 const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
+const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { arbAbis, orderbookAbi, DefaultArbEvaluable } = require("./abis");
-const { findOpp, findOppWithRetries, DryrunHaltReason } = require("./dryrun");
+const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
+    quoteOrders,
     bundleOrders,
     PoolBlackList,
     promiseTimeout,
-    getVaultBalance,
     getSpanException,
     getActualClearAmount,
+    quoteSingleOrder,
 } = require("./utils");
 
 /**
@@ -22,7 +22,7 @@ const {
 const ProcessPairHaltReason = {
     NoWalletFund: 1,
     NoRoute: 2,
-    FailedToGetVaultBalance: 3,
+    FailedToQuote: 3,
     FailedToGetGasPrice: 4,
     FailedToGetEthPrice: 5,
     FailedToGetPools: 6,
@@ -35,7 +35,7 @@ const ProcessPairHaltReason = {
  * Specifies status of an processed order report
  */
 const ProcessPairReportStatus = {
-    EmptyVault: 1,
+    ZeroOutput: 1,
     NoOpportunity: 2,
     FoundOpportunity: 3,
 };
@@ -66,17 +66,21 @@ const processOrders = async(
     const bundledOrders = bundleOrders(
         ordersDetails,
         config.shuffle,
-        config.bundle,
+        true,
     );
-    if (!Object.keys(bundledOrders).length) return;
+    await quoteOrders(
+        bundledOrders,
+        config.isTest ? config.quoteRpc : config.rpc
+    );
+    if (!bundledOrders.length) return;
 
-    const reports = [];
     let avgGasCost;
-    for (const orderbookAddress in bundledOrders) {
+    const reports = [];
+    for (const orderbookOrders of bundledOrders) {
         // instantiating orderbook contract
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi);
+        const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
 
-        for (const pairOrders of bundledOrders[orderbookAddress]) {
+        for (const pairOrders of orderbookOrders) {
             for (let i = 0; i < pairOrders.takeOrders.length; i++) {
                 const orderPairObject = {
                     orderbook: pairOrders.orderbook,
@@ -86,7 +90,7 @@ const processOrders = async(
                     sellToken: pairOrders.sellToken,
                     sellTokenSymbol: pairOrders.sellTokenSymbol,
                     sellTokenDecimals: pairOrders.sellTokenDecimals,
-                    takeOrders: config.bundle ? pairOrders.takeOrders : [pairOrders.takeOrders[i]]
+                    takeOrders: [pairOrders.takeOrders[i]]
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
                 const flashbotSigner = config.flashbotRpc
@@ -99,11 +103,7 @@ const processOrders = async(
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
 
                 // instantiate a span for this pair
-                const span = tracer.startSpan(
-                    (config.bundle ? "bundled-orders" : "single-order") + " " + pair,
-                    undefined,
-                    ctx
-                );
+                const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
 
                 // process the pair
                 try {
@@ -136,8 +136,8 @@ const processOrders = async(
                     span.setAttributes(result.spanAttributes);
 
                     // set the otel span status based on report status
-                    if (result.report.status === ProcessPairReportStatus.EmptyVault) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "empty vault" });
+                    if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
+                        span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
                     } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
@@ -185,19 +185,11 @@ const processOrders = async(
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.end();
                             throw message;
-                        } else if (e.reason === ProcessPairHaltReason.FailedToGetVaultBalance) {
-                            const message = ["failed to get vault balance"];
+                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
                             if (e.error) {
-                                if (e.error instanceof BaseError) {
-                                    if (e.error.shortMessage) message.push("Reason: " + e.error.shortMessage);
-                                    if (e.error.name) message.push("Error: " + e.error.name);
-                                    if (e.error.details) message.push("Details: " + e.error.details);
-                                } else if (e.error instanceof Error) {
-                                    if (e.error.message) message.push("Reason: " + e.error.message);
-                                }
                                 span.recordException(getSpanException(e.error));
                             }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to quote order" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             if (e.error) span.recordException(getSpanException(e.error));
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
@@ -282,18 +274,14 @@ async function processPair(args) {
         symbol: orderPairObject.buyTokenSymbol
     });
 
-    // get vault balance
-    let vaultBalance;
     try {
-        vaultBalance = await getVaultBalance(
+        await quoteSingleOrder(
             orderPairObject,
-            orderbook.address,
-            viemClient,
-            config.isTest ? "0xcA11bde05977b3631167028862bE2a173976CA11" : undefined
+            config.isTest ? config.quoteRpc : config.rpc
         );
-        if (vaultBalance.isZero()) {
+        if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
             result.report = {
-                status: ProcessPairReportStatus.EmptyVault,
+                status: ProcessPairReportStatus.ZeroOutput,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
@@ -302,7 +290,7 @@ async function processPair(args) {
         }
     } catch(e) {
         result.error = e;
-        result.reason = ProcessPairHaltReason.FailedToGetVaultBalance;
+        result.reason = ProcessPairHaltReason.FailedToQuote;
         throw result;
     }
 
@@ -374,51 +362,21 @@ async function processPair(args) {
     }
 
     // execute maxInput discovery dryrun logic
-    let rawtx,
-        gasCostInToken,
-        takeOrdersConfigStruct,
-        price,
-        routeVisual,
-        maximumInput,
-        oppBlockNumber;
+    let rawtx, oppBlockNumber;
     try {
-        const findOppResult = config.bundle
-            ? await findOpp({
-                mode: 0,
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                vaultBalance,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            })
-            : await findOppWithRetries({
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                vaultBalance,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            });
-        ({
-            rawtx,
-            gasCostInToken,
-            takeOrdersConfigStruct,
-            price,
-            routeVisual,
-            maximumInput,
-            oppBlockNumber,
-        } = findOppResult.value);
+        const findOppResult = await findOppWithRetries({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            arb,
+            ethPrice,
+            config,
+            viemClient,
+        });
+        ({ rawtx, oppBlockNumber } = findOppResult.value);
 
         // record span attrs
         for (attrKey in findOppResult.spanAttributes) {
@@ -430,14 +388,14 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        if (e.reason === DryrunHaltReason.NoWalletFund) {
+        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
             result.reason = ProcessPairHaltReason.NoWalletFund;
             if (e.spanAttributes["currentWalletBalance"]) {
                 spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
             }
             throw result;
         }
-        if (e.reason === DryrunHaltReason.NoRoute) {
+        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
             result.reason = ProcessPairHaltReason.NoRoute;
             throw result;
         }
@@ -487,20 +445,6 @@ async function processPair(args) {
     // submit the tx
     let tx, txUrl;
     try {
-        spanAttributes["details.route"] = routeVisual;
-        spanAttributes["details.maxInput"] = maximumInput.toString();
-        spanAttributes["details.marketPrice"] = ethers.utils.formatEther(price);
-        spanAttributes["details.gasCostInToken"] = ethers.utils.formatUnits(gasCostInToken, toToken.decimals);
-
-        rawtx.data = arb.interface.encodeFunctionData(
-            "arb2",
-            [
-                takeOrdersConfigStruct,
-                gasCostInToken.mul(config.gasCoveragePercentage).div("100"),
-                DefaultArbEvaluable,
-            ]
-        );
-
         tx = config.timeout
             ? await promiseTimeout(
                 (flashbotSigner !== undefined
