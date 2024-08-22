@@ -102,7 +102,9 @@ async function findOpp({
             spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }
         if (allResults[1]?.reason?.spanAttributes) {
-            spanAttributes["intra-orderbook"] = JSON.stringify(allResults[1].reason.spanAttributes);
+            spanAttributes["intra-orderbook"] = JSON.stringify(
+                allResults[1].reason.spanAttributes["intraOrderbook"]
+            );
         }
         if (allResults[2]?.reason?.spanAttributes) {
             spanAttributes["inter-orderbook"] = JSON.stringify(allResults[2].reason.spanAttributes);

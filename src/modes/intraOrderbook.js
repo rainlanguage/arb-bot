@@ -234,7 +234,7 @@ async function findOpp({
         spanAttributes,
     };
 
-    const One = ethers.utils.parseUnits("1");
+    const ONE = ethers.utils.parseUnits("1");
     const opposingOrders = orderbooksOrders
         .map(v => {
             if (v[0].orderbook === orderPairObject.orderbook) {
@@ -247,9 +247,11 @@ async function findOpp({
             }
         })
         .find(v => v !== undefined)?.takeOrders
-        .filter(
+        .filter(v =>
+            // not same order
+            v.id !== orderPairObject.takeOrders[0].id &&
             // only orders that (priceA x priceB < 1) can be profitbale
-            v => v.quote.ratio.mul(orderPairObject.takeOrders[0].quote.ratio).div(One).lt(One)
+            v.quote.ratio.mul(orderPairObject.takeOrders[0].quote.ratio).div(ONE).lt(ONE)
         );
 
     if (!opposingOrders) throw undefined;
