@@ -103,14 +103,6 @@ describe("Test cli", async function () {
         }
 
         try {
-            await startup(["", "", "--key", `0x${"0".repeat(64)}`, "--rpc", "some-rpc", "--arb-address", `0x${"0".repeat(64)}`]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "undefined orderbook contract address";
-            assert.equal(error, expected);
-        }
-
-        try {
             await startup([
                 "",
                 "",
@@ -201,7 +193,6 @@ describe("Test cli", async function () {
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
         assert.equal(result.config.chain.id, expected.config.chain.id);
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);
-        assert.equal(result.config.orderbookAddress, expected.config.orderbookAddress);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
 
     });

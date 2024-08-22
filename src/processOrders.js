@@ -13,8 +13,8 @@ const {
     promiseTimeout,
     getTotalIncome,
     getSpanException,
-    getActualClearAmount,
     quoteSingleOrder,
+    getActualClearAmount,
 } = require("./utils");
 
 /**

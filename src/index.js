@@ -130,7 +130,6 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * Get the general and network configuration required for the bot to operate
  * @param {string[]} rpcUrls - The RPC URL array
  * @param {string} walletKey - The wallet mnemonic phrase or private key
- * @param {string} orderbookAddress - The Rain Orderbook contract address deployed on the network
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {string} arbType - The type of the Arb contract
  * @param {configOptions} options - (optional) Optional parameters, liquidity providers
@@ -139,12 +138,10 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
 const getConfig = async(
     rpcUrls,
     walletKey,
-    orderbookAddress,
     arbAddress,
     options = configOptions
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
-    if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
     if (options.genericArbAddress && !AddressPattern.test(options.genericArbAddress)) {
         throw "invalid generic arb contract address";
@@ -218,7 +215,6 @@ const getConfig = async(
 
     config.rpc                      = rpcUrls;
     config.provider                 = provider;
-    config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
     config.genericArbAddress        = options?.genericArbAddress;
     config.timeout                  = options?.timeout;

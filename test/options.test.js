@@ -12,7 +12,6 @@ describe("Test app options", async function () {
         const config = await getConfig(
             rpcs,
             "0x" + "1".repeat(64), // wallet key
-            "0x" + "2".repeat(40), // ob address
             "0x" + "3".repeat(40), // arb address
             {
                 liquidityProviders: ["SUShIswapV2", "bIsWaP"]
@@ -34,7 +33,6 @@ describe("Test app options", async function () {
         const configPromise = async() => await getConfig(
             ["https://rpc.ankr.com/polygon"],
             "0x" + "1".repeat(64),
-            "0x" + "2".repeat(40),
             "0x" + "3".repeat(40),
             { retries: 5 }
         );

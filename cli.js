@@ -54,7 +54,7 @@ const getOptions = async argv => {
         .option("-r, --rpc <url...>", "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables")
         .option("-o, --orders <path>", "The path to a local json file containing an array of the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables")
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
-        .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
+        .option("--orderbook-address <address>", "Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
         .option("--generic-arb-address <address>", "Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers")
@@ -225,7 +225,6 @@ async function startup(argv) {
     }
     if (!options.rpc) throw "undefined RPC URL";
     if (!options.arbAddress) throw "undefined arb contract address";
-    if (!options.orderbookAddress) throw "undefined orderbook contract address";
     if (options.repetitions) {
         if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
         else throw "invalid repetitions, must be an integer greater than equal 0";
@@ -252,7 +251,6 @@ async function startup(argv) {
     const config = await getConfig(
         options.rpc,
         options.key ?? options.mnemonic,
-        options.orderbookAddress,
         options.arbAddress,
         {
             maxRatio             : options.maxRatio,
