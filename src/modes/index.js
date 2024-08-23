@@ -25,18 +25,18 @@ async function findOpp({
     orderbooksOrders,
 }) {
     const promises = [
-        findOppWithRetries({
-            orderPairObject,
-            dataFetcher,
-            fromToken,
-            toToken,
-            signer,
-            gasPrice,
-            arb,
-            ethPrice: inputToEthPrice,
-            config,
-            viemClient,
-        }),
+        // findOppWithRetries({
+        //     orderPairObject,
+        //     dataFetcher,
+        //     fromToken,
+        //     toToken,
+        //     signer,
+        //     gasPrice,
+        //     arb,
+        //     ethPrice: inputToEthPrice,
+        //     config,
+        //     viemClient,
+        // }),
         findIntraObOpp({
             orderPairObject,
             signer,
