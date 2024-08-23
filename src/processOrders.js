@@ -76,7 +76,6 @@ const processOrders = async(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
     );
-    if (!bundledOrders.length) return;
 
     let avgGasCost;
     const reports = [];
@@ -304,6 +303,11 @@ async function processPair(args) {
         result.reason = ProcessPairHaltReason.FailedToQuote;
         throw result;
     }
+
+    spanAttributes["details.quote"] = JSON.stringify({
+        maxOutput: orderPairObject.takeOrders[0].quote.maxOutput.toString(),
+        ratio: orderPairObject.takeOrders[0].quote.ratio.toString(),
+    });
 
     // get gas price
     let gasPrice;

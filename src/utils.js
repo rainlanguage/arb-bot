@@ -723,7 +723,7 @@ const bundleOrders = (
     if (_shuffle) {
         // shuffle bundled orders pairs
         if (_bundle) {
-            for (ob in bundledOrders) {
+            for (const ob in bundledOrders) {
                 shuffleArray(bundledOrders[ob]);
             }
         }

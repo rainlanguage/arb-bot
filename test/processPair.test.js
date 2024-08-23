@@ -128,6 +128,10 @@ describe("Test process pair", async function () {
                 "didClear": true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.quote": JSON.stringify({
+                    maxOutput: vaultBalance.toString(),
+                    ratio: ethers.constants.Zero.toString(),
+                })
             }
         };
         assert.deepEqual(result, expected);
@@ -189,6 +193,10 @@ describe("Test process pair", async function () {
                 "didClear": true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.quote": JSON.stringify({
+                    maxOutput: vaultBalance.toString(),
+                    ratio: ethers.constants.Zero.toString(),
+                })
             }
         };
         assert.deepEqual(result, expected);
@@ -297,7 +305,11 @@ describe("Test process pair", async function () {
                 error: evmError,
                 spanAttributes: {
                     "details.pair": pair,
-                    "details.orders": [orderPairObject.takeOrders[0].id]
+                    "details.orders": [orderPairObject.takeOrders[0].id],
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -335,7 +347,11 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString()
+                    "details.gasPrice": gasPrice.toString(),
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -373,7 +389,11 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString()
+                    "details.gasPrice": gasPrice.toString(),
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -459,6 +479,10 @@ describe("Test process pair", async function () {
                     "details.rawTx": JSON.stringify(rawtx),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -523,6 +547,10 @@ describe("Test process pair", async function () {
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -591,6 +619,10 @@ describe("Test process pair", async function () {
                     "details.receipt": JSON.stringify(errorReceipt),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
