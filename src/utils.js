@@ -831,19 +831,16 @@ async function quoteOrders(
     for (let i = 0; i < orderDetails.length; i++) {
         for (const pair of orderDetails[i]) {
             pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
-            pair.takeOrders.sort((a, b) => a.quote.ratio.lt(b.quote.ratio)
-                ? -1
-                : a.quote.ratio.gt(b.quote.ratio)
-                    ? 1
-                    : 0
-            );
+            if (pair.takeOrders.length) {
+                pair.takeOrders.sort((a, b) => a.quote.ratio.lt(b.quote.ratio)
+                    ? -1
+                    : a.quote.ratio.gt(b.quote.ratio)
+                        ? 1
+                        : 0
+                );
+            }
         }
         orderDetails[i] = orderDetails[i].filter(v => v.takeOrders.length > 0);
-    }
-    for (let i = orderDetails.length - 1; i >= 0; i--) {
-        if (orderDetails[i].length === 0) {
-            orderDetails.pop();
-        }
     }
 
     return orderDetails;

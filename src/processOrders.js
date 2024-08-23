@@ -81,10 +81,10 @@ const processOrders = async(
     const reports = [];
     const fetchedPairPools = [];
     for (const orderbookOrders of bundledOrders) {
-        // instantiating orderbook contract
-        const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
-
         for (const pairOrders of orderbookOrders) {
+            // instantiating orderbook contract
+            const orderbook = new ethers.Contract(pairOrders.orderbook, orderbookAbi);
+
             for (let i = 0; i < pairOrders.takeOrders.length; i++) {
                 const orderPairObject = {
                     orderbook: pairOrders.orderbook,
