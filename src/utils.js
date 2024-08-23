@@ -840,6 +840,11 @@ async function quoteOrders(
         }
         orderDetails[i] = orderDetails[i].filter(v => v.takeOrders.length > 0);
     }
+    for (let i = orderDetails.length - 1; i >= 0; i--) {
+        if (orderDetails[i].length === 0) {
+            orderDetails.pop();
+        }
+    }
 
     return orderDetails;
 }
