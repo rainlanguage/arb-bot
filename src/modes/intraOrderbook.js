@@ -250,6 +250,9 @@ async function findOpp({
         .filter(v =>
             // not same order
             v.id !== orderPairObject.takeOrders[0].id &&
+            // not same owner
+            v.takeOrder.order.owner.toLowerCase() !==
+                orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase() &&
             // only orders that (priceA x priceB < 1) can be profitbale
             v.quote.ratio.mul(orderPairObject.takeOrders[0].quote.ratio).div(ONE).lt(ONE)
         );
