@@ -1,8 +1,8 @@
 const { assert } = require("chai");
 const fixtures = require("./data");
-const { clone } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
 const { encodeQuoteResponse } = require("./utils");
+const { clone, estimateProfit } = require("../src/utils");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { processPair, ProcessPairHaltReason, ProcessPairReportStatus } = require("../src/processOrders");
 
@@ -128,6 +128,20 @@ describe("Test process pair", async function () {
                 "didClear": true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.quote": JSON.stringify({
+                    maxOutput: vaultBalance.toString(),
+                    ratio: ethers.constants.Zero.toString(),
+                }),
+                "details.estimatedProfit": ethers.utils.formatUnits(
+                    estimateProfit(
+                        orderPairObject,
+                        getCurrentInputToEthPrice(),
+                        ethers.utils.parseUnits("1"),
+                        undefined,
+                        getCurrentPrice(vaultBalance),
+                        vaultBalance
+                    )
+                )
             }
         };
         assert.deepEqual(result, expected);
@@ -135,8 +149,12 @@ describe("Test process pair", async function () {
 
     it("should process pair successfully from inter-orderbook", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
+        let count = 0;
         dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
+            if (count < 1) {
+                count++;
+                return poolCodeMap;
+            } else return new Map();
         };
         const result = await processPair({
             config,
@@ -185,6 +203,20 @@ describe("Test process pair", async function () {
                 "didClear": true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.quote": JSON.stringify({
+                    maxOutput: vaultBalance.toString(),
+                    ratio: ethers.constants.Zero.toString(),
+                }),
+                "details.estimatedProfit": ethers.utils.formatUnits(
+                    estimateProfit(
+                        orderPairObject,
+                        getCurrentInputToEthPrice(),
+                        ethers.utils.parseUnits("1"),
+                        orderbooksOrders[0][0],
+                        undefined,
+                        vaultBalance
+                    )
+                )
             }
         };
         assert.deepEqual(result, expected);
@@ -293,7 +325,11 @@ describe("Test process pair", async function () {
                 error: evmError,
                 spanAttributes: {
                     "details.pair": pair,
-                    "details.orders": [orderPairObject.takeOrders[0].id]
+                    "details.orders": [orderPairObject.takeOrders[0].id],
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -331,7 +367,11 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString()
+                    "details.gasPrice": gasPrice.toString(),
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -369,7 +409,11 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString()
+                    "details.gasPrice": gasPrice.toString(),
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    })
                 }
             };
             assert.deepEqual(error, expected);
@@ -455,6 +499,20 @@ describe("Test process pair", async function () {
                     "details.rawTx": JSON.stringify(rawtx),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    }),
+                    "details.estimatedProfit": ethers.utils.formatUnits(
+                        estimateProfit(
+                            orderPairObject,
+                            getCurrentInputToEthPrice(),
+                            ethers.utils.parseUnits("1"),
+                            undefined,
+                            getCurrentPrice(vaultBalance),
+                            vaultBalance
+                        )
+                    )
                 }
             };
             assert.deepEqual(error, expected);
@@ -519,6 +577,20 @@ describe("Test process pair", async function () {
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    }),
+                    "details.estimatedProfit": ethers.utils.formatUnits(
+                        estimateProfit(
+                            orderPairObject,
+                            getCurrentInputToEthPrice(),
+                            ethers.utils.parseUnits("1"),
+                            undefined,
+                            getCurrentPrice(vaultBalance),
+                            vaultBalance
+                        )
+                    )
                 }
             };
             assert.deepEqual(error, expected);
@@ -587,6 +659,20 @@ describe("Test process pair", async function () {
                     "details.receipt": JSON.stringify(errorReceipt),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.quote": JSON.stringify({
+                        maxOutput: vaultBalance.toString(),
+                        ratio: ethers.constants.Zero.toString(),
+                    }),
+                    "details.estimatedProfit": ethers.utils.formatUnits(
+                        estimateProfit(
+                            orderPairObject,
+                            getCurrentInputToEthPrice(),
+                            ethers.utils.parseUnits("1"),
+                            undefined,
+                            getCurrentPrice(vaultBalance),
+                            vaultBalance
+                        )
+                    )
                 }
             };
             assert.deepEqual(error, expected);

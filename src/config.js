@@ -131,6 +131,49 @@ function getBountyEnsureBytecode(
 }
 
 /**
+ * Get the bounty check ensure task bytecode for clear2 withdraw
+ * @param {string} botAddress - Bot wallet address
+ * @param {string} inputToken - Input token address
+ * @param {string} outputToken - Output token address
+ * @param {import("ethers").BigNumber} orgInputBalance - Input token original balance
+ * @param {import("ethers").BigNumber} orgOutputBalance - Output token original balance
+ * @param {import("ethers").BigNumber} inputToEthPrice - Input token to Eth price
+ * @param {import("ethers").BigNumber} outputToEthPrice - Output token to Eth price
+ * @param {import("ethers").BigNumber} minimumExcepted - Minimum expected amount
+ */
+function getWithdrawEnsureBytecode(
+    botAddress,
+    inputToken,
+    outputToken,
+    orgInputBalance,
+    orgOutputBalance,
+    inputToEthPrice,
+    outputToEthPrice,
+    minimumExcepted,
+) {
+    const bot = botAddress.substring(2).padStart(64, "0");
+    const input = inputToken.substring(2).padStart(64, "0");
+    const output = outputToken.substring(2).padStart(64, "0");
+    const inputBalance = orgInputBalance.toHexString().substring(2).padStart(64, "0");
+    const outputBalance = orgOutputBalance.toHexString().substring(2).padStart(64, "0");
+    const inputPrice = inputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const outputPrice = outputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
+    // rainlang bytecode:
+    // :ensure(
+    //   greater-than-or-equal-to(
+    //     add(
+    //       mul(sub(erc20-balance-of(inputToken botAddress) originalInputBalance) inputToEthPrice)
+    //       mul(sub(erc20-balance-of(outputToken botAddress) originalOutputBalance) outputToEthPrice)
+    //     )
+    //     minimumSenderOutput
+    //   )
+    //   \"minimumSenderOutput\"
+    // );
+    return `0x0000000000000000000000000000000000000000000000000000000000000009${input}${bot}${inputBalance}${inputPrice}${output}${outputBalance}${outputPrice}${minimum}936d696e696d756d53656e6465724f757470757400000000000000000000000000000000000000000000000000000000000000000000000000000000000000530100001307000001100008011000070110000601100005011000010110000411120000471200003d1200000110000301100002011000010110000011120000471200003d1200002b120000211200001d020000`;
+}
+
+/**
  * Chain specific fallback data
  */
 const fallbacks = {
@@ -401,5 +444,6 @@ module.exports = {
     createViemClient,
     getChainConfig,
     getBountyEnsureBytecode,
+    getWithdrawEnsureBytecode,
     fallbacks,
 };

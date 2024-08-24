@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { orderbookAbi } = require("../abis");
-const { getSpanException } = require("../utils");
 const { getBountyEnsureBytecode } = require("../config");
+const { getSpanException, estimateProfit } = require("../utils");
 
 /**
  * Specifies the reason that dryrun failed
@@ -191,6 +191,14 @@ async function dryrun({
         rawtx,
         maximumInput,
         oppBlockNumber: blockNumber,
+        estimatedProfit: estimateProfit(
+            orderPairObject,
+            ethers.utils.parseUnits(inputToEthPrice),
+            ethers.utils.parseUnits(outputToEthPrice),
+            opposingOrders,
+            undefined,
+            maximumInputFixed
+        )
     };
     return result;
 }
@@ -209,6 +217,7 @@ async function findOpp({
     viemClient,
     orderbooksOrders,
 }) {
+    if (!arb) throw undefined;
     const spanAttributes = {};
     const result = {
         value: undefined,
@@ -220,7 +229,11 @@ async function findOpp({
         if (v[0].orderbook !== orderPairObject.orderbook) {
             return v.find(e =>
                 e.buyToken === orderPairObject.sellToken &&
-                e.sellToken === orderPairObject.buyToken
+                e.sellToken === orderPairObject.buyToken &&
+                e.takeOrders.filter(
+                    c => c.takeOrder.order.owner.toLowerCase() !==
+                    orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase()
+                ).length > 0
             );
         } else {
             return undefined;
@@ -234,10 +247,18 @@ async function findOpp({
     );
     try {
         // try full maxoutput for all available orderbooks before trying binary search
-        return await Promise.any(opposingOrderbookOrders.map(
-            v => dryrun({
+        return await Promise.any(opposingOrderbookOrders.map(v => {
+            // filter out the same owner orders
+            const opposingOrders = {
+                ...v,
+                takeOrders: v.takeOrders.filter(
+                    e => e.takeOrder.order.owner.toLowerCase() !==
+                    orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase()
+                )
+            };
+            return dryrun({
                 orderPairObject,
-                opposingOrders: v,
+                opposingOrders,
                 signer,
                 maximumInput,
                 gasPrice,
@@ -246,16 +267,24 @@ async function findOpp({
                 outputToEthPrice,
                 config,
                 viemClient,
-            })
-        ));
+            });
+        }));
     } catch (e) {
         maximumInput = maximumInput.div(2);
         try {
             // try to find the first resolving binary search
-            return await Promise.any(opposingOrderbookOrders.map(
-                v => binarySearch({
+            return await Promise.any(opposingOrderbookOrders.map(v => {
+                // filter out the same owner orders
+                const opposingOrders = {
+                    ...v,
+                    takeOrders: v.takeOrders.filter(
+                        e => e.takeOrder.order.owner.toLowerCase() !==
+                        orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase()
+                    )
+                };
+                return binarySearch({
                     orderPairObject,
-                    opposingOrders: v,
+                    opposingOrders,
                     signer,
                     maximumInput,
                     gasPrice,
@@ -264,8 +293,8 @@ async function findOpp({
                     outputToEthPrice,
                     config,
                     viemClient,
-                })
-            ));
+                });
+            }));
         } catch { /**/ }
         if (e.errors.some(v => v.reason === InterOrderbookDryrunHaltReason.NoWalletFund)) {
             result.reason = InterOrderbookDryrunHaltReason.NoWalletFund;

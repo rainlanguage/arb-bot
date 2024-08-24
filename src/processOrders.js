@@ -13,8 +13,8 @@ const {
     promiseTimeout,
     getTotalIncome,
     getSpanException,
-    getActualClearAmount,
     quoteSingleOrder,
+    getActualClearAmount,
 } = require("./utils");
 
 /**
@@ -76,16 +76,15 @@ const processOrders = async(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
     );
-    if (!bundledOrders.length) return;
 
     let avgGasCost;
     const reports = [];
     const fetchedPairPools = [];
     for (const orderbookOrders of bundledOrders) {
-        // instantiating orderbook contract
-        const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
-
         for (const pairOrders of orderbookOrders) {
+            // instantiating orderbook contract
+            const orderbook = new ethers.Contract(pairOrders.orderbook, orderbookAbi);
+
             for (let i = 0; i < pairOrders.takeOrders.length; i++) {
                 const orderPairObject = {
                     orderbook: pairOrders.orderbook,
@@ -305,6 +304,11 @@ async function processPair(args) {
         throw result;
     }
 
+    spanAttributes["details.quote"] = JSON.stringify({
+        maxOutput: orderPairObject.takeOrders[0].quote.maxOutput.toString(),
+        ratio: orderPairObject.takeOrders[0].quote.ratio.toString(),
+    });
+
     // get gas price
     let gasPrice;
     try {
@@ -401,7 +405,7 @@ async function processPair(args) {
     }
 
     // execute process to find opp through different modes
-    let rawtx, oppBlockNumber;
+    let rawtx, oppBlockNumber, estimatedProfit;
     try {
         const findOppResult = await findOpp({
             orderPairObject,
@@ -418,9 +422,10 @@ async function processPair(args) {
             outputToEthPrice,
             orderbooksOrders,
         });
-        ({ rawtx, oppBlockNumber } = findOppResult.value);
+        ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value);
 
         // record span attrs
+        spanAttributes["details.estimatedProfit"] = ethers.utils.formatUnits(estimatedProfit);
         for (attrKey in findOppResult.spanAttributes) {
             if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
                 spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];
@@ -582,8 +587,19 @@ async function processPair(args) {
             // keep track of gas consumption of the account and bounty token
             result.gasCost = actualGasCost;
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-            if (!signer.BOUNTY.includes(orderPairObject.buyToken)) {
+            if (
+                inputTokenIncome &&
+                inputTokenIncome.gt(0) &&
+                !signer.BOUNTY.includes(orderPairObject.buyToken)
+            ) {
                 signer.BOUNTY.push(orderPairObject.buyToken);
+            }
+            if (
+                outputTokenIncome &&
+                outputTokenIncome.gt(0) &&
+                !signer.BOUNTY.includes(orderPairObject.sellToken)
+            ) {
+                signer.BOUNTY.push(orderPairObject.sellToken);
             }
 
             return result;

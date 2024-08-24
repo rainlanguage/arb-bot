@@ -1,5 +1,6 @@
 const { findOpp: findInterObOpp } = require("./interOrderbook");
-const { findOppWithRetries } = require("./routeProcessor");
+const { findOpp: findIntraObOpp } = require("./intraOrderbook");
+const { findOppWithRetries: findRpOpp } = require("./routeProcessor");
 
 /**
  * The main entrypoint for the main logic to find opps.
@@ -23,62 +24,89 @@ async function findOpp({
     outputToEthPrice,
     orderbooksOrders,
 }) {
-    const promises = [findOppWithRetries({
-        orderPairObject,
-        dataFetcher,
-        fromToken,
-        toToken,
-        signer,
-        gasPrice,
-        arb,
-        ethPrice: inputToEthPrice,
-        config,
-        viemClient,
-    })];
-    if (genericArb) promises.push(findInterObOpp({
-        orderPairObject,
-        signer,
-        gasPrice,
-        arb: genericArb,
-        inputToEthPrice,
-        outputToEthPrice,
-        config,
-        viemClient,
-        orderbooksOrders,
-    }));
+    const promises = [
+        findRpOpp({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            arb,
+            ethPrice: inputToEthPrice,
+            config,
+            viemClient,
+        }),
+        findIntraObOpp({
+            orderPairObject,
+            signer,
+            gasPrice,
+            inputToEthPrice,
+            outputToEthPrice,
+            config,
+            viemClient,
+            orderbooksOrders,
+        }),
+        findInterObOpp({
+            orderPairObject,
+            signer,
+            gasPrice,
+            arb: genericArb,
+            inputToEthPrice,
+            outputToEthPrice,
+            config,
+            viemClient,
+            orderbooksOrders,
+        })
+    ];
     const allResults = await Promise.allSettled(promises);
 
     if (allResults.some(v => v.status === "fulfilled")) {
-        if (allResults.length > 1 && allResults.every(v => v.status === "fulfilled")) {
-            return allResults[0].value.value.maximumInput.gt(allResults[1].value.value.maximumInput)
-                ? allResults[0].value
-                : allResults[1].value;
-        } else if (allResults[0].status === "fulfilled") {
-            return allResults[0].value;
-        } else if (allResults[1].status === "fulfilled") {
-            return allResults[0].value;
-        }
+        // pick and return the highest profit
+        return allResults
+            .filter(v => v.status === "fulfilled")
+            .sort(
+                (a, b) => b.value.value.estimatedProfit.lt(a.value.value.estimatedProfit)
+                    ? -1
+                    : b.value.value.estimatedProfit.gt(a.value.value.estimatedProfit)
+                        ? 1
+                        : 0
+            )[0].value;
     } else {
         const spanAttributes = {};
         const result = { spanAttributes };
-        if (allResults[0].reason?.reason === 2 || allResults[1]?.reason?.reason === 2) {
-            if (allResults[0].reason?.spanAttributes?.["currentWalletBalance"]) {
+        if (
+            allResults[0]?.reason?.reason === 2
+            || allResults[1]?.reason?.reason === 2
+            || allResults[2]?.reason?.reason === 2
+        ) {
+            if (allResults[0]?.reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
                 ] = allResults[0].reason.spanAttributes["currentWalletBalance"];
             }
-            if (allResults[1].reason?.spanAttributes?.["currentWalletBalance"]) {
+            if (allResults[1]?.reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
-                ] = allResults[1].reason.spanAttributes["currentWalletBalance"];
+                ] = allResults[1]?.reason.spanAttributes["currentWalletBalance"];
+            }
+            if (allResults[2]?.reason?.spanAttributes?.["currentWalletBalance"]) {
+                spanAttributes[
+                    "currentWalletBalance"
+                ] = allResults[2]?.reason.spanAttributes["currentWalletBalance"];
             }
             throw result;
         }
-        if (allResults[0].reason?.spanAttributes) {
+        if (allResults[0]?.reason?.spanAttributes) {
             spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }
         if (allResults[1]?.reason?.spanAttributes) {
-            spanAttributes["inter-orderbook"] = JSON.stringify(allResults[1].reason.spanAttributes);
+            spanAttributes["intra-orderbook"] = JSON.stringify(
+                allResults[1].reason.spanAttributes["intraOrderbook"]
+            );
+        }
+        if (allResults[2]?.reason?.spanAttributes) {
+            spanAttributes["inter-orderbook"] = JSON.stringify(allResults[2].reason.spanAttributes);
         }
         result.rawtx = undefined;
         result.oppBlockNumber = undefined;

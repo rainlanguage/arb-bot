@@ -1,5 +1,6 @@
 const { assert } = require("chai");
 const testData = require("./data");
+const { estimateProfit } = require("../src/utils");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
@@ -97,6 +98,14 @@ describe("Test route processor dryrun", async function () {
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(ethPrice),
+                    undefined,
+                    undefined,
+                    getCurrentPrice(vaultBalance),
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -294,7 +303,15 @@ describe("Test route processor find opp", async function () {
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber
+                oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(ethPrice),
+                    undefined,
+                    undefined,
+                    getCurrentPrice(vaultBalance),
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -371,7 +388,15 @@ describe("Test route processor find opp", async function () {
                 maximumInput: vaultBalance.mul(3).div(4),
                 price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber
+                oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(ethPrice),
+                    undefined,
+                    undefined,
+                    getCurrentPrice(vaultBalance.mul(3).div(4)),
+                    vaultBalance.mul(3).div(4),
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -569,7 +594,15 @@ describe("Test find opp with retries", async function () {
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
-                oppBlockNumber
+                oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(ethPrice),
+                    undefined,
+                    undefined,
+                    getCurrentPrice(vaultBalance),
+                    vaultBalance,
+                )
             },
             reason: undefined,
             spanAttributes: {

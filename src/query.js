@@ -10,7 +10,7 @@ const getQuery = (orderHash, owner, orderbook) => {
     const orderHashFilter = orderHash ? `, orderHash: "${orderHash.toLowerCase()}"` : "";
     const orderbookFilter = orderbook ? `, orderbook: "${orderbook.toLowerCase()}"` : "";
     return `{
-    orders(where: {active: true, orderbook: "${orderbookFilter}"${orderHashFilter}${ownerFilter}}) {
+    orders(where: {active: true${orderbookFilter}${orderHashFilter}${ownerFilter}}) {
         id
         owner
         orderHash

@@ -59,7 +59,6 @@ The app requires these arguments (all arguments can be set in env variables alte
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
 
@@ -72,6 +71,7 @@ Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
+- `--orderbook-address`, Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
@@ -164,7 +164,7 @@ ARB_ADDRESS="0x123..."
 # generic arb contract address
 GENERIC_ARB_ADDRESS="0x123..."
 
-# orderbook contract address
+# Option to filter the subgraph query results with orderbook contract address
 ORDERBOOK_ADDRESS="0x123..."
 
 # one or more subgraph urls to read orders details from, can be used in combination with ORDERS
@@ -254,7 +254,7 @@ const configOptions = {
 }
 
 // to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, orderbookAddress, arbAddress, ...[configOptions]);
+const config = await RainArbBot.getConfig(rpcUrl, arbAddress, ...[configOptions]);
 
 // to get the order details, one or both of subgraph and json file can be used simultaneously
 const ordersJson    = "/home/orders.json"                                 // path to a local json file 

@@ -2,14 +2,16 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { findOpp } = require("../src/modes");
 const { orderbookAbi } = require("../src/abis");
-const { getBountyEnsureBytecode } = require("../src/config");
+const { clone, estimateProfit } = require("../src/utils");
 const { ethers, utils: { formatUnits } } = require("ethers");
+const { getBountyEnsureBytecode, getWithdrawEnsureBytecode } = require("../src/config");
 
 // mocking signer and dataFetcher
 let signer = {};
 let dataFetcher = {};
 const viemClient = {
-    getBlockNumber: async() => BigInt(oppBlockNumber)
+    getBlockNumber: async() => BigInt(oppBlockNumber),
+    call: async() => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() })
 };
 
 const oppBlockNumber = 123456;
@@ -31,11 +33,13 @@ const {
     expectedRouteData,
     expectedRouteVisual,
     getCurrentPrice,
+    orderbook,
 } = testData;
 
 describe("Test find opp", async function () {
     beforeEach(() => {
         signer = {
+            address: `0x${"1".repeat(40)}`,
             provider: {
                 getBlockNumber: async () => oppBlockNumber
             },
@@ -102,6 +106,14 @@ describe("Test find opp", async function () {
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    undefined,
+                    getCurrentPrice(vaultBalance),
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -189,12 +201,125 @@ describe("Test find opp", async function () {
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    opposingOrderPairObject,
+                    undefined,
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
                 maxInput: vaultBalance.toString(),
+            }
+        };
+        assert.deepEqual(result, expected);
+    });
+
+    it("should find opp from intra-orderbook", async function () {
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return new Map();
+        };
+        const orderbooksOrdersTemp = clone(orderbooksOrders);
+        orderbooksOrdersTemp[0][0].orderbook = orderPairObject.orderbook;
+        const inputBalance = ethers.BigNumber.from("1000000000000000000");
+        const outputBalance = ethers.BigNumber.from("1000000000000000000");
+        const result = await findOpp({
+            orderPairObject,
+            dataFetcher,
+            arb,
+            genericArb: arb,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            config,
+            viemClient,
+            inputToEthPrice,
+            outputToEthPrice,
+            orderbooksOrders: orderbooksOrdersTemp,
+        });
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getWithdrawEnsureBytecode(
+                    signer.address,
+                    orderPairObject.buyToken,
+                    orderPairObject.sellToken,
+                    inputBalance,
+                    outputBalance,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                ),
+            },
+            signedContext: []
+        };
+        const withdrawInputCalldata = orderbook.interface.encodeFunctionData(
+            "withdraw2",
+            [
+                orderPairObject.buyToken,
+                "1",
+                ethers.constants.MaxUint256,
+                []
+            ]
+        );
+        const withdrawOutputCalldata = orderbook.interface.encodeFunctionData(
+            "withdraw2",
+            [
+                orderPairObject.sellToken,
+                "1",
+                ethers.constants.MaxUint256,
+                [task]
+            ]
+        );
+        const clear2Calldata = orderbook.interface.encodeFunctionData(
+            "clear2",
+            [
+                orderPairObject.takeOrders[0].takeOrder.order,
+                orderbooksOrdersTemp[0][0].takeOrders[0].takeOrder.order,
+                {
+                    aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
+                    aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
+                    bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
+                    bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
+                    aliceBountyVaultId: "1",
+                    bobBountyVaultId: "1",
+                },
+                [],
+                []
+            ]
+        );
+        const expected = {
+            value: {
+                rawtx: {
+                    data: orderbook.interface.encodeFunctionData(
+                        "multicall",
+                        [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
+                    ),
+                    to: orderPairObject.orderbook,
+                    gasPrice,
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                },
+                oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    orderbooksOrdersTemp[0][0].takeOrders[0],
+                    undefined,
+                    vaultBalance
+                )
+            },
+            reason: undefined,
+            spanAttributes: {
+                oppBlockNumber,
+                foundOpp: true,
             }
         };
         assert.deepEqual(result, expected);
@@ -245,7 +370,7 @@ describe("Test find opp", async function () {
                                 error: err,
                             }
                         }),
-                    })
+                    }),
                 }
             };
             assert.deepEqual(error, expected);

@@ -73,37 +73,66 @@ const getIncome = (signerAddress, receipt, token) => {
 
 /**
  * Extracts the actual clear amount (received token value) from transaction receipt
- * @param {string} arbAddress - The arb contract address
+ * @param {string} toAddress - The to address
  * @param {any} receipt - The transaction receipt
  * @returns The actual clear amount
  */
-const getActualClearAmount = (arbAddress, obAddress, receipt) => {
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    if (receipt.logs) return receipt.logs.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
+const getActualClearAmount = (toAddress, obAddress, receipt) => {
+    if (toAddress.toLowerCase() !== obAddress.toLowerCase()) {
+        const erc20Interface = new ethers.utils.Interface(erc20Abi);
+        try {
+            if (receipt.logs) return receipt.logs.map(v => {
+                try{
+                    return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v =>
+                v !== undefined &&
+                BigNumber.from(v.to).eq(toAddress) &&
+                BigNumber.from(v.from).eq(obAddress)
+            )[0]?.value;
+            else if (receipt.events) return receipt.events.map(v => {
+                try{
+                    return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v =>
+                v !== undefined &&
+                BigNumber.from(v.to).eq(toAddress) &&
+                BigNumber.from(v.from).eq(obAddress)
+            )[0]?.value;
+            else return undefined;
+        } catch {
             return undefined;
         }
-    }).filter(v =>
-        v !== undefined &&
-        BigNumber.from(v.to).eq(arbAddress) &&
-        BigNumber.from(v.from).eq(obAddress)
-    )[0]?.value;
-    else if (receipt.events) receipt.events.map(v => {
-        try{
-            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-        }
-        catch {
+    } else {
+        const obInterface = new ethers.utils.Interface(orderbookAbi);
+        try {
+            if (receipt.logs) return receipt.logs.map(v => {
+                try{
+                    return obInterface.decodeEventLog("AfterClear", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v => v !== undefined)[0]?.clearStateChange?.aliceOutput;
+            else if (receipt.events) return receipt.events.map(v => {
+                try{
+                    return obInterface.decodeEventLog("AfterClear", v.data, v.topics);
+                }
+                catch {
+                    return undefined;
+                }
+            }).filter(v => v !== undefined)[0]?.clearStateChange?.aliceOutput;
+            else return undefined;
+        } catch {
             return undefined;
         }
-    }).filter(v =>
-        v !== undefined &&
-        BigNumber.from(v.to).eq(arbAddress) &&
-        BigNumber.from(v.from).eq(obAddress)
-    )[0]?.value;
-    else return undefined;
+    }
 };
 
 /**
@@ -694,7 +723,7 @@ const bundleOrders = (
     if (_shuffle) {
         // shuffle bundled orders pairs
         if (_bundle) {
-            for (ob of bundledOrders) {
+            for (const ob in bundledOrders) {
                 shuffleArray(bundledOrders[ob]);
             }
         }
@@ -802,12 +831,14 @@ async function quoteOrders(
     for (let i = 0; i < orderDetails.length; i++) {
         for (const pair of orderDetails[i]) {
             pair.takeOrders = pair.takeOrders.filter(v => v.quote && v.quote.maxOutput.gt(0));
-            pair.takeOrders.sort((a, b) => a.quote.ratio.lt(b.quote.ratio)
-                ? -1
-                : a.quote.ratio.gt(b.quote.ratio)
-                    ? 1
-                    : 0
-            );
+            if (pair.takeOrders.length) {
+                pair.takeOrders.sort((a, b) => a.quote.ratio.lt(b.quote.ratio)
+                    ? -1
+                    : a.quote.ratio.gt(b.quote.ratio)
+                        ? 1
+                        : 0
+                );
+            }
         }
         orderDetails[i] = orderDetails[i].filter(v => v.takeOrders.length > 0);
     }
@@ -954,6 +985,96 @@ function getTotalIncome(
     return undefined;
 }
 
+/**
+ * Estimates profit for a arb/clear2 tx
+ * @param {any} orderPairObject
+ * @param {ethers.BigNumber} inputToEthPrice
+ * @param {ethers.BigNumber} outputToEthPrice
+ * @param {any | undefined} opposingOrders
+ * @param {ethers.BigNumber | undefined} marketPrice
+ * @param {ethers.BigNumber | undefined} maxInput
+ */
+function estimateProfit(
+    orderPairObject,
+    inputToEthPrice,
+    outputToEthPrice,
+    opposingOrders,
+    marketPrice,
+    maxInput,
+) {
+    const One = ethers.utils.parseUnits("1");
+    if (marketPrice) {
+        const marketAmountOut = maxInput.mul(marketPrice).div(One);
+        const orderInput = maxInput.mul(orderPairObject.takeOrders[0].quote.ratio).div(One);
+        const estimatedProfit = marketAmountOut.sub(orderInput);
+        return estimatedProfit.mul(inputToEthPrice).div(One);
+    }
+    if (opposingOrders) {
+        // inter-orderbook
+        if ("orderbook" in opposingOrders) {
+            const orderOutput = maxInput;
+            const orderInput = maxInput.mul(orderPairObject.takeOrders[0].quote.ratio).div(One);
+
+            let opposingMaxInput = orderPairObject.takeOrders[0].quote.ratio.isZero()
+                ? ethers.constants.MaxUint256
+                : maxInput.mul(orderPairObject.takeOrders[0].quote.ratio).div(One);
+            const opposingMaxIORatio = orderPairObject.takeOrders[0].quote.ratio.isZero()
+                ? ethers.constants.MaxUint256
+                : One.mul(One).div(orderPairObject.takeOrders[0].quote.ratio);
+
+            let opposingInput = ethers.constants.Zero;
+            let opposingOutput = ethers.constants.Zero;
+            for (let i = 0; i < opposingOrders.takeOrders.length; i++) {
+                const order = opposingOrders.takeOrders[i].quote;
+                if (opposingMaxInput.lte(0)) break;
+                if (opposingMaxIORatio.gte(order.ratio)) {
+                    const maxOut = opposingMaxInput.lt(order.maxOutput)
+                        ? opposingMaxInput
+                        : order.maxOutput;
+                    opposingOutput = opposingOutput.add(maxOut);
+                    opposingInput = opposingInput.add(maxOut.mul(order.ratio).div(One));
+                    opposingMaxInput = opposingMaxInput.sub(maxOut);
+                }
+            }
+            const outputProfit = orderOutput.sub(opposingInput).mul(outputToEthPrice).div(One);
+            const inputProfit = opposingOutput.sub(orderInput).mul(inputToEthPrice).div(One);
+            return outputProfit.add(inputProfit);
+        }
+        // intra orderbook
+        else {
+            const orderMaxInput = orderPairObject.takeOrders[0].quote.maxOutput
+                .mul(orderPairObject.takeOrders[0].quote.ratio).div(One);
+            const opposingMaxInput = opposingOrders.quote.maxOutput
+                .mul(opposingOrders.quote.ratio)
+                .div(One);
+
+            const orderOutput = opposingOrders.quote.ratio.isZero()
+                ? orderPairObject.takeOrders[0].quote.maxOutput
+                : orderPairObject.takeOrders[0].quote.maxOutput.lte(opposingMaxInput)
+                    ? orderPairObject.takeOrders[0].quote.maxOutput
+                    : opposingMaxInput;
+            const orderInput = orderOutput.mul(orderPairObject.takeOrders[0].quote.ratio).div(One);
+
+            const opposingOutput = opposingOrders.quote.ratio.isZero()
+                ? opposingOrders.quote.maxOutput
+                : orderMaxInput.lte(opposingOrders.quote.maxOutput)
+                    ? orderMaxInput
+                    : opposingOrders.quote.maxOutput;
+            const opposingInput = opposingOutput.mul(opposingOrders.quote.ratio).div(One);
+
+            let outputProfit = orderOutput.sub(opposingInput);
+            if (outputProfit.lt(0)) outputProfit = ethers.constants.Zero;
+            outputProfit = outputProfit.mul(outputToEthPrice).div(One);
+
+            let inputProfit = opposingOutput.sub(orderInput);
+            if (inputProfit.lt(0)) inputProfit = ethers.constants.Zero;
+            inputProfit = inputProfit.mul(inputToEthPrice).div(One);
+
+            return outputProfit.add(inputProfit);
+        }
+    }
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -976,4 +1097,5 @@ module.exports = {
     clone,
     getTotalIncome,
     quoteSingleOrder,
+    estimateProfit,
 };
