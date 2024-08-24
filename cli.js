@@ -21,6 +21,7 @@ const ENV_OPTIONS = {
     key                 : process?.env?.BOT_WALLET_PRIVATEKEY,
     mnemonic            : process?.env?.MNEMONIC,
     arbAddress          : process?.env?.ARB_ADDRESS,
+    genericArbAddress   : process?.env?.GENERIC_ARB_ADDRESS,
     orderbookAddress    : process?.env?.ORDERBOOK_ADDRESS,
     orders              : process?.env?.ORDERS,
     lps                 : process?.env?.LIQUIDITY_PROVIDERS,
@@ -55,6 +56,7 @@ const getOptions = async argv => {
         .option("-s, --subgraph <url...>", "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables")
         .option("--orderbook-address <address>", "Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables")
         .option("--arb-address <address>", "Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables")
+        .option("--generic-arb-address <address>", "Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
         .option("--repetitions <integer>", "Option to run `number` of times, if unset will run for infinte number of times")
@@ -85,6 +87,7 @@ const getOptions = async argv => {
     cmdOptions.mnemonic           = cmdOptions.mnemonic           || ENV_OPTIONS.mnemonic;
     cmdOptions.rpc                = cmdOptions.rpc                || ENV_OPTIONS.rpc;
     cmdOptions.arbAddress         = cmdOptions.arbAddress         || ENV_OPTIONS.arbAddress;
+    cmdOptions.genericArbAddress  = cmdOptions.genericArbAddress  || ENV_OPTIONS.genericArbAddress;
     cmdOptions.orderbookAddress   = cmdOptions.orderbookAddress   || ENV_OPTIONS.orderbookAddress;
     cmdOptions.orders             = cmdOptions.orders             || ENV_OPTIONS.orders;
     cmdOptions.subgraph           = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
@@ -262,6 +265,7 @@ async function startup(argv) {
             gasCoveragePercentage: options.gasCoverage,
             topupAmount          : options.topupAmount,
             walletCount          : options.walletCount,
+            genericArbAddress    : options.genericArbAddress,
             liquidityProviders   : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,

@@ -1,9 +1,9 @@
 const ethers = require("ethers");
+const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
 const { rotateAccounts } = require("./account");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
-const { findOppWithRetries, RouteProcessorDryrunHaltReason } = require("./dryrun");
 const {
     getIncome,
     getEthPrice,
@@ -11,6 +11,7 @@ const {
     bundleOrders,
     PoolBlackList,
     promiseTimeout,
+    getTotalIncome,
     getSpanException,
     getActualClearAmount,
     quoteSingleOrder,
@@ -21,14 +22,13 @@ const {
  */
 const ProcessPairHaltReason = {
     NoWalletFund: 1,
-    NoRoute: 2,
-    FailedToQuote: 3,
-    FailedToGetGasPrice: 4,
-    FailedToGetEthPrice: 5,
-    FailedToGetPools: 6,
-    TxFailed: 7,
-    TxMineFailed: 8,
-    UnexpectedError: 9,
+    FailedToQuote: 2,
+    FailedToGetGasPrice: 3,
+    FailedToGetEthPrice: 4,
+    FailedToGetPools: 5,
+    TxFailed: 6,
+    TxMineFailed: 7,
+    UnexpectedError: 8,
 };
 
 /**
@@ -61,6 +61,10 @@ const processOrders = async(
 
     // instantiating arb contract
     const arb = new ethers.Contract(config.arbAddress, arbAbis);
+    let genericArb;
+    if (config.genericArbAddress) {
+        genericArb = new ethers.Contract(config.genericArbAddress, arbAbis);
+    }
 
     // prepare orders
     const bundledOrders = bundleOrders(
@@ -76,6 +80,7 @@ const processOrders = async(
 
     let avgGasCost;
     const reports = [];
+    const fetchedPairPools = [];
     for (const orderbookOrders of bundledOrders) {
         // instantiating orderbook contract
         const orderbook = new ethers.Contract(orderbookOrders[0].orderbook, orderbookAbi);
@@ -115,10 +120,13 @@ const processOrders = async(
                         signer,
                         flashbotSigner,
                         arb,
+                        genericArb,
                         orderbook,
                         pair,
                         mainAccount,
                         accounts,
+                        fetchedPairPools,
+                        orderbooksOrders: bundledOrders
                     });
 
                     // keep track of avggas cost
@@ -245,8 +253,11 @@ async function processPair(args) {
         signer,
         flashbotSigner,
         arb,
+        genericArb,
         orderbook,
         pair,
+        fetchedPairPools,
+        orderbooksOrders,
     } = args;
 
     const spanAttributes = {};
@@ -306,75 +317,106 @@ async function processPair(args) {
         throw result;
     }
 
-    // get eth price
-    let ethPrice;
-    if (config.gasCoveragePercentage !== "0") {
+    // get pool details
+    if (!fetchedPairPools.includes(pair)) {
         try {
             const options = {
-                fetchPoolsTimeout: 30000,
+                fetchPoolsTimeout: 90000,
                 memoize: true,
             };
             // pin block number for test case
             if (config.isTest && config.testBlockNumber) {
                 options.blockNumber = config.testBlockNumber;
             }
-            ethPrice = await getEthPrice(
-                config,
-                orderPairObject.buyToken,
-                orderPairObject.buyTokenDecimals,
-                gasPrice,
-                dataFetcher,
+            await dataFetcher.fetchPoolsForToken(
+                fromToken,
+                toToken,
+                PoolBlackList,
                 options
             );
-            if (!ethPrice) {
-                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-                return Promise.reject(result);
-            }
-            else spanAttributes["details.ethPrice"] = ethPrice;
+            fetchedPairPools.push(
+                `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`
+            );
+            fetchedPairPools.push(
+                `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`
+            );
         } catch(e) {
-            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;
             throw result;
         }
     }
-    else ethPrice = "0";
 
-    // get pool details
+    // get in/out tokens to eth price
+    let inputToEthPrice, outputToEthPrice;
     try {
         const options = {
-            fetchPoolsTimeout: 90000,
+            fetchPoolsTimeout: 30000,
             memoize: true,
         };
         // pin block number for test case
         if (config.isTest && config.testBlockNumber) {
             options.blockNumber = config.testBlockNumber;
         }
-        await dataFetcher.fetchPoolsForToken(
-            fromToken,
-            toToken,
-            PoolBlackList,
-            options
+        inputToEthPrice = await getEthPrice(
+            config,
+            orderPairObject.buyToken,
+            orderPairObject.buyTokenDecimals,
+            gasPrice,
+            dataFetcher,
+            options,
+            false,
         );
+        outputToEthPrice = await getEthPrice(
+            config,
+            orderPairObject.sellToken,
+            orderPairObject.sellTokenDecimals,
+            gasPrice,
+            dataFetcher,
+            options,
+            false,
+        );
+        if (!inputToEthPrice || !outputToEthPrice) {
+            if (config.gasCoveragePercentage === "0") {
+                inputToEthPrice = "0";
+                outputToEthPrice = "0";
+            } else {
+                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+                return Promise.reject(result);
+            }
+        }
+        else {
+            spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
+            spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
+        }
     } catch(e) {
-        result.reason = ProcessPairHaltReason.FailedToGetPools;
-        result.error = e;
-        throw result;
+        if (config.gasCoveragePercentage === "0") {
+            inputToEthPrice = "0";
+            outputToEthPrice = "0";
+        } else {
+            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            result.error = e;
+            throw result;
+        }
     }
 
-    // execute maxInput discovery dryrun logic
+    // execute process to find opp through different modes
     let rawtx, oppBlockNumber;
     try {
-        const findOppResult = await findOppWithRetries({
+        const findOppResult = await findOpp({
             orderPairObject,
             dataFetcher,
+            arb,
+            genericArb,
             fromToken,
             toToken,
             signer,
             gasPrice,
-            arb,
-            ethPrice,
             config,
             viemClient,
+            inputToEthPrice,
+            outputToEthPrice,
+            orderbooksOrders,
         });
         ({ rawtx, oppBlockNumber } = findOppResult.value);
 
@@ -388,37 +430,22 @@ async function processPair(args) {
             }
         }
     } catch (e) {
-        if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-            result.reason = ProcessPairHaltReason.NoWalletFund;
-            if (e.spanAttributes["currentWalletBalance"]) {
-                spanAttributes["details.currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
-            }
-            throw result;
-        }
-        if (e.reason === RouteProcessorDryrunHaltReason.NoRoute) {
-            result.reason = ProcessPairHaltReason.NoRoute;
-            throw result;
-        }
-        // record all span attributes in case neither of above errors were present
+        // record all span attributes
         for (attrKey in e.spanAttributes) {
-            if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
-                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
-            }
-            else {
-                spanAttributes[attrKey] = e.spanAttributes[attrKey];
-            }
+            spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
-        rawtx = undefined;
-    }
-
-    if (!rawtx) {
-        result.report = {
-            status: ProcessPairReportStatus.NoOpportunity,
-            tokenPair: pair,
-            buyToken: orderPairObject.buyToken,
-            sellToken: orderPairObject.sellToken,
-        };
-        return result;
+        if ("rawtx" in e) {
+            result.report = {
+                status: ProcessPairReportStatus.NoOpportunity,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+            };
+            return result;
+        } else {
+            result.reason = ProcessPairHaltReason.NoWalletFund;
+            throw result;
+        }
     }
 
     // from here on we know an opp is found, so record it in report and in otel span attributes
@@ -485,25 +512,27 @@ async function processPair(args) {
             spanAttributes["didClear"] = true;
 
             const clearActualAmount = getActualClearAmount(
-                arb.address,
+                rawtx.to,
                 orderbook.address,
                 receipt
             );
-            const income = getIncome(signer.address, receipt, orderPairObject.buyToken);
+
+            const inputTokenIncome = getIncome(signer.address, receipt, orderPairObject.buyToken);
+            const outputTokenIncome = getIncome(signer.address, receipt, orderPairObject.sellToken);
+            const income = getTotalIncome(
+                inputTokenIncome,
+                outputTokenIncome,
+                inputToEthPrice,
+                outputToEthPrice,
+                orderPairObject.buyTokenDecimals,
+                orderPairObject.sellTokenDecimals
+            );
+
             const actualGasCost = ethers.BigNumber.from(
                 receipt.effectiveGasPrice
             ).mul(receipt.gasUsed);
-            const actualGasCostInToken = ethers.utils.parseUnits(
-                ethPrice
-            ).mul(
-                actualGasCost
-            ).div(
-                "1" + "0".repeat(
-                    36 - orderPairObject.buyTokenDecimals
-                )
-            );
             const netProfit = income
-                ? income.sub(actualGasCostInToken)
+                ? income.sub(actualGasCost)
                 : undefined;
 
             if (income) {
@@ -516,6 +545,19 @@ async function processPair(args) {
                     orderPairObject.buyTokenDecimals
                 );
             }
+            if (inputTokenIncome) {
+                spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
+                    inputTokenIncome,
+                    orderPairObject.buyTokenDecimals
+                );
+            }
+            if (outputTokenIncome) {
+                spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
+                    outputTokenIncome,
+                    orderPairObject.buyTokenDecimals
+                );
+            }
+
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -524,11 +566,13 @@ async function processPair(args) {
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: clearActualAmount?.toString(),
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
-                actualGasCostInToken: ethers.utils.formatUnits(
-                    actualGasCostInToken,
-                    orderPairObject.buyTokenDecimals
-                ),
                 income,
+                inputTokenIncome: inputTokenIncome
+                    ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
+                    : undefined,
+                outputTokenIncome: outputTokenIncome
+                    ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
+                    : undefined,
                 netProfit,
                 clearedOrders: orderPairObject.takeOrders.map(
                     v => v.id

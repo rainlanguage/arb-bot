@@ -48,6 +48,10 @@ const configOptions = {
      * for it to be considered profitable and get submitted
      */
     gasCoveragePercentage: "100",
+    /**
+     * Generic arb contract address
+     */
+    genericArbAddress: undefined
 };
 
 /**
@@ -142,6 +146,9 @@ const getConfig = async(
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(orderbookAddress)) throw "invalid orderbook contract address";
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
+    if (options.genericArbAddress && !AddressPattern.test(options.genericArbAddress)) {
+        throw "invalid generic arb contract address";
+    }
 
     if (options.timeout !== undefined){
         if (typeof options.timeout === "number") {
@@ -213,6 +220,7 @@ const getConfig = async(
     config.provider                 = provider;
     config.orderbookAddress         = orderbookAddress;
     config.arbAddress               = arbAddress;
+    config.genericArbAddress        = options?.genericArbAddress;
     config.timeout                  = options?.timeout;
     config.flashbotRpc              = options?.flashbotRpc;
     config.maxRatio                 = !!options?.maxRatio;

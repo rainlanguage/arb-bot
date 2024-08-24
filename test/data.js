@@ -19,7 +19,9 @@ const token2 = {
 const rp3_2 = hexlify(randomBytes(20));
 const arbAddress = hexlify(randomBytes(20));
 const orderbookAddress = hexlify(randomBytes(20));
-const ethPrice = "0.5";
+const opposingOrderbookAddress = hexlify(randomBytes(20));
+const inputToEthPrice = "0.5";
+const outputToEthPrice = "2";
 const gasPrice = BigNumber.from("30000000");
 const gasLimitEstimation = BigNumber.from("456789");
 const arb = new ethers.Contract(arbAddress, arbAbis);
@@ -151,7 +153,7 @@ const orderPairObject1 = {
         id: hexlify(randomBytes(32)),
         quote: {
             maxOutput: vaultBalance,
-            ratio: ethers.constants.Zero
+            ratio: ethers.utils.parseUnits("0.4")
         },
         takeOrder: {
             order: {
@@ -179,6 +181,50 @@ const orderPairObject1 = {
         }
     }]
 };
+
+const opposingVaultBalance = BigNumber.from("100000000");
+const opposingOrderPairObject = {
+    orderbook: opposingOrderbookAddress,
+    buyToken: token2.address,
+    buyTokenSymbol: token2.symbol,
+    buyTokenDecimals: token2.decimals,
+    sellToken: token1.address,
+    sellTokenSymbol: token1.symbol,
+    sellTokenDecimals: token1.decimals,
+    takeOrders: [{
+        id: hexlify(randomBytes(32)),
+        quote: {
+            maxOutput: vaultBalance,
+            ratio: ethers.utils.parseUnits("1.5")
+        },
+        takeOrder: {
+            order: {
+                owner: hexlify(randomBytes(20)),
+                nonce: `0x${"0".repeat(64)}`,
+                evaluable: {
+                    interpreter: hexlify(randomBytes(20)),
+                    store: hexlify(randomBytes(20)),
+                    bytecode: hexlify(randomBytes(20))
+                },
+                validInputs: [{
+                    token: token2.address,
+                    decimals: token2.decimals,
+                    vaultId: hexlify(randomBytes(32))
+                }],
+                validOutputs: [{
+                    token: token1.address,
+                    decimals: token1.decimals,
+                    vaultId: hexlify(randomBytes(32))
+                }]
+            },
+            inputIOIndex: 0,
+            outputIOIndex: 0,
+            signedContext: []
+        }
+    }]
+};
+const orderbooksOrders = [[opposingOrderPairObject]];
+
 const poolAddress = hexlify(randomBytes(20));
 const poolCodeMap = new Map([[
     poolAddress,
@@ -235,6 +281,24 @@ function getCurrentPrice(amountIn) {
     return price;
 }
 
+function getCurrentInputToEthPrice() {
+    const amountIn = BigNumber.from("1" + "0".repeat(toToken.decimals));
+    const amountInFixed = amountIn.mul("1" + "0".repeat(18 - toToken.decimals));
+    const route = Router.findBestRoute(
+        poolCodeMap,
+        chainId,
+        toToken,
+        amountIn.toBigInt(),
+        fromToken,
+        gasPrice.toNumber(),
+    );
+    const amountOutFixed = BigNumber.from(route.amountOutBI).mul(
+        "1" + "0".repeat(18 - fromToken.decimals)
+    );
+    const price = amountOutFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+    return price;
+}
+
 module.exports = {
     config,
     token1,
@@ -242,7 +306,7 @@ module.exports = {
     arbAddress,
     orderbookAddress,
     rp3_2,
-    ethPrice,
+    inputToEthPrice,
     gasPrice,
     gasLimitEstimation,
     arb,
@@ -265,4 +329,10 @@ module.exports = {
     scannerUrl,
     getCurrentPrice,
     chainId,
+    opposingVaultBalance,
+    opposingOrderPairObject,
+    orderbooksOrders,
+    outputToEthPrice,
+    opposingOrderbookAddress,
+    getCurrentInputToEthPrice,
 };

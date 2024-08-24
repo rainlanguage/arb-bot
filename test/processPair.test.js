@@ -3,7 +3,6 @@ const fixtures = require("./data");
 const { clone } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
 const { encodeQuoteResponse } = require("./utils");
-const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { processPair, ProcessPairHaltReason, ProcessPairReportStatus } = require("../src/processOrders");
 
@@ -29,7 +28,9 @@ describe("Test process pair", async function () {
         gasUsed,
         scannerUrl,
         getCurrentPrice,
-        expectedRouteData
+        expectedRouteData,
+        getCurrentInputToEthPrice,
+        orderbooksOrders,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
     config.rpc = ["http://localhost:8082/rpc"];
@@ -74,7 +75,7 @@ describe("Test process pair", async function () {
     });
     afterEach(() => mockServer.stop());
 
-    it("should process pair successfully", async function () {
+    it("should process pair successfully from RP", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
@@ -85,12 +86,13 @@ describe("Test process pair", async function () {
             viemClient,
             dataFetcher,
             signer,
-            undefined,
             arb,
             orderbook,
             pair,
             mainAccount: signer,
-            accounts: [signer]
+            accounts: [signer],
+            fetchedPairPools: [],
+            orderbooksOrders,
         });
         const expected = {
             report: {
@@ -101,10 +103,11 @@ describe("Test process pair", async function () {
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: undefined,
                 actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
-                actualGasCostInToken: "0.0",
                 income: undefined,
                 netProfit: undefined,
                 clearedOrders: [orderPairObject.takeOrders[0].id],
+                inputTokenIncome: undefined,
+                outputTokenIncome: undefined,
             },
             reason: undefined,
             error: undefined,
@@ -122,7 +125,66 @@ describe("Test process pair", async function () {
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
-                "didClear": true
+                "didClear": true,
+                "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                "details.outputToEthPrice": "1",
+            }
+        };
+        assert.deepEqual(result, expected);
+    });
+
+    it("should process pair successfully from inter-orderbook", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        const result = await processPair({
+            config,
+            orderPairObject,
+            viemClient,
+            dataFetcher,
+            signer,
+            arb,
+            genericArb: arb,
+            orderbook,
+            pair,
+            mainAccount: signer,
+            accounts: [signer],
+            fetchedPairPools: [],
+            orderbooksOrders,
+        });
+        const expected = {
+            report: {
+                status: ProcessPairReportStatus.FoundOpportunity,
+                txUrl: scannerUrl + "/tx/" + txHash,
+                tokenPair: pair,
+                buyToken: orderPairObject.buyToken,
+                sellToken: orderPairObject.sellToken,
+                clearedAmount: undefined,
+                actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                income: undefined,
+                netProfit: undefined,
+                clearedOrders: [orderPairObject.takeOrders[0].id],
+                inputTokenIncome: undefined,
+                outputTokenIncome: undefined,
+            },
+            reason: undefined,
+            error: undefined,
+            gasCost: gasPrice.mul(gasUsed),
+            spanAttributes: {
+                "details.blockNumber": 123456,
+                "details.blockNumberDiff": 0,
+                "details.maxInput": vaultBalance.toString(),
+                "oppBlockNumber": 123456,
+                "details.orders": [orderPairObject.takeOrders[0].id],
+                "details.tx": `{"hash":"${txHash}"}`,
+                "details.txUrl": scannerUrl + "/tx/" + txHash,
+                "details.pair": pair,
+                "details.gasPrice": gasPrice.toString(),
+                "foundOpp": true,
+                "didClear": true,
+                "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                "details.outputToEthPrice": "1",
             }
         };
         assert.deepEqual(result, expected);
@@ -147,7 +209,8 @@ describe("Test process pair", async function () {
             orderbook,
             pair,
             mainAccount: signer,
-            accounts: [signer]
+            accounts: [signer],
+            fetchedPairPools: [],
         });
         const expected = {
             reason: undefined,
@@ -181,7 +244,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -217,7 +281,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -253,7 +318,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -290,7 +356,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -330,7 +397,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -341,18 +409,27 @@ describe("Test process pair", async function () {
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData
             };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject
+                        .takeOrders[0].takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
             const rawtx = {
                 data: arb.interface.encodeFunctionData(
-                    "arb2",
+                    "arb3",
                     [
+                        orderPairObject.orderbook,
                         expectedTakeOrdersConfigStruct,
-                        ethers.BigNumber.from(0),
-                        DefaultArbEvaluable
+                        task,
                     ]
                 ),
                 to: arb.address,
                 gasPrice,
-                gasLimit: gasLimitEstimation.mul("103").div("100"),
+                gasLimit: gasLimitEstimation.mul("107").div("100"),
             };
             const expected = {
                 report: {
@@ -375,7 +452,9 @@ describe("Test process pair", async function () {
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
-                    "details.rawTx": JSON.stringify(rawtx)
+                    "details.rawTx": JSON.stringify(rawtx),
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -409,7 +488,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -437,6 +517,8 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);
@@ -472,7 +554,8 @@ describe("Test process pair", async function () {
                 orderbook,
                 pair,
                 mainAccount: signer,
-                accounts: [signer]
+                accounts: [signer],
+                fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
         } catch(error) {
@@ -501,7 +584,9 @@ describe("Test process pair", async function () {
                     "foundOpp": true,
                     "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(errorReceipt)
+                    "details.receipt": JSON.stringify(errorReceipt),
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
                 }
             };
             assert.deepEqual(error, expected);

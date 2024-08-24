@@ -61,6 +61,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `--orderbook-address`, Address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
+- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
 
 as well as at least one or both of below arguments:
 
@@ -159,6 +160,9 @@ FLASHBOT_RPC=""
 
 # arb contract address
 ARB_ADDRESS="0x123..."
+
+# generic arb contract address
+GENERIC_ARB_ADDRESS="0x123..."
 
 # orderbook contract address
 ORDERBOOK_ADDRESS="0x123..."

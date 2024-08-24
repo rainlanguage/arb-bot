@@ -1,8 +1,8 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { DefaultArbEvaluable } = require("../src/abis");
 const { ethers, utils: { formatUnits } } = require("ethers");
-const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/dryrun");
+const { getBountyEnsureBytecode } = require("../src/config");
+const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -13,7 +13,7 @@ const viemClient = {
 
 const oppBlockNumber = 123456;
 const {
-    ethPrice,
+    inputToEthPrice: ethPrice,
     gasPrice,
     gasLimitEstimation,
     arb,
@@ -28,7 +28,7 @@ const {
     getCurrentPrice,
 } = testData;
 
-describe("Test dryrun", async function () {
+describe("Test route processor dryrun", async function () {
     beforeEach(() => {
         signer = {
             provider: {
@@ -66,22 +66,32 @@ describe("Test dryrun", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
                         ]
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -218,7 +228,7 @@ describe("Test dryrun", async function () {
     });
 });
 
-describe("Test find opp", async function () {
+describe("Test route processor find opp", async function () {
     beforeEach(() => {
         signer = {
             provider: {
@@ -254,22 +264,32 @@ describe("Test find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
                         ]
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -321,22 +341,32 @@ describe("Test find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
                         ]
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
@@ -509,22 +539,32 @@ describe("Test find opp with retries", async function () {
             ],
             data: expectedRouteData
         };
+        const task = {
+            evaluable: {
+                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                bytecode: getBountyEnsureBytecode(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                )
+            },
+            signedContext: []
+        };
         const expected = {
             value: {
                 rawtx: {
                     data: arb.interface.encodeFunctionData(
-                        "arb2",
+                        "arb3",
                         [
+                            orderPairObject.orderbook,
                             expectedTakeOrdersConfigStruct,
-                            gasLimitEstimation.mul("103").div("100").mul(gasPrice).div(2).div(
-                                "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
-                            ),
-                            DefaultArbEvaluable
+                            task,
                         ]
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("103").div("100"),
+                    gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
