@@ -987,6 +987,12 @@ function getTotalIncome(
 
 /**
  * Estimates profit for a arb/clear2 tx
+ * @param {any} orderPairObject
+ * @param {ethers.BigNumber} inputToEthPrice
+ * @param {ethers.BigNumber} outputToEthPrice
+ * @param {any | undefined} opposingOrders
+ * @param {ethers.BigNumber | undefined} marketPrice
+ * @param {ethers.BigNumber | undefined} maxInput
  */
 function estimateProfit(
     orderPairObject,
@@ -1059,9 +1065,11 @@ function estimateProfit(
             let outputProfit = orderOutput.sub(opposingInput);
             if (outputProfit.lt(0)) outputProfit = ethers.constants.Zero;
             outputProfit = outputProfit.mul(outputToEthPrice).div(One);
+
             let inputProfit = opposingOutput.sub(orderInput);
             if (inputProfit.lt(0)) inputProfit = ethers.constants.Zero;
             inputProfit = inputProfit.mul(inputToEthPrice).div(One);
+
             return outputProfit.add(inputProfit);
         }
     }

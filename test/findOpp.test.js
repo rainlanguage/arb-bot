@@ -1,8 +1,8 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { clone } = require("../src/utils");
 const { findOpp } = require("../src/modes");
 const { orderbookAbi } = require("../src/abis");
+const { clone, estimateProfit } = require("../src/utils");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { getBountyEnsureBytecode, getWithdrawEnsureBytecode } = require("../src/config");
 
@@ -106,6 +106,14 @@ describe("Test find opp", async function () {
                 price: getCurrentPrice(vaultBalance),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    undefined,
+                    getCurrentPrice(vaultBalance),
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -193,6 +201,14 @@ describe("Test find opp", async function () {
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    opposingOrderPairObject,
+                    undefined,
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {
@@ -291,6 +307,14 @@ describe("Test find opp", async function () {
                     gasLimit: gasLimitEstimation.mul("107").div("100"),
                 },
                 oppBlockNumber,
+                estimatedProfit: estimateProfit(
+                    orderPairObject,
+                    ethers.utils.parseUnits(inputToEthPrice),
+                    ethers.utils.parseUnits(outputToEthPrice),
+                    orderbooksOrdersTemp[0][0].takeOrders[0],
+                    undefined,
+                    vaultBalance
+                )
             },
             reason: undefined,
             spanAttributes: {

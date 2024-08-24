@@ -405,7 +405,7 @@ async function processPair(args) {
     }
 
     // execute process to find opp through different modes
-    let rawtx, oppBlockNumber;
+    let rawtx, oppBlockNumber, estimatedProfit;
     try {
         const findOppResult = await findOpp({
             orderPairObject,
@@ -422,9 +422,10 @@ async function processPair(args) {
             outputToEthPrice,
             orderbooksOrders,
         });
-        ({ rawtx, oppBlockNumber } = findOppResult.value);
+        ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value);
 
         // record span attrs
+        spanAttributes["details.estimatedProfit"] = ethers.utils.formatUnits(estimatedProfit);
         for (attrKey in findOppResult.spanAttributes) {
             if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
                 spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];

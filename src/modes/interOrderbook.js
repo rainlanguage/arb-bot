@@ -217,6 +217,7 @@ async function findOpp({
     viemClient,
     orderbooksOrders,
 }) {
+    if (!arb) throw undefined;
     const spanAttributes = {};
     const result = {
         value: undefined,

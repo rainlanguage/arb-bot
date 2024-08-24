@@ -1,6 +1,6 @@
-const { findOppWithRetries } = require("./routeProcessor");
 const { findOpp: findInterObOpp } = require("./interOrderbook");
 const { findOpp: findIntraObOpp } = require("./intraOrderbook");
+const { findOppWithRetries: findRpOpp } = require("./routeProcessor");
 
 /**
  * The main entrypoint for the main logic to find opps.
@@ -25,18 +25,18 @@ async function findOpp({
     orderbooksOrders,
 }) {
     const promises = [
-        // findOppWithRetries({
-        //     orderPairObject,
-        //     dataFetcher,
-        //     fromToken,
-        //     toToken,
-        //     signer,
-        //     gasPrice,
-        //     arb,
-        //     ethPrice: inputToEthPrice,
-        //     config,
-        //     viemClient,
-        // }),
+        findRpOpp({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            gasPrice,
+            arb,
+            ethPrice: inputToEthPrice,
+            config,
+            viemClient,
+        }),
         findIntraObOpp({
             orderPairObject,
             signer,
@@ -46,23 +46,24 @@ async function findOpp({
             config,
             viemClient,
             orderbooksOrders,
+        }),
+        findInterObOpp({
+            orderPairObject,
+            signer,
+            gasPrice,
+            arb: genericArb,
+            inputToEthPrice,
+            outputToEthPrice,
+            config,
+            viemClient,
+            orderbooksOrders,
         })
     ];
-    if (genericArb) promises.push(findInterObOpp({
-        orderPairObject,
-        signer,
-        gasPrice,
-        arb: genericArb,
-        inputToEthPrice,
-        outputToEthPrice,
-        config,
-        viemClient,
-        orderbooksOrders,
-    }));
     const allResults = await Promise.allSettled(promises);
 
     if (allResults.some(v => v.status === "fulfilled")) {
-        const result = allResults
+        // pick and return the highest profit
+        return allResults
             .filter(v => v.status === "fulfilled")
             .sort(
                 (a, b) => b.value.value.estimatedProfit.lt(a.value.value.estimatedProfit)
@@ -71,8 +72,6 @@ async function findOpp({
                         ? 1
                         : 0
             )[0].value;
-        delete result.value.estimatedProfit;
-        return result;
     } else {
         const spanAttributes = {};
         const result = { spanAttributes };
@@ -81,7 +80,7 @@ async function findOpp({
             || allResults[1]?.reason?.reason === 2
             || allResults[2]?.reason?.reason === 2
         ) {
-            if (allResults[0].reason?.spanAttributes?.["currentWalletBalance"]) {
+            if (allResults[0]?.reason?.spanAttributes?.["currentWalletBalance"]) {
                 spanAttributes[
                     "currentWalletBalance"
                 ] = allResults[0].reason.spanAttributes["currentWalletBalance"];
