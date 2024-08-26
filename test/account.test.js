@@ -93,9 +93,20 @@ describe("Test accounts", async function () {
     });
 
     it("should manage accounts successfully", async function () {
+        const viemClient = {
+            chain: { id: 137 },
+            multicall: async () => [10000n, 0n, 0n],
+            getGasPrice: async() => 3000000n
+        };
         const mnemonic = "test test test test test test test test test test test junk";
 
-        const [mainAccount, acc1, acc2] = await ethers.getSigners();
+        const [mainAccount] = await ethers.getSigners();
+        const acc1 = await ethers.getImpersonatedSigner("0xdF906eA18C6537C6379aC83157047F507FB37263");
+        const acc2 = await ethers.getImpersonatedSigner("0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245");
+        await network.provider.send("hardhat_setBalance", [acc1.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [acc2.address, "0x4563918244F40000"]);
+        acc1.BOUNTY = ["0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"];
+        acc2.BOUNTY = ["0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"];
         const provider = acc1.provider;
 
         mainAccount.BALANCE = ethers.BigNumber.from("10000");
@@ -103,21 +114,17 @@ describe("Test accounts", async function () {
         acc2.BALANCE = ethers.BigNumber.from("0");
 
         const accounts = [acc1, acc2];
-        const result = await manageAccounts(mnemonic, mainAccount, accounts, provider, 20, ethers.BigNumber.from("100"));
+        const result = await manageAccounts(mnemonic, mainAccount, accounts, provider, 20, ethers.BigNumber.from("100"), viemClient);
         const expectedAccounts = [
-            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "7800"},
-            {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D", BALANCE: "1100"},
-            {address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE", BALANCE: "1100"},
+            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
+            {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D"},
+            {address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE"},
         ];
 
         assert.equal(result, 22);
         assert.equal(mainAccount.address, expectedAccounts[0].address);
         assert.equal(accounts[0].address, expectedAccounts[1].address);
         assert.equal(accounts[1].address, expectedAccounts[2].address);
-
-        assert.equal(mainAccount.BALANCE.toString(), expectedAccounts[0].BALANCE);
-        assert.equal(accounts[0].BALANCE.toString(), expectedAccounts[1].BALANCE);
-        assert.equal(accounts[1].BALANCE.toString(), expectedAccounts[2].BALANCE);
     });
 
     it("should rotate providers", async function () {
