@@ -381,6 +381,7 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
                 ...await getMetaInfo(config, options.subgraph),
+                "meta.mainAccount": config.mainAccount.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
@@ -457,7 +458,6 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
 
-            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
             if (config.accounts.length) {
                 roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
             }
@@ -489,6 +489,7 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
                 ...await getMetaInfo(config, options.subgraph),
+                "meta.mainAccount": config.mainAccount.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
@@ -565,7 +566,6 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             }
 
-            roundSpan.setAttribute("mainAccount", config.mainAccount.address);
             if (config.accounts.length) {
                 roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
             }
