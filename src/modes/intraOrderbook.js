@@ -256,8 +256,7 @@ async function findOpp({
             // only orders that (priceA x priceB < 1) can be profitbale
             v.quote.ratio.mul(orderPairObject.takeOrders[0].quote.ratio).div(ONE).lt(ONE)
         );
-
-    if (!opposingOrders) throw undefined;
+    if (!opposingOrders.length) throw undefined;
 
     const allErrorAttributes = [];
     const erc20 = new ethers.utils.Interface(erc20Abi);

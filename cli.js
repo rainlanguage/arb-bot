@@ -12,6 +12,7 @@ const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http")
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { getMetaInfo } = require("./src/config");
 
 
 /**
@@ -379,8 +380,9 @@ const main = async argv => {
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
-                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
+                ...await getMetaInfo(config, options.subgraph),
+                "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
+                "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
                 rotateProviders(config);
@@ -486,8 +488,9 @@ const main = async argv => {
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
-                gitCommitHash: process?.env?.GIT_COMMIT ?? "N/A",
-                dockerTag: process?.env?.DOCKER_TAG ?? "N/A"
+                ...await getMetaInfo(config, options.subgraph),
+                "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
+                "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
                 rotateProviders(config);

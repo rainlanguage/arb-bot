@@ -41,6 +41,12 @@ const getQuery = (orderHash, owner, orderbook) => {
     }
 }`;};
 
+const orderbooksQuery = `{
+    orderbooks {
+        id
+    }
+}`;
+
 const statusCheckQuery = `{
     _meta {
         hasIndexingErrors
@@ -52,5 +58,6 @@ const statusCheckQuery = `{
 
 module.exports = {
     getQuery,
-    statusCheckQuery
+    statusCheckQuery,
+    orderbooksQuery,
 };
