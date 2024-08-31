@@ -1,3 +1,4 @@
+const axios = require("axios");
 const { orderbooksQuery } = require("./query");
 
 /**
@@ -97,7 +98,7 @@ async function getSgOrderbooks(url) {
             { headers: { "Content-Type": "application/json" } }
         );
         if (result?.data?.data?.orderbooks) {
-            return result.data.data.orderbooks;
+            return result.data.data.orderbooks.map(v => v.id);
         }
         else  {
             return Promise.reject("Failed to get orderbook addresses");
