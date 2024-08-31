@@ -113,35 +113,33 @@ async function initAccounts(mnemonicOrPrivateKey, provider, topupAmount, viemCli
  * @param {ethers.providers.Provider} provider - The ethers provider
  * @param {number} lastIndex - The last index used for wallets
  * @param {ethers.BigNumber} avgGasCost - Avg gas cost of arb txs
+ * @param {import("viem").PublicClient} viemClient - The viem client
  */
-async function manageAccounts(mnemonic, mainAccount, accounts, provider, lastIndex, avgGasCost) {
+async function manageAccounts(
+    mnemonic,
+    mainAccount,
+    accounts,
+    provider,
+    lastIndex,
+    avgGasCost,
+    viemClient,
+    wgc
+) {
     let accountsToAdd = 0;
-    let gasLimit;
     const gasPrice = await mainAccount.getGasPrice();
     for (let i = accounts.length - 1; i >= 0; i--) {
         if (accounts[i].BALANCE.lt(avgGasCost.mul(2))) {
             try {
-                if (!gasLimit) {
-                    gasLimit = await accounts[i].estimateGas({
-                        to: mainAccount.address,
-                        value: "0",
-                        gasPrice
-                    });
-                }
-                const transferAmount = accounts[i].BALANCE.sub(
-                    gasPrice.mul(gasLimit).mul(101).div(100)
-                );
-                const tx = await accounts[i].sendTransaction({
-                    to: mainAccount.address,
-                    value: transferAmount,
+                await sweep(
+                    accounts[i],
+                    mainAccount,
                     gasPrice,
-                    gasLimit
-                });
-                await tx.wait();
-                mainAccount.BALANCE = mainAccount.BALANCE.add(transferAmount);
-                accounts[i].BALANCE = ethers.constants.Zero;
+                    viemClient
+                );
             } catch {
-                /**/
+                if (!wgc.find(v => v.address === accounts[i].address)) {
+                    wgc.push(accounts[i]);
+                }
             }
             accountsToAdd++;
             accounts.splice(i, 1);
@@ -296,6 +294,103 @@ async function getBatchTokenBalanceForAccount(
     })).map(v => ethers.BigNumber.from(v));
 }
 
+/**
+ * Sweep bot's bounties
+ * @param {ethers.Wallet} fromWallet - The from wallet
+ * @param {ethers.Wallet} toWallet - The to wallet
+ * @param {ethers.BigNumber} gasPrice - Gas price
+ * @param {import("viem").PublicClient} viemClient - The viem client
+ */
+async function sweep(fromWallet, toWallet, gasPrice, viemClient) {
+    const erc20 = new ethers.utils.Interface(erc20Abi);
+    const txs = [];
+    const failedBounties = [];
+    let cumulativeGasLimit = ethers.constants.Zero;
+    const allBalances = await getBatchTokenBalanceForAccount(
+        fromWallet.address,
+        fromWallet.BOUNTY,
+        viemClient,
+    );
+    for (let i = 0; i < fromWallet.BOUNTY.length; i++) {
+        const bounty = fromWallet.BOUNTY[i];
+        const balance = allBalances[i];
+        try {
+            const tx = {
+                to: bounty,
+                data: erc20.encodeFunctionData("transfer", [toWallet.address, balance]),
+                gasPrice
+            };
+            const gasLimit = await fromWallet.estimateGas(tx);
+            tx.gasLimit = gasLimit.mul(101).div(100);
+            txs.push(tx);
+            cumulativeGasLimit = cumulativeGasLimit.add(gasLimit.mul(101).div(100));
+        } catch {
+            failedBounties.push(bounty);
+        }
+    }
+
+    if (cumulativeGasLimit.mul(gasPrice).gt(fromWallet.BALANCE)) {
+        try {
+            const transferAmount = cumulativeGasLimit.mul(gasPrice).sub(fromWallet.BALANCE);
+            const gasTransferTx = await toWallet.sendTransaction({
+                to: fromWallet.address,
+                value: transferAmount,
+                gasPrice,
+            });
+            const receipt = await gasTransferTx.wait(2);
+            const txGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+            toWallet.BALANCE = toWallet.BALANCE.sub(transferAmount.add(txGasCost));
+            fromWallet.BALANCE = fromWallet.BALANCE.add(transferAmount);
+        } catch {
+            throw `main account lacks suffecient funds to sweep tokens, current balance: ${
+                ethers.utils.formatUnits(toWallet.BALANCE)
+            }`;
+        }
+    }
+
+    for (let i = 0; i < txs.length; i++) {
+        try {
+            const tx = await fromWallet.sendTransaction(txs[i]);
+            const receipt = await tx.wait(2);
+            const txGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+            fromWallet.BALANCE = fromWallet.BALANCE.sub(txGasCost);
+        } catch (error) {
+            failedBounties.push(txs[i].to);
+        }
+    }
+
+    try {
+        const gasLimit = await fromWallet.estimateGas({
+            to: toWallet.address,
+            value: "0",
+            gasPrice
+        });
+        const remainingGas = await fromWallet.getBalance();
+        const transferAmount = remainingGas.sub(gasLimit.mul(gasPrice));
+        if (transferAmount.gt(0)) {
+            const remainingGasTransferTx = await fromWallet.sendTransaction({
+                to: toWallet.address,
+                value: transferAmount,
+                gasPrice,
+                gasLimit,
+            });
+            const receipt = await remainingGasTransferTx.wait(2);
+            toWallet.BALANCE = toWallet.BALANCE.add(transferAmount);
+            const txGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+            fromWallet.BALANCE = fromWallet.BALANCE.sub(txGasCost).sub(transferAmount);
+        }
+    } catch {
+        /**/
+    }
+
+    fromWallet.BOUNTY = failedBounties;
+    if (failedBounties.length) {
+        throw `main account lacks suffecient funds to sweep tokens, current balance: ${
+            ethers.utils.formatUnits(toWallet.BALANCE)
+        }`;
+    }
+}
+
 module.exports = {
     BasePath,
     MainAccountDerivationIndex,
@@ -305,5 +400,6 @@ module.exports = {
     getBatchEthBalance,
     getBatchTokenBalanceForAccount,
     rotateAccounts,
-    rotateProviders
+    rotateProviders,
+    sweep,
 };

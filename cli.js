@@ -7,7 +7,7 @@ const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { manageAccounts, rotateProviders } = require("./src/account");
+const { manageAccounts, rotateProviders, sweep } = require("./src/account");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
@@ -360,6 +360,7 @@ const main = async argv => {
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost;
     let counter = 0;
+    const wgc = [];
 
     // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
@@ -416,7 +417,23 @@ const main = async argv => {
                             config.provider,
                             lastUsedAccountIndex,
                             avgGasCost,
+                            config.viemClient,
+                            wgc
                         );
+                    }
+                }
+
+                // try to sweep garbage collected wallets that still have non sweeped tokens
+                if (counter % 20 === 0 && wgc.length) {
+                    const gasPrice = await config.mainAccount.getGasPrice();
+                    for (let k = wgc.length - 1; k >= 0; k--) {
+                        await sweep(
+                            wgc[k],
+                            config.mainAccount,
+                            gasPrice,
+                            config.viemClient
+                        );
+                        wgc.splice(k, 1);
                     }
                 }
 
@@ -507,7 +524,23 @@ const main = async argv => {
                             config.provider,
                             lastUsedAccountIndex,
                             avgGasCost,
+                            config.viemClient,
+                            wgc
                         );
+                    }
+                }
+
+                // try to sweep garbage collected wallets that still have non sweeped tokens
+                if (wgc.length) {
+                    const gasPrice = await config.mainAccount.getGasPrice();
+                    for (let k = wgc.length - 1; k >= 0; k--) {
+                        await sweep(
+                            wgc[k],
+                            config.mainAccount,
+                            gasPrice,
+                            config.viemClient
+                        );
+                        wgc.splice(k, 1);
                     }
                 }
 
