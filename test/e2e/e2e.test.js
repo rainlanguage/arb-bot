@@ -115,9 +115,7 @@ for (let i = 0; i < testData.length; i++) {
                         tokens[i].address
                     );
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
-                    tokens[i].depositAmount = ethers.BigNumber.from(
-                        (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
-                    );
+                    tokens[i].depositAmount = ethers.utils.parseUnits((deposits[i] ?? "100"), tokens[i].decimals);
                     owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
                     await network.provider.send(
                         "hardhat_setBalance",
@@ -354,11 +352,11 @@ for (let i = 0; i < testData.length; i++) {
                     }
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
                     tokens[i].depositAmount = i > 0
-                        ? ethers.BigNumber.from(
-                            (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
+                        ? tokens[i].depositAmount = ethers.utils.parseUnits(
+                            (deposits[i] ?? "100"), tokens[i].decimals
                         )
-                        : ethers.BigNumber.from(
-                            (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
+                        : tokens[i].depositAmount = ethers.utils.parseUnits(
+                            (deposits[i] ?? "100"), tokens[i].decimals
                         ).div(tokens.length - 1);
                     owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
                     await network.provider.send(
@@ -662,11 +660,11 @@ for (let i = 0; i < testData.length; i++) {
                     }
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
                     tokens[i].depositAmount = i > 0
-                        ? ethers.BigNumber.from(
-                            (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
+                        ? tokens[i].depositAmount = ethers.utils.parseUnits(
+                            (deposits[i] ?? "100"), tokens[i].decimals
                         )
-                        : ethers.BigNumber.from(
-                            (deposits[i] ?? "100") + "0".repeat(tokens[i].decimals)
+                        : tokens[i].depositAmount = ethers.utils.parseUnits(
+                            (deposits[i] ?? "100"), tokens[i].decimals
                         ).div(tokens.length - 1);
                     owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
                     await network.provider.send(

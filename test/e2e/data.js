@@ -212,4 +212,21 @@ module.exports = [
         ],
         ["1", "100"]
     ],
+    [
+        ChainId.MATCHAIN,
+        process?.env?.TEST_MATCHAIN_RPC,
+        4077685,
+        [
+            WNATIVE[ChainId.MATCHAIN],
+            USDT[ChainId.MATCHAIN],
+        ],
+        [
+            "0xf270cAd1CC39E55BaF5B0607e40D39f583dFA4a8",
+            "0xF41a883B88CCD3a2978F176C3e0230128573eB05"
+        ],
+        [
+            LiquidityProviders.MSwap,
+        ],
+        ["0.01", "100"]
+    ],
 ];
