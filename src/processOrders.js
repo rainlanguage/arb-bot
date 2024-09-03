@@ -326,7 +326,6 @@ async function processPair(args) {
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
-                memoize: true,
             };
             // pin block number for test case
             if (config.isTest && config.testBlockNumber) {
@@ -356,7 +355,6 @@ async function processPair(args) {
     try {
         const options = {
             fetchPoolsTimeout: 30000,
-            memoize: true,
         };
         // pin block number for test case
         if (config.isTest && config.testBlockNumber) {
