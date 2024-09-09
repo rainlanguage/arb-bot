@@ -4,7 +4,7 @@ const { ethers } = require("ethers");
 const { orderbookAbi } = require("../src/abis");
 const { estimateProfit } = require("../src/utils");
 const { getBountyEnsureBytecode } = require("../src/config");
-const { dryrun, findOpp, InterOrderbookDryrunHaltReason } = require("../src/modes/interOrderbook");
+const { dryrun, findOpp } = require("../src/modes/interOrderbook");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -125,42 +125,6 @@ describe("Test inter-orderbook dryrun", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should fail with no wallet fund", async function () {
-        const noFundError = { code: ethers.errors.INSUFFICIENT_FUNDS };
-        signer.estimateGas = async () => {
-            return Promise.reject(noFundError);
-        };
-        signer.BALANCE = ethers.constants.Zero;
-        try {
-            await dryrun({
-                orderPairObject,
-                opposingOrders: opposingOrderPairObject,
-                signer,
-                maximumInput: vaultBalance,
-                gasPrice,
-                arb,
-                inputToEthPrice,
-                outputToEthPrice,
-                config,
-                viemClient,
-                knownInitGas: { value: undefined },
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                value: undefined,
-                reason: InterOrderbookDryrunHaltReason.NoWalletFund,
-                spanAttributes: {
-                    maxInput: vaultBalance.toString(),
-                    blockNumber: oppBlockNumber,
-                    error: noFundError,
-                    currentWalletBalance: "0",
-                }
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
     it("should fail with no opp", async function () {
         signer.estimateGas = async () => {
             return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
@@ -183,7 +147,7 @@ describe("Test inter-orderbook dryrun", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: InterOrderbookDryrunHaltReason.NoOpportunity,
+                reason: undefined,
                 spanAttributes: {
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
@@ -410,7 +374,7 @@ describe("Test inter-orderbook find opp", async function () {
         } catch (error) {
             const expected = {
                 value: undefined,
-                reason: InterOrderbookDryrunHaltReason.NoOpportunity,
+                reason: undefined,
                 spanAttributes: {
                     againstOrderbooks: JSON.stringify({
                         [opposingOrderbookAddress]: {
@@ -420,34 +384,6 @@ describe("Test inter-orderbook find opp", async function () {
                         }
                     }),
                 }
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
-    it("should have no wallet fund", async function () {
-        signer.estimateGas = async () => {
-            return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
-        };
-        signer.BALANCE = ethers.constants.Zero;
-        try {
-            await findOpp({
-                orderPairObject,
-                signer,
-                gasPrice,
-                arb,
-                inputToEthPrice,
-                outputToEthPrice,
-                config,
-                viemClient,
-                orderbooksOrders,
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                value: undefined,
-                reason: InterOrderbookDryrunHaltReason.NoWalletFund,
-                spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);
         }

@@ -4,14 +4,6 @@ const { getWithdrawEnsureBytecode } = require("../config");
 const { getSpanException, estimateProfit } = require("../utils");
 
 /**
- * Specifies the reason that dryrun failed
- */
-const IntraOrderbookDryrunHaltReason = {
-    NoOpportunity: 1,
-    NoWalletFund: 2,
-};
-
-/**
  * Executes a extimateGas call for an intra-orderbook tx (clear2()), to determine if the tx is successfull ot not
  */
 async function dryrun({
@@ -91,20 +83,7 @@ async function dryrun({
     catch(e) {
         // reason, code, method, transaction, error, stack, message
         const spanError = getSpanException(e);
-        const errorString = JSON.stringify(spanError);
         spanAttributes["error"] = spanError;
-
-        // check for no wallet fund
-        if (
-            (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-            || errorString.includes("gas required exceeds allowance")
-            || errorString.includes("insufficient funds for gas")
-        ) {
-            result.reason = IntraOrderbookDryrunHaltReason.NoWalletFund;
-            spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-        } else {
-            result.reason = IntraOrderbookDryrunHaltReason.NoOpportunity;
-        }
         return Promise.reject(result);
     }
     gasLimit = gasLimit.mul("107").div("100");
@@ -179,20 +158,7 @@ async function dryrun({
         }
         catch(e) {
             const spanError = getSpanException(e);
-            const errorString = JSON.stringify(spanError);
             spanAttributes["error"] = spanError;
-
-            // check for no wallet fund
-            if (
-                (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-                || errorString.includes("gas required exceeds allowance")
-                || errorString.includes("insufficient funds for gas")
-            ) {
-                result.reason = IntraOrderbookDryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-            } else {
-                result.reason = IntraOrderbookDryrunHaltReason.NoOpportunity;
-            }
             return Promise.reject(result);
         }
     }
@@ -283,16 +249,9 @@ async function findOpp({
                 outputBalance,
             });
         } catch(e) {
-            if (e.reason === IntraOrderbookDryrunHaltReason.NoWalletFund) {
-                result.reason = IntraOrderbookDryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
-                return Promise.reject(result);
-            } else {
-                allErrorAttributes.push(JSON.stringify(e.spanAttributes));
-            }
+            allErrorAttributes.push(JSON.stringify(e.spanAttributes));
         }
     }
-    result.reason = IntraOrderbookDryrunHaltReason.NoOpportunity;
     spanAttributes["intraOrderbook"] = allErrorAttributes;
     return Promise.reject(result);
 }
@@ -300,5 +259,4 @@ async function findOpp({
 module.exports = {
     dryrun,
     findOpp,
-    IntraOrderbookDryrunHaltReason,
 };

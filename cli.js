@@ -40,6 +40,7 @@ const ENV_OPTIONS = {
     poolUpdateInterval  : process?.env?.POOL_UPDATE_INTERVAL || "15",
     walletCount         : process?.env?.WALLET_COUNT,
     topupAmount         : process?.env?.TOPUP_AMOUNT,
+    botMinBalance       : process?.env?.BOT_MIN_BALANCE,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
@@ -68,11 +69,12 @@ const getOptions = async argv => {
         .option("--timeout <integer>", "Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables")
         .option("--max-ratio", "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables")
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
-        .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables")
+        .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 1 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
         .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
         .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
+        .option("--bot-min-balance <number>", "The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -106,6 +108,7 @@ const getOptions = async argv => {
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
     cmdOptions.walletCount        = cmdOptions.walletCount        || ENV_OPTIONS.walletCount;
     cmdOptions.topupAmount        = cmdOptions.topupAmount        || ENV_OPTIONS.topupAmount;
+    cmdOptions.botMinBalance      = cmdOptions.botMinBalance    || ENV_OPTIONS.botMinBalance;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
 
     return cmdOptions;
@@ -246,6 +249,9 @@ async function startup(argv) {
         }
         else throw "invalid poolUpdateInterval value, must be an integer greater than zero";
     }
+    if (!options.botMinBalance || !/^[0-9]+(.[0-9]+)?$/.test(options.botMinBalance)) {
+        throw "expected a valid value for --bot-min-balance, it should be an number greater than 0";
+    }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
 
     // get config
@@ -362,11 +368,28 @@ const main = async argv => {
     let avgGasCost;
     let counter = 0;
     const wgc = [];
+    const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
 
     // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
     if (repetitions === -1) while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
+            const botGasBalance = await config.viemClient.getBalance({
+                address: config.mainAccount.address
+            });
+            if (botMinBalance.gt(botGasBalance)) {
+                roundSpan.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: `bot is low on gas, expected at least: ${
+                        options.botMinBalance
+                    }, current balance: ${
+                        ethers.utils.formatUnits(botGasBalance)
+                    }`
+                });
+                roundSpan.end();
+                // wait 2 mins before trying again
+                await sleep(120000);
+            }
             // remove pool memoizer cache on each interval
             const now = Date.now();
             if (lastInterval <= now) {
@@ -470,6 +493,22 @@ const main = async argv => {
     }
     else for (let i = 1; i <= repetitions; i++) {
         await tracer.startActiveSpan(`round-${i}`, async (roundSpan) => {
+            const botGasBalance = await config.viemClient.getBalance({
+                address: config.mainAccount.address
+            });
+            if (botMinBalance.gt(botGasBalance)) {
+                roundSpan.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: `bot is low on gas, expected at least: ${
+                        options.botMinBalance
+                    }, current balance: ${
+                        ethers.utils.formatUnits(botGasBalance)
+                    }`
+                });
+                roundSpan.end();
+                // wait 2 mins before trying again
+                await sleep(120000);
+            }
             // remove pool memoizer cache on each interval
             const now = Date.now();
             if (lastInterval <= now) {

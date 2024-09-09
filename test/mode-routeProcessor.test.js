@@ -153,49 +153,6 @@ describe("Test route processor dryrun", async function () {
         }
     });
 
-    it("should fail with no wallet fund", async function () {
-        const noFundError = { code: ethers.errors.INSUFFICIENT_FUNDS };
-        dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
-        };
-        signer.estimateGas = async () => {
-            return Promise.reject(noFundError);
-        };
-        signer.BALANCE = ethers.constants.Zero;
-        try {
-            await dryrun({
-                mode: 0,
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                maximumInput: vaultBalance,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-                knownInitGas: { value: undefined },
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                value: undefined,
-                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
-                spanAttributes: {
-                    marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
-                    maxInput: vaultBalance.toString(),
-                    blockNumber: oppBlockNumber,
-                    error: noFundError,
-                    route: expectedRouteVisual,
-                    currentWalletBalance: "0",
-                }
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
     it("should fail with no opp", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
@@ -484,39 +441,6 @@ describe("Test route processor find opp", async function () {
             assert.deepEqual(error, expected);
         }
     });
-
-    it("should have no wallet fund", async function () {
-        dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
-        };
-        signer.estimateGas = async () => {
-            return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
-        };
-        signer.BALANCE = ethers.constants.Zero;
-        try {
-            await findOpp({
-                mode: 0,
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                value: undefined,
-                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
-                spanAttributes: { currentWalletBalance: "0" },
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
 });
 
 describe("Test find opp with retries", async function () {
@@ -676,38 +600,6 @@ describe("Test find opp with retries", async function () {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {}
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
-    it("should have no wallet fund", async function () {
-        dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
-        };
-        signer.estimateGas = async () => {
-            return Promise.reject({ code: ethers.errors.INSUFFICIENT_FUNDS });
-        };
-        signer.BALANCE = ethers.constants.Zero;
-        try {
-            await findOppWithRetries({
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                value: undefined,
-                reason: RouteProcessorDryrunHaltReason.NoWalletFund,
-                spanAttributes: { currentWalletBalance: "0" },
             };
             assert.deepEqual(error, expected);
         }

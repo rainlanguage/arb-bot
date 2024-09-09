@@ -4,14 +4,6 @@ const { getBountyEnsureBytecode } = require("../config");
 const { getSpanException, estimateProfit } = require("../utils");
 
 /**
- * Specifies the reason that dryrun failed
- */
-const InterOrderbookDryrunHaltReason = {
-    NoOpportunity: 1,
-    NoWalletFund: 2,
-};
-
-/**
  * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
  */
 async function dryrun({
@@ -104,20 +96,7 @@ async function dryrun({
     catch(e) {
         // reason, code, method, transaction, error, stack, message
         const spanError = getSpanException(e);
-        const errorString = JSON.stringify(spanError);
         spanAttributes["error"] = spanError;
-
-        // check for no wallet fund
-        if (
-            (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-            || errorString.includes("gas required exceeds allowance")
-            || errorString.includes("insufficient funds for gas")
-        ) {
-            result.reason = InterOrderbookDryrunHaltReason.NoWalletFund;
-            spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-        } else {
-            result.reason = InterOrderbookDryrunHaltReason.NoOpportunity;
-        }
         return Promise.reject(result);
     }
     gasLimit = gasLimit.mul("107").div("100");
@@ -165,20 +144,7 @@ async function dryrun({
         }
         catch(e) {
             const spanError = getSpanException(e);
-            const errorString = JSON.stringify(spanError);
             spanAttributes["error"] = spanError;
-
-            // check for no wallet fund
-            if (
-                (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-                || errorString.includes("gas required exceeds allowance")
-                || errorString.includes("insufficient funds for gas")
-            ) {
-                result.reason = InterOrderbookDryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-            } else {
-                result.reason = InterOrderbookDryrunHaltReason.NoOpportunity;
-            }
             return Promise.reject(result);
         }
     }
@@ -296,19 +262,13 @@ async function findOpp({
                 });
             }));
         } catch { /**/ }
-        if (e.errors.some(v => v.reason === InterOrderbookDryrunHaltReason.NoWalletFund)) {
-            result.reason = InterOrderbookDryrunHaltReason.NoWalletFund;
-            spanAttributes["currentWalletBalance"] = e.errors[0].spanAttributes["currentWalletBalance"];
-        } else {
-            result.reason = InterOrderbookDryrunHaltReason.NoOpportunity;
-            const allOrderbooksAttributes = {};
-            for (let i = 0; i < e.errors.length; i++) {
-                allOrderbooksAttributes[
-                    opposingOrderbookOrders[i].orderbook
-                ] =  e.errors[i].spanAttributes;
-            }
-            spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
+        const allOrderbooksAttributes = {};
+        for (let i = 0; i < e.errors.length; i++) {
+            allOrderbooksAttributes[
+                opposingOrderbookOrders[i].orderbook
+            ] =  e.errors[i].spanAttributes;
         }
+        spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
         return Promise.reject(result);
     }
 }
@@ -328,9 +288,11 @@ async function binarySearch({
     config,
     viemClient,
 }) {
+    const spanAttributes = {};
     const result = {
         value: undefined,
         reason: undefined,
+        spanAttributes,
     };
     const allSuccessHops = [];
     const initAmount = ethers.BigNumber.from(maximumInput.toString());
@@ -359,7 +321,6 @@ async function binarySearch({
         return allSuccessHops[allSuccessHops.length - 1];
     }
     else {
-        result.reason = InterOrderbookDryrunHaltReason.NoOpportunity;
         return Promise.reject(result);
     }
 }
@@ -367,5 +328,4 @@ async function binarySearch({
 module.exports = {
     dryrun,
     findOpp,
-    InterOrderbookDryrunHaltReason,
 };

@@ -21,14 +21,13 @@ const {
  * Specifies reason that order process halted
  */
 const ProcessPairHaltReason = {
-    NoWalletFund: 1,
-    FailedToQuote: 2,
-    FailedToGetGasPrice: 3,
-    FailedToGetEthPrice: 4,
-    FailedToGetPools: 5,
-    TxFailed: 6,
-    TxMineFailed: 7,
-    UnexpectedError: 8,
+    FailedToQuote: 1,
+    FailedToGetGasPrice: 2,
+    FailedToGetEthPrice: 3,
+    FailedToGetPools: 4,
+    TxFailed: 5,
+    TxMineFailed: 6,
+    UnexpectedError: 7,
 };
 
 /**
@@ -79,7 +78,6 @@ const processOrders = async(
 
     let avgGasCost;
     const reports = [];
-    const fetchedPairPools = [];
     for (const orderbookOrders of bundledOrders) {
         for (const pairOrders of orderbookOrders) {
             // instantiating orderbook contract
@@ -124,7 +122,6 @@ const processOrders = async(
                         pair,
                         mainAccount,
                         accounts,
-                        fetchedPairPools,
                         orderbooksOrders: bundledOrders
                     });
 
@@ -177,22 +174,7 @@ const processOrders = async(
                         });
 
                         // set the otel span status based on returned reason
-                        if (e.reason === ProcessPairHaltReason.NoWalletFund) {
-                            // in case that wallet has no more funds, terminate the process by breaking the loop
-                            if (e.error) span.recordException(getSpanException(e.error));
-                            const message = `Recieved insufficient funds error, current balance: ${
-                                e.spanAttributes["details.currentWalletBalance"]
-                                    ? ethers.utils.formatUnits(
-                                        ethers.BigNumber.from(
-                                            e.spanAttributes["details.currentWalletBalance"]
-                                        )
-                                    )
-                                    : "failed to get balance"
-                            }`;
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                            span.end();
-                            throw message;
-                        } else if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                        if (e.reason === ProcessPairHaltReason.FailedToQuote) {
                             if (e.error) {
                                 span.recordException(getSpanException(e.error));
                             }
@@ -255,7 +237,6 @@ async function processPair(args) {
         genericArb,
         orderbook,
         pair,
-        fetchedPairPools,
         orderbooksOrders,
     } = args;
 
@@ -322,7 +303,7 @@ async function processPair(args) {
     }
 
     // get pool details
-    if (!fetchedPairPools.includes(pair)) {
+    if (!dataFetcher.fetchedPairPools.includes(pair)) {
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
@@ -337,10 +318,8 @@ async function processPair(args) {
                 PoolBlackList,
                 options
             );
-            fetchedPairPools.push(
-                `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`
-            );
-            fetchedPairPools.push(
+            dataFetcher.fetchedPairPools.push(
+                `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`,
                 `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`
             );
         } catch(e) {
@@ -388,6 +367,10 @@ async function processPair(args) {
             }
         }
         else {
+            const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
+            const p2 = `${orderPairObject.sellTokenSymbol}/${config.nativeWrappedToken.symbol}`;
+            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
+            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
@@ -437,18 +420,13 @@ async function processPair(args) {
         for (attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
-        if ("rawtx" in e) {
-            result.report = {
-                status: ProcessPairReportStatus.NoOpportunity,
-                tokenPair: pair,
-                buyToken: orderPairObject.buyToken,
-                sellToken: orderPairObject.sellToken,
-            };
-            return result;
-        } else {
-            result.reason = ProcessPairHaltReason.NoWalletFund;
-            throw result;
-        }
+        result.report = {
+            status: ProcessPairReportStatus.NoOpportunity,
+            tokenPair: pair,
+            buyToken: orderPairObject.buyToken,
+            sellToken: orderPairObject.sellToken,
+        };
+        return result;
     }
 
     // from here on we know an opp is found, so record it in report and in otel span attributes
