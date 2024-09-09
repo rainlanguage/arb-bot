@@ -1,6 +1,7 @@
-const { ChainId } = require("sushi/chain");
+const { getSgOrderbooks } = require("./sg");
 const { WNATIVE } = require("sushi/currency");
 const { DataFetcher } = require("sushi/router");
+const { ChainId, ChainKey } = require("sushi/chain");
 const { createPublicClient, http, fallback } = require("viem");
 const {
     STABLES,
@@ -171,6 +172,24 @@ function getWithdrawEnsureBytecode(
     //   \"minimumSenderOutput\"
     // );
     return `0x0000000000000000000000000000000000000000000000000000000000000009${input}${bot}${inputBalance}${inputPrice}${output}${outputBalance}${outputPrice}${minimum}936d696e696d756d53656e6465724f757470757400000000000000000000000000000000000000000000000000000000000000000000000000000000000000530100001307000001100008011000070110000601100005011000010110000411120000471200003d1200000110000301100002011000010110000011120000471200003d1200002b120000211200001d020000`;
+}
+
+/**
+ * Get meta info for a bot to post on otel
+ */
+async function getMetaInfo(config, sg) {
+    try {
+        return {
+            "meta.chain": ChainKey[config.chain.id],
+            "meta.chainId": config.chain.id,
+            "meta.sg": sg,
+            "meta.rpArb": config.arbAddress,
+            "meta.genericArb": config.genericArbAddress,
+            "meta.orderbooks": await getSgOrderbooks(sg),
+        };
+    } catch(e) {
+        return {};
+    }
 }
 
 /**
@@ -446,4 +465,5 @@ module.exports = {
     getBountyEnsureBytecode,
     getWithdrawEnsureBytecode,
     fallbacks,
+    getMetaInfo,
 };

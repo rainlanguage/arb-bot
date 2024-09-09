@@ -1,3 +1,6 @@
+const axios = require("axios");
+const { orderbooksQuery } = require("./query");
+
 /**
  * Checks a subgraph health status and records the result in an object or throws
  * error if all given subgraphs are unhealthy
@@ -83,7 +86,42 @@ function handleSgResults(availableSgs, responses, span, hasjson) {
     return ordersDetails;
 }
 
+/**
+ * Returns the orderbook addresses the given subgraph indexes
+ * @param {string} url - Subgraph URL
+ */
+async function getSgOrderbooks(url) {
+    try {
+        const result = await axios.post(
+            url,
+            { query: orderbooksQuery },
+            { headers: { "Content-Type": "application/json" } }
+        );
+        if (result?.data?.data?.orderbooks) {
+            return result.data.data.orderbooks.map(v => v.id);
+        }
+        else  {
+            return Promise.reject("Failed to get orderbook addresses");
+        }
+    } catch (error) {
+        const msg = ["Failed to get orderbook addresses"];
+        if (typeof error === "string") {
+            msg.push("Reason: " + error);
+        } else {
+            // AxsioError
+            if (error.message) {
+                msg.push("Reason: " + error.message);
+            }
+            if (error.code) {
+                msg.push("Code: " + error.code);
+            }
+        }
+        throw msg.join("\n");
+    }
+}
+
 module.exports = {
     checkSgStatus,
     handleSgResults,
+    getSgOrderbooks,
 };

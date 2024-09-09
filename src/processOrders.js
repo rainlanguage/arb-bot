@@ -89,7 +89,7 @@ const processOrders = async(
                 const orderPairObject = {
                     orderbook: pairOrders.orderbook,
                     buyToken: pairOrders.buyToken,
-                    buyTokenSymbol: pairOrders.buyToken,
+                    buyTokenSymbol: pairOrders.buyTokenSymbol,
                     buyTokenDecimals: pairOrders.buyTokenDecimals,
                     sellToken: pairOrders.sellToken,
                     sellTokenSymbol: pairOrders.sellTokenSymbol,

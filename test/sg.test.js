@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const { AxiosError } = require("axios");
-const { checkSgStatus, handleSgResults } = require("../src/sg");
+const { checkSgStatus, handleSgResults, getSgOrderbooks } = require("../src/sg");
 
 describe("Test read subgraph", async function () {
     it("should check subgraph status", async function () {
@@ -284,5 +284,25 @@ describe("Test read subgraph", async function () {
             throw "expected to resolve, but rejected";
         }
         assert.deepEqual(result, ["order1", "order2"]);
+    });
+
+    it("should get subgraph orderbooks", async function () {
+        const mockServer = require("mockttp").getLocal();
+        await mockServer.start(8090);
+        const orderbook1 = `0x${"1".repeat(40)}`;
+        const orderbook2 = `0x${"2".repeat(40)}`;
+        const sgResponse = {
+            data: {
+                orderbooks: [
+                    { id: orderbook1 },
+                    { id: orderbook2 }
+                ]
+            }
+        };
+        await mockServer.forPost("/sg").thenJson(200, sgResponse);
+        const result = await getSgOrderbooks(mockServer.url + "/sg");
+        const expected = [orderbook1, orderbook2];
+        assert.deepEqual(result, expected);
+        await mockServer.stop();
     });
 });
