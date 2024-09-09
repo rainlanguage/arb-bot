@@ -1,8 +1,8 @@
 require("dotenv").config();
-const fs = require("fs");
 const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { getDataFetcher } = require("./src/config");
 const { Resource } = require("@opentelemetry/resources");
 const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
@@ -371,12 +371,7 @@ const main = async argv => {
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                try {
-                    fs.rmSync("./mem-cache", { recursive: true });
-                    fs.mkdirSync("./mem-cache", { recursive: true });
-                } catch {
-                    /**/
-                }
+                config.dataFetcher = getDataFetcher(config.viemClient, config.lps, false);
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
@@ -479,12 +474,7 @@ const main = async argv => {
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                try {
-                    fs.rmSync("./mem-cache", { recursive: true });
-                    fs.mkdirSync("./mem-cache", { recursive: true });
-                } catch {
-                    /**/
-                }
+                config.dataFetcher = getDataFetcher(config.viemClient, config.lps, false);
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({

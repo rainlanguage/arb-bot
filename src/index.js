@@ -202,7 +202,7 @@ const getConfig = async(
     }
 
     const allProviders = rpcUrls.map(v => { return new ethers.providers.JsonRpcProvider(v); });
-    const provider = new ethers.providers.FallbackProvider(allProviders);
+    const provider = new ethers.providers.FallbackProvider(allProviders, 1);
     const chainId = (await provider.getNetwork()).chainId;
     const config = getChainConfig(chainId);
     const lps = processLps(options?.liquidityProviders);
