@@ -175,7 +175,9 @@ describe("Test intra-orderbook find opp", async function () {
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
-        dataFetcher = {};
+        dataFetcher = {
+            fetchedPairPools: []
+        };
     });
     const balance = ethers.BigNumber.from("1000000000000000000");
 

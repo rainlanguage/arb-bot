@@ -38,7 +38,9 @@ describe("Test route processor dryrun", async function () {
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
-        dataFetcher = {};
+        dataFetcher = {
+            fetchedPairPools: []
+        };
     });
 
     it("should succeed", async function () {
@@ -203,7 +205,9 @@ describe("Test route processor find opp", async function () {
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
-        dataFetcher = {};
+        dataFetcher = {
+            fetchedPairPools: []
+        };
     });
 
     it("should find opp for full vault balance", async function () {
@@ -452,7 +456,9 @@ describe("Test find opp with retries", async function () {
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
-        dataFetcher = {};
+        dataFetcher = {
+            fetchedPairPools: []
+        };
     });
 
     it("should find opp with 2 retries", async function () {
