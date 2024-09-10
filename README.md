@@ -61,6 +61,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
+-- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 
 as well as at least one or both of below arguments:
 
@@ -222,6 +223,9 @@ WALLET_COUNT=
 
 # topup amount for excess accounts, requires mnemonic option
 TOPUP_AMOUNT=
+
+# Minimum bot's wallet gas token balance before alering
+BOT_MIN_BALANCE=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
