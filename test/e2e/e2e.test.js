@@ -297,7 +297,11 @@ for (let i = 0; i < testData.length; i++) {
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, [tokens[0].address.toLowerCase()]);
+                assert.deepEqual(bot.BOUNTY, [{
+                    address: tokens[0].address.toLowerCase(),
+                    decimals: tokens[0].decimals,
+                    symbol: tokens[0].symbol
+                }]);
                 assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
@@ -607,7 +611,11 @@ for (let i = 0; i < testData.length; i++) {
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, tokens.map(v => v.address.toLowerCase()));
+                assert.deepEqual(bot.BOUNTY, tokens.map(v => ({
+                    address: v.address.toLowerCase(),
+                    decimals: v.decimals,
+                    symbol: v.symbol
+                })));
                 assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
@@ -916,7 +924,11 @@ for (let i = 0; i < testData.length; i++) {
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, [tokens[0].address.toLowerCase()]);
+                assert.deepEqual(bot.BOUNTY, [{
+                    address: tokens[0].address.toLowerCase(),
+                    decimals: tokens[0].decimals,
+                    symbol: tokens[0].symbol
+                }]);
                 assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 

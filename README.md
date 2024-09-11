@@ -71,7 +71,6 @@ as well as at least one or both of below arguments:
 Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
-- `--repetitions`, Option to run `number` of times, if unset will run for infinte number of times
 - `--orderbook-address`, Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
@@ -181,9 +180,6 @@ LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
 
 # gas coverage percentage for each transaction to be considered profitable to be submitted
 GAS_COVER="100"
-
-# an integer used for specifiying the number repetitions for the app to run, if not set will run for infinite number of times
-REPETITIONS=1
 
 # Option to filter the subgraph query results with a specific order hash
 ORDER_HASH=""

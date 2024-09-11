@@ -152,7 +152,7 @@ const processOrders = async(
                     }
                 } catch(e) {
 
-                    // keep track of avggas cost
+                    // keep track of avg gas cost
                     if (e.gasCost) {
                         if (!avgGasCost) {
                             avgGasCost = e.gasCost;
@@ -566,16 +566,24 @@ async function processPair(args) {
             if (
                 inputTokenIncome &&
                 inputTokenIncome.gt(0) &&
-                !signer.BOUNTY.includes(orderPairObject.buyToken)
+                !signer.BOUNTY.find(v => v.address === orderPairObject.buyToken)
             ) {
-                signer.BOUNTY.push(orderPairObject.buyToken);
+                signer.BOUNTY.push({
+                    address: orderPairObject.buyToken,
+                    decimals: orderPairObject.buyTokenDecimals,
+                    symbol: orderPairObject.buyTokenSymbol,
+                });
             }
             if (
                 outputTokenIncome &&
                 outputTokenIncome.gt(0) &&
-                !signer.BOUNTY.includes(orderPairObject.sellToken)
+                !signer.BOUNTY.find(v => v.address === orderPairObject.sellToken)
             ) {
-                signer.BOUNTY.push(orderPairObject.sellToken);
+                signer.BOUNTY.push({
+                    address: orderPairObject.sellToken,
+                    decimals: orderPairObject.sellTokenDecimals,
+                    symbol: orderPairObject.sellTokenSymbol,
+                });
             }
 
             return result;
