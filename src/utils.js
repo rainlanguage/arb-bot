@@ -466,6 +466,7 @@ const promiseTimeout = async(promise, time, exception) => {
 /**
  * Gets the route for tokens
  * @param {number} chainId - The network chain id
+ * @param {string[]} rpcs - The rpcs
  * @param {ethers.BigNumber} sellAmount - The sell amount, should be in onchain token value
  * @param {string} fromTokenAddress - The from token address
  * @param {number} fromTokenDecimals - The from token decimals
@@ -477,6 +478,7 @@ const promiseTimeout = async(promise, time, exception) => {
  */
 const getRouteForTokens = async(
     chainId,
+    rpcs,
     sellAmount,
     fromTokenAddress,
     fromTokenDecimals,
@@ -497,7 +499,7 @@ const getRouteForTokens = async(
         decimals: toTokenDecimals,
         address: toTokenAddress
     });
-    const dataFetcher = getDataFetcher({chain: {id: chainId}});
+    const dataFetcher = getDataFetcher({ chain: { id: chainId }, rpc: rpcs });
     await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
@@ -1075,6 +1077,92 @@ function estimateProfit(
     }
 }
 
+/**
+ * Gets values for an RP swap transaction
+ * @param {number} chainId - The network chain id
+ * @param {ethers.BigNumber} sellAmount - The sell amount, should be in onchain token value
+ * @param {import("sushi/currency").Type} fromToken - The from token address
+ * @param {import("sushi/currency").Type} toToken - The to token address
+ * @param {string} receiverAddress - The address of the receiver
+ * @param {string} routeProcessorAddress - The address of the RouteProcessor contract
+ * @param {import("sushi/router").DataFetcher} dataFetcher - The DataFetcher instance
+ */
+const getRpSwap = async(
+    chainId,
+    sellAmount,
+    fromToken,
+    toToken,
+    receiverAddress,
+    routeProcessorAddress,
+    dataFetcher,
+) => {
+    const amountIn = sellAmount.toBigInt();
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    const route = Router.findBestRoute(
+        pcMap,
+        chainId,
+        fromToken,
+        amountIn,
+        toToken,
+        Number(await dataFetcher.web3Client.getGasPrice()),
+        undefined,
+        RPoolFilter
+    );
+    if (route.status == "NoWay") {
+        throw "NoWay";
+    }
+    else {
+        const rpParams = Router.routeProcessor4Params(
+            pcMap,
+            route,
+            fromToken,
+            toToken,
+            receiverAddress,
+            routeProcessorAddress,
+        );
+        return { rpParams, route };
+    }
+};
+
+function getOrdersTokens(ordersDetails) {
+    const tokens = [];
+    for (let i = 0; i < ordersDetails.length; i++) {
+        const orderDetails = ordersDetails[i];
+        const orderStruct = ethers.utils.defaultAbiCoder.decode(
+            [OrderV3],
+            orderDetails.orderBytes
+        )[0];
+
+        for (let j = 0; j < orderStruct.validOutputs.length; j++) {
+            const _output = orderStruct.validOutputs[j];
+            const _outputSymbol = orderDetails.outputs.find(
+                v => v.token.address.toLowerCase() === _output.token.toLowerCase()
+            ).token.symbol;
+            if (!tokens.find(v => v.address === _output.token.toLowerCase())) {
+                tokens.push({
+                    address: _output.token.toLowerCase(),
+                    decimals: _output.decimals,
+                    symbol: _outputSymbol
+                });
+            }
+        }
+        for (let k = 0; k < orderStruct.validInputs.length; k ++) {
+            const _input = orderStruct.validInputs[k];
+            const _inputSymbol = orderDetails.inputs.find(
+                v => v.token.address.toLowerCase() === _input.token.toLowerCase()
+            ).token.symbol;
+            if (!tokens.find(v => v.address === _input.token.toLowerCase())) {
+                tokens.push({
+                    address: _input.token.toLowerCase(),
+                    decimals: _input.decimals,
+                    symbol: _inputSymbol
+                });
+            }
+        }
+    }
+    return tokens;
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -1098,4 +1186,6 @@ module.exports = {
     getTotalIncome,
     quoteSingleOrder,
     estimateProfit,
+    getRpSwap,
+    getOrdersTokens,
 };

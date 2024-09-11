@@ -81,7 +81,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                 hasjson = true;
             }
             catch (error) {
-                span.setAttribute("details.jsonSourceError", JSON.stringify(getSpanException(error)));
+                span?.setAttribute("details.jsonSourceError", JSON.stringify(getSpanException(error)));
             }
         }
         if (!isInvalidSg) {
@@ -226,6 +226,7 @@ const getConfig = async(
     config.lps                      = lps;
     config.viemClient               = viemClient;
     config.dataFetcher              = dataFetcher;
+    config.watchedTokens            = options?.tokens ?? [];
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(
@@ -233,7 +234,8 @@ const getConfig = async(
         config.provider,
         options?.topupAmount,
         config.viemClient,
-        options?.walletCount
+        options?.walletCount,
+        config.tokens
     );
     config.mainAccount = mainAccount;
     config.accounts = accounts;

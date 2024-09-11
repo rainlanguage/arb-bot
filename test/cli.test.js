@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { assert } = require("chai");
 const { arbRound, startup } = require("../cli");
 const mockServer = require("mockttp").getLocal();
@@ -54,6 +55,7 @@ describe("Test cli", async function () {
     });
 
     it("test cli startup", async function () {
+        process.env.TEST = true;
         try {
             await startup(["", ""]);
             assert.fail("expected to fail, but resolved");
@@ -99,27 +101,6 @@ describe("Test cli", async function () {
             assert.fail("expected to fail, but resolved");
         } catch (error) {
             const expected = "undefined arb contract address";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--orderbook-address",
-                `0x${"0".repeat(64)}`,
-                "--repetitions",
-                "abcd"
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "invalid repetitions, must be an integer greater than equal 0";
             assert.equal(error, expected);
         }
 
@@ -202,7 +183,6 @@ describe("Test cli", async function () {
         ]);
         const expected = {
             roundGap: 10000,
-            repetitions: -1,
             poolUpdateInterval: 900000,
             config: {
                 chain: { id: 137 },
@@ -215,7 +195,6 @@ describe("Test cli", async function () {
             }
         };
         assert.equal(result.roundGap, expected.roundGap);
-        assert.equal(result.repetitions, expected.repetitions);
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
         assert.equal(result.config.chain.id, expected.config.chain.id);
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);

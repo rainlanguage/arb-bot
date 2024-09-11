@@ -2,18 +2,17 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
+const { getMetaInfo } = require("./src/config");
 const { getDataFetcher } = require("./src/config");
 const { Resource } = require("@opentelemetry/resources");
-const { sleep, getSpanException } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { manageAccounts, rotateProviders, sweep } = require("./src/account");
+const { sleep, getSpanException, getOrdersTokens } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } = require("./src/account");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-const { getMetaInfo } = require("./src/config");
-
 
 /**
  * Options specified in env variables
@@ -27,7 +26,6 @@ const ENV_OPTIONS = {
     orders              : process?.env?.ORDERS,
     lps                 : process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage         : process?.env?.GAS_COVER || "100",
-    repetitions         : process?.env?.REPETITIONS,
     orderHash           : process?.env?.ORDER_HASH,
     orderOwner          : process?.env?.ORDER_OWNER,
     sleep               : process?.env?.SLEEP,
@@ -61,7 +59,6 @@ const getOptions = async argv => {
         .option("--generic-arb-address <address>", "Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables")
         .option("-l, --lps <string>", "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers")
         .option("-g, --gas-coverage <integer>", "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables")
-        .option("--repetitions <integer>", "Option to run `number` of times, if unset will run for infinte number of times")
         .option("--order-hash <hash>", "Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables")
         .option("--order-owner <address>", "Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables")
         .option("--sleep <integer>", "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables")
@@ -96,7 +93,6 @@ const getOptions = async argv => {
     cmdOptions.subgraph           = cmdOptions.subgraph           || ENV_OPTIONS.subgraph;
     cmdOptions.lps                = cmdOptions.lps                || ENV_OPTIONS.lps;
     cmdOptions.gasCoverage        = cmdOptions.gasCoverage        || ENV_OPTIONS.gasCoverage;
-    cmdOptions.repetitions        = cmdOptions.repetitions        || ENV_OPTIONS.repetitions;
     cmdOptions.orderHash          = cmdOptions.orderHash          || ENV_OPTIONS.orderHash;
     cmdOptions.orderOwner         = cmdOptions.orderOwner         || ENV_OPTIONS.orderOwner;
     cmdOptions.sleep              = cmdOptions.sleep              || ENV_OPTIONS.sleep;
@@ -200,7 +196,6 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let repetitions = -1;
     let _poolUpdateInterval = 15;
 
     const options = await getOptions(argv);
@@ -229,10 +224,6 @@ async function startup(argv) {
     }
     if (!options.rpc) throw "undefined RPC URL";
     if (!options.arbAddress) throw "undefined arb contract address";
-    if (options.repetitions) {
-        if (/^[0-9]+$/.test(options.repetitions)) repetitions = Number(options.repetitions);
-        else throw "invalid repetitions, must be an integer greater than equal 0";
-    }
     if (options.sleep) {
         if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
         else throw "invalid sleep value, must be an integer greater than equal 0";
@@ -253,6 +244,28 @@ async function startup(argv) {
         throw "expected a valid value for --bot-min-balance, it should be an number greater than 0";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
+    let ordersDetails = [];
+    if (!process?.env?.TEST) for (let i = 0; i < 20; i++) {
+        try {
+            console.log("trying to find wallet erc20 tokens...");
+            ordersDetails = await getOrderDetails(
+                options.subgraph,
+                options.orders,
+                undefined,
+                {
+                    orderHash: options.orderHash,
+                    orderOwner: options.orderOwner,
+                    orderbook: options.orderbookAddress,
+                },
+            );
+            break;
+        } catch(e) {
+            console.log("retrying to find wallet erc20 tokens...");
+            if (i != 19) await sleep(10000 * (i + 1));
+            else throw e;
+        }
+    }
+    const tokens = getOrdersTokens(ordersDetails);
 
     // get config
     const config = await getConfig(
@@ -260,6 +273,7 @@ async function startup(argv) {
         options.key ?? options.mnemonic,
         options.arbAddress,
         {
+            tokens,
             maxRatio             : options.maxRatio,
             flashbotRpc          : options.flashbotRpc,
             timeout              : options.timeout,
@@ -279,10 +293,10 @@ async function startup(argv) {
 
     return {
         roundGap,
-        repetitions,
         options,
         poolUpdateInterval,
         config,
+        tokens,
     };
 }
 
@@ -323,7 +337,6 @@ const main = async argv => {
     // parse cli args and startup bot configuration
     const {
         roundGap,
-        repetitions,
         options,
         poolUpdateInterval,
         config,
@@ -372,7 +385,7 @@ const main = async argv => {
 
     // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
-    if (repetitions === -1) while (true) {
+    while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const botGasBalance = await config.viemClient.getBalance({
                 address: config.mainAccount.address
@@ -439,23 +452,30 @@ const main = async argv => {
                             lastUsedAccountIndex,
                             avgGasCost,
                             config.viemClient,
-                            wgc
+                            wgc,
+                            config.watchedTokens
                         );
                     }
                 }
 
-                // try to sweep garbage collected wallets that still have non sweeped tokens
-                if (counter % 20 === 0 && wgc.length) {
-                    const gasPrice = await config.mainAccount.getGasPrice();
-                    for (let k = wgc.length - 1; k >= 0; k--) {
-                        await sweep(
-                            wgc[k],
-                            config.mainAccount,
-                            gasPrice,
-                            config.viemClient
-                        );
-                        wgc.splice(k, 1);
+                if (counter % 100 === 0) {
+                    // try to sweep garbage collected wallets that still have non sweeped tokens
+                    if (wgc.length) {
+                        const gasPrice = await config.mainAccount.getGasPrice();
+                        for (let k = wgc.length - 1; k >= 0; k--) {
+                            await sweepToMainWallet(
+                                wgc[k],
+                                config.mainAccount,
+                                gasPrice,
+                                config.viemClient
+                            );
+                            if (!wgc[k].BOUNTY.length) wgc.splice(k, 1);
+                        }
                     }
+                    // try to sweep token back to eth once every 100 rounds
+                    try {
+                        await sweepToEth(config);
+                    } catch(e) { /**/ }
                 }
 
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
@@ -491,128 +511,9 @@ const main = async argv => {
         });
         counter++;
     }
-    else for (let i = 1; i <= repetitions; i++) {
-        await tracer.startActiveSpan(`round-${i}`, async (roundSpan) => {
-            const botGasBalance = await config.viemClient.getBalance({
-                address: config.mainAccount.address
-            });
-            if (botMinBalance.gt(botGasBalance)) {
-                roundSpan.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: `bot is low on gas, expected at least: ${
-                        options.botMinBalance
-                    }, current balance: ${
-                        ethers.utils.formatUnits(botGasBalance)
-                    }`
-                });
-                roundSpan.end();
-                // wait 2 mins before trying again
-                await sleep(120000);
-            }
-            // remove pool memoizer cache on each interval
-            const now = Date.now();
-            if (lastInterval <= now) {
-                lastInterval = now + poolUpdateInterval;
-                config.dataFetcher = getDataFetcher(config.viemClient, config.lps, false);
-            }
-            const roundCtx = trace.setSpan(context.active(), roundSpan);
-            roundSpan.setAttributes({
-                ...await getMetaInfo(config, options.subgraph),
-                "meta.mainAccount": config.mainAccount.address,
-                "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
-                "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
-            });
-            try {
-                rotateProviders(config);
-                const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
-                    await arbRound(tracer, roundCtx, options, config);
-                if (txs && txs.length) {
-                    roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
-                    roundSpan.setAttribute("foundOpp", true);
-                }
-                else if (foundOpp) {
-                    roundSpan.setAttribute("foundOpp", true);
-                    roundSpan.setAttribute("didClear", false);
-                }
-                else {
-                    roundSpan.setAttribute("foundOpp", false);
-                    roundSpan.setAttribute("didClear", false);
-                }
-
-                // keep avg gas cost
-                if (roundAvgGasCost) {
-                    if (avgGasCost) {
-                        avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
-                    } else {
-                        avgGasCost = roundAvgGasCost;
-                    }
-                    // manage account by removing those that have ran out of gas
-                    // and issuing a new one into circulation
-                    if (config.accounts.length) {
-                        lastUsedAccountIndex = await manageAccounts(
-                            options.mnemonic,
-                            config.mainAccount,
-                            config.accounts,
-                            config.provider,
-                            lastUsedAccountIndex,
-                            avgGasCost,
-                            config.viemClient,
-                            wgc
-                        );
-                    }
-                }
-
-                // try to sweep garbage collected wallets that still have non sweeped tokens
-                if (wgc.length) {
-                    const gasPrice = await config.mainAccount.getGasPrice();
-                    for (let k = wgc.length - 1; k >= 0; k--) {
-                        await sweep(
-                            wgc[k],
-                            config.mainAccount,
-                            gasPrice,
-                            config.viemClient
-                        );
-                        wgc.splice(k, 1);
-                    }
-                }
-
-                roundSpan.setStatus({ code: SpanStatusCode.OK });
-            }
-            catch (error) {
-                let message = "";
-                if (error instanceof Error) message = error.message;
-                else if (typeof error === "string") message = error;
-                else {
-                    try {
-                        message = error.toString();
-                    } catch {
-                        message = "unknown error type";
-                    }
-                }
-                roundSpan.setAttribute("didClear", false);
-                roundSpan.recordException(getSpanException(error));
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
-            }
-
-            if (config.accounts.length) {
-                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
-            }
-            if (avgGasCost) {
-                roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
-            }
-
-            if (i !== repetitions) console.log(
-                `Starting round ${i + 1} in ${roundGap / 1000} seconds...`, "\n"
-            );
-            roundSpan.end();
-            await sleep(roundGap);
-            // give otel some time to export
-            await sleep(3000);
-        });
-    }
 
     // flush and close the connection.
+    // eslint-disable-next-line no-unreachable
     await exporter.shutdown();
     await sleep(10000);
 };
