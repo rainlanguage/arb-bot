@@ -1086,6 +1086,7 @@ function estimateProfit(
  * @param {string} receiverAddress - The address of the receiver
  * @param {string} routeProcessorAddress - The address of the RouteProcessor contract
  * @param {import("sushi/router").DataFetcher} dataFetcher - The DataFetcher instance
+ * @param {ethers.BigNumber} gasPrice - Gas price
  */
 const getRpSwap = async(
     chainId,
@@ -1095,6 +1096,7 @@ const getRpSwap = async(
     receiverAddress,
     routeProcessorAddress,
     dataFetcher,
+    gasPrice,
 ) => {
     const amountIn = sellAmount.toBigInt();
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
@@ -1104,7 +1106,7 @@ const getRpSwap = async(
         fromToken,
         amountIn,
         toToken,
-        Number(await dataFetcher.web3Client.getGasPrice()),
+        gasPrice.toNumber(),
         undefined,
         RPoolFilter
     );

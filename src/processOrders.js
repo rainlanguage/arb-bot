@@ -152,7 +152,7 @@ const processOrders = async(
                     }
                 } catch(e) {
 
-                    // keep track of avggas cost
+                    // keep track of avg gas cost
                     if (e.gasCost) {
                         if (!avgGasCost) {
                             avgGasCost = e.gasCost;

@@ -170,22 +170,10 @@ describe("Test accounts", async function () {
     it("should sweep to eth", async function () {
         const { hexlify, randomBytes } = ethers.utils;
         const chainId = 137;
-        const native = Native.onChain(chainId);
-        const bridge = new BridgeUnlimited(
-            WNATIVE_ADDRESS[chainId],
-            {
-                address: "",
-                name: native.name,
-                symbol: native.symbol,
-                chainId: chainId,
-                decimals: 18,
-            },
-            WNATIVE[chainId],
-            0,
-            50_000,
-        );
+        const wallet = hexlify(randomBytes(20));
         const poolAddress = hexlify(randomBytes(20));
         const fromToken = DAI[chainId];
+        const native = Native.onChain(chainId);
         const poolCodeMap = new Map([
             [
                 poolAddress,
@@ -204,43 +192,50 @@ describe("Test accounts", async function () {
             ],
             [
                 WNATIVE_ADDRESS[chainId],
-                new NativeWrapBridgePoolCode(bridge, LiquidityProviders.NativeWrap),
+                new NativeWrapBridgePoolCode(
+                    new BridgeUnlimited(
+                        WNATIVE_ADDRESS[chainId],
+                        {
+                            address: "",
+                            name: native.name,
+                            symbol: native.symbol,
+                            chainId: chainId,
+                            decimals: 18,
+                        },
+                        WNATIVE[chainId],
+                        0,
+                        50_000,
+                    ),
+                    LiquidityProviders.NativeWrap
+                ),
             ]
         ]);
         const config = {
             chain: { id: chainId },
             mainAccount: {
-                BALANCE: ethers.BigNumber.from("10000"),
+                address: wallet,
                 BOUNTY: [fromToken],
-                address: "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
-                getAddress: () => "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
+                BALANCE: ethers.BigNumber.from("10000"),
+                getAddress: () => wallet,
                 getGasPrice: async () => ethers.BigNumber.from(5),
                 estimateGas: async () => ethers.BigNumber.from(25),
                 getBalance: async () => ethers.BigNumber.from("10000"),
-                sendTransaction: async () => {
-                    return {
-                        hash: "0x1234",
-                        wait: async () => {
-                            return {
-                                status: 1,
-                                effectiveGasPrice: ethers.BigNumber.from(5),
-                                gasUsed: ethers.BigNumber.from(10),
-                                logs: [],
-                                events: [],
-                            };
-                        }
-                    };
-                }
+                sendTransaction: async () => ({
+                    hash: "0x1234",
+                    wait: async () => ({
+                        status: 1,
+                        effectiveGasPrice: ethers.BigNumber.from(5),
+                        gasUsed: ethers.BigNumber.from(10),
+                        logs: [],
+                        events: [],
+                    })
+                })
             },
             dataFetcher: {
-                fetchPoolsForToken: async () => {},
                 fetchedPairPools: [],
-                web3Client: {
-                    getGasPrice: async () => 30_000_000n
-                },
-                getCurrentPoolCodeMap: () => {
-                    return poolCodeMap;
-                },
+                fetchPoolsForToken: async () => {},
+                getCurrentPoolCodeMap: () => poolCodeMap,
+                web3Client: { getGasPrice: async () => 30_000_000n },
             },
             viemClient: {
                 chain: { id: chainId },

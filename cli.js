@@ -247,7 +247,6 @@ async function startup(argv) {
     let ordersDetails = [];
     if (!process?.env?.TEST) for (let i = 0; i < 20; i++) {
         try {
-            console.log("trying to find wallet erc20 tokens...");
             ordersDetails = await getOrderDetails(
                 options.subgraph,
                 options.orders,
@@ -260,7 +259,6 @@ async function startup(argv) {
             );
             break;
         } catch(e) {
-            console.log("retrying to find wallet erc20 tokens...");
             if (i != 19) await sleep(10000 * (i + 1));
             else throw e;
         }
@@ -296,7 +294,6 @@ async function startup(argv) {
         options,
         poolUpdateInterval,
         config,
-        tokens,
     };
 }
 
@@ -458,8 +455,9 @@ const main = async argv => {
                     }
                 }
 
+                // sweep tokens and wallets every 100 rounds
                 if (counter % 100 === 0) {
-                    // try to sweep garbage collected wallets that still have non sweeped tokens
+                    // try to sweep wallets that still have non transfered tokens to main wallet
                     if (wgc.length) {
                         const gasPrice = await config.mainAccount.getGasPrice();
                         for (let k = wgc.length - 1; k >= 0; k--) {
@@ -472,10 +470,8 @@ const main = async argv => {
                             if (!wgc[k].BOUNTY.length) wgc.splice(k, 1);
                         }
                     }
-                    // try to sweep token back to eth once every 100 rounds
-                    try {
-                        await sweepToEth(config);
-                    } catch(e) { /**/ }
+                    // try to sweep token back to eth
+                    try { await sweepToEth(config); } catch { /**/ }
                 }
 
                 roundSpan.setStatus({ code: SpanStatusCode.OK });

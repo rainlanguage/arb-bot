@@ -168,7 +168,7 @@ async function manageAccounts(
     let accountsToAdd = 0;
     const gasPrice = await mainAccount.getGasPrice();
     for (let i = accounts.length - 1; i >= 0; i--) {
-        if (accounts[i].BALANCE.lt(avgGasCost.mul(2))) {
+        if (accounts[i].BALANCE.lt(avgGasCost.mul(3))) {
             try {
                 await sweepToMainWallet(
                     accounts[i],
@@ -178,8 +178,10 @@ async function manageAccounts(
                 );
             } catch { /**/ }
             // keep in garbage if there are tokens left to sweep
-            if (accounts[i].BOUNTY.length && !wgc.find(v => v.address === accounts[i].address)) {
-                wgc.push(accounts[i]);
+            if (accounts[i].BOUNTY.length && !wgc.find(
+                v => v.address.toLowerCase() === accounts[i].address.toLowerCase()
+            )) {
+                wgc.unshift(accounts[i]);
             }
             accountsToAdd++;
             accounts.splice(i, 1);
@@ -193,8 +195,8 @@ async function manageAccounts(
             acc.BALANCE = balance;
             await setWatchedTokens(acc, watchedTokens, viemClient);
 
-            if (avgGasCost.mul(11).gt(balance)) {
-                const transferAmount = avgGasCost.mul(11).sub(balance);
+            if (avgGasCost.mul(23).gt(balance)) {
+                const transferAmount = avgGasCost.mul(23).sub(balance);
                 if (mainAccount.BALANCE.lt(transferAmount)) {
                     throw `main account lacks suffecient funds to topup wallets, current balance: ${
                         ethers.utils.formatUnits(mainAccount.BALANCE)
@@ -209,7 +211,7 @@ async function manageAccounts(
                     let txCost = ethers.constants.Zero;
                     try {
                         const receipt = await tx.wait(4);
-                        acc.BALANCE = avgGasCost.mul(11);
+                        acc.BALANCE = avgGasCost.mul(23);
                         txCost = ethers.BigNumber
                             .from(receipt.effectiveGasPrice)
                             .mul(receipt.gasUsed);
@@ -494,7 +496,8 @@ async function sweepToEth(config) {
                 Native.onChain(config.chain.id),
                 config.mainAccount.address,
                 rp4Address,
-                config.dataFetcher
+                config.dataFetcher,
+                gasPrice
             );
             const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
             const data = rp.encodeFunctionData(
@@ -508,23 +511,29 @@ async function sweepToEth(config) {
                     rpParams.routeCode
                 ]
             );
-            const approveTx = await config.mainAccount.sendTransaction({
+            const allowance = ethers.BigNumber.from((await config.viemClient.call({
                 to: bounty.address,
                 data: erc20.encodeFunctionData(
-                    "approve",
-                    [rp4Address, balance]
+                    "allowance",
+                    [config.mainAccount.address, rp4Address]
                 )
-            });
-            await approveTx.wait(2);
+            })).data);
+            if (allowance.lt(balance)) {
+                const approveTx = await config.mainAccount.sendTransaction({
+                    to: bounty.address,
+                    data: erc20.encodeFunctionData("approve", [rp4Address, balance])
+                });
+                await approveTx.wait(2);
+            }
             const rawtx = { to: rp4Address, data };
             const gasLimit = await config.mainAccount.estimateGas(rawtx);
-            const gasCost = gasPrice.mul(gasLimit.mul(25).div(10));
-            rawtx.gasPrice = gasPrice;
-            rawtx.gasLimit = gasLimit.mul(25).div(10);
+            const gasCost = gasPrice.mul(gasLimit.mul(15).div(10));
             if (gasCost.mul(2).gte(amountOutMin)) {
                 skipped.push(bounty);
                 continue;
             } else {
+                rawtx.gasPrice = gasPrice;
+                rawtx.gasLimit = gasLimit.mul(15).div(10);
                 const tx = await config.mainAccount.sendTransaction(rawtx);
                 await tx.wait(2);
             }
