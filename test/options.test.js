@@ -21,7 +21,7 @@ describe("Test app options", async function () {
         assert.deepEqual(config.lps, [LiquidityProviders.SushiSwapV2, LiquidityProviders.Biswap]);
         assert.equal(config.flashbotRpc, undefined);
         assert.equal(config.maxRatio, false);
-        assert.equal(config.hops, 7);
+        assert.equal(config.hops, 1);
         assert.equal(config.retries, 1);
         assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);

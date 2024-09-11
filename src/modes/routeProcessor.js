@@ -8,7 +8,6 @@ const { visualizeRoute, getSpanException, RPoolFilter, clone, estimateProfit } =
  */
 const RouteProcessorDryrunHaltReason = {
     NoOpportunity: 1,
-    NoWalletFund: 2,
     NoRoute: 3,
 };
 
@@ -161,20 +160,8 @@ async function dryrun({
         catch(e) {
             // reason, code, method, transaction, error, stack, message
             const spanError = getSpanException(e);
-            const errorString = JSON.stringify(spanError);
             spanAttributes["error"] = spanError;
-
-            // check for no wallet fund
-            if (
-                (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-                || errorString.includes("gas required exceeds allowance")
-                || errorString.includes("insufficient funds for gas")
-            ) {
-                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-            } else {
-                result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
-            }
+            result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             return Promise.reject(result);
         }
         gasLimit = gasLimit.mul("107").div("100");
@@ -222,20 +209,8 @@ async function dryrun({
             }
             catch(e) {
                 const spanError = getSpanException(e);
-                const errorString = JSON.stringify(spanError);
                 spanAttributes["error"] = spanError;
-
-                // check for no wallet fund
-                if (
-                    (e.code && e.code === ethers.errors.INSUFFICIENT_FUNDS)
-                    || errorString.includes("gas required exceeds allowance")
-                    || errorString.includes("insufficient funds for gas")
-                ) {
-                    result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
-                    spanAttributes["currentWalletBalance"] = signer.BALANCE.toString();
-                } else {
-                    result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
-                }
+                result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
                 return Promise.reject(result);
             }
         }
@@ -325,22 +300,14 @@ async function findOpp({
             // set the maxInput for next hop by increasing
             maximumInput = maximumInput.add(initAmount.div(2 ** i));
         } catch(e) {
-            // reject early in case of no wallet fund
-            if (e.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
-                spanAttributes["currentWalletBalance"] = e.spanAttributes["currentWalletBalance"];
-                return Promise.reject(result);
-            } else {
-                // the fail reason can only be no route in case all hops fail
-                // reasons are no route
-                if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
+            // the fail reason can only be no route in case all hops fail reasons are no route
+            if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
 
-                // record this hop attributes
-                // error attr is only recorded for first hop,
-                // since it is repeated and consumes lots of data
-                if (i !== 1) delete e.spanAttributes["error"];
-                allHopsAttributes.push(JSON.stringify(e.spanAttributes));
-            }
+            // record this hop attributes
+            // error attr is only recorded for first hop,
+            // since it is repeated and consumes lots of data
+            if (i !== 1) delete e.spanAttributes["error"];
+            allHopsAttributes.push(JSON.stringify(e.spanAttributes));
 
             // set the maxInput for next hop by decreasing
             maximumInput = maximumInput.sub(initAmount.div(2 ** i));
@@ -424,13 +391,6 @@ async function findOppWithRetries({
         return result;
     } else {
         for (let i = 0; i < allPromises.length; i++) {
-            if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoWalletFund) {
-                result.reason = RouteProcessorDryrunHaltReason.NoWalletFund;
-                if (allPromises[i].reason.spanAttributes["currentWalletBalance"]) {
-                    spanAttributes["currentWalletBalance"] = allPromises[i].reason.spanAttributes["currentWalletBalance"];
-                }
-                throw result;
-            }
             if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoRoute) {
                 result.reason = RouteProcessorDryrunHaltReason.NoRoute;
                 throw result;

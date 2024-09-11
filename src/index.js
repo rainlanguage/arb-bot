@@ -38,7 +38,7 @@ const configOptions = {
     /**
      * The amount of hops of binary search
      */
-    hops: 7,
+    hops: 1,
     /**
      * The amount of retries for the same order
      */
@@ -175,7 +175,7 @@ const getConfig = async(
         else throw "invalid gas coverage percentage, must be an integer greater than equal 0";
     }
 
-    let hops = 7;
+    let hops = 1;
     if (options.hops) {
         if (typeof options.hops === "number") {
             hops = options.hops;

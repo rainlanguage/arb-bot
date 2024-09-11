@@ -46,7 +46,9 @@ describe("Test find opp", async function () {
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
-        dataFetcher = {};
+        dataFetcher = {
+            fetchedPairPools: []
+        };
     });
 
     it("should find opp from RP", async function () {

@@ -165,6 +165,27 @@ describe("Test cli", async function () {
             assert.equal(error, expected);
         }
 
+        try {
+            await startup([
+                "",
+                "",
+                "--key",
+                `0x${"0".repeat(64)}`,
+                "--rpc",
+                "some-rpc",
+                "--arb-address",
+                `0x${"0".repeat(64)}`,
+                "--orderbook-address",
+                `0x${"0".repeat(64)}`,
+                "--pool-update-interval",
+                "10",
+            ]);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            const expected = "expected a valid value for --bot-min-balance, it should be an number greater than 0";
+            assert.equal(error, expected);
+        }
+
         const result = await startup([
             "",
             "",
@@ -176,6 +197,8 @@ describe("Test cli", async function () {
             `0x${"1".repeat(40)}`,
             "--orderbook-address",
             `0x${"2".repeat(40)}`,
+            "--bot-min-balance",
+            "0.123"
         ]);
         const expected = {
             roundGap: 10000,
@@ -186,6 +209,9 @@ describe("Test cli", async function () {
                 rpc: [ "https://rpc.ankr.com/polygon" ],
                 orderbookAddress: `0x${"2".repeat(40)}`,
                 arbAddress: `0x${"1".repeat(40)}`,
+            },
+            options: {
+                botMinBalance: "0.123",
             }
         };
         assert.equal(result.roundGap, expected.roundGap);
@@ -194,6 +220,6 @@ describe("Test cli", async function () {
         assert.equal(result.config.chain.id, expected.config.chain.id);
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
-
+        assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
     });
 });

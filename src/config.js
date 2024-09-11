@@ -96,6 +96,7 @@ function getDataFetcher(configOrViemClient, liquidityProviders = [], useFallback
             !liquidityProviders.length ? undefined : liquidityProviders
         );
         dataFetcher.stopDataFetching();
+        dataFetcher.fetchedPairPools = [];
         return dataFetcher;
     }
     catch(error) {

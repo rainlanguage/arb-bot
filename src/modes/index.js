@@ -75,28 +75,6 @@ async function findOpp({
     } else {
         const spanAttributes = {};
         const result = { spanAttributes };
-        if (
-            allResults[0]?.reason?.reason === 2
-            || allResults[1]?.reason?.reason === 2
-            || allResults[2]?.reason?.reason === 2
-        ) {
-            if (allResults[0]?.reason?.spanAttributes?.["currentWalletBalance"]) {
-                spanAttributes[
-                    "currentWalletBalance"
-                ] = allResults[0].reason.spanAttributes["currentWalletBalance"];
-            }
-            if (allResults[1]?.reason?.spanAttributes?.["currentWalletBalance"]) {
-                spanAttributes[
-                    "currentWalletBalance"
-                ] = allResults[1]?.reason.spanAttributes["currentWalletBalance"];
-            }
-            if (allResults[2]?.reason?.spanAttributes?.["currentWalletBalance"]) {
-                spanAttributes[
-                    "currentWalletBalance"
-                ] = allResults[2]?.reason.spanAttributes["currentWalletBalance"];
-            }
-            throw result;
-        }
         if (allResults[0]?.reason?.spanAttributes) {
             spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }
