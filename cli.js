@@ -3,6 +3,7 @@ const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
 const { getMetaInfo } = require("./src/config");
+const { ErrorSeverity } = require("./src/error");
 const { getDataFetcher } = require("./src/config");
 const { Resource } = require("@opentelemetry/resources");
 const { getOrderDetails, clear, getConfig } = require("./src");
@@ -117,6 +118,7 @@ const getOptions = async argv => {
  */
 const arbRound = async (tracer, roundCtx, options, config) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
+        let ordersCheck = false;
         const ctx = trace.setSpan(context.active(), span);
         try {
             const ordersDetails = await getOrderDetails(
@@ -130,6 +132,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
                 },
                 span
             );
+            ordersCheck = true;
             if (!ordersDetails.length) {
                 span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                 span.end();
@@ -180,6 +183,9 @@ const arbRound = async (tracer, roundCtx, options, config) => {
                 } catch {
                     message = "unknown error type";
                 }
+            }
+            if (ordersCheck) {
+                span.setAttribute("severity", ErrorSeverity.HIGH);
             }
             span.setAttribute("didClear", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message });
@@ -357,6 +363,7 @@ const main = async argv => {
                     message = "unknown error type";
                 }
             }
+            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
             startupSpan.setStatus({ code: SpanStatusCode.ERROR, message });
             startupSpan.recordException(getSpanException(e));
 
@@ -378,6 +385,7 @@ const main = async argv => {
     let avgGasCost;
     let counter = 0;
     const wgc = [];
+    const wgcBuffer = [];
     const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
 
     // run bot's processing orders in a loop
@@ -396,9 +404,11 @@ const main = async argv => {
                         ethers.utils.formatUnits(botGasBalance)
                     }`
                 });
+                roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
                 roundSpan.end();
                 // wait 2 mins before trying again
                 await sleep(120000);
+                return;
             }
             // remove pool memoizer cache on each interval
             const now = Date.now();
@@ -457,9 +467,12 @@ const main = async argv => {
 
                 // sweep tokens and wallets every 100 rounds
                 if (counter % 100 === 0) {
+                    let gasPrice;
+                    try {
+                        gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
+                    } catch { /**/ }
                     // try to sweep wallets that still have non transfered tokens to main wallet
-                    if (wgc.length) {
-                        const gasPrice = await config.mainAccount.getGasPrice();
+                    if (wgc.length && gasPrice) {
                         for (let k = wgc.length - 1; k >= 0; k--) {
                             await sweepToMainWallet(
                                 wgc[k],
@@ -467,10 +480,31 @@ const main = async argv => {
                                 gasPrice,
                                 config.viemClient
                             );
-                            if (!wgc[k].BOUNTY.length) wgc.splice(k, 1);
+                            if (!wgc[k].BOUNTY.length) {
+                                const index = wgcBuffer.findIndex(
+                                    v => v.address === wgc[k].address
+                                );
+                                if (index > -1) wgcBuffer.splice(index, 1);
+                                wgc.splice(k, 1);
+                            }
+                            else {
+                                // retry to sweep garbage wallet 3 times before letting it go
+                                const index = wgcBuffer.findIndex(
+                                    v => v.address === wgc[k].address
+                                );
+                                if (index > -1) {
+                                    wgcBuffer[index].count++;
+                                    if (wgcBuffer[index].count >= 3) {
+                                        wgcBuffer.splice(index, 1);
+                                        wgc.splice(k, 1);
+                                    }
+                                } else {
+                                    wgcBuffer.push({ address: wgc[k].address, count: 0 });
+                                }
+                            }
                         }
                     }
-                    // try to sweep token back to eth
+                    // try to sweep main wallet's tokens back to eth
                     try { await sweepToEth(config); } catch { /**/ }
                 }
 
@@ -487,6 +521,7 @@ const main = async argv => {
                         message = "unknown error type";
                     }
                 }
+                roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
                 roundSpan.setAttribute("didClear", false);
                 roundSpan.recordException(getSpanException(error));
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
@@ -499,6 +534,7 @@ const main = async argv => {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
 
+            // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();
             await sleep(roundGap);
