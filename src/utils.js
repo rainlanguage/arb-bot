@@ -388,7 +388,9 @@ const appGlobalLogger = (scrub, ...data) => {
 
     // intercepting the console with custom function to scrub and shorten loggings
     consoleMethods.forEach(methodName => {
+        // eslint-disable-next-line no-console
         const orgConsole = console[methodName];
+        // eslint-disable-next-line no-console
         console[methodName] = function (...params) {
             const modifiedParams = [];
             // const shortenedLogs = [];
@@ -534,6 +536,7 @@ const getRouteForTokens = async(
                 v.poolName +
                 ")";
         });
+        // eslint-disable-next-line no-console
         console.log("Route portions: ", routeText, "\n");
         const rpParams = Router.routeProcessor4Params(
             pcMap,

@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
+const { ErrorSeverity } = require("./error");
 const { rotateAccounts } = require("./account");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
@@ -148,6 +149,7 @@ const processOrders = async(
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
                     } else {
                         // set the span status to unexpected error
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
                         span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
                     }
                 } catch(e) {
@@ -172,25 +174,30 @@ const processOrders = async(
                             error: e.error,
                             reason: e.reason,
                         });
+                        span.setAttribute("severity", ErrorSeverity.MEDIUM);
 
                         // set the otel span status based on returned reason
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
                             if (e.error) {
                                 span.recordException(getSpanException(e.error));
                             }
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to quote order" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             if (e.error) span.recordException(getSpanException(e.error));
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
                             if (e.error) span.recordException(getSpanException(e.error));
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
                             // set OK status because a token might not have a pool and as a result eth price cannot
                             // be fetched for it and if it is set to ERROR it will constantly error on each round
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                            span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get eth price" });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
@@ -209,6 +216,7 @@ const processOrders = async(
                             reason: ProcessPairHaltReason.UnexpectedError,
                         });
                         // set the span status to unexpected error
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
                         span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
                     }
                 }
@@ -466,6 +474,7 @@ async function processPair(args) {
                 : await signer.sendTransaction(rawtx);
 
         txUrl = config.chain.blockExplorers.default.url + "/tx/" + tx.hash;
+        // eslint-disable-next-line no-console
         console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
         spanAttributes["details.txUrl"] = txUrl;
         spanAttributes["details.tx"] = JSON.stringify(tx);

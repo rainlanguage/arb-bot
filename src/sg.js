@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { ErrorSeverity } = require("./error");
 const { orderbooksQuery } = require("./query");
 
 /**
@@ -8,11 +9,13 @@ const { orderbooksQuery } = require("./query");
 function checkSgStatus(validSgs, statusResult, span, hasjson) {
     const availableSgs = [];
     const reasons = {};
+    let highSeverity = false;
     for (let i = 0; i < statusResult.length; i++) {
         if (statusResult[i].status === "fulfilled") {
             const sgStatus = statusResult[i]?.value?.data?.data?._meta;
             if (sgStatus) {
                 if (sgStatus.hasIndexingErrors) {
+                    highSeverity = true;
                     reasons[validSgs[i]] = "subgraph has indexing error";
                 } else availableSgs.push(validSgs[i]);
             } else {
@@ -22,7 +25,11 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
             reasons[validSgs[i]] = statusResult[i].reason;
         }
     }
-    if (Object.keys(reasons).length) span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
+    if (Object.keys(reasons).length) {
+        if (highSeverity) span?.setAttribute("severity", ErrorSeverity.HIGH);
+        else span?.setAttribute("severity", ErrorSeverity.LOW);
+        span?.setAttribute("details.sgsStatusCheck", JSON.stringify(reasons));
+    }
     if (!hasjson && Object.keys(reasons).length === statusResult.length) {
         const urls = Object.keys(reasons);
         const msg = ["subgraphs status check failed"];
@@ -81,7 +88,10 @@ function handleSgResults(availableSgs, responses, span, hasjson) {
             reasons[availableSgs[i]] = responses[i].reason;
         }
     }
-    if (Object.keys(reasons).length) span?.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
+    if (Object.keys(reasons).length) {
+        span?.setAttribute("severity", ErrorSeverity.LOW);
+        span?.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
+    }
     if (!hasjson && Object.keys(reasons).length === responses.length) throw "could not get order details from given sgs";
     return ordersDetails;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const { assert } = require("chai");
 const { Resource } = require("@opentelemetry/resources");
 const { diag, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
