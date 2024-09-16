@@ -1168,6 +1168,25 @@ function getOrdersTokens(ordersDetails) {
     return tokens;
 }
 
+async function routeExists(config, fromToken, toToken, gasPrice) {
+    try {
+        await getRpSwap(
+            config.chain.id,
+            ethers.BigNumber.from("1" + "0".repeat(fromToken.decimals)),
+            fromToken,
+            toToken,
+            config.mainAccount.address,
+            config.mainAccount.address,
+            config.dataFetcher,
+            gasPrice
+        );
+        return true;
+    } catch(e) {
+        if (e === "NoWay") return false;
+        else return true;
+    }
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -1193,4 +1212,5 @@ module.exports = {
     estimateProfit,
     getRpSwap,
     getOrdersTokens,
+    routeExists,
 };
