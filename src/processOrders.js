@@ -196,8 +196,7 @@ const processOrders = async(
                             // be fetched for it and if it is set to ERROR it will constantly error on each round
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get eth price" });
+                            span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
