@@ -1212,5 +1212,5 @@ module.exports = {
     estimateProfit,
     getRpSwap,
     getOrdersTokens,
-    routeExists,
+    routeExists
 };
