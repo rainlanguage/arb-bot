@@ -1213,9 +1213,9 @@ async function routeExists(config, fromToken, toToken, gasPrice) {
  * Get error with snapshot
  * @param {string} header
  * @param {any} err
- * @returns {BotError}
+ * @returns {string}
  */
-function getBotError(header, err) {
+function errorSnapshot(header, err) {
     const message = [header];
     if (err instanceof BaseError) {
         if (err.shortMessage) message.push("Reason: " + err.shortMessage);
@@ -1233,10 +1233,7 @@ function getBotError(header, err) {
             message.push("Reason: unknown error type");
         }
     }
-    return {
-        snapshot: message.join("\n"),
-        error: err
-    };
+    return message.join("\n");
 }
 
 
@@ -1273,7 +1270,7 @@ module.exports = {
     estimateProfit,
     getRpSwap,
     getOrdersTokens,
-    getBotError,
+    errorSnapshot,
     routeExists,
     withBigintSerializer,
 };

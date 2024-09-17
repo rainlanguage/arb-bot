@@ -7,7 +7,7 @@ const { ErrorSeverity } = require("./src/error");
 const { Resource } = require("@opentelemetry/resources");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { sleep, getSpanException, getOrdersTokens } = require("./src/utils");
+const { sleep, getOrdersTokens, errorSnapshot } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } = require("./src/account");
@@ -181,25 +181,13 @@ const arbRound = async (tracer, roundCtx, options, config) => {
             span.end();
             return { txs, foundOpp, avgGasCost };
         } catch(e) {
-            let message = "";
-            if (e instanceof Error) {
-                if ("reason" in e) message = e.reason;
-                else message = e.message;
-            }
-            else if (typeof e === "string") message = e;
-            else {
-                try {
-                    message = e.toString();
-                } catch {
-                    message = "unknown error type";
-                }
-            }
+            const snapshot = errorSnapshot("", e);
             if (ordersCheck) {
                 span.setAttribute("severity", ErrorSeverity.HIGH);
             }
             span.setAttribute("didClear", false);
-            span.setStatus({ code: SpanStatusCode.ERROR, message });
-            span.recordException(getSpanException(e));
+            span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            span.recordException(e);
             span.end();
             return Promise.reject(message);
         }
@@ -360,22 +348,10 @@ const main = async argv => {
             startupSpan.end();
             return result;
         } catch (e) {
-            let message = "";
-            if (e instanceof Error) {
-                if ("reason" in e) message = e.reason;
-                else message = e.message;
-            }
-            else if (typeof e === "string") message = e;
-            else {
-                try {
-                    message = e.toString();
-                } catch {
-                    message = "unknown error type";
-                }
-            }
+            const snapshot = errorSnapshot("", e);
             startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message });
-            startupSpan.recordException(getSpanException(e));
+            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            startupSpan.recordException(e);
 
             // end this span and wait for it to finish
             startupSpan.end();
@@ -517,20 +493,11 @@ const main = async argv => {
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
             }
             catch (error) {
-                let message = "";
-                if (error instanceof Error) message = error.message;
-                else if (typeof error === "string") message = error;
-                else {
-                    try {
-                        message = error.toString();
-                    } catch {
-                        message = "unknown error type";
-                    }
-                }
+                const snapshot = errorSnapshot("", error);
                 roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.recordException(getSpanException(error));
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
+                roundSpan.recordException(error);
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
 
             if (config.accounts.length) {

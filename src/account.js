@@ -2,10 +2,10 @@ const { parseAbi } = require("viem");
 const { ethers } = require("ethers");
 const { Native, Token } = require("sushi/currency");
 const { ROUTE_PROCESSOR_4_ADDRESS } = require("sushi/config");
+const { shuffleArray, getRpSwap, sleep } = require("./utils");
 const { getDataFetcher, createViemClient } = require("./config");
 const { erc20Abi, multicall3Abi, routeProcessor3Abi } = require("./abis");
 const { mnemonicToAccount, privateKeyToAccount } = require("viem/accounts");
-const { shuffleArray, getRpSwap, sleep, getBotError } = require("./utils");
 
 /**
  * @import { BotConfig, CliOptions, ViemClient, TokenDetails } from "./types"
@@ -87,30 +87,25 @@ async function initAccounts(
                 // only topup those accounts that have lower than expected funds
                 const transferAmount = topupAmountBn.sub(balances[i + 1]);
                 if (transferAmount.gt(0)) {
-                    try {
-                        const hash = await mainAccount.sendTransaction({
-                            to: accounts[i].account.address,
-                            value: transferAmount.toBigInt(),
-                            gasPrice,
-                        });
-                        const receipt = await mainAccount.waitForTransactionReceipt({
-                            hash,
-                            confirmations: 4
-                        });
-                        const txCost = ethers.BigNumber
-                            .from(receipt.effectiveGasPrice)
-                            .mul(receipt.gasUsed);
-                        if (receipt.status === "success") {
-                            accounts[i].BALANCE = topupAmountBn;
-                            mainAccount.BALANCE = mainAccount.BALANCE
-                                .sub(transferAmount)
-                                .sub(txCost);
-                        } else {
-                            mainAccount.BALANCE = mainAccount.BALANCE.sub(txCost);
-                        }
-                    } catch (e) {
-                        const botError = getBotError("failed to topup wallets", e);
-                        return Promise.reject(botError);
+                    const hash = await mainAccount.sendTransaction({
+                        to: accounts[i].account.address,
+                        value: transferAmount.toBigInt(),
+                        gasPrice,
+                    });
+                    const receipt = await mainAccount.waitForTransactionReceipt({
+                        hash,
+                        confirmations: 4
+                    });
+                    const txCost = ethers.BigNumber
+                        .from(receipt.effectiveGasPrice)
+                        .mul(receipt.gasUsed);
+                    if (receipt.status === "success") {
+                        accounts[i].BALANCE = topupAmountBn;
+                        mainAccount.BALANCE = mainAccount.BALANCE
+                            .sub(transferAmount)
+                            .sub(txCost);
+                    } else {
+                        mainAccount.BALANCE = mainAccount.BALANCE.sub(txCost);
                     }
                 }
             }
@@ -133,7 +128,7 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
     let accountsToAdd = 0;
     const gasPrice = await config.viemClient.getGasPrice();
     for (let i = config.accounts.length - 1; i >= 0; i--) {
-        if (config.accounts[i].BALANCE.lt(avgGasCost.mul(3))) {
+        if (config.accounts[i].BALANCE.lt(avgGasCost.mul(15))) {
             try {
                 await sweepToMainWallet(
                     config.accounts[i],
@@ -153,7 +148,7 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
     }
     if (accountsToAdd > 0) {
         const topupAmountBN = ethers.utils.parseUnits(options.topupAmount);
-        for (let i = 0; i < accountsToAdd; i++) {
+        while (accountsToAdd > 0) {
             const acc = await createViemClient(
                 config.chain.id,
                 config.rpc,
@@ -192,17 +187,18 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
                         config.mainAccount.BALANCE = config.mainAccount.BALANCE
                             .sub(transferAmount)
                             .sub(txCost);
+                        if (!config.accounts.find(v =>
+                            v.account.address.toLowerCase() === acc.account.address.toLowerCase()
+                        )) {
+                            config.accounts.push(acc);
+                        }
+                        accountsToAdd--;
                     } else {
                         config.mainAccount.BALANCE = config.mainAccount.BALANCE.sub(txCost);
                     }
                 } catch {
                     /**/
                 }
-            }
-            if (!config.accounts.find(
-                v => v.account.address.toLowerCase() === acc.account.address.toLowerCase()
-            )) {
-                config.accounts.push(acc);
             }
         }
     }

@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
 const { getBountyEnsureBytecode } = require("../config");
-const { visualizeRoute, RPoolFilter, clone, estimateProfit, withBigintSerializer } = require("../utils");
+const { visualizeRoute, RPoolFilter, clone, estimateProfit, withBigintSerializer, errorSnapshot } = require("../utils");
 
 /**
  * @import { PublicClient } from "viem"
@@ -183,7 +183,7 @@ async function dryrun({
         }
         catch(e) {
             // reason, code, method, transaction, error, stack, message
-            spanAttributes["error"] = e;
+            spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             return Promise.reject(result);
@@ -232,7 +232,7 @@ async function dryrun({
                 );
             }
             catch(e) {
-                spanAttributes["error"] = e;
+                spanAttributes["error"] = errorSnapshot("", e);
                 spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
                 result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
                 return Promise.reject(result);

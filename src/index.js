@@ -6,9 +6,9 @@ const { versions } = require("process");
 const { processLps } = require("./utils");
 const { initAccounts } = require("./account");
 const { processOrders } = require("./processOrders");
+const { getOrderDetailsFromJson } = require("./utils");
 const { getQuery, statusCheckQuery } = require("./query");
 const { checkSgStatus, handleSgResults } = require("./sg");
-const { getOrderDetailsFromJson, getSpanException } = require("./utils");
 const { getChainConfig, createViemClient, getDataFetcher } = require("./config");
 
 /**
@@ -44,7 +44,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                 hasjson = true;
             }
             catch (error) {
-                span?.setAttribute("details.jsonSourceError", JSON.stringify(getSpanException(error)));
+                span?.setAttribute("details.jsonSourceError", JSON.stringify(error));
             }
         }
         if (!isInvalidSg) {
@@ -95,7 +95,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * @param {string} walletKey - The wallet mnemonic phrase or private key
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
  * @param {CliOptions} options - (optional) Optional parameters, liquidity providers
- * @returns {BotConfig} The configuration object
+ * @returns {Promise<BotConfig>} The configuration object
  */
 const getConfig = async(
     rpcUrls,

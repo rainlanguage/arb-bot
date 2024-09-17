@@ -13,6 +13,7 @@ const {
     getEthPrice,
     quoteOrders,
     bundleOrders,
+    errorSnapshot,
     PoolBlackList,
     getTotalIncome,
     getSpanException,
@@ -198,35 +199,58 @@ const processOrders = async(
 
                         // set the otel span status based on returned reason
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                            let message = "failed to quote order: " + orderPairObject.takeOrders[0].id;
                             if (e.error) {
-                                span.recordException(getSpanException(e.error));
+                                const err = errorSnapshot(message, e);
+                                message = err.snapshot;
+                                span.recordException(e);
                             }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: e.error ?? "failed to quote order" });
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                            if (e.error) span.recordException(getSpanException(e.error));
+                            let message = pair + ": failed to get gas price";
+                            if (e.error) {
+                                const err = errorSnapshot(message, e);
+                                message = err.snapshot;
+                                span.recordException(e);
+                            }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get gas price" });
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
-                            if (e.error) span.recordException(getSpanException(e.error));
+                            let message = pair + ": failed to get pool details";
+                            if (e.error) {
+                                const err = errorSnapshot(message, e);
+                                message = err.snapshot;
+                                span.recordException(e);
+                            }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": failed to get pool details" });
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
                             // set OK status because a token might not have a pool and as a result eth price cannot
                             // be fetched for it and if it is set to ERROR it will constantly error on each round
                             // resulting in lots of false positives
-                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                            span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
+                            let message = "failed to get eth price";
+                            if (e.error) {
+                                const err = errorSnapshot(message, e);
+                                message = err.snapshot;
+                                span.setAttribute("errorDetails", message);
+                            }
+                            span.setStatus({ code: SpanStatusCode.OK, message });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                            span.setStatus({ code: SpanStatusCode.OK });
+                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(e));
+                            span.setStatus({ code: SpanStatusCode.OK, message });
                             span.setAttribute("unsuccessfullClear", true);
                         }
                     } else {
                         // record the error for the span
-                        if (e.error) span.recordException(getSpanException(e.error));
+                        let message = pair + ": unexpected error";
+                        if (e.error) {
+                            const err = errorSnapshot(message, e);
+                            message = err.snapshot;
+                            span.recordException(e);
+                        }
 
                         // report the unexpected error reason
                         reports.push({
@@ -236,7 +260,7 @@ const processOrders = async(
                         });
                         // set the span status to unexpected error
                         span.setAttribute("severity", ErrorSeverity.HIGH);
-                        span.setStatus({ code: SpanStatusCode.ERROR, message: pair + ": unexpected error" });
+                        span.setStatus({ code: SpanStatusCode.ERROR, message });
                     }
                 }
                 span.end();

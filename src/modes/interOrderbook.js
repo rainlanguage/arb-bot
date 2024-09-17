@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { orderbookAbi } = require("../abis");
 const { getBountyEnsureBytecode } = require("../config");
-const { estimateProfit, withBigintSerializer } = require("../utils");
+const { estimateProfit, withBigintSerializer, errorSnapshot } = require("../utils");
 
 /**
  * @import { PublicClient } from "viem"
@@ -112,7 +112,7 @@ async function dryrun({
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     }
     catch(e) {
-        spanAttributes["error"] = e;
+        spanAttributes["error"] = errorSnapshot("", e);
         spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
         return Promise.reject(result);
     }
@@ -160,7 +160,7 @@ async function dryrun({
             );
         }
         catch(e) {
-            spanAttributes["error"] = e;
+            spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
             return Promise.reject(result);
         }

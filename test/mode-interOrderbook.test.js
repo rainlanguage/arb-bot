@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { ethers } = require("ethers");
 const { orderbookAbi } = require("../src/abis");
-const { estimateProfit } = require("../src/utils");
+const { estimateProfit, errorSnapshot } = require("../src/utils");
 const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp } = require("../src/modes/interOrderbook");
 
@@ -151,7 +151,7 @@ describe("Test inter-orderbook dryrun", async function () {
                 spanAttributes: {
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
-                    error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
+                    error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
                 }
             };
             assert.deepEqual(error.value, expected.value);
@@ -439,7 +439,7 @@ describe("Test inter-orderbook find opp", async function () {
                         [opposingOrderbookAddress]: {
                             maxInput: vaultBalance.toString(),
                             blockNumber: oppBlockNumber,
-                            error: err,
+                            error: errorSnapshot("", err),
                             rawtx: JSON.stringify(rawtx)
                         }
                     }),

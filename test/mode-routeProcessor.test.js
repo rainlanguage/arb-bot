@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { estimateProfit } = require("../src/utils");
+const { estimateProfit, errorSnapshot } = require("../src/utils");
 const { ethers, utils: { formatUnits } } = require("ethers");
 const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
@@ -216,7 +216,7 @@ describe("Test route processor dryrun", async function () {
                     marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
-                    error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
+                    error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
                     route: expectedRouteVisual,
                     rawtx: JSON.stringify(rawtx)
                 }
@@ -461,7 +461,7 @@ describe("Test route processor find opp", async function () {
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}","rawtx":${JSON.stringify(rawtx)}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                         `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
@@ -662,7 +662,7 @@ describe("Test find opp with retries", async function () {
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}","rawtx":${JSON.stringify(rawtx)}}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                         `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]

@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { orderbookAbi, erc20Abi } = require("../abis");
 const { getWithdrawEnsureBytecode } = require("../config");
-const { estimateProfit, withBigintSerializer } = require("../utils");
+const { estimateProfit, withBigintSerializer, errorSnapshot } = require("../utils");
 
 /**
  * @import { PublicClient } from "viem"
@@ -101,7 +101,7 @@ async function dryrun({
     }
     catch(e) {
         // reason, code, method, transaction, error, stack, message
-        spanAttributes["error"] = e;
+        spanAttributes["error"] = errorSnapshot("", e);
         spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
         return Promise.reject(result);
     }
@@ -176,7 +176,7 @@ async function dryrun({
             );
         }
         catch(e) {
-            spanAttributes["error"] = e;
+            spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
             return Promise.reject(result);
         }
