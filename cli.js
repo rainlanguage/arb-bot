@@ -189,7 +189,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
             span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             span.recordException(e);
             span.end();
-            return Promise.reject(message);
+            return Promise.reject(snapshot);
         }
     });
 };

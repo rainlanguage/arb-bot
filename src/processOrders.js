@@ -236,7 +236,7 @@ const processOrders = async(
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(e.error));
-                            span.setStatus({ code: SpanStatusCode.OK, message });
+                            span.setStatus({ code: SpanStatusCode.OK });
                             span.setAttribute("unsuccessfullClear", true);
                         }
                     } else {
