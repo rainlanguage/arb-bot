@@ -37,7 +37,11 @@ async function initAccounts(
         undefined,
         isMnemonic
             ? mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex: MainAccountDerivationIndex })
-            : privateKeyToAccount(mnemonicOrPrivateKey),
+            : privateKeyToAccount(
+                mnemonicOrPrivateKey.startsWith("0x")
+                    ? mnemonicOrPrivateKey
+                    : "0x" + mnemonicOrPrivateKey
+            ),
         config.timeout
     );
 
@@ -548,7 +552,7 @@ async function setWatchedTokens(account, watchedTokens, viemClient) {
     try {
         if (watchedTokens?.length) {
             account.BOUNTY = (await getBatchTokenBalanceForAccount(
-                account.address,
+                account.account.address,
                 watchedTokens,
                 viemClient
             ))

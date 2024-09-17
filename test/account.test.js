@@ -32,7 +32,11 @@ describe("Test accounts", async function () {
             chain: { id: 137 },
             multicall: async () => balances,
         };
-        const result = await getBatchTokenBalanceForAccount(`0x${"0".repeat(64)}`, [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`], viemClient);
+        const result = await getBatchTokenBalanceForAccount(
+            { account: { address: `0x${"0".repeat(64)}` } },
+            [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`],
+            viemClient
+        );
         const expected = balances.map(v => ethers.BigNumber.from(v));
         assert.deepEqual(result, expected);
     });
