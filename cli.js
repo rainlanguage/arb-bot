@@ -2,10 +2,10 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
-const { getMetaInfo } = require("./src/config");
 const { ErrorSeverity } = require("./src/error");
 const { Resource } = require("@opentelemetry/resources");
 const { getOrderDetails, clear, getConfig } = require("./src");
+const { getMetaInfo, getDataFetcher } = require("./src/config");
 const { ProcessPairReportStatus } = require("./src/processOrders");
 const { sleep, getOrdersTokens, errorSnapshot } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
@@ -17,7 +17,7 @@ const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpan
 /**
  * @import { Tracer } from "@opentelemetry/sdk-trace-base"
  * @import { Context } from "@opentelemetry/api"
- * @import { BotConfig, CliOptions} from "./src/types"
+ * @import { BotConfig, CliOptions } from "./src/types"
  */
 
 /**
@@ -78,7 +78,7 @@ const getOptions = async argv => {
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 1 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
-        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 7 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
         .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .option("--bot-min-balance <number>", "The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables")
@@ -200,7 +200,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 5;
+    let _poolUpdateInterval = 7;
 
     const options = await getOptions(argv);
 
@@ -400,7 +400,7 @@ const main = async argv => {
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                config.dataFetcher.fetchedPairPools = [];
+                config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({

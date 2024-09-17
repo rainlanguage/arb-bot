@@ -230,7 +230,9 @@ async function rotateProviders(config) {
             undefined,
             config.timeout
         );
+        const fetchedPairPools = config.dataFetcher.fetchedPairPools;
         const dataFetcher = await getDataFetcher(viemClient, config.lps, false);
+        dataFetcher.fetchedPairPools = fetchedPairPools;
 
         config.viemClient = viemClient;
         config.dataFetcher = dataFetcher;
