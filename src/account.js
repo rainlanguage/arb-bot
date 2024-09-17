@@ -216,8 +216,6 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
 async function rotateProviders(config) {
     if (config.rpc?.length > 1) {
         shuffleArray(config.rpc);
-        // const allProviders = config.rpc.map(v => new ethers.providers.JsonRpcProvider(v));
-        // const provider = new ethers.providers.FallbackProvider(allProviders);
         const viemClient = await createViemClient(
             config.chain.id,
             config.rpc,
@@ -227,7 +225,6 @@ async function rotateProviders(config) {
         );
         const dataFetcher = await getDataFetcher(viemClient, config.lps, false);
 
-        // config.provider = provider;
         config.viemClient = viemClient;
         config.dataFetcher = dataFetcher;
 
@@ -257,7 +254,6 @@ async function rotateProviders(config) {
                 config.accounts[i].account,
                 config.timeout
             );
-            // config.accounts[i].connect(provider);
             acc.BALANCE = balance;
             acc.BOUNTY = bounty;
             config.accounts[i] = acc;
@@ -342,11 +338,11 @@ async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
         try {
             const balance = ethers.BigNumber.from((await fromWallet.call({
                 to: bounty.address,
-                data: erc20.encodeFunctionData("balanceOf", [fromWallet.address])
+                data: erc20.encodeFunctionData("balanceOf", [fromWallet.account.address])
             })).data);
             const tx = {
                 to: bounty.address,
-                data: erc20.encodeFunctionData("transfer", [toWallet.address, balance]),
+                data: erc20.encodeFunctionData("transfer", [toWallet.account.address, balance]),
                 gasPrice
             };
             const gas = ethers.BigNumber.from(await fromWallet.estimateGas(tx));

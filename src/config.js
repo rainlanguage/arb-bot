@@ -187,7 +187,7 @@ function getWithdrawEnsureBytecode(
  * Get meta info for a bot to post on otel
  * @param {BotConfig} config
  * @param {string[]} sg
- * @return {{[key: string]: any}}
+ * @return {Promise<{[key: string]: any}>}
  */
 async function getMetaInfo(config, sg) {
     try {

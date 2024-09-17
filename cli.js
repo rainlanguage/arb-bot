@@ -379,7 +379,7 @@ const main = async argv => {
     while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const botGasBalance = await config.viemClient.getBalance({
-                address: config.mainAccount.address
+                address: config.mainAccount.account.address
             });
             if (botMinBalance.gt(botGasBalance)) {
                 roundSpan.setStatus({
@@ -405,12 +405,12 @@ const main = async argv => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
                 ...await getMetaInfo(config, options.subgraph),
-                "meta.mainAccount": config.mainAccount.address,
+                "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                rotateProviders(config);
+                await rotateProviders(config);
                 const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
                     await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
@@ -460,11 +460,10 @@ const main = async argv => {
                                 wgc[k],
                                 config.mainAccount,
                                 gasPrice,
-                                config.viemClient
                             );
                             if (!wgc[k].BOUNTY.length) {
                                 const index = wgcBuffer.findIndex(
-                                    v => v.address === wgc[k].address
+                                    v => v.address === wgc[k].account.address
                                 );
                                 if (index > -1) wgcBuffer.splice(index, 1);
                                 wgc.splice(k, 1);
@@ -472,7 +471,7 @@ const main = async argv => {
                             else {
                                 // retry to sweep garbage wallet 3 times before letting it go
                                 const index = wgcBuffer.findIndex(
-                                    v => v.address === wgc[k].address
+                                    v => v.address === wgc[k].account.address
                                 );
                                 if (index > -1) {
                                     wgcBuffer[index].count++;
@@ -481,7 +480,7 @@ const main = async argv => {
                                         wgc.splice(k, 1);
                                     }
                                 } else {
-                                    wgcBuffer.push({ address: wgc[k].address, count: 0 });
+                                    wgcBuffer.push({ address: wgc[k].account.address, count: 0 });
                                 }
                             }
                         }
@@ -501,7 +500,7 @@ const main = async argv => {
             }
 
             if (config.accounts.length) {
-                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.account.address));
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
