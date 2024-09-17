@@ -2,7 +2,8 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { ethers } = require("ethers");
 const { orderbookAbi } = require("../src/abis");
-const { estimateProfit, errorSnapshot } = require("../src/utils");
+const { errorSnapshot } = require("../src/error");
+const { estimateProfit } = require("../src/utils");
 const { getBountyEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp } = require("../src/modes/interOrderbook");
 
@@ -100,7 +101,6 @@ describe("Test inter-orderbook dryrun", async function () {
                         ]
                     ),
                     to: arb.address,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -238,7 +238,6 @@ describe("Test inter-orderbook find opp", async function () {
                         ]
                     ),
                     to: arb.address,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -335,7 +334,6 @@ describe("Test inter-orderbook find opp", async function () {
                         ]
                     ),
                     to: arb.address,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -428,8 +426,8 @@ describe("Test inter-orderbook find opp", async function () {
                     ]
                 ),
                 to: arb.address,
-                from: `0x${"1".repeat(40)}`,
                 gasPrice,
+                from: signer.account.address
             };
             const expected = {
                 value: undefined,

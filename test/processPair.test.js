@@ -475,9 +475,9 @@ describe("Test process pair", async function () {
                     ]
                 ),
                 to: arb.address,
-                from: signer.account.address,
                 gasPrice: gasPrice,
                 gas: gasLimitEstimation.mul("107").div("100").toString(),
+                from: signer.account.address,
             };
             const expected = {
                 report: {
@@ -577,7 +577,6 @@ describe("Test process pair", async function () {
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(errorReceipt),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
                     "details.quote": JSON.stringify({

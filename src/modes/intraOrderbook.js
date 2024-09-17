@@ -1,7 +1,8 @@
 const ethers = require("ethers");
+const { errorSnapshot } = require("../error");
 const { orderbookAbi, erc20Abi } = require("../abis");
 const { getWithdrawEnsureBytecode } = require("../config");
-const { estimateProfit, withBigintSerializer, errorSnapshot } = require("../utils");
+const { estimateProfit, withBigintSerializer } = require("../utils");
 
 /**
  * @import { PublicClient } from "viem"
@@ -87,7 +88,6 @@ async function dryrun({
             [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
         ),
         to: orderPairObject.orderbook,
-        from: signer.account.address,
         gasPrice
     };
 
@@ -102,12 +102,15 @@ async function dryrun({
     catch(e) {
         // reason, code, method, transaction, error, stack, message
         spanAttributes["error"] = errorSnapshot("", e);
-        spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
+        spanAttributes["rawtx"] = JSON.stringify({
+            ...rawtx,
+            from: signer.account.address,
+        }, withBigintSerializer);
         return Promise.reject(result);
     }
     gasLimit = gasLimit.mul("107").div("100");
     rawtx.gas = gasLimit.toBigInt();
-    const gasCost = gasLimit.mul(gasPrice);
+    let gasCost = gasLimit.mul(gasPrice);
 
     // repeat the same process with heaedroom if gas
     // coverage is not 0, 0 gas coverage means 0 minimum
@@ -150,7 +153,10 @@ async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            await signer.estimateGas(rawtx);
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = gasLimit.mul("107").div("100");
+            rawtx.gas = gasLimit.toBigInt();
+            gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getWithdrawEnsureBytecode(
                 signer.account.address,
                 orderPairObject.buyToken,
@@ -177,7 +183,10 @@ async function dryrun({
         }
         catch(e) {
             spanAttributes["error"] = errorSnapshot("", e);
-            spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
+            spanAttributes["rawtx"] = JSON.stringify({
+                ...rawtx,
+                from: signer.account.address,
+            }, withBigintSerializer);
             return Promise.reject(result);
         }
     }

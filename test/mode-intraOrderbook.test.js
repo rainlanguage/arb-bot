@@ -1,7 +1,8 @@
 const { assert } = require("chai");
 const testData = require("./data");
 const { ethers } = require("ethers");
-const { clone, estimateProfit, errorSnapshot } = require("../src/utils");
+const { errorSnapshot } = require("../src/error");
+const { clone, estimateProfit } = require("../src/utils");
 const { getWithdrawEnsureBytecode } = require("../src/config");
 const { dryrun, findOpp } = require("../src/modes/intraOrderbook");
 
@@ -111,7 +112,6 @@ describe("Test intra-orderbook dryrun", async function () {
                         [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
                     ),
                     to: orderPairObject.orderbook,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -252,7 +252,6 @@ describe("Test intra-orderbook find opp", async function () {
                         [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
                     ),
                     to: orderPairObject.orderbook,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -334,8 +333,8 @@ describe("Test intra-orderbook find opp", async function () {
                     [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
                 ),
                 to: orderPairObject.orderbook,
-                from: `0x${"1".repeat(40)}`,
                 gasPrice,
+                from: signer.account.address
             };
             const expected = {
                 value: undefined,

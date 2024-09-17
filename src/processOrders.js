@@ -1,22 +1,20 @@
 const ethers = require("ethers");
 const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
-const { ErrorSeverity } = require("./error");
 const { rotateAccounts } = require("./account");
 const { createViemClient } = require("./config");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
 const { privateKeyToAccount } = require("viem/accounts");
+const { ErrorSeverity, errorSnapshot } = require("./error");
 const {
     getIncome,
     routeExists,
     getEthPrice,
     quoteOrders,
     bundleOrders,
-    errorSnapshot,
     PoolBlackList,
     getTotalIncome,
-    getSpanException,
     quoteSingleOrder,
     getActualClearAmount,
     withBigintSerializer,
@@ -235,8 +233,12 @@ const processOrders = async(
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(e.error));
-                            span.setStatus({ code: SpanStatusCode.OK });
+                            let message = "transaction failed";
+                            if (e.error) {
+                                message = errorSnapshot(message, e.error);
+                                span.setAttribute("errorDetails", message);
+                            }
+                            span.setStatus({ code: SpanStatusCode.OK, message });
                             span.setAttribute("unsuccessfullClear", true);
                         }
                     } else {
@@ -510,7 +512,7 @@ async function processPair(args) {
     } catch(e) {
         // dont reject if getting block number fails but just record it,
         // since an opp is found and can ultimately be cleared
-        spanAttributes["details.blockNumberError"] = JSON.stringify(getSpanException(e));
+        spanAttributes["details.blockNumberError"] = errorSnapshot("failed to get block number", e);
     }
 
     // submit the tx
@@ -526,9 +528,10 @@ async function processPair(args) {
         spanAttributes["details.txUrl"] = txUrl;
     } catch(e) {
         // record rawtx in case it is not already present in the error
-        if (!JSON.stringify(e).includes(rawtx.data)) spanAttributes[
-            "details.rawTx"
-        ] = JSON.stringify(rawtx, withBigintSerializer);
+        spanAttributes["details.rawTx"] = JSON.stringify({
+            ...rawtx,
+            from: signer.account.address
+        }, withBigintSerializer);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -655,7 +658,6 @@ async function processPair(args) {
                 sellToken: orderPairObject.sellToken,
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
             };
-            spanAttributes["details.receipt"] = JSON.stringify(receipt, withBigintSerializer);
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
         }

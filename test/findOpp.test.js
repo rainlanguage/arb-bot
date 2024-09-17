@@ -99,7 +99,6 @@ describe("Test find opp", async function () {
                         ]
                     ),
                     to: arb.address,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -197,7 +196,6 @@ describe("Test find opp", async function () {
                         ]
                     ),
                     to: arb.address,
-                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
@@ -306,7 +304,6 @@ describe("Test find opp", async function () {
                     ),
                     to: orderPairObject.orderbook,
                     gasPrice,
-                    from: `0x${"1".repeat(40)}`,
                     gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 oppBlockNumber,
