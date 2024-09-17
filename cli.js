@@ -369,7 +369,7 @@ const main = async argv => {
     let lastInterval = Date.now() + poolUpdateInterval;
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost;
-    let counter = 0;
+    let counter = 1;
     const wgc = [];
     const wgcBuffer = [];
     const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
@@ -387,7 +387,7 @@ const main = async argv => {
                     message: `bot is low on gas, expected at least: ${
                         options.botMinBalance
                     }, current balance: ${
-                        ethers.utils.formatUnits(botGasBalance)
+                        ethers.utils.formatUnits(ethers.BigNumber.from(botGasBalance))
                     }`
                 });
                 roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
@@ -448,7 +448,7 @@ const main = async argv => {
                 }
 
                 // sweep tokens and wallets every 100 rounds
-                if (counter % 100 === 0) {
+                if ((counter % 100) === 0) {
                     let gasPrice;
                     try {
                         gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
@@ -475,7 +475,7 @@ const main = async argv => {
                                 );
                                 if (index > -1) {
                                     wgcBuffer[index].count++;
-                                    if (wgcBuffer[index].count >= 3) {
+                                    if (wgcBuffer[index].count >= 2) {
                                         wgcBuffer.splice(index, 1);
                                         wgc.splice(k, 1);
                                     }
@@ -488,7 +488,6 @@ const main = async argv => {
                     // try to sweep main wallet's tokens back to eth
                     try { await sweepToEth(config); } catch { /**/ }
                 }
-
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
             }
             catch (error) {
@@ -498,14 +497,12 @@ const main = async argv => {
                 roundSpan.recordException(error);
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
-
             if (config.accounts.length) {
                 roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.account.address));
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
-
             // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();

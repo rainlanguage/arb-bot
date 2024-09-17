@@ -203,6 +203,13 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
                 } catch {
                     /**/
                 }
+            } else {
+                if (!config.accounts.find(v =>
+                    v.account.address.toLowerCase() === acc.account.address.toLowerCase()
+                )) {
+                    config.accounts.push(acc);
+                }
+                accountsToAdd--;
             }
         }
     }
@@ -296,7 +303,7 @@ async function getBatchEthBalance(addresses, viemClient, multicallAddressOverrid
 /**
  * Get balance of multiple erc20 tokens for an account using multicall3
  * @param {string} address - The address to get its token balances
- * @param {string[]} tokens - The token addresses to get their balance
+ * @param {TokenDetails[]} tokens - The token addresses to get their balance
  * @param {ViemClient} viemClient - The viem client
  * @param {string=} multicallAddressOverride - Override multicall3 address
  */
@@ -311,7 +318,7 @@ async function getBatchTokenBalanceForAccount(
                 viemClient.chain?.contracts?.multicall3?.address ?? multicallAddressOverride,
         allowFailure: false,
         contracts: tokens.map(v => ({
-            address: v,
+            address: v.address,
             allowFailure: false,
             chainId: viemClient.chain.id,
             abi: parseAbi(erc20Abi),
@@ -534,7 +541,9 @@ async function sweepToEth(config) {
     for (let i = 0; i < 20; i++) {
         try {
             config.mainAccount.BALANCE = ethers.BigNumber.from(
-                await config.mainAccount.getBalance()
+                await config.mainAccount.getBalance({
+                    address: config.mainAccount.account.address
+                })
             );
             return;
         } catch {

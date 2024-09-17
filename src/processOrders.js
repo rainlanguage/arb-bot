@@ -201,27 +201,24 @@ const processOrders = async(
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
                             let message = "failed to quote order: " + orderPairObject.takeOrders[0].id;
                             if (e.error) {
-                                const err = errorSnapshot(message, e);
-                                message = err.snapshot;
-                                span.recordException(e);
+                                message = errorSnapshot(message, e.error);
+                                span.recordException(e.error);
                             }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             let message = pair + ": failed to get gas price";
                             if (e.error) {
-                                const err = errorSnapshot(message, e);
-                                message = err.snapshot;
-                                span.recordException(e);
+                                message = errorSnapshot(message, e.error);
+                                span.recordException(e.error);
                             }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
                             let message = pair + ": failed to get pool details";
                             if (e.error) {
-                                const err = errorSnapshot(message, e);
-                                message = err.snapshot;
-                                span.recordException(e);
+                                message = errorSnapshot(message, e.error);
+                                span.recordException(e.error);
                             }
                             span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
@@ -231,15 +228,14 @@ const processOrders = async(
                             // resulting in lots of false positives
                             let message = "failed to get eth price";
                             if (e.error) {
-                                const err = errorSnapshot(message, e);
-                                message = err.snapshot;
+                                message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
                             span.setStatus({ code: SpanStatusCode.OK, message });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(e));
+                            if (e.error) span.setAttribute("errorDetails", JSON.stringify(e.error));
                             span.setStatus({ code: SpanStatusCode.OK, message });
                             span.setAttribute("unsuccessfullClear", true);
                         }
@@ -247,9 +243,8 @@ const processOrders = async(
                         // record the error for the span
                         let message = pair + ": unexpected error";
                         if (e.error) {
-                            const err = errorSnapshot(message, e);
-                            message = err.snapshot;
-                            span.recordException(e);
+                            message = errorSnapshot(message, e.error);
+                            span.recordException(e.error);
                         }
 
                         // report the unexpected error reason
@@ -649,10 +644,8 @@ async function processPair(args) {
                     symbol: orderPairObject.sellTokenSymbol,
                 });
             }
-
             return result;
-        }
-        else {
+        } else {
             // keep track of gas consumption of the account
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
