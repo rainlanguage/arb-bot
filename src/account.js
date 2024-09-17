@@ -168,7 +168,7 @@ async function manageAccounts(
     let accountsToAdd = 0;
     const gasPrice = await mainAccount.getGasPrice();
     for (let i = accounts.length - 1; i >= 0; i--) {
-        if (accounts[i].BALANCE.lt(avgGasCost.mul(3))) {
+        if (accounts[i].BALANCE.lt(avgGasCost.mul(15))) {
             try {
                 await sweepToMainWallet(
                     accounts[i],
@@ -195,8 +195,8 @@ async function manageAccounts(
             acc.BALANCE = balance;
             await setWatchedTokens(acc, watchedTokens, viemClient);
 
-            if (avgGasCost.mul(23).gt(balance)) {
-                const transferAmount = avgGasCost.mul(23).sub(balance);
+            if (avgGasCost.mul(43).gt(balance)) {
+                const transferAmount = avgGasCost.mul(43).sub(balance);
                 if (mainAccount.BALANCE.lt(transferAmount)) {
                     throw `main account lacks suffecient funds to topup wallets, current balance: ${
                         ethers.utils.formatUnits(mainAccount.BALANCE)
@@ -211,7 +211,7 @@ async function manageAccounts(
                     let txCost = ethers.constants.Zero;
                     try {
                         const receipt = await tx.wait(4);
-                        acc.BALANCE = avgGasCost.mul(23);
+                        acc.BALANCE = avgGasCost.mul(43);
                         txCost = ethers.BigNumber
                             .from(receipt.effectiveGasPrice)
                             .mul(receipt.gasUsed);
