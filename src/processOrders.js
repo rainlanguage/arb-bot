@@ -461,7 +461,7 @@ async function processPair(args) {
             fromToken,
             toToken,
             signer,
-            gasPrice,
+            gasPrice: gasPrice.toBigInt(),
             config,
             viemClient,
             inputToEthPrice,

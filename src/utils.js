@@ -199,15 +199,6 @@ const getEthPrice = async(
     options = undefined,
     fetchPools = true,
 ) => {
-    // console.log(
-    //     config,
-    //     targetTokenAddress,
-    //     targetTokenDecimals,
-    //     gasPrice,
-    //     dataFetcher = undefined,
-    //     options = undefined,
-    //     fetchPools = true,
-    // );
     if(targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()){
         return "1";
     }
@@ -237,7 +228,7 @@ const getEthPrice = async(
         fromToken,
         amountIn.toBigInt(),
         toToken,
-        Number(gasPrice),
+        gasPrice.toNumber(),
         undefined,
         RPoolFilter
         // 30e9,

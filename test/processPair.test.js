@@ -475,7 +475,7 @@ describe("Test process pair", async function () {
                     ]
                 ),
                 to: arb.address,
-                gasPrice: gasPrice,
+                gasPrice: gasPrice.toString(),
                 gas: gasLimitEstimation.mul("107").div("100").toString(),
                 from: signer.account.address,
             };
