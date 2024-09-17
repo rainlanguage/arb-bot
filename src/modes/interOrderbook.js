@@ -1,10 +1,27 @@
 const ethers = require("ethers");
 const { orderbookAbi } = require("../abis");
 const { getBountyEnsureBytecode } = require("../config");
-const { getSpanException, estimateProfit } = require("../utils");
+const { estimateProfit, withBigintSerializer } = require("../utils");
+
+/**
+ * @import { PublicClient } from "viem"
+ * @import { BotConfig, BundledOrders, ViemClient, DryrunResult } from "../types"
+ */
 
 /**
  * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ *  opposingOrders: BundledOrders,
+ *  maximumInput: ethers.BigNumber
+ * }} args
  */
 async function dryrun({
     orderPairObject,
@@ -82,6 +99,7 @@ async function dryrun({
             ]
         ),
         to: arb.address,
+        from: signer.account.address,
         gasPrice
     };
 
@@ -91,16 +109,15 @@ async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = await signer.estimateGas(rawtx);
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     }
     catch(e) {
-        // reason, code, method, transaction, error, stack, message
-        const spanError = getSpanException(e);
-        spanAttributes["error"] = spanError;
+        spanAttributes["error"] = e;
+        spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
         return Promise.reject(result);
     }
     gasLimit = gasLimit.mul("107").div("100");
-    rawtx.gasLimit = gasLimit;
+    rawtx.gas = gasLimit.toBigInt();
     const gasCost = gasLimit.mul(gasPrice);
 
     // repeat the same process with heaedroom if gas
@@ -143,8 +160,8 @@ async function dryrun({
             );
         }
         catch(e) {
-            const spanError = getSpanException(e);
-            spanAttributes["error"] = spanError;
+            spanAttributes["error"] = e;
+            spanAttributes["rawtx"] = JSON.stringify(rawtx, withBigintSerializer);
             return Promise.reject(result);
         }
     }
@@ -171,6 +188,18 @@ async function dryrun({
 
 /**
  * Tries to find an opp by doing a binary search for the maxInput of an inter-orderbook arb tx
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  orderbooksOrders: BundledOrders[][],
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ * }} args
+ * @returns {Promise<DryrunResult>}
  */
 async function findOpp({
     orderPairObject,
@@ -275,6 +304,18 @@ async function findOpp({
 
 /**
  * Finds best maximumInput by doing a binary search
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ *  opposingOrders: BundledOrders,
+ *  maximumInput: ethers.BigNumber
+ * }} args
  */
 async function binarySearch({
     orderPairObject,

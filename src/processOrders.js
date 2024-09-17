@@ -3,23 +3,36 @@ const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
 const { ErrorSeverity } = require("./error");
 const { rotateAccounts } = require("./account");
+const { createViemClient } = require("./config");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
+const { privateKeyToAccount } = require("viem/accounts");
 const {
     getIncome,
+    routeExists,
     getEthPrice,
     quoteOrders,
     bundleOrders,
     PoolBlackList,
-    promiseTimeout,
     getTotalIncome,
     getSpanException,
     quoteSingleOrder,
     getActualClearAmount,
+    withBigintSerializer,
 } = require("./utils");
 
 /**
+ * @import { Tracer } from "@opentelemetry/sdk-trace-base"
+ * @import { Context } from "@opentelemetry/api"
+ * @import { PublicClient } from "viem"
+ * @import { DataFetcher } from "sushi"
+ * @import { BotConfig, BundledOrders, ProcessPairResult, ViemClient } from "./types"
+ */
+
+/**
  * Specifies reason that order process halted
+ * @readonly
+ * @enum {number}
  */
 const ProcessPairHaltReason = {
     FailedToQuote: 1,
@@ -33,6 +46,8 @@ const ProcessPairHaltReason = {
 
 /**
  * Specifies status of an processed order report
+ * @readonly
+ * @enum {number}
  */
 const ProcessPairReportStatus = {
     ZeroOutput: 1,
@@ -43,10 +58,10 @@ const ProcessPairReportStatus = {
 /**
  * Main function that processes all given orders and tries clearing them against onchain liquidity and reports the result
  *
- * @param {object} config - The configuration object
+ * @param {BotConfig} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
+ * @param {Tracer} tracer
+ * @param {Context} ctx
  */
 const processOrders = async(
     config,
@@ -97,9 +112,14 @@ const processOrders = async(
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
                 const flashbotSigner = config.flashbotRpc
-                    ? new ethers.Wallet(
-                        signer.privateKey,
-                        new ethers.providers.JsonRpcProvider(config.flashbotRpc)
+                    ? await createViemClient(
+                        config.chain.id,
+                        [config.flashbotRpc],
+                        undefined,
+                        privateKeyToAccount(ethers.utils.hexlify(
+                            ethers.utils.hexlify(signer.account.getHdKey().privateKey)
+                        )),
+                        config.timeout
                     )
                     : undefined;
 
@@ -196,7 +216,7 @@ const processOrders = async(
                             // be fetched for it and if it is set to ERROR it will constantly error on each round
                             // resulting in lots of false positives
                             if (e.error) span.setAttribute("errorDetails", JSON.stringify(getSpanException(e.error)));
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: "failed to get eth price" });
+                            span.setStatus({ code: SpanStatusCode.OK, message: "failed to get eth price" });
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
@@ -231,6 +251,20 @@ const processOrders = async(
 
 /**
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  dataFetcher: DataFetcher,
+ *  signer: ViemClient,
+ *  flashbotSigner: ViemClient|undefined,
+ *  arb: ethers.Contract,
+ *  genericArb: ethers.Contract,
+ *  orderbook: ethers.Contract,
+ *  pair: string,
+ *  orderbooksOrders: BundledOrders[][]
+ * }} args
+ * @returns {Promise<ProcessPairResult>}
  */
 async function processPair(args) {
     const {
@@ -310,7 +344,10 @@ async function processPair(args) {
     }
 
     // get pool details
-    if (!dataFetcher.fetchedPairPools.includes(pair)) {
+    if (
+        !dataFetcher.fetchedPairPools.includes(pair) ||
+        !routeExists(config, fromToken, toToken, gasPrice)
+    ) {
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
@@ -458,30 +495,21 @@ async function processPair(args) {
     }
 
     // submit the tx
-    let tx, txUrl;
+    let txhash, txUrl;
     try {
-        tx = config.timeout
-            ? await promiseTimeout(
-                (flashbotSigner !== undefined
-                    ? flashbotSigner.sendTransaction(rawtx)
-                    : signer.sendTransaction(rawtx)),
-                config.timeout,
-                `Transaction failed to get submitted after ${config.timeout}ms`
-            )
-            : flashbotSigner !== undefined
-                ? await flashbotSigner.sendTransaction(rawtx)
-                : await signer.sendTransaction(rawtx);
+        txhash = flashbotSigner !== undefined
+            ? await flashbotSigner.sendTransaction(rawtx)
+            : await signer.sendTransaction(rawtx);
 
-        txUrl = config.chain.blockExplorers.default.url + "/tx/" + tx.hash;
+        txUrl = config.chain.blockExplorers.default.url + "/tx/" + txhash;
         // eslint-disable-next-line no-console
         console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
         spanAttributes["details.txUrl"] = txUrl;
-        spanAttributes["details.tx"] = JSON.stringify(tx);
     } catch(e) {
         // record rawtx in case it is not already present in the error
         if (!JSON.stringify(e).includes(rawtx.data)) spanAttributes[
             "details.rawTx"
-        ] = JSON.stringify(rawtx);
+        ] = JSON.stringify(rawtx, withBigintSerializer);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -489,15 +517,16 @@ async function processPair(args) {
 
     // wait for tx receipt
     try {
-        const receipt = config.timeout
-            ? await promiseTimeout(
-                tx.wait(2),
-                config.timeout,
-                `Transaction failed to mine after ${config.timeout}ms`
-            )
-            : await tx.wait(2);
+        const receipt = await viemClient.waitForTransactionReceipt({
+            hash: txhash,
+            confirmation: 1
+        });
 
-        if (receipt.status === 1) {
+        const actualGasCost = ethers.BigNumber
+            .from(receipt.effectiveGasPrice)
+            .mul(receipt.gasUsed);
+        signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+        if (receipt.status === "success") {
             spanAttributes["didClear"] = true;
 
             const clearActualAmount = getActualClearAmount(
@@ -506,8 +535,16 @@ async function processPair(args) {
                 receipt
             );
 
-            const inputTokenIncome = getIncome(signer.address, receipt, orderPairObject.buyToken);
-            const outputTokenIncome = getIncome(signer.address, receipt, orderPairObject.sellToken);
+            const inputTokenIncome = getIncome(
+                signer.account.address,
+                receipt,
+                orderPairObject.buyToken
+            );
+            const outputTokenIncome = getIncome(
+                signer.account.address,
+                receipt,
+                orderPairObject.sellToken
+            );
             const income = getTotalIncome(
                 inputTokenIncome,
                 outputTokenIncome,
@@ -516,10 +553,6 @@ async function processPair(args) {
                 orderPairObject.buyTokenDecimals,
                 orderPairObject.sellTokenDecimals
             );
-
-            const actualGasCost = ethers.BigNumber.from(
-                receipt.effectiveGasPrice
-            ).mul(receipt.gasUsed);
             const netProfit = income
                 ? income.sub(actualGasCost)
                 : undefined;
@@ -570,7 +603,6 @@ async function processPair(args) {
 
             // keep track of gas consumption of the account and bounty token
             result.gasCost = actualGasCost;
-            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
             if (
                 inputTokenIncome &&
                 inputTokenIncome.gt(0) &&
@@ -598,20 +630,15 @@ async function processPair(args) {
         }
         else {
             // keep track of gas consumption of the account
-            const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
-                .mul(receipt.gasUsed);
-            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
                 tokenPair: pair,
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
+                actualGasCost: ethers.utils.formatUnits(actualGasCost),
             };
-            if (actualGasCost) {
-                result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
-            }
-            spanAttributes["details.receipt"] = JSON.stringify(receipt);
+            spanAttributes["details.receipt"] = JSON.stringify(receipt, withBigintSerializer);
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
         }

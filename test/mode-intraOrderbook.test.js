@@ -29,10 +29,8 @@ orderbooksOrders[0][0].orderbook = orderPairObject.orderbook;
 describe("Test intra-orderbook dryrun", async function () {
     beforeEach(() => {
         signer = {
-            address: `0x${"1".repeat(40)}`,
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -58,7 +56,7 @@ describe("Test intra-orderbook dryrun", async function () {
                 interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
                 bytecode: getWithdrawEnsureBytecode(
-                    signer.address,
+                    signer.account.address,
                     orderPairObject.buyToken,
                     orderPairObject.sellToken,
                     inputBalance,
@@ -113,8 +111,9 @@ describe("Test intra-orderbook dryrun", async function () {
                         [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
                     ),
                     to: orderPairObject.orderbook,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
@@ -160,7 +159,10 @@ describe("Test intra-orderbook dryrun", async function () {
                     error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
                 }
             };
-            assert.deepEqual(error, expected);
+            assert.deepEqual(error.value, expected.value);
+            assert.deepEqual(error.reason, expected.reason);
+            assert.deepEqual(error.spanAttributes.blockNumber, expected.spanAttributes.blockNumber);
+            assert.deepEqual(error.spanAttributes.error, expected.spanAttributes.error);
         }
     });
 });
@@ -168,10 +170,8 @@ describe("Test intra-orderbook dryrun", async function () {
 describe("Test intra-orderbook find opp", async function () {
     beforeEach(() => {
         signer = {
-            address: `0x${"1".repeat(40)}`,
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -197,7 +197,7 @@ describe("Test intra-orderbook find opp", async function () {
                 interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
                 bytecode: getWithdrawEnsureBytecode(
-                    signer.address,
+                    signer.account.address,
                     orderPairObject.buyToken,
                     orderPairObject.sellToken,
                     balance,
@@ -252,8 +252,9 @@ describe("Test intra-orderbook find opp", async function () {
                         [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
                     ),
                     to: orderPairObject.orderbook,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
@@ -290,6 +291,52 @@ describe("Test intra-orderbook find opp", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const withdrawInputCalldata = orderbook.interface.encodeFunctionData(
+                "withdraw2",
+                [
+                    orderPairObject.buyToken,
+                    "1",
+                    ethers.constants.MaxUint256,
+                    []
+                ]
+            );
+            const withdrawOutputCalldata = orderbook.interface.encodeFunctionData(
+                "withdraw2",
+                [
+                    orderPairObject.sellToken,
+                    "1",
+                    ethers.constants.MaxUint256,
+                    []
+                ]
+            );
+            const clear2Calldata = orderbook.interface.encodeFunctionData(
+                "clear2",
+                [
+                    orderPairObject.takeOrders[0].takeOrder.order,
+                    orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
+                    {
+                        aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
+                        aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
+                        bobInputIOIndex: orderbooksOrders[0][0]
+                            .takeOrders[0].takeOrder.inputIOIndex,
+                        bobOutputIOIndex: orderbooksOrders[0][0]
+                            .takeOrders[0].takeOrder.outputIOIndex,
+                        aliceBountyVaultId: "1",
+                        bobBountyVaultId: "1",
+                    },
+                    [],
+                    []
+                ]
+            );
+            const rawtx = {
+                data: orderbook.interface.encodeFunctionData(
+                    "multicall",
+                    [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
+                ),
+                to: orderPairObject.orderbook,
+                from: `0x${"1".repeat(40)}`,
+                gasPrice,
+            };
             const expected = {
                 value: undefined,
                 reason: undefined,
@@ -297,6 +344,7 @@ describe("Test intra-orderbook find opp", async function () {
                     intraOrderbook: [JSON.stringify({
                         blockNumber: oppBlockNumber,
                         error: err,
+                        rawtx: JSON.stringify(rawtx)
                     })],
                 }
             };

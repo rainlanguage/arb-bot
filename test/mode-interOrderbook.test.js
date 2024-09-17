@@ -30,9 +30,8 @@ const {
 describe("Test inter-orderbook dryrun", async function () {
     beforeEach(() => {
         signer = {
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -101,8 +100,9 @@ describe("Test inter-orderbook dryrun", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -154,7 +154,11 @@ describe("Test inter-orderbook dryrun", async function () {
                     error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
                 }
             };
-            assert.deepEqual(error, expected);
+            assert.deepEqual(error.value, expected.value);
+            assert.deepEqual(error.reason, expected.reason);
+            assert.deepEqual(error.spanAttributes.maxInput, expected.spanAttributes.maxInput);
+            assert.deepEqual(error.spanAttributes.blockNumber, expected.spanAttributes.blockNumber);
+            assert.deepEqual(error.spanAttributes.error, expected.spanAttributes.error);
         }
     });
 });
@@ -162,9 +166,8 @@ describe("Test inter-orderbook dryrun", async function () {
 describe("Test inter-orderbook find opp", async function () {
     beforeEach(() => {
         signer = {
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -235,8 +238,9 @@ describe("Test inter-orderbook find opp", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -331,8 +335,9 @@ describe("Test inter-orderbook find opp", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 oppBlockNumber,
@@ -374,6 +379,58 @@ describe("Test inter-orderbook find opp", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const opposingMaxInput = vaultBalance
+                .mul(orderPairObject.takeOrders[0].quote.ratio)
+                .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
+            const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
+                .div(orderPairObject.takeOrders[0].quote.ratio);
+            const obInterface = new ethers.utils.Interface(orderbookAbi);
+            const encodedFN = obInterface.encodeFunctionData(
+                "takeOrders2",
+                [{
+                    minimumInput: ethers.constants.One,
+                    maximumInput: opposingMaxInput,
+                    maximumIORatio: opposingMaxIORatio,
+                    orders: opposingOrderPairObject.takeOrders.map(v => v.takeOrder),
+                    data: "0x"
+                }]
+            );
+            const expectedTakeOrdersConfigStruct = {
+                minimumInput: ethers.constants.One,
+                maximumInput: vaultBalance,
+                maximumIORatio: ethers.constants.MaxUint256,
+                orders: [orderPairObject.takeOrders[0].takeOrder],
+                data: ethers.utils.defaultAbiCoder.encode(
+                    ["address", "address", "bytes"],
+                    [
+                        opposingOrderPairObject.orderbook,
+                        opposingOrderPairObject.orderbook,
+                        encodedFN
+                    ]
+                )
+            };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject.takeOrders[0]
+                        .takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
+            const rawtx = {
+                data: arb.interface.encodeFunctionData(
+                    "arb3",
+                    [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]
+                ),
+                to: arb.address,
+                from: `0x${"1".repeat(40)}`,
+                gasPrice,
+            };
             const expected = {
                 value: undefined,
                 reason: undefined,
@@ -383,6 +440,7 @@ describe("Test inter-orderbook find opp", async function () {
                             maxInput: vaultBalance.toString(),
                             blockNumber: oppBlockNumber,
                             error: err,
+                            rawtx: JSON.stringify(rawtx)
                         }
                     }),
                 }

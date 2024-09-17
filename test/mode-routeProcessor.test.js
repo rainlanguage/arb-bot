@@ -32,9 +32,8 @@ const {
 describe("Test route processor dryrun", async function () {
     beforeEach(() => {
         signer = {
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -93,8 +92,9 @@ describe("Test route processor dryrun", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -180,6 +180,35 @@ describe("Test route processor dryrun", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const expectedTakeOrdersConfigStruct = {
+                minimumInput: ethers.constants.One,
+                maximumInput: vaultBalance,
+                maximumIORatio: ethers.constants.MaxUint256,
+                orders: [orderPairObject.takeOrders[0].takeOrder],
+                data: expectedRouteData
+            };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject.takeOrders[0]
+                        .takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
+            const rawtx = {
+                data: arb.interface.encodeFunctionData(
+                    "arb3",
+                    [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]
+                ),
+                to: arb.address,
+                from: `0x${"1".repeat(40)}`,
+                gasPrice,
+            };
             const expected = {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
@@ -189,6 +218,7 @@ describe("Test route processor dryrun", async function () {
                     blockNumber: oppBlockNumber,
                     error: ethers.errors.UNPREDICTABLE_GAS_LIMIT,
                     route: expectedRouteVisual,
+                    rawtx: JSON.stringify(rawtx)
                 }
             };
             assert.deepEqual(error, expected);
@@ -199,9 +229,8 @@ describe("Test route processor dryrun", async function () {
 describe("Test route processor find opp", async function () {
     beforeEach(() => {
         signer = {
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -258,8 +287,9 @@ describe("Test route processor find opp", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -343,8 +373,9 @@ describe("Test route processor find opp", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
@@ -396,12 +427,41 @@ describe("Test route processor find opp", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const expectedTakeOrdersConfigStruct = {
+                minimumInput: ethers.constants.One,
+                maximumInput: vaultBalance,
+                maximumIORatio: ethers.constants.MaxUint256,
+                orders: [orderPairObject.takeOrders[0].takeOrder],
+                data: expectedRouteData
+            };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject.takeOrders[0]
+                        .takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
+            const rawtx = JSON.stringify({
+                data: arb.interface.encodeFunctionData(
+                    "arb3",
+                    [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]
+                ),
+                to: arb.address,
+                from: `0x${"1".repeat(40)}`,
+                gasPrice,
+            });
             const expected = {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}","rawtx":${JSON.stringify(rawtx)}}`,
                         `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]
@@ -450,9 +510,8 @@ describe("Test route processor find opp", async function () {
 describe("Test find opp with retries", async function () {
     beforeEach(() => {
         signer = {
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
             getBalance: async () => ethers.BigNumber.from(0)
         };
@@ -518,8 +577,9 @@ describe("Test find opp with retries", async function () {
                         ]
                     ),
                     to: arb.address,
+                    from: `0x${"1".repeat(40)}`,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -568,12 +628,41 @@ describe("Test find opp with retries", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const expectedTakeOrdersConfigStruct = {
+                minimumInput: ethers.constants.One,
+                maximumInput: vaultBalance,
+                maximumIORatio: ethers.constants.MaxUint256,
+                orders: [orderPairObject.takeOrders[0].takeOrder],
+                data: expectedRouteData
+            };
+            const task = {
+                evaluable: {
+                    interpreter: orderPairObject.takeOrders[0]
+                        .takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x"
+                },
+                signedContext: []
+            };
+            const rawtx = JSON.stringify({
+                data: arb.interface.encodeFunctionData(
+                    "arb3",
+                    [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]
+                ),
+                to: arb.address,
+                from: `0x${"1".repeat(40)}`,
+                gasPrice,
+            });
             const expected = {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                        `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}","rawtx":${JSON.stringify(rawtx)}}`,
                         `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                     ]

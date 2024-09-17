@@ -1,8 +1,9 @@
 const { getSgOrderbooks } = require("./sg");
 const { WNATIVE } = require("sushi/currency");
 const { DataFetcher } = require("sushi/router");
+const { viem: hardhatViem } = require("hardhat");
 const { ChainId, ChainKey } = require("sushi/chain");
-const { createPublicClient, http, fallback } = require("viem");
+const { http, fallback, createWalletClient, publicActions, walletActions } = require("viem");
 const {
     STABLES,
     publicClientConfig,
@@ -13,7 +14,12 @@ const {
 } = require("sushi/config");
 
 /**
+ * @import { BotConfig, ProcessPairResult, ChainConfig, ViemClient } from "./types"
+ */
+
+/**
  * @param {ChainId} chainId - The network chain id
+ * @returns {ChainConfig}
  */
 function getChainConfig(chainId) {
     const chain = publicClientConfig[chainId].chain;
@@ -43,50 +49,52 @@ function getChainConfig(chainId) {
 
 /**
  * Creates a viem client
- * @param {number} chainId - The chain id
+ * @param {ChainId} chainId - The chain id
  * @param {string[]} rpcs - The RPC urls
- * @param {boolean} useFallbacs - If fallback RPCs should be used as well or not
+ * @param {boolean=} useFallbacks - If fallback RPCs should be used as well or not
+ * @param {import("viem").HDAccount=} account - If fallback RPCs should be used as well or not
+ * @param {number=} timeout
+ * @return {Promise<ViemClient>}
  */
-function createViemClient(chainId, rpcs, useFallbacs = false) {
-    const transport = !rpcs || rpcs?.includes("test") || rpcs?.length === 0
+async function createViemClient(chainId, rpcs, useFallbacks = false, account, timeout) {
+    const transport = !rpcs || rpcs?.length === 0
         ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 6 })
-        : useFallbacs
+        : useFallbacks
             ? fallback(
-                [...rpcs.map(v => http(v)), ...fallbacks[chainId].transport],
+                [...rpcs.map(v => http(v, { timeout })), ...fallbacks[chainId].transport],
                 { rank: false, retryCount: 6 }
             )
-            : fallback(rpcs.map(v => http(v)), { rank: false, retryCount: 6 });
+            : fallback(rpcs.map(v => http(v, { timeout })), { rank: false, retryCount: 6 });
 
-    return createPublicClient({
-        chain: publicClientConfig[chainId]?.chain,
-        transport,
-        // batch: {
-        //     multicall: {
-        //         batchSize: 512
-        //     },
-        // },
-        // pollingInterval: 8_000,
-    });
+    return rpcs?.includes("test")
+        ? (await hardhatViem.getTestClient({account}))
+            .extend(publicActions)
+            .extend(walletActions)
+        : createWalletClient({
+            account,
+            chain: publicClientConfig[chainId]?.chain,
+            transport,
+        }).extend(publicActions);
 }
 
 /**
  * Instantiates a DataFetcher
- * @param {any} configOrViemClient - The network config data or a viem public client
+ * @param {BotConfig|import("viem").PublicClient} configOrViemClient - The network config data or a viem public client
  * @param {LiquidityProviders[]} liquidityProviders - Array of Liquidity Providers
+ * @returns {Promise<DataFetcher>}
  */
-function getDataFetcher(configOrViemClient, liquidityProviders = [], useFallbacks = false) {
+async function getDataFetcher(configOrViemClient, liquidityProviders = [], useFallbacks = false) {
     try {
         const dataFetcher = new DataFetcher(
-            ("transport" in configOrViemClient
-                ? configOrViemClient.chain.id
-                : configOrViemClient.chain.id
-            ),
+            configOrViemClient.chain.id,
             ("transport" in configOrViemClient
                 ? configOrViemClient
-                : createViemClient(
+                : await createViemClient(
                     configOrViemClient.chain.id,
                     configOrViemClient.rpc,
-                    useFallbacks
+                    useFallbacks,
+                    undefined,
+                    undefined
                 )
             )
         );
@@ -177,6 +185,9 @@ function getWithdrawEnsureBytecode(
 
 /**
  * Get meta info for a bot to post on otel
+ * @param {BotConfig} config
+ * @param {string[]} sg
+ * @return {{[key: string]: any}}
  */
 async function getMetaInfo(config, sg) {
     try {

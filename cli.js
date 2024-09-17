@@ -4,7 +4,6 @@ const { Command } = require("commander");
 const { version } = require("./package.json");
 const { getMetaInfo } = require("./src/config");
 const { ErrorSeverity } = require("./src/error");
-const { getDataFetcher } = require("./src/config");
 const { Resource } = require("@opentelemetry/resources");
 const { getOrderDetails, clear, getConfig } = require("./src");
 const { ProcessPairReportStatus } = require("./src/processOrders");
@@ -14,6 +13,12 @@ const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-convention
 const { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } = require("./src/account");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+
+/**
+ * @import { Tracer } from "@opentelemetry/sdk-trace-base"
+ * @import { Context } from "@opentelemetry/api"
+ * @import { BotConfig, CliOptions} from "./src/types"
+ */
 
 /**
  * Options specified in env variables
@@ -48,6 +53,10 @@ const ENV_OPTIONS = {
         : undefined
 };
 
+/**
+ * @param {any} argv
+ * @returns {Promise<CliOptions>}
+ */
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
@@ -112,9 +121,10 @@ const getOptions = async argv => {
 };
 
 /**
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} roundCtx
- * @param {*} options
+ * @param {Tracer} tracer
+ * @param {Context} roundCtx
+ * @param {CliOptions} options
+ * @param {BotConfig} config
  */
 const arbRound = async (tracer, roundCtx, options, config) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
@@ -202,7 +212,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 15;
+    let _poolUpdateInterval = 5;
 
     const options = await getOptions(argv);
 
@@ -414,7 +424,7 @@ const main = async argv => {
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                config.dataFetcher = getDataFetcher(config.viemClient, config.lps, false);
+                config.dataFetcher.fetchedPairPools = [];
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
@@ -448,21 +458,17 @@ const main = async argv => {
                     } else {
                         avgGasCost = roundAvgGasCost;
                     }
+                }
+                if (avgGasCost && config.accounts.length) {
                     // manage account by removing those that have ran out of gas
                     // and issuing a new one into circulation
-                    if (config.accounts.length) {
-                        lastUsedAccountIndex = await manageAccounts(
-                            options.mnemonic,
-                            config.mainAccount,
-                            config.accounts,
-                            config.provider,
-                            lastUsedAccountIndex,
-                            avgGasCost,
-                            config.viemClient,
-                            wgc,
-                            config.watchedTokens
-                        );
-                    }
+                    lastUsedAccountIndex = await manageAccounts(
+                        config,
+                        options,
+                        avgGasCost,
+                        lastUsedAccountIndex,
+                        wgc,
+                    );
                 }
 
                 // sweep tokens and wallets every 100 rounds
