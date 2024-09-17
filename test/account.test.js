@@ -162,6 +162,9 @@ describe("Test accounts", async function () {
             chain: { id: 137 },
             mainAccount,
             accounts,
+            dataFetcher: {
+                fetchedPairPools: []
+            }
         };
 
         await rotateProviders(config, mainAccount);
