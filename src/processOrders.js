@@ -88,19 +88,17 @@ const processOrders = async(
         true,
     );
     // check owned orders' vaults
-    await tracer.startActiveSpan("check-owned-orders", {}, ctx, async (span) => {
-        const ownedEmptyOrderIds = await checkOwnedOrders(config, bundledOrders);
-        if (ownedEmptyOrderIds.length) {
+    const ownedEmptyOrders = await checkOwnedOrders(config, bundledOrders);
+    if (ownedEmptyOrders.length) {
+        await tracer.startActiveSpan("check-owned-orders", {}, ctx, async (span) => {
             const message = [
                 "Reason: following owned orders have empty vaults:",
-                ...ownedEmptyOrderIds.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+                ...ownedEmptyOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
             ].join("\n");
             span.setStatus({ code: SpanStatusCode.ERROR, message });
-        } else {
-            span.setStatus({ code: SpanStatusCode.OK });
-        }
-        span.end();
-    });
+            span.end();
+        });
+    }
     await quoteOrders(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
