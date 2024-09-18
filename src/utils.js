@@ -7,6 +7,10 @@ const { erc20Abi, orderbookAbi, OrderV3 } = require("./abis");
 const { Router, LiquidityProviders } = require("sushi/router");
 const { doQuoteTargets } = require("@rainlanguage/orderbook/quote");
 
+/**
+ * @import { BundledOrders, TakeOrderDetails, BotError, RawTx } from "./types"
+ */
+
 function RPoolFilter(pool) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
 }
@@ -210,7 +214,7 @@ const getEthPrice = async(
         decimals: targetTokenDecimals,
         address: targetTokenAddress
     });
-    if (!dataFetcher) dataFetcher = getDataFetcher(config);
+    if (!dataFetcher) dataFetcher = await getDataFetcher(config);
     if (fetchPools) await dataFetcher.fetchPoolsForToken(
         fromToken,
         toToken,
@@ -501,7 +505,7 @@ const getRouteForTokens = async(
         decimals: toTokenDecimals,
         address: toTokenAddress
     });
-    const dataFetcher = getDataFetcher({ chain: { id: chainId }, rpc: rpcs });
+    const dataFetcher = await getDataFetcher({ chain: { id: chainId }, rpc: rpcs });
     await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
@@ -657,13 +661,14 @@ function getSpanException(error) {
  * @param {any[]} ordersDetails - Orders details queried from subgraph
  * @param {boolean} _shuffle - To shuffle the bundled order array at the end
  * @param {boolean} _bundle = If orders should be bundled based on token pair
- * @returns Array of bundled take orders
+ * @returns {BundledOrders[][]} Array of bundled take orders
  */
 const bundleOrders = (
     ordersDetails,
     _shuffle = true,
     _bundle = true,
 ) => {
+    /** @type {{[key: string]: BundledOrders[]}} */
     const bundledOrders = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
@@ -744,6 +749,10 @@ const bundleOrders = (
 
 /**
  * Gets vault balance of an order or combined value of vaults if bundled
+ * @param {BundledOrders} orderDetails
+ * @param {string} orderbookAddress
+ * @param {import("viem").PublicClient} viemClient
+ * @param {string=} multicallAddressOverride
  */
 async function getVaultBalance(
     orderDetails,
@@ -781,10 +790,10 @@ async function getVaultBalance(
 
 /**
  * Quotes order details that are already fetched and bundled by bundleOrder()
- * @param {any} orderDetails - Order details to quote
+ * @param {BundledOrders[][]} orderDetails - Order details to quote
  * @param {string[]} rpcs - RPC urls
  * @param {bigint} blockNumber - Optional block number
- * @param {string} multicallAddressOverride - Optional multicall address
+ * @param {string=} multicallAddressOverride - Optional multicall address
  */
 async function quoteOrders(
     orderDetails,
@@ -853,10 +862,10 @@ async function quoteOrders(
 
 /**
  * Quotes a single order
- * @param {any} orderDetails - Order details to quote
+ * @param {BundledOrders} orderDetails - Order details to quote
  * @param {string[]} rpcs - RPC urls
  * @param {bigint} blockNumber - Optional block number
- * @param {string} multicallAddressOverride - Optional multicall address
+ * @param {string=} multicallAddressOverride - Optional multicall address
  */
 async function quoteSingleOrder(
     orderDetails,
@@ -892,6 +901,10 @@ async function quoteSingleOrder(
     }
 }
 
+/**
+ * @param {any} orderDetails
+ * @returns {TakeOrderDetails}
+ */
 function getQuoteConfig(orderDetails) {
     return {
         order: {
@@ -1175,8 +1188,8 @@ async function routeExists(config, fromToken, toToken, gasPrice) {
             ethers.BigNumber.from("1" + "0".repeat(fromToken.decimals)),
             fromToken,
             toToken,
-            config.mainAccount.address,
-            config.mainAccount.address,
+            "0x" + "1".repeat(40),
+            "0x" + "2".repeat(40),
             config.dataFetcher,
             gasPrice
         );
@@ -1184,6 +1197,14 @@ async function routeExists(config, fromToken, toToken, gasPrice) {
     } catch(e) {
         if (e === "NoWay") return false;
         else return true;
+    }
+}
+
+function withBigintSerializer(_k, v) {
+    if (typeof v == "bigint") {
+        return v.toString();
+    } else {
+        return v;
     }
 }
 
@@ -1212,5 +1233,6 @@ module.exports = {
     estimateProfit,
     getRpSwap,
     getOrdersTokens,
-    routeExists
+    routeExists,
+    withBigintSerializer,
 };

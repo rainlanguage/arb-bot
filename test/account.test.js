@@ -1,13 +1,12 @@
 const { assert } = require("chai");
-const { ethers } = require("hardhat");
-const { erc20Abi } = require("../src/abis");
+const { ethers, viem } = require("hardhat");
+const { publicActions, walletActions } = require("viem");
 const { BridgeUnlimited, ConstantProductRPool } = require("sushi/tines");
 const { WNATIVE, WNATIVE_ADDRESS, Native, DAI } = require("sushi/currency");
 const { NativeWrapBridgePoolCode, LiquidityProviders, ConstantProductPoolCode } = require("sushi");
 const {
     initAccounts,
     manageAccounts,
-    withdrawBounty,
     rotateAccounts,
     rotateProviders,
     getBatchEthBalance,
@@ -33,26 +32,13 @@ describe("Test accounts", async function () {
             chain: { id: 137 },
             multicall: async () => balances,
         };
-        const result = await getBatchTokenBalanceForAccount(`0x${"0".repeat(64)}`, [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`], viemClient);
+        const result = await getBatchTokenBalanceForAccount(
+            { account: { address: `0x${"0".repeat(64)}` } },
+            [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`],
+            viemClient
+        );
         const expected = balances.map(v => ethers.BigNumber.from(v));
         assert.deepEqual(result, expected);
-    });
-
-    it("should withdraw bounty", async function () {
-        const viemClient = {
-            chain: { id: 137 },
-            call: async () => ({ data: 12n }),
-        };
-        const from = await ethers.getImpersonatedSigner("0xdF906eA18C6537C6379aC83157047F507FB37263");
-        await network.provider.send("hardhat_setBalance", [from.address, "0x4563918244F40000"]);
-        const token = new ethers.Contract("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", erc20Abi, from);
-        const to = await ethers.getSigner();
-
-        const toOriginalBalance = await token.balanceOf(to.address);
-        await withdrawBounty(from, to, token, {}, viemClient);
-        const toNewBalance = await token.balanceOf(to.address);
-
-        assert.equal(toNewBalance.sub(12n).toString(), toOriginalBalance.toString());
     });
 
     it("should initiate accounts successfully with mnemonic", async function () {
@@ -61,18 +47,27 @@ describe("Test accounts", async function () {
             multicall: async () => [10000n, 0n, 0n],
             getGasPrice: async() => 3000000n
         };
-        const provider = (await ethers.getSigner()).provider;
+        const config = {
+            chain: { id: 31337 },
+            rpc: ["test"],
+            watchedTokens: [],
+            viemClient
+        };
+        const options = {
+            walletCount: 2,
+            topupAmount: "0.0000000000000001"
+        };
         const mnemonic = "test test test test test test test test test test test junk";
-        const { mainAccount, accounts } = await initAccounts(mnemonic, provider, "0.0000000000000001", viemClient, 2);
+        const { mainAccount, accounts } = await initAccounts(mnemonic, config, options);
 
         const expected = [
             {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
             {address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"},
             {address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"},
         ];
-        assert.equal(mainAccount.address, expected[0].address);
-        assert.equal(accounts[0].address, expected[1].address);
-        assert.equal(accounts[1].address, expected[2].address);
+        assert.equal(mainAccount.account.address, expected[0].address);
+        assert.equal(accounts[0].account.address, expected[1].address);
+        assert.equal(accounts[1].account.address, expected[2].address);
     });
 
     it("should initiate accounts successfully with private key", async function () {
@@ -80,15 +75,24 @@ describe("Test accounts", async function () {
             chain: { id: 137 },
             multicall: async () => [10000n],
         };
-        const provider = (await ethers.getSigner()).provider;
+        const config = {
+            chain: { id: 31337 },
+            rpc: ["test"],
+            watchedTokens: [],
+            viemClient
+        };
+        const options = {
+            walletCount: 2,
+            topupAmount: "100"
+        };
         const key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-        const { mainAccount, accounts } = await initAccounts(key, provider, "100", viemClient, 2);
+        const { mainAccount, accounts } = await initAccounts(key, config, options);
 
         const expected = [
             {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "10000"},
         ];
         assert.isEmpty(accounts);
-        assert.equal(mainAccount.address, expected[0].address);
+        assert.equal(mainAccount.account.address, expected[0].address);
         assert.equal(mainAccount.BALANCE.toString(), expected[0].BALANCE);
     });
 
@@ -100,22 +104,40 @@ describe("Test accounts", async function () {
         };
         const mnemonic = "test test test test test test test test test test test junk";
 
-        const [mainAccount] = await ethers.getSigners();
-        const acc1 = await ethers.getImpersonatedSigner("0xdF906eA18C6537C6379aC83157047F507FB37263");
-        const acc2 = await ethers.getImpersonatedSigner("0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245");
-        await network.provider.send("hardhat_setBalance", [mainAccount.address, "0x4563918244F40000"]);
-        await network.provider.send("hardhat_setBalance", [acc1.address, "0x4563918244F40000"]);
-        await network.provider.send("hardhat_setBalance", [acc2.address, "0x4563918244F40000"]);
+        const mainAccount = (await viem.getTestClient({account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"})).extend(publicActions).extend(walletActions);
+        const acc1 = (await viem.getTestClient({account: "0xdF906eA18C6537C6379aC83157047F507FB37263"})).extend(publicActions).extend(walletActions);
+        const acc2 = (await viem.getTestClient({account: "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245"})).extend(publicActions).extend(walletActions);
+        await network.provider.send("hardhat_setBalance", [mainAccount.account.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [acc1.account.address, "0x4563918244F40000"]);
+        await network.provider.send("hardhat_setBalance", [acc2.account.address, "0x4563918244F40000"]);
         acc1.BOUNTY = ["0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"];
         acc2.BOUNTY = ["0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"];
-        const provider = acc1.provider;
 
         mainAccount.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
         acc1.BALANCE = ethers.BigNumber.from("10");
         acc2.BALANCE = ethers.BigNumber.from("0");
 
         const accounts = [acc1, acc2];
-        const result = await manageAccounts(mnemonic, mainAccount, accounts, provider, 20, ethers.BigNumber.from("100"), viemClient, [], []);
+        const config = {
+            chain: { id: 31337 },
+            rpc: ["test"],
+            watchedTokens: [],
+            viemClient,
+            accounts,
+            mainAccount
+        };
+        const options = {
+            walletCount: 2,
+            topupAmount: "0.00000000001",
+            mnemonic
+        };
+        const result = await manageAccounts(
+            config,
+            options,
+            ethers.BigNumber.from("100"),
+            20,
+            [],
+        );
         const expectedAccounts = [
             {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
             {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D"},
@@ -123,9 +145,9 @@ describe("Test accounts", async function () {
         ];
 
         assert.equal(result, 22);
-        assert.equal(mainAccount.address, expectedAccounts[0].address);
-        assert.equal(accounts[0].address, expectedAccounts[1].address);
-        assert.equal(accounts[1].address, expectedAccounts[2].address);
+        assert.equal(mainAccount.account.address, expectedAccounts[0].address);
+        assert.equal(accounts[0].account.address, expectedAccounts[1].address);
+        assert.equal(accounts[1].account.address, expectedAccounts[2].address);
     });
 
     it("should rotate providers", async function () {
@@ -133,21 +155,23 @@ describe("Test accounts", async function () {
             "http://localhost:8080/rpc-url1",
             "http://localhost:8080/rpc-url2"
         ];
-        const mainAccount = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-        const accounts = [new ethers.Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d")];
+        const mainAccount = (await viem.getTestClient({account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"})).extend(publicActions).extend(walletActions);
+        const accounts = [(await viem.getTestClient({account: "0xdF906eA18C6537C6379aC83157047F507FB37263"})).extend(publicActions).extend(walletActions)];
         const config = {
             rpc: rpcs,
             chain: { id: 137 },
             mainAccount,
             accounts,
+            dataFetcher: {
+                fetchedPairPools: []
+            }
         };
 
-        rotateProviders(config, mainAccount);
+        await rotateProviders(config, mainAccount);
 
         assert.exists(config.mainAccount);
         assert.exists(config.accounts);
         assert.exists(config.rpc);
-        assert.exists(config.provider);
         assert.exists(config.viemClient);
         assert.exists(config.dataFetcher);
         assert.equal(config.chain.id, 137);
@@ -213,22 +237,20 @@ describe("Test accounts", async function () {
         const config = {
             chain: { id: chainId },
             mainAccount: {
-                address: wallet,
+                account: {address: wallet},
                 BOUNTY: [fromToken],
                 BALANCE: ethers.BigNumber.from("10000"),
                 getAddress: () => wallet,
-                getGasPrice: async () => ethers.BigNumber.from(5),
-                estimateGas: async () => ethers.BigNumber.from(25),
-                getBalance: async () => ethers.BigNumber.from("10000"),
-                sendTransaction: async () => ({
-                    hash: "0x1234",
-                    wait: async () => ({
-                        status: 1,
-                        effectiveGasPrice: ethers.BigNumber.from(5),
-                        gasUsed: ethers.BigNumber.from(10),
-                        logs: [],
-                        events: [],
-                    })
+                getGasPrice: async () => 5n,
+                estimateGas: async () => 25n,
+                getBalance: async () => 10000n,
+                sendTransaction: async () => "0x1234",
+                waitForTransactionReceipt: async () => ({
+                    status: "success",
+                    effectiveGasPrice: ethers.BigNumber.from(5),
+                    gasUsed: ethers.BigNumber.from(10),
+                    logs: [],
+                    events: [],
                 })
             },
             dataFetcher: {

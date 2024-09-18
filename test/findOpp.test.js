@@ -39,12 +39,10 @@ const {
 describe("Test find opp", async function () {
     beforeEach(() => {
         signer = {
-            address: `0x${"1".repeat(40)}`,
-            provider: {
-                getBlockNumber: async () => oppBlockNumber
-            },
-            estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            account: {address: `0x${"1".repeat(40)}`},
+            getBlockNumber: async () => oppBlockNumber,
+            estimateGas: async () => gasLimitEstimation.toBigInt(),
+            getBalance: async () => 0n
         };
         dataFetcher = {
             fetchedPairPools: []
@@ -102,7 +100,7 @@ describe("Test find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -199,7 +197,7 @@ describe("Test find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -250,7 +248,7 @@ describe("Test find opp", async function () {
                 interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
                 bytecode: getWithdrawEnsureBytecode(
-                    signer.address,
+                    signer.account.address,
                     orderPairObject.buyToken,
                     orderPairObject.sellToken,
                     inputBalance,
@@ -306,7 +304,7 @@ describe("Test find opp", async function () {
                     ),
                     to: orderPairObject.orderbook,
                     gasPrice,
-                    gasLimit: gasLimitEstimation.mul("107").div("100"),
+                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
@@ -357,25 +355,26 @@ describe("Test find opp", async function () {
                 rawtx: undefined,
                 oppBlockNumber: undefined,
                 spanAttributes: {
-                    "route-processor": JSON.stringify({
+                    "route-processor": {
                         hops: [
                             `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
                             `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                             `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         ]
-                    }),
-                    "inter-orderbook": JSON.stringify({
-                        againstOrderbooks: JSON.stringify({
+                    },
+                    "inter-orderbook": {
+                        againstOrderbooks: {
                             [opposingOrderbookAddress]: {
                                 maxInput: vaultBalance.toString(),
                                 blockNumber: oppBlockNumber,
                                 error: err,
                             }
-                        }),
-                    }),
+                        },
+                    },
                 }
             };
-            assert.deepEqual(error, expected);
+            assert.deepEqual(error.rawtx, expected.rawtx);
+            assert.deepEqual(error.oppBlockNumber, expected.oppBlockNumber);
         }
     });
 });

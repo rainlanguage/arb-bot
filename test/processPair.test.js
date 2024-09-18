@@ -40,26 +40,21 @@ describe("Test process pair", async function () {
         mockServer.start(8082);
         config.gasCoveragePercentage = "0";
         signer = {
+            account: {address: "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb"},
             BALANCE: ethers.BigNumber.from(0),
             BOUNTY: [],
             getAddress: () => "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
-            provider: {
-                getBlockNumber: async () => 123456,
-                getGasPrice: async () => gasPrice,
-            },
+            getBlockNumber: async () => 123456,
+            getGasPrice: async () => gasPrice,
             estimateGas: async () => gasLimitEstimation,
-            sendTransaction: async () => {
+            sendTransaction: async () => txHash,
+            waitForTransactionReceipt: async () => {
                 return {
-                    hash: txHash,
-                    wait: async () => {
-                        return {
-                            status: 1,
-                            effectiveGasPrice,
-                            gasUsed,
-                            logs: [],
-                            events: [],
-                        };
-                    }
+                    status: "success",
+                    effectiveGasPrice,
+                    gasUsed,
+                    logs: [],
+                    events: [],
                 };
             }
         };
@@ -72,6 +67,15 @@ describe("Test process pair", async function () {
             multicall: async () => [vaultBalance.toBigInt()],
             getGasPrice: async () => gasPrice.toBigInt(),
             getBlockNumber: async () => 123456n,
+            waitForTransactionReceipt: async () => {
+                return {
+                    status: "success",
+                    effectiveGasPrice,
+                    gasUsed,
+                    logs: [],
+                    events: [],
+                };
+            }
         };
     });
     afterEach(() => mockServer.stop());
@@ -121,7 +125,6 @@ describe("Test process pair", async function () {
                 "oppBlockNumber": 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.route": expectedRouteVisual,
-                "details.tx": `{"hash":"${txHash}"}`,
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
@@ -196,7 +199,6 @@ describe("Test process pair", async function () {
                 "details.maxInput": vaultBalance.toString(),
                 "oppBlockNumber": 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
-                "details.tx": `{"hash":"${txHash}"}`,
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.toString(),
@@ -473,8 +475,9 @@ describe("Test process pair", async function () {
                     ]
                 ),
                 to: arb.address,
-                gasPrice,
-                gasLimit: gasLimitEstimation.mul("107").div("100"),
+                gasPrice: gasPrice.toString(),
+                gas: gasLimitEstimation.mul("107").div("100").toString(),
+                from: signer.account.address,
             };
             const expected = {
                 report: {
@@ -520,88 +523,10 @@ describe("Test process pair", async function () {
         }
     });
 
-    it("should fail to mine tx with rejection", async function () {
-        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
-        const evmError = {
-            status: 0,
-            code: ethers.errors.CALL_EXCEPTION
-        };
-        dataFetcher.getCurrentPoolCodeMap = () => {
-            return poolCodeMap;
-        };
-        signer.sendTransaction = async () => {
-            return {
-                hash: txHash,
-                wait: async () => { throw evmError; }
-            };
-        };
-        try {
-            await processPair({
-                config,
-                orderPairObject,
-                viemClient,
-                dataFetcher,
-                signer,
-                flashbotSigner: undefined,
-                arb,
-                orderbook,
-                pair,
-                mainAccount: signer,
-                accounts: [signer],
-                fetchedPairPools: [],
-            });
-            assert.fail("expected to reject, but resolved");
-        } catch(error) {
-            const expected = {
-                report: {
-                    status: ProcessPairReportStatus.FoundOpportunity,
-                    tokenPair: pair,
-                    buyToken: orderPairObject.buyToken,
-                    sellToken: orderPairObject.sellToken,
-                    txUrl: scannerUrl + "/tx/" + txHash,
-                },
-                reason: ProcessPairHaltReason.TxMineFailed,
-                error: evmError,
-                gasCost: undefined,
-                spanAttributes: {
-                    "details.pair": pair,
-                    "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString(),
-                    "details.blockNumber": 123456,
-                    "details.blockNumberDiff": 0,
-                    "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.maxInput": vaultBalance.toString(),
-                    "oppBlockNumber": 123456,
-                    "details.route": expectedRouteVisual,
-                    "foundOpp": true,
-                    "details.tx": `{"hash":"${txHash}"}`,
-                    "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
-                    "details.outputToEthPrice": "1",
-                    "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
-                    }),
-                    "details.estimatedProfit": ethers.utils.formatUnits(
-                        estimateProfit(
-                            orderPairObject,
-                            getCurrentInputToEthPrice(),
-                            ethers.utils.parseUnits("1"),
-                            undefined,
-                            getCurrentPrice(vaultBalance),
-                            vaultBalance
-                        )
-                    )
-                }
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
-    it("should fail to mine tx with resolve", async function () {
+    it("should fail to mine tx", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
         const errorReceipt = {
-            status: 0,
+            status: "reverted",
             code: ethers.errors.CALL_EXCEPTION,
             gasUsed,
             effectiveGasPrice,
@@ -609,12 +534,8 @@ describe("Test process pair", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        signer.sendTransaction = async () => {
-            return {
-                hash: txHash,
-                wait: async () => { return errorReceipt; }
-            };
-        };
+        signer.sendTransaction = async () => txHash;
+        viemClient.waitForTransactionReceipt = async () => errorReceipt;
         try {
             await processPair({
                 config,
@@ -655,9 +576,7 @@ describe("Test process pair", async function () {
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
-                    "details.tx": `{"hash":"${txHash}"}`,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
-                    "details.receipt": JSON.stringify(errorReceipt),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
                     "details.quote": JSON.stringify({

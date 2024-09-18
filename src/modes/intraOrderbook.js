@@ -1,10 +1,29 @@
 const ethers = require("ethers");
+const { errorSnapshot } = require("../error");
 const { orderbookAbi, erc20Abi } = require("../abis");
 const { getWithdrawEnsureBytecode } = require("../config");
-const { getSpanException, estimateProfit } = require("../utils");
+const { estimateProfit, withBigintSerializer } = require("../utils");
+
+/**
+ * @import { PublicClient } from "viem"
+ * @import { BotConfig, BundledOrders, ViemClient, TakeOrderDetails, DryrunResult } from "../types"
+ */
 
 /**
  * Executes a extimateGas call for an intra-orderbook tx (clear2()), to determine if the tx is successfull ot not
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  signer: ViemClient,
+ *  orderbooksOrders: BundledOrders[][],
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ *  inputBalance: ethers.BigNumber,
+ *  outputBalance: ethers.BigNumber,
+ *  opposingOrder: TakeOrderDetails
+ * }} args
  */
 async function dryrun({
     orderPairObject,
@@ -78,17 +97,20 @@ async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = await signer.estimateGas(rawtx);
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     }
     catch(e) {
         // reason, code, method, transaction, error, stack, message
-        const spanError = getSpanException(e);
-        spanAttributes["error"] = spanError;
+        spanAttributes["error"] = errorSnapshot("", e);
+        spanAttributes["rawtx"] = JSON.stringify({
+            ...rawtx,
+            from: signer.account.address,
+        }, withBigintSerializer);
         return Promise.reject(result);
     }
     gasLimit = gasLimit.mul("107").div("100");
-    rawtx.gasLimit = gasLimit;
-    const gasCost = gasLimit.mul(gasPrice);
+    rawtx.gas = gasLimit.toBigInt();
+    let gasCost = gasLimit.mul(gasPrice);
 
     // repeat the same process with heaedroom if gas
     // coverage is not 0, 0 gas coverage means 0 minimum
@@ -102,7 +124,7 @@ async function dryrun({
                 interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
                 bytecode: getWithdrawEnsureBytecode(
-                    signer.address,
+                    signer.account.address,
                     orderPairObject.buyToken,
                     orderPairObject.sellToken,
                     inputBalance,
@@ -131,9 +153,12 @@ async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            await signer.estimateGas(rawtx);
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = gasLimit.mul("107").div("100");
+            rawtx.gas = gasLimit.toBigInt();
+            gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getWithdrawEnsureBytecode(
-                signer.address,
+                signer.account.address,
                 orderPairObject.buyToken,
                 orderPairObject.sellToken,
                 inputBalance,
@@ -157,8 +182,11 @@ async function dryrun({
             );
         }
         catch(e) {
-            const spanError = getSpanException(e);
-            spanAttributes["error"] = spanError;
+            spanAttributes["error"] = errorSnapshot("", e);
+            spanAttributes["rawtx"] = JSON.stringify({
+                ...rawtx,
+                from: signer.account.address,
+            }, withBigintSerializer);
             return Promise.reject(result);
         }
     }
@@ -182,6 +210,17 @@ async function dryrun({
 
 /**
  * Tries to find an opp from the same orderbook's opposing orders
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  signer: ViemClient,
+ *  orderbooksOrders: BundledOrders[][],
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ * }} args
+ * @returns {Promise<DryrunResult>}
  */
 async function findOpp({
     orderPairObject,
@@ -228,11 +267,11 @@ async function findOpp({
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const inputBalance = ethers.BigNumber.from((await viemClient.call({
         to: orderPairObject.buyToken,
-        data: erc20.encodeFunctionData("balanceOf", [signer.address])
+        data: erc20.encodeFunctionData("balanceOf", [signer.account.address])
     })).data);
     const outputBalance = ethers.BigNumber.from((await viemClient.call({
         to: orderPairObject.sellToken,
-        data: erc20.encodeFunctionData("balanceOf", [signer.address])
+        data: erc20.encodeFunctionData("balanceOf", [signer.account.address])
     })).data);
     for (let i = 0; i < opposingOrders.length; i++) {
         try {

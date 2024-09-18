@@ -2,18 +2,23 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const { Command } = require("commander");
 const { version } = require("./package.json");
-const { getMetaInfo } = require("./src/config");
-const { ErrorSeverity } = require("./src/error");
-const { getDataFetcher } = require("./src/config");
 const { Resource } = require("@opentelemetry/resources");
+const { sleep, getOrdersTokens } = require("./src/utils");
 const { getOrderDetails, clear, getConfig } = require("./src");
+const { ErrorSeverity, errorSnapshot } = require("./src/error");
+const { getMetaInfo, getDataFetcher } = require("./src/config");
 const { ProcessPairReportStatus } = require("./src/processOrders");
-const { sleep, getSpanException, getOrdersTokens } = require("./src/utils");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } = require("./src/account");
 const { diag, trace, context, SpanStatusCode, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
 const { BasicTracerProvider, BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+
+/**
+ * @import { Tracer } from "@opentelemetry/sdk-trace-base"
+ * @import { Context } from "@opentelemetry/api"
+ * @import { BotConfig, CliOptions } from "./src/types"
+ */
 
 /**
  * Options specified in env variables
@@ -48,6 +53,10 @@ const ENV_OPTIONS = {
         : undefined
 };
 
+/**
+ * @param {any} argv
+ * @returns {Promise<CliOptions>}
+ */
 const getOptions = async argv => {
     const cmdOptions = new Command("node arb-bot")
         .option("-k, --key <private-key>", "Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables")
@@ -69,7 +78,7 @@ const getOptions = async argv => {
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 1 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
-        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 7 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
         .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .option("--bot-min-balance <number>", "The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables")
@@ -112,9 +121,10 @@ const getOptions = async argv => {
 };
 
 /**
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} roundCtx
- * @param {*} options
+ * @param {Tracer} tracer
+ * @param {Context} roundCtx
+ * @param {CliOptions} options
+ * @param {BotConfig} config
  */
 const arbRound = async (tracer, roundCtx, options, config) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
@@ -171,27 +181,15 @@ const arbRound = async (tracer, roundCtx, options, config) => {
             span.end();
             return { txs, foundOpp, avgGasCost };
         } catch(e) {
-            let message = "";
-            if (e instanceof Error) {
-                if ("reason" in e) message = e.reason;
-                else message = e.message;
-            }
-            else if (typeof e === "string") message = e;
-            else {
-                try {
-                    message = e.toString();
-                } catch {
-                    message = "unknown error type";
-                }
-            }
+            const snapshot = errorSnapshot("", e);
             if (ordersCheck) {
                 span.setAttribute("severity", ErrorSeverity.HIGH);
             }
             span.setAttribute("didClear", false);
-            span.setStatus({ code: SpanStatusCode.ERROR, message });
-            span.recordException(getSpanException(e));
+            span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            span.recordException(e);
             span.end();
-            return Promise.reject(message);
+            return Promise.reject(snapshot);
         }
     });
 };
@@ -202,7 +200,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 15;
+    let _poolUpdateInterval = 7;
 
     const options = await getOptions(argv);
 
@@ -350,22 +348,10 @@ const main = async argv => {
             startupSpan.end();
             return result;
         } catch (e) {
-            let message = "";
-            if (e instanceof Error) {
-                if ("reason" in e) message = e.reason;
-                else message = e.message;
-            }
-            else if (typeof e === "string") message = e;
-            else {
-                try {
-                    message = e.toString();
-                } catch {
-                    message = "unknown error type";
-                }
-            }
+            const snapshot = errorSnapshot("", e);
             startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message });
-            startupSpan.recordException(getSpanException(e));
+            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            startupSpan.recordException(e);
 
             // end this span and wait for it to finish
             startupSpan.end();
@@ -383,7 +369,7 @@ const main = async argv => {
     let lastInterval = Date.now() + poolUpdateInterval;
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost;
-    let counter = 0;
+    let counter = 1;
     const wgc = [];
     const wgcBuffer = [];
     const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
@@ -393,7 +379,7 @@ const main = async argv => {
     while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const botGasBalance = await config.viemClient.getBalance({
-                address: config.mainAccount.address
+                address: config.mainAccount.account.address
             });
             if (botMinBalance.gt(botGasBalance)) {
                 roundSpan.setStatus({
@@ -401,7 +387,7 @@ const main = async argv => {
                     message: `bot is low on gas, expected at least: ${
                         options.botMinBalance
                     }, current balance: ${
-                        ethers.utils.formatUnits(botGasBalance)
+                        ethers.utils.formatUnits(ethers.BigNumber.from(botGasBalance))
                     }`
                 });
                 roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
@@ -414,17 +400,17 @@ const main = async argv => {
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
-                config.dataFetcher = getDataFetcher(config.viemClient, config.lps, false);
+                config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
             }
             const roundCtx = trace.setSpan(context.active(), roundSpan);
             roundSpan.setAttributes({
                 ...await getMetaInfo(config, options.subgraph),
-                "meta.mainAccount": config.mainAccount.address,
+                "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
             });
             try {
-                rotateProviders(config);
+                await rotateProviders(config);
                 const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
                     await arbRound(tracer, roundCtx, options, config);
                 if (txs && txs.length) {
@@ -448,25 +434,21 @@ const main = async argv => {
                     } else {
                         avgGasCost = roundAvgGasCost;
                     }
+                }
+                if (avgGasCost && config.accounts.length) {
                     // manage account by removing those that have ran out of gas
                     // and issuing a new one into circulation
-                    if (config.accounts.length) {
-                        lastUsedAccountIndex = await manageAccounts(
-                            options.mnemonic,
-                            config.mainAccount,
-                            config.accounts,
-                            config.provider,
-                            lastUsedAccountIndex,
-                            avgGasCost,
-                            config.viemClient,
-                            wgc,
-                            config.watchedTokens
-                        );
-                    }
+                    lastUsedAccountIndex = await manageAccounts(
+                        config,
+                        options,
+                        avgGasCost,
+                        lastUsedAccountIndex,
+                        wgc,
+                    );
                 }
 
                 // sweep tokens and wallets every 100 rounds
-                if (counter % 100 === 0) {
+                if ((counter % 100) === 0) {
                     let gasPrice;
                     try {
                         gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
@@ -478,11 +460,10 @@ const main = async argv => {
                                 wgc[k],
                                 config.mainAccount,
                                 gasPrice,
-                                config.viemClient
                             );
                             if (!wgc[k].BOUNTY.length) {
                                 const index = wgcBuffer.findIndex(
-                                    v => v.address === wgc[k].address
+                                    v => v.address === wgc[k].account.address
                                 );
                                 if (index > -1) wgcBuffer.splice(index, 1);
                                 wgc.splice(k, 1);
@@ -490,16 +471,16 @@ const main = async argv => {
                             else {
                                 // retry to sweep garbage wallet 3 times before letting it go
                                 const index = wgcBuffer.findIndex(
-                                    v => v.address === wgc[k].address
+                                    v => v.address === wgc[k].account.address
                                 );
                                 if (index > -1) {
                                     wgcBuffer[index].count++;
-                                    if (wgcBuffer[index].count >= 3) {
+                                    if (wgcBuffer[index].count >= 2) {
                                         wgcBuffer.splice(index, 1);
                                         wgc.splice(k, 1);
                                     }
                                 } else {
-                                    wgcBuffer.push({ address: wgc[k].address, count: 0 });
+                                    wgcBuffer.push({ address: wgc[k].account.address, count: 0 });
                                 }
                             }
                         }
@@ -507,33 +488,21 @@ const main = async argv => {
                     // try to sweep main wallet's tokens back to eth
                     try { await sweepToEth(config); } catch { /**/ }
                 }
-
                 roundSpan.setStatus({ code: SpanStatusCode.OK });
             }
             catch (error) {
-                let message = "";
-                if (error instanceof Error) message = error.message;
-                else if (typeof error === "string") message = error;
-                else {
-                    try {
-                        message = error.toString();
-                    } catch {
-                        message = "unknown error type";
-                    }
-                }
+                const snapshot = errorSnapshot("", error);
                 roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
                 roundSpan.setAttribute("didClear", false);
-                roundSpan.recordException(getSpanException(error));
-                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message });
+                roundSpan.recordException(error);
+                roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
-
             if (config.accounts.length) {
-                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.address));
+                roundSpan.setAttribute("circulatingAccounts", config.accounts.map(v => v.account.address));
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
-
             // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();

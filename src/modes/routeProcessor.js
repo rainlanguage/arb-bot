@@ -1,14 +1,24 @@
 const ethers = require("ethers");
 const { Router } = require("sushi/router");
+const { errorSnapshot } = require("../error");
 const { getBountyEnsureBytecode } = require("../config");
-const { visualizeRoute, getSpanException, RPoolFilter, clone, estimateProfit } = require("../utils");
+const { visualizeRoute, RPoolFilter, clone, estimateProfit, withBigintSerializer } = require("../utils");
+
+/**
+ * @import { PublicClient } from "viem"
+ * @import { DataFetcher } from "sushi"
+ * @import { Token } from "sushi/currency"
+ * @import { BotConfig, BundledOrders, ViemClient, DryrunResult } from "../types"
+ */
 
 /**
  * Specifies the reason that dryrun failed
+ * @readonly
+ * @enum {number}
  */
 const RouteProcessorDryrunHaltReason = {
     NoOpportunity: 1,
-    NoRoute: 3,
+    NoRoute: 2,
 };
 
 /**
@@ -23,6 +33,20 @@ const getRouteProcessorParamsVersion = {
 
 /**
  * Executes a extimateGas call for an arb() tx, to determine if the tx is successfull ot not
+ * @param {{
+ *  mode: number,
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  dataFetcher: DataFetcher,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  gasPrice: bigint,
+ *  ethPrice: string,
+ *  toToken: Token,
+ *  fromToken: Token,
+ *  maximumInput: ethers.BigNumber
+ * }} args
  */
 async function dryrun({
     mode,
@@ -61,7 +85,7 @@ async function dryrun({
         fromToken,
         maximumInput.toBigInt(),
         toToken,
-        gasPrice.toNumber(),
+        Number(gasPrice),
         undefined,
         RPoolFilter
     );
@@ -155,18 +179,21 @@ async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = await signer.estimateGas(rawtx);
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
         }
         catch(e) {
             // reason, code, method, transaction, error, stack, message
-            const spanError = getSpanException(e);
-            spanAttributes["error"] = spanError;
+            spanAttributes["error"] = errorSnapshot("", e);
+            spanAttributes["rawtx"] = JSON.stringify({
+                ...rawtx,
+                from: signer.account.address,
+            }, withBigintSerializer);
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             return Promise.reject(result);
         }
         gasLimit = gasLimit.mul("107").div("100");
-        rawtx.gasLimit = gasLimit;
-        const gasCost = gasLimit.mul(gasPrice);
+        rawtx.gas = gasLimit.toBigInt();
+        let gasCost = gasLimit.mul(gasPrice);
 
         // repeat the same process with heaedroom if gas
         // coverage is not 0, 0 gas coverage means 0 minimum
@@ -192,7 +219,10 @@ async function dryrun({
             try {
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
-                await signer.estimateGas(rawtx);
+                gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+                gasLimit = gasLimit.mul("107").div("100");
+                rawtx.gas = gasLimit.toBigInt();
+                gasCost = gasLimit.mul(gasPrice);
                 task.evaluable.bytecode = getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
@@ -208,8 +238,11 @@ async function dryrun({
                 );
             }
             catch(e) {
-                const spanError = getSpanException(e);
-                spanAttributes["error"] = spanError;
+                spanAttributes["error"] = errorSnapshot("", e);
+                spanAttributes["rawtx"] = JSON.stringify({
+                    ...rawtx,
+                    from: signer.account.address,
+                }, withBigintSerializer);
                 result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
                 return Promise.reject(result);
             }
@@ -243,6 +276,20 @@ async function dryrun({
  * Tries to find an opp by doing a binary search for the maxInput of an arb tx
  * it calls dryrun() on each iteration and based on the outcome, +/- the maxInput
  * until the binary search is over and returns teh final result
+ * @param {{
+ *  mode: number,
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  dataFetcher: DataFetcher,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  gasPrice: bigint,
+ *  ethPrice: string,
+ *  toToken: Token,
+ *  fromToken: Token
+ * }} args
+ * @returns {Promise<DryrunResult>}
  */
 async function findOpp({
     mode,
@@ -306,7 +353,10 @@ async function findOpp({
             // record this hop attributes
             // error attr is only recorded for first hop,
             // since it is repeated and consumes lots of data
-            if (i !== 1) delete e.spanAttributes["error"];
+            if (i !== 1) {
+                delete e.spanAttributes["error"];
+                delete e.spanAttributes["rawtx"];
+            }
             allHopsAttributes.push(JSON.stringify(e.spanAttributes));
 
             // set the maxInput for next hop by decreasing
@@ -330,6 +380,19 @@ async function findOpp({
 
 /**
  * Tries to find opportunity for a signle order with retries and returns the best one if found any
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  dataFetcher: DataFetcher,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  gasPrice: bigint,
+ *  ethPrice: string,
+ *  toToken: Token,
+ *  fromToken: Token
+ * }} args
+ * @returns {Promise<DryrunResult>}
  */
 async function findOppWithRetries({
     orderPairObject,

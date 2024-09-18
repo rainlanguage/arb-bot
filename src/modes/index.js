@@ -3,11 +3,34 @@ const { findOpp: findIntraObOpp } = require("./intraOrderbook");
 const { findOppWithRetries: findRpOpp } = require("./routeProcessor");
 
 /**
+ * @import { PublicClient } from "viem"
+ * @import { DataFetcher } from "sushi"
+ * @import { Token } from "sushi/currency"
+ * @import { BotConfig, BundledOrders, ViemClient, DryrunValue } from "../types"
+ */
+
+/**
  * The main entrypoint for the main logic to find opps.
  * Find opps with different modes (RP, inter-ob) async, and returns the
  * span attributes and a built ready to send tx object if found any or the
  * the one that clears the most for the target order, or rejects if no opp
  * is found by returning the details in span attributes.
+ * @param {{
+ *  config: BotConfig,
+ *  orderPairObject: BundledOrders,
+ *  viemClient: PublicClient,
+ *  dataFetcher: DataFetcher,
+ *  signer: ViemClient,
+ *  arb: ethers.Contract,
+ *  genericArb: ethers.Contract,
+ *  orderbooksOrders: BundledOrders[][],
+ *  gasPrice: bigint,
+ *  inputToEthPrice: string,
+ *  outputToEthPrice: string,
+ *  toToken: Token,
+ *  fromToken: Token
+ * }} args
+ * @returns {Promise<DryrunValue>}
  */
 async function findOpp({
     orderPairObject,

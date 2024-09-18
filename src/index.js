@@ -6,61 +6,24 @@ const { versions } = require("process");
 const { processLps } = require("./utils");
 const { initAccounts } = require("./account");
 const { processOrders } = require("./processOrders");
+const { getOrderDetailsFromJson } = require("./utils");
 const { getQuery, statusCheckQuery } = require("./query");
 const { checkSgStatus, handleSgResults } = require("./sg");
-const { getOrderDetailsFromJson, getSpanException } = require("./utils");
 const { getChainConfig, createViemClient, getDataFetcher } = require("./config");
 
 /**
- * Options for getConfig()
+ * @import { Tracer } from "@opentelemetry/sdk-trace-base"
+ * @import { Span, Context } from "@opentelemetry/api"
+ * @import { BotConfig, CliOptions, ConfigOptions, RoundReport } from "./types"
  */
-const configOptions = {
-    /**
-     * Seconds to wait for the transaction to mine before disregarding it
-     */
-    timeout: undefined,
-    /**
-     * List of liquidity providers for router contract tomoperate on
-     */
-    liquidityProviders: undefined,
-    /**
-     * Flashbot rpc url
-     */
-    flashbotRpc: undefined,
-    /**
-     * Maximize maxIORatio
-     */
-    maxRatio: false,
-    /**
-     * Flag for not bundling orders based on pairs and clear each order individually
-     */
-    bundle: true,
-    /**
-     * The amount of hops of binary search
-     */
-    hops: 1,
-    /**
-     * The amount of retries for the same order
-     */
-    retries: 1,
-    /**
-     * The percentage of the gas cost to cover on each transaction
-     * for it to be considered profitable and get submitted
-     */
-    gasCoveragePercentage: "100",
-    /**
-     * Generic arb contract address
-     */
-    genericArbAddress: undefined
-};
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
  * @param {string[]} sgs - The subgraph endpoint URL(s) to query for orders' details
  * @param {string} json - Path to a json file containing orders structs
- * @param {ethers.signer} signer - The ethers signer
+ * @param {ethers.Signer} signer - The ethers signer
  * @param {any} sgFilters - The filters for subgraph query
- * @param {import("@opentelemetry/api").Span} span
+ * @param {Span} span
  * @returns An array of order details
  */
 const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
@@ -81,7 +44,7 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
                 hasjson = true;
             }
             catch (error) {
-                span?.setAttribute("details.jsonSourceError", JSON.stringify(getSpanException(error)));
+                span?.setAttribute("details.jsonSourceError", JSON.stringify(error));
             }
         }
         if (!isInvalidSg) {
@@ -131,9 +94,8 @@ const getOrderDetails = async(sgs, json, signer, sgFilters, span) => {
  * @param {string[]} rpcUrls - The RPC URL array
  * @param {string} walletKey - The wallet mnemonic phrase or private key
  * @param {string} arbAddress - The Rain Arb contract address deployed on the network
- * @param {string} arbType - The type of the Arb contract
- * @param {configOptions} options - (optional) Optional parameters, liquidity providers
- * @returns The configuration object
+ * @param {CliOptions} options - (optional) Optional parameters, liquidity providers
+ * @returns {Promise<BotConfig>} The configuration object
  */
 const getConfig = async(
     rpcUrls,
@@ -206,15 +168,14 @@ const getConfig = async(
     const chainId = (await provider.getNetwork()).chainId;
     const config = getChainConfig(chainId);
     const lps = processLps(options?.liquidityProviders);
-    const viemClient = createViemClient(chainId, rpcUrls, false);
-    const dataFetcher = getDataFetcher(viemClient, lps, false);
+    const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options?.timeout);
+    const dataFetcher = await getDataFetcher(viemClient, lps, false);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     config.bundle = true;
     if (options?.bundle !== undefined) config.bundle = !!options.bundle;
 
     config.rpc                      = rpcUrls;
-    config.provider                 = provider;
     config.arbAddress               = arbAddress;
     config.genericArbAddress        = options?.genericArbAddress;
     config.timeout                  = options?.timeout;
@@ -231,11 +192,8 @@ const getConfig = async(
     // init accounts
     const { mainAccount, accounts } = await initAccounts(
         walletKey,
-        config.provider,
-        options?.topupAmount,
-        config.viemClient,
-        options?.walletCount,
-        config.tokens
+        config,
+        options,
     );
     config.mainAccount = mainAccount;
     config.accounts = accounts;
@@ -245,12 +203,12 @@ const getConfig = async(
 
 /**
  * Method to find and take arbitrage trades for Rain Orderbook orders against some liquidity providers
- * @param {object} config - The configuration object
+ * @param {BotConfig} config - The configuration object
  * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {clearOptions} options - The options for clear, such as 'gasCoveragePercentage''
- * @param {import("@opentelemetry/sdk-trace-base").Tracer} tracer
- * @param {import("@opentelemetry/api").Context} ctx
- * @returns The report of details of cleared orders
+ * @param {ConfigOptions} options - The options for clear, such as 'gasCoveragePercentage''
+ * @param {Tracer} tracer
+ * @param {Context} ctx
+ * @returns {Promise<RoundReport>} The report of details of cleared orders
  */
 const clear = async(
     config,

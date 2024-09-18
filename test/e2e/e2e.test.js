@@ -8,6 +8,7 @@ const mockServer = require("mockttp").getLocal();
 const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
+const { publicActions, walletActions } = require("viem");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
@@ -78,18 +79,22 @@ for (let i = 0; i < testData.length; i++) {
             it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
                 // reset network before each test
                 await helpers.reset(rpc, blockNumber);
-
                 // get bot signer
                 const bot = botAddress
-                    ? await ethers.getImpersonatedSigner(botAddress)
-                    : await ethers.getImpersonatedSigner("0x22025257BeF969A81eDaC0b343ce82d777931327");
-                await network.provider.send("hardhat_setBalance", [bot.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({account: botAddress}))
+                        .extend(publicActions)
+                        .extend(walletActions)
+                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
+                        .extend(publicActions)
+                        .extend(walletActions);
+                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
+                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -116,7 +121,13 @@ for (let i = 0; i < testData.length; i++) {
                     );
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
                     tokens[i].depositAmount = ethers.utils.parseUnits((deposits[i] ?? "100"), tokens[i].decimals);
-                    owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
+                    // owners.push(
+                    //     (await viem.getTestClient({account: addressesWithBalance[i]})).extend(publicActions).extend(walletActions)
+                    //     // await ethers.getImpersonatedSigner(addressesWithBalance[i])
+                    // );
+                    owners.push(
+                        await ethers.getImpersonatedSigner(addressesWithBalance[i])
+                    );
                     await network.provider.send(
                         "hardhat_setBalance",
                         [addressesWithBalance[i], "0x4563918244F40000"]
@@ -126,7 +137,7 @@ for (let i = 0; i < testData.length; i++) {
                 // bot original token balances
                 const originalBotTokenBalances = [];
                 for (const t of tokens) {
-                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
+                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.account.address));
                 }
 
                 // dposit and add orders for each owner and return
@@ -258,8 +269,7 @@ for (let i = 0; i < testData.length; i++) {
                         tokens[0].vaultId
                     );
                     const botTokenBalance = await tokens[i + 1].contract
-                        .connect(bot)
-                        .balanceOf(bot.address);
+                        .balanceOf(bot.account.address);
 
                     assert.equal(reports[i].tokenPair, pair);
 
@@ -291,7 +301,7 @@ for (let i = 0; i < testData.length; i++) {
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
                     originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.connect(bot).balanceOf(bot.address)
+                        await tokens[0].contract.balanceOf(bot.account.address)
                     ),
                     "Unexpected bot bounty"
                 );
@@ -302,7 +312,10 @@ for (let i = 0; i < testData.length; i++) {
                     decimals: tokens[0].decimals,
                     symbol: tokens[0].symbol
                 }]);
-                assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
+                assert.equal(
+                    bot.BALANCE.toString(),
+                    (await bot.getBalance({address: bot.account.address})).toString()
+                );
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
                 testSpan.end();
@@ -311,7 +324,7 @@ for (let i = 0; i < testData.length; i++) {
             it("should clear orders successfully using inter-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -320,9 +333,14 @@ for (let i = 0; i < testData.length; i++) {
 
                 // get bot signer
                 const bot = botAddress
-                    ? await ethers.getImpersonatedSigner(botAddress)
-                    : await ethers.getImpersonatedSigner("0x22025257BeF969A81eDaC0b343ce82d777931327");
-                await network.provider.send("hardhat_setBalance", [bot.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({account: botAddress}))
+                        .extend(publicActions)
+                        .extend(walletActions)
+                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
+                        .extend(publicActions)
+                        .extend(walletActions);
+                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
+                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -372,7 +390,7 @@ for (let i = 0; i < testData.length; i++) {
                 // bot original token balances
                 const originalBotTokenBalances = [];
                 for (const t of tokens) {
-                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
+                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.account.address));
                 }
 
                 // dposit and add orders for each owner and return
@@ -565,8 +583,7 @@ for (let i = 0; i < testData.length; i++) {
                         tokens[0].vaultId
                     );
                     const botTokenBalance = await tokens[i + 1].contract
-                        .connect(bot)
-                        .balanceOf(bot.address);
+                        .balanceOf(bot.account.address);
 
                     assert.equal(reports[i].tokenPair, pair);
 
@@ -605,7 +622,7 @@ for (let i = 0; i < testData.length; i++) {
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
                     originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.connect(bot).balanceOf(bot.address)
+                        await tokens[0].contract.balanceOf(bot.account.address)
                     ),
                     "Unexpected bot bounty"
                 );
@@ -616,7 +633,10 @@ for (let i = 0; i < testData.length; i++) {
                     decimals: v.decimals,
                     symbol: v.symbol
                 })));
-                assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
+                assert.equal(
+                    bot.BALANCE.toString(),
+                    (await bot.getBalance({address: bot.account.address})).toString()
+                );
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
                 testSpan.end();
@@ -625,7 +645,7 @@ for (let i = 0; i < testData.length; i++) {
             it("should clear orders successfully using intra-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -634,9 +654,14 @@ for (let i = 0; i < testData.length; i++) {
 
                 // get bot signer
                 const bot = botAddress
-                    ? await ethers.getImpersonatedSigner(botAddress)
-                    : await ethers.getImpersonatedSigner("0x22025257BeF969A81eDaC0b343ce82d777931327");
-                await network.provider.send("hardhat_setBalance", [bot.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({account: botAddress}))
+                        .extend(publicActions)
+                        .extend(walletActions)
+                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
+                        .extend(publicActions)
+                        .extend(walletActions);
+                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
+                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -684,7 +709,7 @@ for (let i = 0; i < testData.length; i++) {
                 // bot original token balances
                 const originalBotTokenBalances = [];
                 for (const t of tokens) {
-                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.address));
+                    originalBotTokenBalances.push(await t.contract.balanceOf(bot.account.address));
                 }
 
                 // dposit and add orders for each owner and return
@@ -885,8 +910,7 @@ for (let i = 0; i < testData.length; i++) {
                         tokens[0].vaultId
                     );
                     const botTokenBalance = await tokens[c].contract
-                        .connect(bot)
-                        .balanceOf(bot.address);
+                        .balanceOf(bot.account.address);
 
                     assert.equal(reports[i].tokenPair, pair);
 
@@ -918,7 +942,7 @@ for (let i = 0; i < testData.length; i++) {
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
                     originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.connect(bot).balanceOf(bot.address)
+                        await tokens[0].contract.balanceOf(bot.account.address)
                     ),
                     "Unexpected bot bounty"
                 );
@@ -929,7 +953,10 @@ for (let i = 0; i < testData.length; i++) {
                     decimals: tokens[0].decimals,
                     symbol: tokens[0].symbol
                 }]);
-                assert.equal(bot.BALANCE.toString(), (await bot.getBalance()).toString());
+                assert.equal(
+                    bot.BALANCE.toString(),
+                    (await bot.getBalance({address: bot.account.address})).toString()
+                );
                 assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
 
                 testSpan.end();
