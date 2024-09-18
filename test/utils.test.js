@@ -1,6 +1,7 @@
 const { assert } = require("chai");
-const { ethers } = require("ethers");
-const { clone, getTotalIncome } = require("../src/utils");
+const testData = require("./data");
+const { ethers, utils: { hexlify, randomBytes } } = require("ethers");
+const { clone, getTotalIncome, checkOwnedOrders } = require("../src/utils");
 
 describe("Test utils functions", async function () {
     it("should clone correctly", async function () {
@@ -45,5 +46,36 @@ describe("Test utils functions", async function () {
         );
         const expected = ethers.utils.parseUnits(((10 * 1.25) + (20 * 0.8)).toString());
         assert.equal(result.toString(), expected.toString());
+    });
+
+    it("should check owned orders", async function () {
+        const owner = hexlify(randomBytes(20));
+        const { orderPairObject1: order1, opposingOrderPairObject: order2 } = testData;
+        order1.takeOrders[0].takeOrder.order.owner = owner;
+        order2.takeOrders[0].takeOrder.order.owner = owner;
+        const orders = [order1, order2];
+        const config = {
+            chain: {
+                id: 123
+            },
+            mainAccount: {
+                account: {
+                    address: owner
+                }
+            },
+            viemClient: {
+                multicall: async() => [0n, 10n],
+            }
+        };
+        const result = await checkOwnedOrders(config, orders, hexlify(randomBytes(20)));
+        const expected = [{
+            id: order1.takeOrders[0].id,
+            vaultId: order1.takeOrders[0].takeOrder.order.validOutputs[
+                order1.takeOrders[0].takeOrder.outputIOIndex
+            ].vaultId,
+            token: order1.sellToken,
+            symbol: order1.sellTokenSymbol,
+        }];
+        assert.deepEqual(result, expected);
     });
 });

@@ -8,7 +8,7 @@ const { Router, LiquidityProviders } = require("sushi/router");
 const { doQuoteTargets } = require("@rainlanguage/orderbook/quote");
 
 /**
- * @import { BundledOrders, TakeOrderDetails, BotError, RawTx } from "./types"
+ * @import { BundledOrders, TakeOrderDetails, BotError, RawTx, BotConfig } from "./types"
  */
 
 function RPoolFilter(pool) {
@@ -1208,6 +1208,67 @@ function withBigintSerializer(_k, v) {
     }
 }
 
+/**
+ * Quotes order details that are already fetched and bundled by bundleOrder()
+ * @param {BotConfig} config - Config obj
+ * @param {BundledOrders[][]} orderDetails - Order details to quote
+ * @param {string=} multicallAddressOverride - Optional multicall address
+ * @returns {Promise<{id: string, vaultId: string, token: string, symbol: string}[]>}
+ */
+async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) {
+    const ownedOrders = [];
+    const emptyVaultOrderIds = [];
+    orderDetails.flat().forEach(v => {
+        v.takeOrders.forEach(order => {
+            if (order.takeOrder.order.owner.toLowerCase() ===
+                config.mainAccount.account.address.toLowerCase()
+            ) {
+                ownedOrders.push({
+                    order,
+                    orderbook: v.orderbook,
+                    outputSymbol: v.sellTokenSymbol,
+                    outputToken: v.sellToken,
+                });
+            }
+        });
+    });
+    try {
+        const multicallResult = await config.viemClient.multicall({
+            multicallAddress:
+                multicallAddressOverride ?? config.viemClient.chain?.contracts?.multicall3?.address,
+            allowFailure: false,
+            contracts: ownedOrders.map(v => ({
+                address: v.orderbook,
+                allowFailure: false,
+                chainId: config.chain.id,
+                abi: parseAbi(orderbookAbi),
+                functionName: "vaultBalance",
+                args: [
+                    // owner
+                    v.order.takeOrder.order.owner,
+                    // token
+                    v.order.takeOrder.order.validOutputs[v.order.takeOrder.outputIOIndex].token,
+                    // valut id
+                    v.order.takeOrder.order.validOutputs[v.order.takeOrder.outputIOIndex].vaultId,
+                ]
+            })),
+        });
+        for (let i = 0; i < multicallResult.length; i++) {
+            if (ethers.BigNumber.from(multicallResult[i]).isZero()) {
+                emptyVaultOrderIds.push({
+                    id: ownedOrders[i].order.id,
+                    vaultId: ownedOrders[i].order.takeOrder.order.validOutputs[
+                        ownedOrders[i].order.takeOrder.outputIOIndex
+                    ].vaultId,
+                    token: ownedOrders[i].outputToken,
+                    symbol: ownedOrders[i].outputSymbol,
+                });
+            }
+        }
+    } catch(e) { /**/ }
+    return emptyVaultOrderIds;
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -1235,4 +1296,5 @@ module.exports = {
     getOrdersTokens,
     routeExists,
     withBigintSerializer,
+    checkOwnedOrders,
 };
