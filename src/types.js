@@ -233,7 +233,8 @@
 /**
  * @typedef SelfFundOrder
  * @type {object}
- * @property {string} hash
+ * @property {string} token
+ * @property {string} vaultId
  * @property {string} threshold
  * @property {string} topupAmount
  */

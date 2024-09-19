@@ -279,6 +279,7 @@ describe("Test accounts", async function () {
         const native = Native.onChain(chainId);
         const orderId = hexlify(randomBytes(32));
         const orderbook = hexlify(randomBytes(20));
+        const vaultId = hexlify(randomBytes(32));
         const poolCodeMap = new Map([
             [
                 poolAddress,
@@ -346,14 +347,15 @@ describe("Test accounts", async function () {
                 call: async () => ({ data: `0x${"1" + "0".repeat(18)}` }),
             },
             selfFundOrders: [{
-                hash: orderId,
+                token: fromToken.address,
+                vaultId,
                 threshold: "0.0001",
                 topupAmount: "1",
             }]
         };
         const ownedOrders = [{
             id: orderId,
-            vaultId: hexlify(randomBytes(32)),
+            vaultId,
             token: fromToken.address,
             symbol: fromToken.symbol,
             decimals: fromToken.decimals,

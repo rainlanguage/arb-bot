@@ -591,7 +591,10 @@ async function fundOwnedOrders(ownedOrders, config) {
     if (config.selfFundOrders) {
         for (let i = 0; i < ownedOrders.length; i++) {
             const ownedOrder = ownedOrders[i];
-            const fundingOrder = config.selfFundOrders.find(e => e.hash === ownedOrder.id);
+            const vaultId = ethers.BigNumber.from(ownedOrder.vaultId);
+            const fundingOrder = config.selfFundOrders.find(e =>
+                e.token === ownedOrder.token.toLowerCase() && vaultId.eq(e.vaultId)
+            );
             if (fundingOrder) {
                 if (ownedOrder.vaultBalance.lt(
                     ethers.utils.parseUnits(fundingOrder.threshold, ownedOrder.decimals)
@@ -667,7 +670,7 @@ async function fundOwnedOrders(ownedOrders, config) {
                             to: ownedOrder.orderbook,
                             data: ob.encodeFunctionData(
                                 "deposit2",
-                                [ownedOrder.token, ownedOrder.vaultId, topupAmount, []]
+                                [ownedOrder.token, vaultId, topupAmount, []]
                             )
                         });
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
@@ -684,10 +687,7 @@ async function fundOwnedOrders(ownedOrders, config) {
                     } catch (error) {
                         failedFundings.push({
                             ownedOrder,
-                            error: errorSnapshot(
-                                "failed to fund owned order: " + ownedOrder.id,
-                                error
-                            )
+                            error: errorSnapshot("failed to fund owned order", error)
                         });
                     }
                 }

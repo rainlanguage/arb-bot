@@ -110,6 +110,7 @@ const processOrders = async(
                         error: v.error
                     })));
                 }
+                span.setAttribute("severity", ErrorSeverity.MEDIUM);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
                 span.end();
             });
