@@ -94,8 +94,10 @@ const processOrders = async(
         const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
         if (failedFundings.length || emptyOrders.length) {
             await tracer.startActiveSpan("handle-owned-orders", {}, ctx, async (span) => {
+                let severity = ErrorSeverity.MEDIUM;
                 const message = [];
                 if (emptyOrders.length) {
+                    severity = ErrorSeverity.HIGH;
                     message.push(...[
                         "Reason: following owned orders have empty vaults:",
                         ...ownedOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
@@ -110,7 +112,7 @@ const processOrders = async(
                         error: v.error
                     })));
                 }
-                span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                span.setAttribute("severity", severity);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
                 span.end();
             });
