@@ -45,23 +45,12 @@ const ENV_OPTIONS = {
     walletCount         : process?.env?.WALLET_COUNT,
     topupAmount         : process?.env?.TOPUP_AMOUNT,
     botMinBalance       : process?.env?.BOT_MIN_BALANCE,
+    selfFundOrders      : process?.env?.SELF_FUND_ORDERS,
     rpc                 : process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map(v => v[0])
         : undefined,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
-        : undefined,
-    selfFundOrders       : process?.env?.SELF_FUND_ORDERS
-        ? Array.from(process?.env?.SELF_FUND_ORDERS.matchAll(/[^;]+/g)).map(
-            v => {
-                const matches = Array.from(v[0].matchAll(/[^,]+/g)).map(e => e[0]);
-                return {
-                    hash: matches[0],
-                    threshold: matches[1],
-                    topupAmount: matches[2],
-                };
-            }
-        )
         : undefined,
 };
 
