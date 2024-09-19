@@ -12,6 +12,7 @@ const {
     getBatchEthBalance,
     getBatchTokenBalanceForAccount,
     sweepToEth,
+    fundOwnedOrders,
 } = require("../src/account");
 
 describe("Test accounts", async function () {
@@ -265,7 +266,112 @@ describe("Test accounts", async function () {
             },
         };
 
-        await sweepToEth(config);
+        await sweepToEth(config, "0");
         assert.deepEqual(config.mainAccount.BOUNTY, []);
+    });
+
+    it("should fund owned orders", async function () {
+        const { hexlify, randomBytes } = ethers.utils;
+        const chainId = 137;
+        const wallet = hexlify(randomBytes(20));
+        const poolAddress = hexlify(randomBytes(20));
+        const fromToken = DAI[chainId];
+        const native = Native.onChain(chainId);
+        const orderId = hexlify(randomBytes(32));
+        const orderbook = hexlify(randomBytes(20));
+        const poolCodeMap = new Map([
+            [
+                poolAddress,
+                new ConstantProductPoolCode(
+                    new ConstantProductRPool(
+                        poolAddress,
+                        WNATIVE[chainId],
+                        fromToken,
+                        0.003,
+                        100000000000000000000000n,
+                        100000000000000000000000n,
+                    ),
+                    "QuickSwap",
+                    "QuickSwap 0.3%"
+                )
+            ],
+            [
+                WNATIVE_ADDRESS[chainId],
+                new NativeWrapBridgePoolCode(
+                    new BridgeUnlimited(
+                        WNATIVE_ADDRESS[chainId],
+                        {
+                            address: "",
+                            name: native.name,
+                            symbol: native.symbol,
+                            chainId: chainId,
+                            decimals: 18,
+                        },
+                        WNATIVE[chainId],
+                        0,
+                        50_000,
+                    ),
+                    LiquidityProviders.NativeWrap
+                ),
+            ]
+        ]);
+        const config = {
+            chain: { id: chainId },
+            mainAccount: {
+                account: {address: wallet},
+                BOUNTY: [fromToken],
+                BALANCE: ethers.utils.parseUnits("1000"),
+                getAddress: () => wallet,
+                getGasPrice: async () => 5n,
+                estimateGas: async () => 25n,
+                getBalance: async () => 10000n,
+                sendTransaction: async () => "0x1234",
+                waitForTransactionReceipt: async () => ({
+                    status: "success",
+                    effectiveGasPrice: ethers.BigNumber.from(50_000_000_000),
+                    gasUsed: ethers.BigNumber.from(1_000_000_000),
+                    logs: [],
+                    events: [],
+                })
+            },
+            dataFetcher: {
+                fetchedPairPools: [],
+                fetchPoolsForToken: async () => {},
+                getCurrentPoolCodeMap: () => poolCodeMap,
+                web3Client: { getGasPrice: async () => 30_000_000n },
+            },
+            viemClient: {
+                chain: { id: chainId },
+                getGasPrice: async () => 5n,
+                call: async () => ({ data: `0x${"1" + "0".repeat(18)}` }),
+            },
+            selfFundOrders: [{
+                hash: orderId,
+                threshold: "0.0001",
+                topupAmount: "1",
+            }]
+        };
+        const ownedOrders = [{
+            id: orderId,
+            vaultId: hexlify(randomBytes(32)),
+            token: fromToken.address,
+            symbol: fromToken.symbol,
+            decimals: fromToken.decimals,
+            orderbook,
+            vaultBalance: ethers.BigNumber.from("0")
+        }];
+
+        const result = await fundOwnedOrders(ownedOrders, config);
+        assert.deepEqual(result, []);
+        assert.ok(
+            // (balance - gasCost - gasCost - sent topup) >= current balance (a bit lower than right side because of pool fee)
+            ethers.utils.parseUnits((1000 - 50 - 50 - 1).toString())
+                .gte(config.mainAccount.BALANCE),
+            `${
+                ethers.utils.parseUnits((1000 - 100 - 1).toString())
+            } not gte to ${
+                config.mainAccount.BALANCE.toString()
+            }`
+        );
     });
 });

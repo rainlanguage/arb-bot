@@ -50,7 +50,19 @@ const ENV_OPTIONS = {
         : undefined,
     subgraph            : process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map(v => v[0])
-        : undefined
+        : undefined,
+    selfFundOrders       : process?.env?.SELF_FUND_ORDERS
+        ? Array.from(process?.env?.SELF_FUND_ORDERS.matchAll(/[^;]+/g)).map(
+            v => {
+                const matches = Array.from(v[0].matchAll(/[^,]+/g)).map(e => e[0]);
+                return {
+                    hash: matches[0],
+                    threshold: matches[1],
+                    topupAmount: matches[2],
+                };
+            }
+        )
+        : undefined,
 };
 
 /**
@@ -82,6 +94,7 @@ const getOptions = async argv => {
         .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
         .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .option("--bot-min-balance <number>", "The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables")
+        .option("--self-fund-orders <string>", "Specifies owned order to get funded once their vault goes below the specified threshold, example: order1hash,threshold,toptupamount;order2hash,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables")
         .description([
             "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
             "- Use \"node arb-bot [options]\" command alias for running the app from its repository workspace",
@@ -114,9 +127,21 @@ const getOptions = async argv => {
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
     cmdOptions.walletCount        = cmdOptions.walletCount        || ENV_OPTIONS.walletCount;
     cmdOptions.topupAmount        = cmdOptions.topupAmount        || ENV_OPTIONS.topupAmount;
+    cmdOptions.selfFundOrders     = cmdOptions.selfFundOrders     || ENV_OPTIONS.selfFundOrders;
     cmdOptions.botMinBalance      = cmdOptions.botMinBalance    || ENV_OPTIONS.botMinBalance;
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
-
+    if (cmdOptions.selfFundOrders) {
+        cmdOptions.selfFundOrders = Array
+            .from(process?.env?.SELF_FUND_ORDERS.matchAll(/[^;]+/g))
+            .map(v => {
+                const matches = Array.from(v[0].matchAll(/[^,]+/g)).map(e => e[0]);
+                return {
+                    hash: matches[0].toLowerCase(),
+                    threshold: matches[1],
+                    topupAmount: matches[2],
+                };
+            });
+    }
     return cmdOptions;
 };
 

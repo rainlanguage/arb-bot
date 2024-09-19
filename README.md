@@ -82,6 +82,7 @@ Other optional arguments are:
 - `--hops`, Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
+- `--self-fund-orders`, Specifies owned order to get funded once their vault goes below the specified threshold, example: order1hash,threshold,toptupamount;order2hash,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
 - `-V` or `--version`, output the version number
@@ -222,6 +223,10 @@ TOPUP_AMOUNT=
 
 # Minimum bot's wallet gas token balance before alering
 BOT_MIN_BALANCE=
+
+# Specifies owned order to get funded once their vault goes below the specified threshold
+# example: order1hash,threshold,toptupamount;order2hash,threshold,toptupamount;...
+SELF_FUND_ORDERS=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

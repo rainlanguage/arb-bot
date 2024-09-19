@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const { findOpp } = require("./modes");
 const { Token } = require("sushi/currency");
-const { rotateAccounts } = require("./account");
+const { rotateAccounts, fundOwnedOrders } = require("./account");
 const { createViemClient } = require("./config");
 const { arbAbis, orderbookAbi } = require("./abis");
 const { SpanStatusCode } = require("@opentelemetry/api");
@@ -88,16 +88,32 @@ const processOrders = async(
         true,
     );
     // check owned orders' vaults
-    const ownedEmptyOrders = await checkOwnedOrders(config, bundledOrders);
-    if (ownedEmptyOrders.length) {
-        await tracer.startActiveSpan("check-owned-orders", {}, ctx, async (span) => {
-            const message = [
-                "Reason: following owned orders have empty vaults:",
-                ...ownedEmptyOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
-            ].join("\n");
-            span.setStatus({ code: SpanStatusCode.ERROR, message });
-            span.end();
-        });
+    const ownedOrders = await checkOwnedOrders(config, bundledOrders);
+    if (ownedOrders.length) {
+        const failedFundings = await fundOwnedOrders(ownedOrders, config);
+        const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
+        if (failedFundings.length || emptyOrders.length) {
+            await tracer.startActiveSpan("handle-owned-orders", {}, ctx, async (span) => {
+                const message = [];
+                if (emptyOrders.length) {
+                    message.push(...[
+                        "Reason: following owned orders have empty vaults:",
+                        ...ownedOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+                    ]);
+                }
+                if (failedFundings.length) {
+                    span.setAttribute("failedFundings", failedFundings.map(v => JSON.stringify({
+                        orderId: v.ownedOrder.id,
+                        orderbook: v.ownedOrder.orderbook,
+                        token: v.ownedOrder.token,
+                        symbol: v.ownedOrder.symbol,
+                        error: v.error
+                    })));
+                }
+                span.setStatus({ code: SpanStatusCode.ERROR, message });
+                span.end();
+            });
+        }
     }
     await quoteOrders(
         bundledOrders,
