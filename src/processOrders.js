@@ -18,6 +18,7 @@ const {
     quoteSingleOrder,
     getActualClearAmount,
     withBigintSerializer,
+    checkOwnedOrders,
 } = require("./utils");
 
 /**
@@ -86,6 +87,18 @@ const processOrders = async(
         config.shuffle,
         true,
     );
+    // check owned orders' vaults
+    const ownedEmptyOrders = await checkOwnedOrders(config, bundledOrders);
+    if (ownedEmptyOrders.length) {
+        await tracer.startActiveSpan("check-owned-orders", {}, ctx, async (span) => {
+            const message = [
+                "Reason: following owned orders have empty vaults:",
+                ...ownedEmptyOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+            ].join("\n");
+            span.setStatus({ code: SpanStatusCode.ERROR, message });
+            span.end();
+        });
+    }
     await quoteOrders(
         bundledOrders,
         config.isTest ? config.quoteRpc : config.rpc
