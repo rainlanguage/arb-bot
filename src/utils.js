@@ -8,7 +8,7 @@ const { Router, LiquidityProviders } = require("sushi/router");
 const { doQuoteTargets } = require("@rainlanguage/orderbook/quote");
 
 /**
- * @import { BundledOrders, TakeOrderDetails, BotError, RawTx, BotConfig } from "./types"
+ * @import { BundledOrders, TakeOrderDetails, BotError, RawTx, BotConfig, OwnedOrder } from "./types"
  */
 
 function RPoolFilter(pool) {
@@ -1213,11 +1213,12 @@ function withBigintSerializer(_k, v) {
  * @param {BotConfig} config - Config obj
  * @param {BundledOrders[][]} orderDetails - Order details to quote
  * @param {string=} multicallAddressOverride - Optional multicall address
- * @returns {Promise<{id: string, vaultId: string, token: string, symbol: string}[]>}
+ * @returns {Promise<OwnedOrder[]>}
  */
 async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) {
     const ownedOrders = [];
-    const emptyVaultOrderIds = [];
+    /** @type {OwnedOrder[]} */
+    const result = [];
     orderDetails.flat().forEach(v => {
         v.takeOrders.forEach(order => {
             if (order.takeOrder.order.owner.toLowerCase() ===
@@ -1228,6 +1229,7 @@ async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) 
                     orderbook: v.orderbook,
                     outputSymbol: v.sellTokenSymbol,
                     outputToken: v.sellToken,
+                    outputDecimals: v.sellTokenDecimals,
                 });
             }
         });
@@ -1254,19 +1256,20 @@ async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) 
             })),
         });
         for (let i = 0; i < multicallResult.length; i++) {
-            if (ethers.BigNumber.from(multicallResult[i]).isZero()) {
-                emptyVaultOrderIds.push({
-                    id: ownedOrders[i].order.id,
-                    vaultId: ownedOrders[i].order.takeOrder.order.validOutputs[
-                        ownedOrders[i].order.takeOrder.outputIOIndex
-                    ].vaultId,
-                    token: ownedOrders[i].outputToken,
-                    symbol: ownedOrders[i].outputSymbol,
-                });
-            }
+            result.push({
+                id: ownedOrders[i].order.id,
+                vaultId: ownedOrders[i].order.takeOrder.order.validOutputs[
+                    ownedOrders[i].order.takeOrder.outputIOIndex
+                ].vaultId,
+                token: ownedOrders[i].outputToken,
+                symbol: ownedOrders[i].outputSymbol,
+                decimals: ownedOrders[i].outputDecimals,
+                orderbook: ownedOrders[i].orderbook,
+                vaultBalance: ethers.BigNumber.from(multicallResult[i])
+            });
         }
     } catch(e) { /**/ }
-    return emptyVaultOrderIds;
+    return result;
 }
 
 module.exports = {

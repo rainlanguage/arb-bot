@@ -39,6 +39,7 @@
  * @property {string=} topupAmount
  * @property {string} botMinBalance
  * @property {boolean} bundle
+ * @property {SelfFundOrder[]=} selfFundOrders
  */
 
 /**
@@ -163,6 +164,7 @@
  * @property {DataFetcher} dataFetcher
  * @property {ViemClient} mainAccount
  * @property {(ViemClient)[]} accounts
+ * @property {SelfFundOrder[]=} selfFundOrders
  */
 
 /**
@@ -226,6 +228,27 @@
  * @property {DryrunValue} value
  * @property {number=} reason
  * @property {{[key: string]: any}} spanAttributes
+ */
+
+/**
+ * @typedef SelfFundOrder
+ * @type {object}
+ * @property {string} token
+ * @property {string} vaultId
+ * @property {string} threshold
+ * @property {string} topupAmount
+ */
+
+/**
+ * @typedef OwnedOrder
+ * @type {object}
+ * @property {string} id
+ * @property {string} orderbook
+ * @property {string} vaultId
+ * @property {string} token
+ * @property {string} symbol
+ * @property {number} decimals
+ * @property {ethers.BigNumber} vaultBalance
  */
 
 module.exports = {};

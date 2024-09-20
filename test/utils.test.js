@@ -68,14 +68,17 @@ describe("Test utils functions", async function () {
             }
         };
         const result = await checkOwnedOrders(config, orders, hexlify(randomBytes(20)));
-        const expected = [{
-            id: order1.takeOrders[0].id,
-            vaultId: order1.takeOrders[0].takeOrder.order.validOutputs[
-                order1.takeOrders[0].takeOrder.outputIOIndex
+        const expected = orders.map((v, i) => ({
+            id: v.takeOrders[0].id,
+            vaultId: v.takeOrders[0].takeOrder.order.validOutputs[
+                v.takeOrders[0].takeOrder.outputIOIndex
             ].vaultId,
-            token: order1.sellToken,
-            symbol: order1.sellTokenSymbol,
-        }];
+            token: v.sellToken,
+            symbol: v.sellTokenSymbol,
+            decimals: v.sellTokenDecimals,
+            orderbook: v.orderbook,
+            vaultBalance: ethers.BigNumber.from(i * 10)
+        }));
         assert.deepEqual(result, expected);
     });
 });
