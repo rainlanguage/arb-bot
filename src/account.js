@@ -593,7 +593,7 @@ async function fundOwnedOrders(ownedOrders, config) {
             const ownedOrder = ownedOrders[i];
             const vaultId = ethers.BigNumber.from(ownedOrder.vaultId);
             const fundingOrder = config.selfFundOrders.find(e =>
-                e.token === ownedOrder.token.toLowerCase() && vaultId.eq(e.vaultId)
+                e.token.toLowerCase() === ownedOrder.token.toLowerCase() && vaultId.eq(e.vaultId)
             );
             if (fundingOrder) {
                 if (ownedOrder.vaultBalance.lt(

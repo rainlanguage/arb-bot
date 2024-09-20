@@ -266,7 +266,7 @@ describe("Test accounts", async function () {
             },
         };
 
-        await sweepToEth(config, "0");
+        await sweepToEth(config);
         assert.deepEqual(config.mainAccount.BOUNTY, []);
     });
 
