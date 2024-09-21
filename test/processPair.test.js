@@ -133,8 +133,8 @@ describe("Test process pair", async function () {
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
-                    maxOutput: vaultBalance.toString(),
-                    ratio: ethers.constants.Zero.toString(),
+                    maxOutput: ethers.utils.formatUnits(vaultBalance),
+                    ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                 }),
                 "details.estimatedProfit": ethers.utils.formatUnits(
                     estimateProfit(
@@ -207,8 +207,8 @@ describe("Test process pair", async function () {
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
-                    maxOutput: vaultBalance.toString(),
-                    ratio: ethers.constants.Zero.toString(),
+                    maxOutput: ethers.utils.formatUnits(vaultBalance),
+                    ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                 }),
                 "details.estimatedProfit": ethers.utils.formatUnits(
                     estimateProfit(
@@ -330,8 +330,8 @@ describe("Test process pair", async function () {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
+                        maxOutput: ethers.utils.formatUnits(vaultBalance),
+                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -372,8 +372,8 @@ describe("Test process pair", async function () {
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.gasPrice": gasPrice.toString(),
                     "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
+                        maxOutput: ethers.utils.formatUnits(vaultBalance),
+                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -414,8 +414,8 @@ describe("Test process pair", async function () {
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.gasPrice": gasPrice.toString(),
                     "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
+                        maxOutput: ethers.utils.formatUnits(vaultBalance),
+                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -504,8 +504,8 @@ describe("Test process pair", async function () {
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
                     "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
+                        maxOutput: ethers.utils.formatUnits(vaultBalance),
+                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                     }),
                     "details.estimatedProfit": ethers.utils.formatUnits(
                         estimateProfit(
@@ -580,8 +580,8 @@ describe("Test process pair", async function () {
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
                     "details.quote": JSON.stringify({
-                        maxOutput: vaultBalance.toString(),
-                        ratio: ethers.constants.Zero.toString(),
+                        maxOutput: ethers.utils.formatUnits(vaultBalance),
+                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
                     }),
                     "details.estimatedProfit": ethers.utils.formatUnits(
                         estimateProfit(

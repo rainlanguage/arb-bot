@@ -380,8 +380,8 @@ async function processPair(args) {
     }
 
     spanAttributes["details.quote"] = JSON.stringify({
-        maxOutput: orderPairObject.takeOrders[0].quote.maxOutput.toString(),
-        ratio: orderPairObject.takeOrders[0].quote.ratio.toString(),
+        maxOutput: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote.maxOutput),
+        ratio: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote.ratio),
     });
 
     // get gas price
@@ -612,13 +612,14 @@ async function processPair(args) {
                 : undefined;
 
             if (income) {
-                spanAttributes["details.income"] = ethers.utils.formatUnits(
-                    income,
-                    orderPairObject.buyTokenDecimals
+                spanAttributes["details.income"] = Number.parseFloat(
+                    ethers.utils.formatUnits(income)
                 );
-                spanAttributes["details.netProfit"] = ethers.utils.formatUnits(
-                    netProfit,
-                    orderPairObject.buyTokenDecimals
+                spanAttributes["details.netProfit"] = Number.parseFloat(
+                    ethers.utils.formatUnits(netProfit)
+                );
+                spanAttributes["details.actualGasCost"] = Number.parseFloat(
+                    ethers.utils.formatUnits(actualGasCost)
                 );
             }
             if (inputTokenIncome) {
@@ -630,7 +631,7 @@ async function processPair(args) {
             if (outputTokenIncome) {
                 spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
                     outputTokenIncome,
-                    orderPairObject.buyTokenDecimals
+                    orderPairObject.sellTokenDecimals
                 );
             }
 
