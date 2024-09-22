@@ -1272,6 +1272,17 @@ async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) 
     return result;
 }
 
+/**
+ * @param {ethers.BigNumber} value
+ * @returns {number}
+ */
+function toNumber(value) {
+    const valueString = ethers.utils.formatUnits(value);
+    return Number.parseFloat(
+        valueString.substring(0, valueString.includes(".") ? 18 : 17)
+    );
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -1300,4 +1311,5 @@ module.exports = {
     routeExists,
     withBigintSerializer,
     checkOwnedOrders,
+    toNumber,
 };

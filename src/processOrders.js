@@ -8,6 +8,7 @@ const { SpanStatusCode } = require("@opentelemetry/api");
 const { privateKeyToAccount } = require("viem/accounts");
 const { ErrorSeverity, errorSnapshot } = require("./error");
 const {
+    toNumber,
     getIncome,
     routeExists,
     getEthPrice,
@@ -16,9 +17,9 @@ const {
     PoolBlackList,
     getTotalIncome,
     quoteSingleOrder,
+    checkOwnedOrders,
     getActualClearAmount,
     withBigintSerializer,
-    checkOwnedOrders,
 } = require("./utils");
 
 /**
@@ -612,15 +613,9 @@ async function processPair(args) {
                 : undefined;
 
             if (income) {
-                spanAttributes["details.income"] = Number.parseFloat(
-                    ethers.utils.formatUnits(income)
-                );
-                spanAttributes["details.netProfit"] = Number.parseFloat(
-                    ethers.utils.formatUnits(netProfit)
-                );
-                spanAttributes["details.actualGasCost"] = Number.parseFloat(
-                    ethers.utils.formatUnits(actualGasCost)
-                );
+                spanAttributes["details.income"] = toNumber(income);
+                spanAttributes["details.netProfit"] = toNumber(netProfit);
+                spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
             }
             if (inputTokenIncome) {
                 spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
