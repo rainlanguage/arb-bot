@@ -233,10 +233,8 @@ const processOrders = async(
                             let message = "failed to quote order: " + orderPairObject.takeOrders[0].id;
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
-                                span.recordException(e.error);
                             }
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            span.setStatus({ code: SpanStatusCode.OK, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
                             let message = pair + ": failed to get gas price";
                             if (e.error) {

@@ -185,8 +185,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
                     foundOpp = true;
                     span.setAttribute("foundOpp", true);
                 }
-            }
-            else {
+            } else {
                 span.setAttribute("didClear", false);
             }
             if (avgGasCost) {
@@ -201,10 +200,11 @@ const arbRound = async (tracer, roundCtx, options, config) => {
                 span.setAttribute("severity", ErrorSeverity.HIGH);
             }
             span.setAttribute("didClear", false);
+            span.setAttribute("foundOpp", false);
             span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             span.recordException(e);
             span.end();
-            return Promise.reject(snapshot);
+            return { txs: [], foundOpp: false, avgGasCost: undefined };
         }
     });
 };
@@ -393,6 +393,13 @@ const main = async argv => {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
+            const roundCtx = trace.setSpan(context.active(), roundSpan);
+            roundSpan.setAttributes({
+                ...await getMetaInfo(config, options.subgraph),
+                "meta.mainAccount": config.mainAccount.account.address,
+                "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
+                "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
+            });
             const botGasBalance = await config.viemClient.getBalance({
                 address: config.mainAccount.account.address
             });
@@ -417,27 +424,23 @@ const main = async argv => {
                 lastInterval = now + poolUpdateInterval;
                 config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
             }
-            const roundCtx = trace.setSpan(context.active(), roundSpan);
-            roundSpan.setAttributes({
-                ...await getMetaInfo(config, options.subgraph),
-                "meta.mainAccount": config.mainAccount.account.address,
-                "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
-                "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A"
-            });
             try {
                 await rotateProviders(config);
-                const { txs, foundOpp, avgGasCost: roundAvgGasCost } =
-                    await arbRound(tracer, roundCtx, options, config);
+                const roundResult = await arbRound(tracer, roundCtx, options, config);
+                let txs, foundOpp, roundAvgGasCost;
+                if (roundResult) {
+                    txs = roundResult.txs;
+                    foundOpp = roundResult.foundOpp;
+                    roundAvgGasCost = roundResult.avgGasCost;
+                }
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
                     roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
-                }
-                else if (foundOpp) {
+                } else if (foundOpp) {
                     roundSpan.setAttribute("foundOpp", true);
                     roundSpan.setAttribute("didClear", false);
-                }
-                else {
+                } else {
                     roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
                 }
