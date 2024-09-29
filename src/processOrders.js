@@ -20,7 +20,6 @@ const {
     checkOwnedOrders,
     getActualClearAmount,
     withBigintSerializer,
-    sleep,
 } = require("./utils");
 
 /**
@@ -188,13 +187,11 @@ const processOrders = async(
                         }
                     }
 
-                    console.log("r", result);
+                    console.log("final",result);
                     reports.push(result.report);
 
-                    console.log("r2");
                     // set the span attributes with the values gathered at processPair()
                     span.setAttributes(result.spanAttributes);
-                    console.log("r3");
 
                     // set the otel span status based on report status
                     if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
@@ -295,7 +292,6 @@ const processOrders = async(
                         span.setStatus({ code: SpanStatusCode.ERROR, message });
                     }
                 }
-                await sleep(2000);
                 span.end();
 
                 // rotate the accounts once they are used once
@@ -505,6 +501,7 @@ async function processPair(args) {
             orderbooksOrders,
         });
         ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value);
+        console.log("res", findOppResult);
 
         // record span attrs
         spanAttributes["details.estimatedProfit"] = ethers.utils.formatUnits(estimatedProfit);
@@ -517,6 +514,7 @@ async function processPair(args) {
             }
         }
     } catch (e) {
+        console.log("eeeee", e);
         // record all span attributes
         for (attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
