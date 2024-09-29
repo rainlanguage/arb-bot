@@ -188,10 +188,13 @@ const processOrders = async(
                         }
                     }
 
+                    console.log("r", result);
                     reports.push(result.report);
 
+                    console.log("r2");
                     // set the span attributes with the values gathered at processPair()
                     span.setAttributes(result.spanAttributes);
+                    console.log("r3");
 
                     // set the otel span status based on report status
                     if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
