@@ -114,6 +114,7 @@ async function dryrun({
         // exit early if market price is lower than order quote ratio
         if (price.lt(orderPairObject.takeOrders[0].quote.ratio)) {
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+            spanAttributes["error"] = "Order's ratio greater than market price";
             return Promise.reject(result);
         }
 
