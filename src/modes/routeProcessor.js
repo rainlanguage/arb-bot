@@ -348,6 +348,7 @@ async function findOpp({
                 config,
                 viemClient,
             });
+            console.log("dryrunResult", dryrunResult);
 
             // return early if there was success on first attempt (ie full vault balance)
             // else record the success result
@@ -359,6 +360,7 @@ async function findOpp({
             // set the maxInput for next hop by increasing
             maximumInput = maximumInput.add(initAmount.div(2 ** i));
         } catch(e) {
+            console.log("dryrunErr", e);
             // the fail reason can only be no route in case all hops fail reasons are no route
             if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
 
@@ -385,7 +387,7 @@ async function findOpp({
 
         if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         else result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
-
+        console.log("allHops", result);
         return Promise.reject(result);
     }
 }
@@ -444,7 +446,7 @@ async function findOppWithRetries({
         );
     }
     const allPromises = await Promise.allSettled(promises);
-    console.log(promises);
+    console.log(allPromises.map(v => v.status === "fulfilled" ? v.value : v.reason));
     if (allPromises.some(v => v.status === "fulfilled")) {
         let choice;
         for (let i = 0; i < allPromises.length; i++) {
