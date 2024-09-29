@@ -20,6 +20,7 @@ const {
     checkOwnedOrders,
     getActualClearAmount,
     withBigintSerializer,
+    sleep,
 } = require("./utils");
 
 /**
@@ -291,6 +292,7 @@ const processOrders = async(
                         span.setStatus({ code: SpanStatusCode.ERROR, message });
                     }
                 }
+                await sleep(2000);
                 span.end();
 
                 // rotate the accounts once they are used once
