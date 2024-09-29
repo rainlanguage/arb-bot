@@ -62,6 +62,7 @@ async function dryrun({
     config,
     viemClient,
 }) {
+    console.log("a");
     const spanAttributes = {};
     const result = {
         value: undefined,
@@ -89,18 +90,22 @@ async function dryrun({
         undefined,
         RPoolFilter
     );
+    console.log("b");
     if (route.status == "NoWay") {
+        console.log("c");
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
     }
     else {
+        console.log("d");
         const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
             "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
         );
         const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
         spanAttributes["marketPrice"] = ethers.utils.formatEther(price);
 
+        console.log("e");
         const routeVisual = [];
         try {
             visualizeRoute(fromToken, toToken, route.legs).forEach(
@@ -110,9 +115,10 @@ async function dryrun({
             /**/
         }
         spanAttributes["route"] = routeVisual;
-
+        console.log("f");
         // exit early if market price is lower than order quote ratio
         if (price.lt(orderPairObject.takeOrders[0].quote.ratio)) {
+            console.log("g");
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             spanAttributes["error"] = "Order's ratio greater than market price";
             return Promise.reject(result);
@@ -174,6 +180,7 @@ async function dryrun({
             gasPrice
         };
 
+        console.log("h");
         // trying to find opp with doing gas estimation, once to get gas and calculate
         // minimum sender output and second to check the arb() with headroom
         let gasLimit, blockNumber;
@@ -183,6 +190,7 @@ async function dryrun({
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
         }
         catch(e) {
+            console.log("i");
             // reason, code, method, transaction, error, stack, message
             spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify({
@@ -218,6 +226,7 @@ async function dryrun({
             );
 
             try {
+                console.log("j");
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
                 gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
@@ -239,6 +248,7 @@ async function dryrun({
                 );
             }
             catch(e) {
+                console.log("k");
                 spanAttributes["error"] = errorSnapshot("", e);
                 spanAttributes["rawtx"] = JSON.stringify({
                     ...rawtx,
@@ -248,7 +258,7 @@ async function dryrun({
                 return Promise.reject(result);
             }
         }
-
+        console.log("l");
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
         spanAttributes["oppBlockNumber"] = blockNumber;
@@ -269,6 +279,7 @@ async function dryrun({
                 maximumInputFixed
             )
         };
+        console.log("m");
         return result;
     }
 }
@@ -433,6 +444,7 @@ async function findOppWithRetries({
         );
     }
     const allPromises = await Promise.allSettled(promises);
+    console.log(promises);
     if (allPromises.some(v => v.status === "fulfilled")) {
         let choice;
         for (let i = 0; i < allPromises.length; i++) {
@@ -444,7 +456,7 @@ async function findOppWithRetries({
                     choice.maximumInput.lt(allPromises[i].value.value.maximumInput)
                 ) {
                     // record the attributes of the choosing one
-                    for (attrKey in allPromises[i].value.spanAttributes) {
+                    for (const attrKey in allPromises[i].value.spanAttributes) {
                         spanAttributes[attrKey] = allPromises[i].value.spanAttributes[attrKey];
                     }
                     choice = allPromises[i].value.value;
@@ -461,7 +473,7 @@ async function findOppWithRetries({
             }
         }
         // record all retries span attributes in case neither of above errors were present
-        for (attrKey in allPromises[0].reason.spanAttributes) {
+        for (const attrKey in allPromises[0].reason.spanAttributes) {
             spanAttributes[attrKey] = allPromises[0].reason.spanAttributes[attrKey];
         }
         result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;

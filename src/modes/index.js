@@ -99,7 +99,7 @@ async function findOpp({
         const spanAttributes = {};
         const result = { spanAttributes };
         if (allResults[0]?.reason?.spanAttributes) {
-            console.log("find",JSON.stringify(allResults[0].reason.spanAttributes));
+            console.log("find",allResults[0]);
             spanAttributes["route-processor"] = JSON.stringify(allResults[0].reason.spanAttributes);
         }
         if (allResults[1]?.reason?.spanAttributes) {

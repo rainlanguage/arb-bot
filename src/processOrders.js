@@ -505,7 +505,7 @@ async function processPair(args) {
 
         // record span attrs
         spanAttributes["details.estimatedProfit"] = ethers.utils.formatUnits(estimatedProfit);
-        for (attrKey in findOppResult.spanAttributes) {
+        for (const attrKey in findOppResult.spanAttributes) {
             if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
                 spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];
             }
@@ -516,7 +516,7 @@ async function processPair(args) {
     } catch (e) {
         console.log("eeeee", e);
         // record all span attributes
-        for (attrKey in e.spanAttributes) {
+        for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
         result.report = {
