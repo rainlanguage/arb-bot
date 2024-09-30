@@ -397,13 +397,14 @@ async function processPair(args) {
     }
 
     // get pool details
-    console.log(routeExists(config, fromToken, toToken, gasPrice));
+    console.log(dataFetcher.fetchedPairPools);
+    console.log(await routeExists(config, fromToken, toToken, gasPrice));
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
-        !routeExists(config, fromToken, toToken, gasPrice)
+        !(await routeExists(config, fromToken, toToken, gasPrice))
     ) {
         console.log("routeeeee");
-        console.log(routeExists(config, fromToken, toToken, gasPrice));
+        console.log(await routeExists(config, fromToken, toToken, gasPrice));
         try {
             const options = {
                 fetchPoolsTimeout: 90000,

@@ -224,6 +224,7 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
 async function rotateProviders(config) {
     if (config.rpc?.length > 1) {
         shuffleArray(config.rpc);
+        console.log("rotate", config.rpc);
         const viemClient = await createViemClient(
             config.chain.id,
             config.rpc,
