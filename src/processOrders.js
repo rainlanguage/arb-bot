@@ -398,7 +398,7 @@ async function processPair(args) {
     // get pool details
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
-        !routeExists(config, fromToken, toToken, gasPrice)
+        !(await routeExists(config, fromToken, toToken, gasPrice))
     ) {
         try {
             const options = {

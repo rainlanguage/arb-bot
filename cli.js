@@ -215,7 +215,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 7;
+    let _poolUpdateInterval = 5;
 
     const options = await getOptions(argv);
 
@@ -419,13 +419,15 @@ const main = async argv => {
                 return;
             }
             // remove pool memoizer cache on each interval
+            let update = false;
             const now = Date.now();
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
+                update = true;
                 config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
             }
             try {
-                await rotateProviders(config);
+                await rotateProviders(config, update);
                 const roundResult = await arbRound(tracer, roundCtx, options, config);
                 let txs, foundOpp, roundAvgGasCost;
                 if (roundResult) {
