@@ -476,8 +476,10 @@ async function findOppWithRetries({
         }
         // record all retries span attributes in case neither of above errors were present
         for (const attrKey in allPromises[0].reason.spanAttributes) {
+            console.log("loop", attrKey, allPromises[0].reason.spanAttributes[attrKey]);
             spanAttributes[attrKey] = allPromises[0].reason.spanAttributes[attrKey];
         }
+        console.log("rp4final", result);
         result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
         throw result;
     }
