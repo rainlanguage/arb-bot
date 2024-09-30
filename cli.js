@@ -424,7 +424,6 @@ const main = async argv => {
             if (lastInterval <= now) {
                 lastInterval = now + poolUpdateInterval;
                 update = true;
-                config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
             }
             try {
                 await rotateProviders(config, update);
