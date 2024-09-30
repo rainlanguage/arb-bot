@@ -456,6 +456,7 @@ async function findOppWithRetries({
     } else {
         for (let i = 0; i < allPromises.length; i++) {
             if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoRoute) {
+                spanAttributes["route"] = "no-way";
                 result.reason = RouteProcessorDryrunHaltReason.NoRoute;
                 throw result;
             }

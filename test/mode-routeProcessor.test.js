@@ -691,7 +691,7 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
-                spanAttributes: {}
+                spanAttributes: { route: "no-way" }
             };
             assert.deepEqual(error, expected);
         }
