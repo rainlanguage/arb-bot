@@ -398,7 +398,7 @@ async function processPair(args) {
     // get pool details
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
-        !routeExists(config, fromToken, toToken, gasPrice)
+        !(await routeExists(config, fromToken, toToken, gasPrice))
     ) {
         try {
             const options = {
@@ -414,10 +414,10 @@ async function processPair(args) {
                 PoolBlackList,
                 options
             );
-            dataFetcher.fetchedPairPools.push(
-                `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`,
-                `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`
-            );
+            const p1 = `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`;
+            const p2 = `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`;
+            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
+            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
         } catch(e) {
             result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;

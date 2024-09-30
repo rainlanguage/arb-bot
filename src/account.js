@@ -221,7 +221,7 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
  * Rotates the providers rpcs for viem and ethers clients
  * @param {BotConfig} config - The config object
  */
-async function rotateProviders(config) {
+async function rotateProviders(config, resetDataFetcher = true) {
     if (config.rpc?.length > 1) {
         shuffleArray(config.rpc);
         const viemClient = await createViemClient(
@@ -231,12 +231,15 @@ async function rotateProviders(config) {
             undefined,
             config.timeout
         );
-        const fetchedPairPools = config.dataFetcher.fetchedPairPools;
-        const dataFetcher = await getDataFetcher(viemClient, config.lps, false);
-        dataFetcher.fetchedPairPools = fetchedPairPools;
+
+        if (resetDataFetcher) {
+            const dataFetcher = await getDataFetcher(viemClient, config.lps, false);
+            config.dataFetcher = dataFetcher;
+        } else {
+            config.dataFetcher.web3Client = viemClient;
+        }
 
         config.viemClient = viemClient;
-        config.dataFetcher = dataFetcher;
 
         // rotate main account's provider
         const mainAccBalance = config.mainAccount.BALANCE;
