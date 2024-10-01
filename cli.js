@@ -215,7 +215,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 1;
+    let _poolUpdateInterval = 0;
 
     const options = await getOptions(argv);
 
