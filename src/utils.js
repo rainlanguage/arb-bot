@@ -1283,6 +1283,38 @@ function toNumber(value) {
     );
 }
 
+function getMarketQuote(config, fromToken, toToken, gasPrice) {
+    const amountIn = ethers.utils.parseUnits("1", fromToken.decimals);
+    const amountInFixed = ethers.utils.parseUnits("1");
+    const pcMap = config.dataFetcher.getCurrentPoolCodeMap(
+        fromToken,
+        toToken
+    );
+    const route = Router.findBestRoute(
+        pcMap,
+        config.chain.id,
+        fromToken,
+        amountIn.toBigInt(),
+        toToken,
+        gasPrice.toNumber(),
+        undefined,
+        RPoolFilter
+    );
+    if (route.status == "NoWay") {
+        return undefined;
+    }
+    else {
+        const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
+            "1" + "0".repeat(18 - toToken.decimals)
+        );
+        const price = rateFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+        return {
+            price: ethers.utils.formatUnits(price),
+            amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals)
+        };
+    }
+}
+
 module.exports = {
     sleep,
     getIncome,
@@ -1312,4 +1344,5 @@ module.exports = {
     withBigintSerializer,
     checkOwnedOrders,
     toNumber,
+    getMarketQuote,
 };

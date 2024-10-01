@@ -19,6 +19,7 @@ const {
     checkOwnedOrders,
     getActualClearAmount,
     withBigintSerializer,
+    getMarketQuote,
 } = require("./utils");
 
 /**
@@ -420,6 +421,14 @@ async function processPair(args) {
             throw result;
         }
     }
+
+    try {
+        const marketQuote = getMarketQuote(config, fromToken, toToken, gasPrice);
+        if (marketQuote) {
+            spanAttributes["details.marketPrice"] = marketQuote.price;
+            spanAttributes["details.amountOut"] = marketQuote.amountOut;
+        }
+    } catch(e) { /**/ }
 
     // get in/out tokens to eth price
     let inputToEthPrice, outputToEthPrice;

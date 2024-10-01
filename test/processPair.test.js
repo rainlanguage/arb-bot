@@ -78,6 +78,11 @@ describe("Test process pair", async function () {
                 };
             }
         };
+        config.dataFetcher = {
+            getCurrentPoolCodeMap: () => {
+                return poolCodeMap;
+            }
+        };
     });
     afterEach(() => mockServer.stop());
 
@@ -206,6 +211,8 @@ describe("Test process pair", async function () {
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
                 "didClear": true,
+                "details.amountOut": "0.99699",
+                "details.marketPrice": "0.99699",
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
@@ -373,6 +380,8 @@ describe("Test process pair", async function () {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.gasPrice": gasPrice.toString(),
+                    "details.amountOut": "0.99699",
+                    "details.marketPrice": "0.99699",
                     "details.quote": JSON.stringify({
                         maxOutput: ethers.utils.formatUnits(vaultBalance),
                         ratio: ethers.utils.formatUnits(ethers.constants.Zero),
