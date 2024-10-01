@@ -396,10 +396,12 @@ async function processPair(args) {
     }
 
     // get pool details
+    console.log("out", pair);
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
         !(await routeExists(config, fromToken, toToken, gasPrice))
     ) {
+        console.log("in", pair);
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
