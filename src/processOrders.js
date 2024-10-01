@@ -10,7 +10,6 @@ const { ErrorSeverity, errorSnapshot } = require("./error");
 const {
     toNumber,
     getIncome,
-    routeExists,
     getEthPrice,
     quoteOrders,
     bundleOrders,
@@ -396,10 +395,7 @@ async function processPair(args) {
     }
 
     // get pool details
-    if (
-        !dataFetcher.fetchedPairPools.includes(pair) ||
-        !(await routeExists(config, fromToken, toToken, gasPrice))
-    ) {
+    if (!dataFetcher.fetchedPairPools.includes(pair)) {
         try {
             const options = {
                 fetchPoolsTimeout: 90000,

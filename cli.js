@@ -215,7 +215,7 @@ const arbRound = async (tracer, roundCtx, options, config) => {
  */
 async function startup(argv) {
     let roundGap = 10000;
-    let _poolUpdateInterval = 5;
+    let _poolUpdateInterval = 1;
 
     const options = await getOptions(argv);
 
@@ -250,14 +250,14 @@ async function startup(argv) {
     if (options.poolUpdateInterval) {
         if (typeof options.poolUpdateInterval === "number") {
             _poolUpdateInterval = options.poolUpdateInterval;
-            if (_poolUpdateInterval === 0 || !Number.isInteger(_poolUpdateInterval))
-                throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+            if (_poolUpdateInterval < 0 || !Number.isInteger(_poolUpdateInterval))
+                throw "invalid poolUpdateInterval value, must be an integer greater than equal zero";
         }
         else if (typeof options.poolUpdateInterval === "string" && /^[0-9]+$/.test(options.poolUpdateInterval)) {
             _poolUpdateInterval = Number(options.poolUpdateInterval);
-            if (_poolUpdateInterval === 0) throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+            if (_poolUpdateInterval < 0) throw "invalid poolUpdateInterval value, must be an integer greater than equal zero";
         }
-        else throw "invalid poolUpdateInterval value, must be an integer greater than zero";
+        else throw "invalid poolUpdateInterval value, must be an integer greater than equal zero";
     }
     if (!options.botMinBalance || !/^[0-9]+(.[0-9]+)?$/.test(options.botMinBalance)) {
         throw "expected a valid value for --bot-min-balance, it should be an number greater than 0";

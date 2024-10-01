@@ -233,8 +233,7 @@ async function rotateProviders(config, resetDataFetcher = true) {
         );
 
         if (resetDataFetcher) {
-            const dataFetcher = await getDataFetcher(viemClient, config.lps, false);
-            config.dataFetcher = dataFetcher;
+            config.dataFetcher = await getDataFetcher(viemClient, config.lps, false);
         } else {
             config.dataFetcher.web3Client = viemClient;
         }
