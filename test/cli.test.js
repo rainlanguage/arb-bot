@@ -142,7 +142,7 @@ describe("Test cli", async function () {
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "invalid poolUpdateInterval value, must be an integer greater than zero";
+            const expected = "invalid poolUpdateInterval value, must be an integer greater than equal zero";
             assert.equal(error, expected);
         }
 
