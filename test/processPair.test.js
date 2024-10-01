@@ -31,6 +31,7 @@ describe("Test process pair", async function () {
         expectedRouteData,
         getCurrentInputToEthPrice,
         orderbooksOrders,
+        getAmountOut,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
     config.rpc = ["http://localhost:8082/rpc"];
@@ -121,7 +122,8 @@ describe("Test process pair", async function () {
                 "details.blockNumber": 123456,
                 "details.blockNumberDiff": 0,
                 "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                "details.maxInput": vaultBalance.toString(),
+                "details.amountIn": vaultBalance.toString(),
+                "details.amountOut": getAmountOut(vaultBalance).toString(),
                 "oppBlockNumber": 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.route": expectedRouteVisual,
@@ -496,7 +498,8 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.maxInput": vaultBalance.toString(),
+                    "details.amountIn": vaultBalance.toString(),
+                    "details.amountOut": getAmountOut(vaultBalance).toString(),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
@@ -572,7 +575,8 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.maxInput": vaultBalance.toString(),
+                    "details.amountIn": vaultBalance.toString(),
+                    "details.amountOut": getAmountOut(vaultBalance).toString(),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
