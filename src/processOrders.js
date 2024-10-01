@@ -397,6 +397,7 @@ async function processPair(args) {
 
     // get pool details
     if (!dataFetcher.fetchedPairPools.includes(pair)) {
+        console.log("c");
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
