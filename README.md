@@ -79,7 +79,7 @@ Other optional arguments are:
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
-- `--hops`, Option to specify how many hops the binary search should do, default is 7 if left unspecified, Will override the 'HOPS' in env variables
+- `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `--self-fund-orders`, Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables
@@ -212,7 +212,7 @@ TRACER_SERVICE_NAME=""
 # The amount of retries for the same order, max is 3, default is 1
 RETRIES=1
 
-# Option to specify time (in minutes) between pools updates, default is 15 minutes
+# Option to specify time (in minutes) between pools updates, default is 0 minutes
 POOL_UPDATE_INTERVAL=
 
 # number of excess wallets for submitting txs, requires mnemonic option

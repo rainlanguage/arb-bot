@@ -79,7 +79,7 @@ const getOptions = async argv => {
         .option("--no-bundle", "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables")
         .option("--hops <integer>", "Option to specify how many hops the binary search should do, default is 1 if left unspecified, Will override the 'HOPS' in env variables")
         .option("--retries <integer>", "Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables")
-        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 7 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
+        .option("--pool-update-interval <integer>", "Option to specify time (in minutes) between pools updates, default is 0 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables")
         .option("-w, --wallet-count <integer>", "Number of wallet to submit transactions with, requires '--mnemonic'. Will override the 'WALLET_COUNT' in env variables")
         .option("-t, --topup-amount <number>", "The initial topup amount of excess wallets, requires '--mnemonic'. Will override the 'TOPUP_AMOUNT' in env variables")
         .option("--bot-min-balance <number>", "The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables")
@@ -143,66 +143,89 @@ const getOptions = async argv => {
  */
 const arbRound = async (tracer, roundCtx, options, config) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
-        let ordersCheck = false;
         const ctx = trace.setSpan(context.active(), span);
+        let ordersDetails;
         try {
-            const ordersDetails = await getOrderDetails(
-                options.subgraph,
-                options.orders,
-                config.mainAccount,
-                {
-                    orderHash: options.orderHash,
-                    orderOwner: options.orderOwner,
-                    orderbook: options.orderbookAddress,
-                },
-                span
-            );
-            ordersCheck = true;
-            if (!ordersDetails.length) {
-                span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
+            try {
+                ordersDetails = await getOrderDetails(
+                    options.subgraph,
+                    options.orders,
+                    config.mainAccount,
+                    {
+                        orderHash: options.orderHash,
+                        orderOwner: options.orderOwner,
+                        orderbook: options.orderbookAddress,
+                    },
+                    span
+                );
+                if (!ordersDetails.length) {
+                    span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
+                    span.end();
+                    return { txs: [], foundOpp: false, avgGasCost: undefined };
+                }
+            } catch(e) {
+                const snapshot = errorSnapshot("", e);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+                span.recordException(e);
+                span.setAttribute("didClear", false);
+                span.setAttribute("foundOpp", false);
                 span.end();
                 return { txs: [], foundOpp: false, avgGasCost: undefined };
             }
 
-            let txs;
-            let foundOpp = false;
-            const { reports, avgGasCost } = await clear(
-                config,
-                ordersDetails,
-                tracer,
-                ctx,
-            );
-            if (reports && reports.length) {
-                txs = reports.map(v => v.txUrl).filter(v => !!v);
-                if (txs.length) {
-                    foundOpp = true;
-                    span.setAttribute("txUrls", txs);
-                    span.setAttribute("didClear", true);
-                    span.setAttribute("foundOpp", true);
-                } else if (reports.some(
-                    v => v.status === ProcessPairReportStatus.FoundOpportunity
-                )) {
-                    foundOpp = true;
-                    span.setAttribute("foundOpp", true);
+            try {
+                let txs;
+                let foundOpp = false;
+                const { reports, avgGasCost } = await clear(
+                    config,
+                    ordersDetails,
+                    tracer,
+                    ctx,
+                );
+                if (reports && reports.length) {
+                    txs = reports.map(v => v.txUrl).filter(v => !!v);
+                    if (txs.length) {
+                        foundOpp = true;
+                        span.setAttribute("txUrls", txs);
+                        span.setAttribute("didClear", true);
+                        span.setAttribute("foundOpp", true);
+                    } else if (reports.some(
+                        v => v.status === ProcessPairReportStatus.FoundOpportunity
+                    )) {
+                        foundOpp = true;
+                        span.setAttribute("foundOpp", true);
+                    }
+                } else {
+                    span.setAttribute("didClear", false);
                 }
-            } else {
+                if (avgGasCost) {
+                    span.setAttribute("avgGasCost", avgGasCost.toString());
+                }
+                span.setStatus({ code: SpanStatusCode.OK });
+                span.end();
+                return { txs, foundOpp, avgGasCost };
+            } catch(e) {
+                if (e?.startsWith?.("Failed to batch quote orders")) {
+                    span.setAttribute("severity", ErrorSeverity.LOW);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: e });
+                } else {
+                    const snapshot = errorSnapshot("Unexpected error occured", e);
+                    span.setAttribute("severity", ErrorSeverity.HIGH);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+                }
+                span.recordException(e);
                 span.setAttribute("didClear", false);
+                span.setAttribute("foundOpp", false);
+                span.end();
+                return { txs: [], foundOpp: false, avgGasCost: undefined };
             }
-            if (avgGasCost) {
-                span.setAttribute("avgGasCost", avgGasCost.toString());
-            }
-            span.setStatus({ code: SpanStatusCode.OK });
-            span.end();
-            return { txs, foundOpp, avgGasCost };
         } catch(e) {
-            const snapshot = errorSnapshot("", e);
-            if (ordersCheck) {
-                span.setAttribute("severity", ErrorSeverity.HIGH);
-            }
-            span.setAttribute("didClear", false);
-            span.setAttribute("foundOpp", false);
+            const snapshot = errorSnapshot("Unexpected error occured", e);
+            span.setAttribute("severity", ErrorSeverity.HIGH);
             span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             span.recordException(e);
+            span.setAttribute("didClear", false);
+            span.setAttribute("foundOpp", false);
             span.end();
             return { txs: [], foundOpp: false, avgGasCost: undefined };
         }

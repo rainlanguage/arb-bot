@@ -25,7 +25,7 @@ const {
 
 /**
  * @import { Tracer } from "@opentelemetry/sdk-trace-base"
- * @import { Context } from "@opentelemetry/api"
+ * @import { Context, Span } from "@opentelemetry/api"
  * @import { PublicClient } from "viem"
  * @import { DataFetcher } from "sushi"
  * @import { BotConfig, BundledOrders, ProcessPairResult, ViemClient } from "./types"
@@ -89,30 +89,39 @@ const processOrders = async(
         config.shuffle,
         true,
     );
+
     // check owned orders' vaults
     const ownedOrders = await checkOwnedOrders(config, bundledOrders);
     if (ownedOrders.length) {
         const failedFundings = await fundOwnedOrders(ownedOrders, config);
         const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
         if (failedFundings.length || emptyOrders.length) {
-            await tracer.startActiveSpan("handle-owned-orders", {}, ctx, async (span) => {
+            await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
                 let severity = ErrorSeverity.MEDIUM;
                 const message = [];
                 if (emptyOrders.length) {
                     severity = ErrorSeverity.HIGH;
                     message.push(...[
-                        "Reason: following owned orders have empty vaults:",
-                        ...ownedOrders.map(v => `\nhash: ${v.id},\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+                        "Reason: following owned vaults are empty:",
+                        ...ownedOrders.map(v => `\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
                     ]);
                 }
                 if (failedFundings.length) {
-                    span.setAttribute("failedFundings", failedFundings.map(v => JSON.stringify({
-                        orderId: v.ownedOrder.id,
-                        orderbook: v.ownedOrder.orderbook,
-                        token: v.ownedOrder.token,
-                        symbol: v.ownedOrder.symbol,
-                        error: v.error
-                    })));
+                    span.setAttribute("failedFundings", failedFundings.map(v => (
+                        JSON.stringify({
+                            error: v.error,
+                            ...(v.ownedOrder
+                                ? {
+                                    orderId: v.ownedOrder.id,
+                                    orderbook: v.ownedOrder.orderbook,
+                                    vaultId: v.ownedOrder.vaultId,
+                                    token: v.ownedOrder.token,
+                                    symbol: v.ownedOrder.symbol,
+                                }
+                                : {}
+                            )
+                        })
+                    )));
                 }
                 span.setAttribute("severity", severity);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
@@ -120,10 +129,16 @@ const processOrders = async(
             });
         }
     }
-    await quoteOrders(
-        bundledOrders,
-        config.isTest ? config.quoteRpc : config.rpc
-    );
+
+    // batch quote orders to establish the orders to loop over
+    try {
+        await quoteOrders(
+            bundledOrders,
+            config.isTest ? config.quoteRpc : config.rpc
+        );
+    } catch(e) {
+        throw errorSnapshot("Failed to batch quote orders", e);
+    }
 
     let avgGasCost;
     const reports = [];
