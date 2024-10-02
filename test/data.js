@@ -281,6 +281,18 @@ function getCurrentPrice(amountIn) {
     return price;
 }
 
+function getAmountOut(amountIn) {
+    const route = Router.findBestRoute(
+        poolCodeMap,
+        chainId,
+        fromToken,
+        amountIn.toBigInt(),
+        toToken,
+        gasPrice.toNumber(),
+    );
+    return BigNumber.from(route.amountOutBI);
+}
+
 function getCurrentInputToEthPrice() {
     const amountIn = BigNumber.from("1" + "0".repeat(toToken.decimals));
     const amountInFixed = amountIn.mul("1" + "0".repeat(18 - toToken.decimals));
@@ -335,4 +347,5 @@ module.exports = {
     outputToEthPrice,
     opposingOrderbookAddress,
     getCurrentInputToEthPrice,
+    getAmountOut,
 };

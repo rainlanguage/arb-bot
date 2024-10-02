@@ -34,6 +34,7 @@ const {
     expectedRouteVisual,
     getCurrentPrice,
     orderbook,
+    getAmountOut,
 } = testData;
 
 describe("Test find opp", async function () {
@@ -119,7 +120,8 @@ describe("Test find opp", async function () {
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-                maxInput: vaultBalance.toString(),
+                amountIn: vaultBalance.toString(),
+                amountOut: getAmountOut(vaultBalance).toString(),
                 marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
             }
@@ -365,7 +367,8 @@ describe("Test find opp", async function () {
                     "inter-orderbook": {
                         againstOrderbooks: {
                             [opposingOrderbookAddress]: {
-                                maxInput: vaultBalance.toString(),
+                                amountIn: vaultBalance.toString(),
+                                amountOut: getAmountOut(vaultBalance).toString(),
                                 blockNumber: oppBlockNumber,
                                 error: err,
                             }

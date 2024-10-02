@@ -15,6 +15,7 @@ const {
     quoteOrders,
     bundleOrders,
     PoolBlackList,
+    getMarketQuote,
     getTotalIncome,
     quoteSingleOrder,
     checkOwnedOrders,
@@ -424,6 +425,22 @@ async function processPair(args) {
             throw result;
         }
     }
+
+    try {
+        const marketQuote = getMarketQuote(config, fromToken, toToken, gasPrice);
+        if (marketQuote) {
+            spanAttributes["details.unitMarketQuote.price.str"] = marketQuote.price;
+            spanAttributes["details.unitMarketQuote.amountOut.str"] = marketQuote.amountOut;
+            try {
+                spanAttributes["details.unitMarketQuote.price.num"] = toNumber(
+                    ethers.utils.parseUnits(marketQuote.price)
+                );
+                spanAttributes["details.unitMarketQuote.amountOut.num"] = toNumber(
+                    ethers.utils.parseUnits(marketQuote.amountOut)
+                );
+            } catch { /**/ }
+        }
+    } catch { /**/ }
 
     // get in/out tokens to eth price
     let inputToEthPrice, outputToEthPrice;

@@ -31,6 +31,7 @@ describe("Test process pair", async function () {
         expectedRouteData,
         getCurrentInputToEthPrice,
         orderbooksOrders,
+        getAmountOut,
     } = fixtures;
     const config = JSON.parse(JSON.stringify(fixtureConfig));
     config.rpc = ["http://localhost:8082/rpc"];
@@ -77,6 +78,11 @@ describe("Test process pair", async function () {
                 };
             }
         };
+        config.dataFetcher = {
+            getCurrentPoolCodeMap: () => {
+                return poolCodeMap;
+            }
+        };
     });
     afterEach(() => mockServer.stop());
 
@@ -121,7 +127,12 @@ describe("Test process pair", async function () {
                 "details.blockNumber": 123456,
                 "details.blockNumberDiff": 0,
                 "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                "details.maxInput": vaultBalance.toString(),
+                "details.amountIn": vaultBalance.toString(),
+                "details.amountOut": getAmountOut(vaultBalance).toString(),
+                "details.unitMarketQuote.amountOut.str": "0.99699",
+                "details.unitMarketQuote.amountOut.num": 0.99699,
+                "details.unitMarketQuote.price.num": 0.99699,
+                "details.unitMarketQuote.price.str": "0.99699",
                 "oppBlockNumber": 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.route": expectedRouteVisual,
@@ -204,6 +215,10 @@ describe("Test process pair", async function () {
                 "details.gasPrice": gasPrice.toString(),
                 "foundOpp": true,
                 "didClear": true,
+                "details.unitMarketQuote.amountOut.str": "0.99699",
+                "details.unitMarketQuote.amountOut.num": 0.99699,
+                "details.unitMarketQuote.price.num": 0.99699,
+                "details.unitMarketQuote.price.str": "0.99699",
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
@@ -371,6 +386,10 @@ describe("Test process pair", async function () {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.gasPrice": gasPrice.toString(),
+                    "details.unitMarketQuote.amountOut.str": "0.99699",
+                    "details.unitMarketQuote.amountOut.num": 0.99699,
+                    "details.unitMarketQuote.price.num": 0.99699,
+                    "details.unitMarketQuote.price.str": "0.99699",
                     "details.quote": JSON.stringify({
                         maxOutput: ethers.utils.formatUnits(vaultBalance),
                         ratio: ethers.utils.formatUnits(ethers.constants.Zero),
@@ -496,13 +515,18 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.maxInput": vaultBalance.toString(),
+                    "details.amountIn": vaultBalance.toString(),
+                    "details.amountOut": getAmountOut(vaultBalance).toString(),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
                     "details.rawTx": JSON.stringify(rawtx),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.unitMarketQuote.amountOut.str": "0.99699",
+                    "details.unitMarketQuote.amountOut.num": 0.99699,
+                    "details.unitMarketQuote.price.num": 0.99699,
+                    "details.unitMarketQuote.price.str": "0.99699",
                     "details.quote": JSON.stringify({
                         maxOutput: ethers.utils.formatUnits(vaultBalance),
                         ratio: ethers.utils.formatUnits(ethers.constants.Zero),
@@ -572,13 +596,18 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.maxInput": vaultBalance.toString(),
+                    "details.amountIn": vaultBalance.toString(),
+                    "details.amountOut": getAmountOut(vaultBalance).toString(),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
+                    "details.unitMarketQuote.amountOut.str": "0.99699",
+                    "details.unitMarketQuote.amountOut.num": 0.99699,
+                    "details.unitMarketQuote.price.num": 0.99699,
+                    "details.unitMarketQuote.price.str": "0.99699",
                     "details.quote": JSON.stringify({
                         maxOutput: ethers.utils.formatUnits(vaultBalance),
                         ratio: ethers.utils.formatUnits(ethers.constants.Zero),
