@@ -158,17 +158,18 @@ describe("Test accounts", async function () {
         ];
         const mainAccount = (await viem.getTestClient({account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"})).extend(publicActions).extend(walletActions);
         const accounts = [(await viem.getTestClient({account: "0xdF906eA18C6537C6379aC83157047F507FB37263"})).extend(publicActions).extend(walletActions)];
+        const dataFectherBefore = {
+            fetchedPairPools: []
+        };
         const config = {
             rpc: rpcs,
             chain: { id: 137 },
             mainAccount,
             accounts,
-            dataFetcher: {
-                fetchedPairPools: []
-            }
+            dataFetcher: dataFectherBefore
         };
 
-        await rotateProviders(config, mainAccount);
+        await rotateProviders(config, mainAccount, true);
 
         assert.exists(config.mainAccount);
         assert.exists(config.accounts);
@@ -182,6 +183,8 @@ describe("Test accounts", async function () {
         accounts.forEach(v => {
             assert.equal(v.provider, config.provider);
         });
+        // make sure datafetcher gets restarted not matter what
+        assert.notEqual(config.dataFetcher, dataFectherBefore);
     });
 
     it("should rotate accounts", async function () {
