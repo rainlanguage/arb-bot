@@ -10,16 +10,17 @@ const { ErrorSeverity, errorSnapshot } = require("./error");
 const {
     toNumber,
     getIncome,
+    routeExists,
     getEthPrice,
     quoteOrders,
     bundleOrders,
     PoolBlackList,
+    getMarketQuote,
     getTotalIncome,
     quoteSingleOrder,
     checkOwnedOrders,
     getActualClearAmount,
     withBigintSerializer,
-    getMarketQuote,
 } = require("./utils");
 
 /**
@@ -396,8 +397,10 @@ async function processPair(args) {
     }
 
     // get pool details
-    if (!dataFetcher.fetchedPairPools.includes(pair)) {
-        console.log("c");
+    if (
+        !dataFetcher.fetchedPairPools.includes(pair) ||
+        !(await routeExists(config, fromToken, toToken, gasPrice))
+    ) {
         try {
             const options = {
                 fetchPoolsTimeout: 90000,
@@ -426,10 +429,18 @@ async function processPair(args) {
     try {
         const marketQuote = getMarketQuote(config, fromToken, toToken, gasPrice);
         if (marketQuote) {
-            spanAttributes["details.marketPrice"] = marketQuote.price;
-            spanAttributes["details.amountOut"] = marketQuote.amountOut;
+            spanAttributes["details.unitMarketQuote.price.str"] = marketQuote.price;
+            spanAttributes["details.unitMarketQuote.amountOut.str"] = marketQuote.amountOut;
+            try {
+                spanAttributes["details.unitMarketQuote.price.num"] = toNumber(
+                    ethers.utils.parseUnits(marketQuote.price)
+                );
+                spanAttributes["details.unitMarketQuote.amountOut.num"] = toNumber(
+                    ethers.utils.parseUnits(marketQuote.amountOut)
+                );
+            } catch { /**/ }
         }
-    } catch(e) { /**/ }
+    } catch { /**/ }
 
     // get in/out tokens to eth price
     let inputToEthPrice, outputToEthPrice;
