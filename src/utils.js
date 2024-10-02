@@ -1194,9 +1194,8 @@ async function routeExists(config, fromToken, toToken, gasPrice) {
             gasPrice
         );
         return true;
-    } catch(e) {
-        if (e === "NoWay") return false;
-        else return true;
+    } catch {
+        return false;
     }
 }
 
