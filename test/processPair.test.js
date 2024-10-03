@@ -127,8 +127,8 @@ describe("Test process pair", async function () {
                 "details.blockNumber": 123456,
                 "details.blockNumberDiff": 0,
                 "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                "details.amountIn": vaultBalance.toString(),
-                "details.amountOut": getAmountOut(vaultBalance).toString(),
+                "details.amountIn": formatUnits(vaultBalance),
+                "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
                 "details.marketQuote.num": 0.99699,
                 "details.marketQuote.str": "0.99699",
                 "oppBlockNumber": 123456,
@@ -142,10 +142,10 @@ describe("Test process pair", async function () {
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
-                    maxOutput: ethers.utils.formatUnits(vaultBalance),
-                    ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                    maxOutput: formatUnits(vaultBalance),
+                    ratio: formatUnits(ethers.constants.Zero),
                 }),
-                "details.estimatedProfit": ethers.utils.formatUnits(
+                "details.estimatedProfit": formatUnits(
                     estimateProfit(
                         orderPairObject,
                         getCurrentInputToEthPrice(),
@@ -218,10 +218,10 @@ describe("Test process pair", async function () {
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
-                    maxOutput: ethers.utils.formatUnits(vaultBalance),
-                    ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                    maxOutput: formatUnits(vaultBalance),
+                    ratio: formatUnits(ethers.constants.Zero),
                 }),
-                "details.estimatedProfit": ethers.utils.formatUnits(
+                "details.estimatedProfit": formatUnits(
                     estimateProfit(
                         orderPairObject,
                         getCurrentInputToEthPrice(),
@@ -341,8 +341,8 @@ describe("Test process pair", async function () {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.quote": JSON.stringify({
-                        maxOutput: ethers.utils.formatUnits(vaultBalance),
-                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -385,8 +385,8 @@ describe("Test process pair", async function () {
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.quote": JSON.stringify({
-                        maxOutput: ethers.utils.formatUnits(vaultBalance),
-                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -427,8 +427,8 @@ describe("Test process pair", async function () {
                     "details.orders": [orderPairObject.takeOrders[0].id],
                     "details.gasPrice": gasPrice.toString(),
                     "details.quote": JSON.stringify({
-                        maxOutput: ethers.utils.formatUnits(vaultBalance),
-                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
                     })
                 }
             };
@@ -509,8 +509,8 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.amountIn": vaultBalance.toString(),
-                    "details.amountOut": getAmountOut(vaultBalance).toString(),
+                    "details.amountIn": formatUnits(vaultBalance),
+                    "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
@@ -520,10 +520,10 @@ describe("Test process pair", async function () {
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.quote": JSON.stringify({
-                        maxOutput: ethers.utils.formatUnits(vaultBalance),
-                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
                     }),
-                    "details.estimatedProfit": ethers.utils.formatUnits(
+                    "details.estimatedProfit": formatUnits(
                         estimateProfit(
                             orderPairObject,
                             getCurrentInputToEthPrice(),
@@ -576,7 +576,7 @@ describe("Test process pair", async function () {
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
                     txUrl: scannerUrl + "/tx/" + txHash,
-                    actualGasCost: ethers.utils.formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
                 error: undefined,
@@ -588,8 +588,8 @@ describe("Test process pair", async function () {
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
-                    "details.amountIn": vaultBalance.toString(),
-                    "details.amountOut": getAmountOut(vaultBalance).toString(),
+                    "details.amountIn": formatUnits(vaultBalance),
+                    "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
                     "oppBlockNumber": 123456,
                     "details.route": expectedRouteVisual,
                     "foundOpp": true,
@@ -599,10 +599,10 @@ describe("Test process pair", async function () {
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.quote": JSON.stringify({
-                        maxOutput: ethers.utils.formatUnits(vaultBalance),
-                        ratio: ethers.utils.formatUnits(ethers.constants.Zero),
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
                     }),
-                    "details.estimatedProfit": ethers.utils.formatUnits(
+                    "details.estimatedProfit": formatUnits(
                         estimateProfit(
                             orderPairObject,
                             getCurrentInputToEthPrice(),

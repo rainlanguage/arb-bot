@@ -120,9 +120,9 @@ describe("Test find opp", async function () {
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-                amountIn: vaultBalance.toString(),
-                amountOut: getAmountOut(vaultBalance).toString(),
-                marketPrice: ethers.utils.formatUnits(getCurrentPrice(vaultBalance)),
+                amountIn: formatUnits(vaultBalance),
+                amountOut: formatUnits(getAmountOut(vaultBalance), 6),
+                marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
             }
         };
@@ -359,16 +359,16 @@ describe("Test find opp", async function () {
                 spanAttributes: {
                     "route-processor": {
                         hops: [
-                            `{"maxInput":"${vaultBalance.toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
-                            `{"maxInput":"${vaultBalance.div(2).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                            `{"maxInput":"${vaultBalance.div(4).toString()}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                            `{"amountIn":"${formatUnits(vaultBalance)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":"${ethers.errors.UNPREDICTABLE_GAS_LIMIT}"}`,
+                            `{"amountIn":"${formatUnits(vaultBalance.div(2))}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                            `{"amountIn":"${formatUnits(vaultBalance.div(4))}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         ]
                     },
                     "inter-orderbook": {
                         againstOrderbooks: {
                             [opposingOrderbookAddress]: {
-                                amountIn: vaultBalance.toString(),
-                                amountOut: getAmountOut(vaultBalance).toString(),
+                                amountIn: formatUnits(vaultBalance),
+                                amountOut: formatUnits(getAmountOut(vaultBalance), 6),
                                 blockNumber: oppBlockNumber,
                                 error: err,
                             }
