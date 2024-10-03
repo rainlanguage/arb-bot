@@ -417,7 +417,7 @@ async function processPair(args) {
     let gasPrice;
     try {
         const gasPriceBigInt = await viemClient.getGasPrice();
-        gasPrice = ethers.BigNumber.from(gasPriceBigInt);
+        gasPrice = ethers.BigNumber.from(gasPriceBigInt).mul("107").div("100");
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch(e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
@@ -698,7 +698,7 @@ async function processPair(args) {
                 !signer.BOUNTY.find(v => v.address === orderPairObject.buyToken)
             ) {
                 signer.BOUNTY.push({
-                    address: orderPairObject.buyToken,
+                    address: orderPairObject.buyToken.toLowerCase(),
                     decimals: orderPairObject.buyTokenDecimals,
                     symbol: orderPairObject.buyTokenSymbol,
                 });
@@ -709,7 +709,7 @@ async function processPair(args) {
                 !signer.BOUNTY.find(v => v.address === orderPairObject.sellToken)
             ) {
                 signer.BOUNTY.push({
-                    address: orderPairObject.sellToken,
+                    address: orderPairObject.sellToken.toLowerCase(),
                     decimals: orderPairObject.sellTokenDecimals,
                     symbol: orderPairObject.sellTokenSymbol,
                 });

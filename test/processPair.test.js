@@ -136,7 +136,7 @@ describe("Test process pair", async function () {
                 "details.route": expectedRouteVisual,
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
-                "details.gasPrice": gasPrice.toString(),
+                "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                 "foundOpp": true,
                 "didClear": true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
@@ -210,7 +210,7 @@ describe("Test process pair", async function () {
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
-                "details.gasPrice": gasPrice.toString(),
+                "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                 "foundOpp": true,
                 "didClear": true,
                 "details.marketQuote.num": 0.99699,
@@ -381,7 +381,7 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString(),
+                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.quote": JSON.stringify({
@@ -425,7 +425,7 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString(),
+                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
@@ -488,8 +488,8 @@ describe("Test process pair", async function () {
                     ]
                 ),
                 to: arb.address,
-                gasPrice: gasPrice.toString(),
-                gas: gasLimitEstimation.mul("107").div("100").toString(),
+                gasPrice: gasPrice.mul(107).div(100).toString(),
+                gas: gasLimitEstimation.toString(),
                 from: signer.account.address,
             };
             const expected = {
@@ -505,7 +505,7 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString(),
+                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
@@ -584,7 +584,7 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.toString(),
+                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.blockNumber": 123456,
                     "details.blockNumberDiff": 0,
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
