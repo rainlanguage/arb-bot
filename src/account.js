@@ -84,7 +84,6 @@ async function initAccounts(
         if (cumulativeTopupAmount.gt(balances[0])) {
             throw "low on funds to topup excess wallets with specified initial topup amount";
         } else {
-            const gasPrice = await config.viemClient.getGasPrice();
             for (let i = 0; i < accounts.length; i++) {
                 await setWatchedTokens(accounts[i], config.watchedTokens, config.viemClient);
                 accounts[i].BALANCE = balances[i + 1];
@@ -95,7 +94,6 @@ async function initAccounts(
                     const hash = await mainAccount.sendTransaction({
                         to: accounts[i].account.address,
                         value: transferAmount.toBigInt(),
-                        gasPrice,
                     });
                     const receipt = await mainAccount.waitForTransactionReceipt({
                         hash,
@@ -178,7 +176,6 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
                     const hash = await config.mainAccount.sendTransaction({
                         to: acc.account.address,
                         value: transferAmount.toBigInt(),
-                        gasPrice
                     });
                     const receipt = await config.mainAccount.waitForTransactionReceipt({
                         hash,
@@ -344,6 +341,7 @@ async function getBatchTokenBalanceForAccount(
  * @param {bigint} gasPrice - Gas price
  */
 async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
+    gasPrice = ethers.BigNumber.from(gasPrice).mul(107).div(100).toBigInt();
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const txs = [];
     const failedBounties = [];
@@ -359,12 +357,10 @@ async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
             const tx = {
                 to: bounty.address,
                 data: erc20.encodeFunctionData("transfer", [toWallet.account.address, balance]),
-                gasPrice
             };
-            const gas = ethers.BigNumber.from(await fromWallet.estimateGas(tx));
-            tx.gas = gas.mul(105).div(100).toBigInt();
             txs.push({ tx, bounty });
-            cumulativeGasLimit = cumulativeGasLimit.add(gas.mul(105).div(100));
+            const gas = await fromWallet.estimateGas(tx);
+            cumulativeGasLimit = cumulativeGasLimit.add(gas);
         } catch {
             failedBounties.push(bounty);
         }
@@ -376,7 +372,6 @@ async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
             const hash = await toWallet.sendTransaction({
                 to: fromWallet.account.address,
                 value: transferAmount.toBigInt(),
-                gasPrice,
             });
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
@@ -424,7 +419,6 @@ async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
                 await fromWallet.estimateGas({
                     to: toWallet.account.address,
                     value: "0",
-                    gasPrice
                 })
             );
             const remainingGas = ethers.BigNumber.from(
@@ -435,7 +429,6 @@ async function sweepToMainWallet(fromWallet, toWallet, gasPrice) {
                 const hash = await fromWallet.sendTransaction({
                     to: toWallet.account.address,
                     value: transferAmount.toBigInt(),
-                    gasPrice,
                     gas: gasLimit.toBigInt(),
                 });
                 const receipt = await fromWallet.waitForTransactionReceipt({
@@ -468,9 +461,10 @@ async function sweepToEth(config) {
     const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[config.chain.id];
     const rp = new ethers.utils.Interface(routeProcessor3Abi);
     const erc20 = new ethers.utils.Interface(erc20Abi);
-    const gasPrice = ethers.BigNumber.from(
-        await config.mainAccount.getGasPrice()
-    );
+    const gasPrice = ethers.BigNumber
+        .from(await config.mainAccount.getGasPrice())
+        .mul(107)
+        .div(100);
     for (let i = 0; i < config.mainAccount.BOUNTY.length; i++) {
         /** @type {TokenDetails} */
         const bounty = config.mainAccount.BOUNTY[i];
@@ -530,14 +524,14 @@ async function sweepToEth(config) {
                     confirmations: 2
                 });
             }
-            const rawtx = { to: rp4Address, data, gasPrice: gasPrice.toBigInt() };
+            const rawtx = { to: rp4Address, data };
             const gas = await config.mainAccount.estimateGas(rawtx);
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
             if (gasCost.mul(25).gte(amountOutMin)) {
                 skipped.push(bounty);
                 continue;
             } else {
-                rawtx.gas = ethers.BigNumber.from(gas).mul(15).div(10).toBigInt();
+                rawtx.gas = gas;
                 const hash = await config.mainAccount.sendTransaction(rawtx);
                 await config.mainAccount.waitForTransactionReceipt({
                     hash,
@@ -597,7 +591,10 @@ async function fundOwnedOrders(ownedOrders, config) {
     let gasPrice;
     for (let i = 0; i < 4; i++) {
         try {
-            gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
+            gasPrice = ethers.BigNumber
+                .from(await config.viemClient.getGasPrice())
+                .mul(107)
+                .div(100);
             break;
         } catch (e) {
             if (i == 3) return [{

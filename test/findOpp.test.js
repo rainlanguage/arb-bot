@@ -83,7 +83,7 @@ describe("Test find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    (gasLimitEstimation).mul(gasPrice)
                 )
             },
             signedContext: []
@@ -101,7 +101,7 @@ describe("Test find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 price: getCurrentPrice(vaultBalance),
@@ -181,7 +181,7 @@ describe("Test find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -199,7 +199,7 @@ describe("Test find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -257,7 +257,7 @@ describe("Test find opp", async function () {
                     outputBalance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -306,7 +306,7 @@ describe("Test find opp", async function () {
                     ),
                     to: orderPairObject.orderbook,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(

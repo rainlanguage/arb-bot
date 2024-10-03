@@ -119,8 +119,6 @@ async function dryrun({
         }, withBigintSerializer);
         return Promise.reject(result);
     }
-    gasLimit = gasLimit.mul("107").div("100");
-    rawtx.gas = gasLimit.toBigInt();
     let gasCost = gasLimit.mul(gasPrice);
 
     // repeat the same process with heaedroom if gas
@@ -128,7 +126,7 @@ async function dryrun({
     // sender output which is already called above
     if (config.gasCoveragePercentage !== "0") {
         const headroom = (
-            Number(config.gasCoveragePercentage) * 1.05
+            Number(config.gasCoveragePercentage) * 1.03
         ).toFixed();
         task.evaluable.bytecode = getBountyEnsureBytecode(
             ethers.utils.parseUnits(inputToEthPrice),
@@ -148,7 +146,6 @@ async function dryrun({
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
-            gasLimit = gasLimit.mul("107").div("100");
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getBountyEnsureBytecode(
@@ -174,6 +171,7 @@ async function dryrun({
             return Promise.reject(result);
         }
     }
+    rawtx.gas = gasLimit.toBigInt();
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;

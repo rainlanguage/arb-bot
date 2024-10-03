@@ -84,7 +84,7 @@ describe("Test inter-orderbook dryrun", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -102,7 +102,7 @@ describe("Test inter-orderbook dryrun", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -221,7 +221,7 @@ describe("Test inter-orderbook find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -239,7 +239,7 @@ describe("Test inter-orderbook find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 maximumInput: vaultBalance,
                 oppBlockNumber,
@@ -317,7 +317,7 @@ describe("Test inter-orderbook find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -335,7 +335,7 @@ describe("Test inter-orderbook find opp", async function () {
                     ),
                     to: arb.address,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 maximumInput: vaultBalance.mul(3).div(4),
                 oppBlockNumber,

@@ -64,7 +64,7 @@ describe("Test intra-orderbook dryrun", async function () {
                     outputBalance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -113,7 +113,7 @@ describe("Test intra-orderbook dryrun", async function () {
                     ),
                     to: orderPairObject.orderbook,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
@@ -204,7 +204,7 @@ describe("Test intra-orderbook find opp", async function () {
                     balance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul("107").div("100").mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice)
                 ),
             },
             signedContext: []
@@ -253,7 +253,7 @@ describe("Test intra-orderbook find opp", async function () {
                     ),
                     to: orderPairObject.orderbook,
                     gasPrice,
-                    gas: gasLimitEstimation.mul("107").div("100").toBigInt(),
+                    gas: gasLimitEstimation.toBigInt(),
                 },
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
