@@ -121,7 +121,7 @@ const getOptions = async argv => {
     cmdOptions.bundle             = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
     if (cmdOptions.selfFundOrders) {
         cmdOptions.selfFundOrders = Array
-            .from(process?.env?.SELF_FUND_ORDERS.matchAll(/[^;]+/g))
+            .from(cmdOptions.selfFundOrders.matchAll(/[^;]+/g))
             .map(v => {
                 const matches = Array.from(v[0].matchAll(/[^,]+/g)).map(e => e[0]);
                 return {
@@ -330,6 +330,7 @@ async function startup(argv) {
                 : undefined,
         }
     );
+    config.selfFundOrders = options.selfFundOrders;
 
     return {
         roundGap,
