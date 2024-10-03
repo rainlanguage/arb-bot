@@ -72,7 +72,8 @@ const routeProcessor3Abi = [
  */
 const arbAbis = [
     `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`,
-    `function arb3(address orderBook, ${TakeOrdersConfigV3} calldata takeOrders, ${TaskV1} calldata task)`
+    `function arb3(address orderBook, ${TakeOrdersConfigV3} calldata takeOrders, ${TaskV1} calldata task)`,
+    "function iRouteProcessor() external view returns (address)"
 ];
 
 const multicall3Abi = [

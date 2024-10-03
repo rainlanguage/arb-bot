@@ -72,7 +72,7 @@ async function dryrun({
     const maximumInput = maximumInputFixed.div(
         "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals)
     );
-    spanAttributes["amountIn"] = maximumInput.toString();
+    spanAttributes["amountIn"] = ethers.utils.formatUnits(maximumInputFixed);
 
     // get route details from sushi dataFetcher
     const pcMap = dataFetcher.getCurrentPoolCodeMap(
@@ -95,7 +95,7 @@ async function dryrun({
         return Promise.reject(result);
     }
     else {
-        spanAttributes["amountOut"] = ethers.BigNumber.from(route.amountOutBI).toString();
+        spanAttributes["amountOut"] = ethers.utils.formatUnits(route.amountOutBI, toToken.decimals);
         const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
             "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
         );

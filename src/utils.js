@@ -1221,7 +1221,13 @@ async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) 
     orderDetails.flat().forEach(v => {
         v.takeOrders.forEach(order => {
             if (order.takeOrder.order.owner.toLowerCase() ===
-                config.mainAccount.account.address.toLowerCase()
+                config.mainAccount.account.address.toLowerCase() &&
+                !ownedOrders.find(e =>
+                    e.orderbook === v.orderbook &&
+                    e.outputToken === v.sellToken &&
+                    e.order.takeOrder.order.validOutputs[e.order.takeOrder.outputIOIndex] ==
+                    order.takeOrder.order.validOutputs[order.takeOrder.outputIOIndex]
+                )
             ) {
                 ownedOrders.push({
                     order,
@@ -1233,6 +1239,7 @@ async function checkOwnedOrders(config, orderDetails, multicallAddressOverride) 
             }
         });
     });
+    if (!ownedOrders.length) return result;
     try {
         const multicallResult = await config.viemClient.multicall({
             multicallAddress:

@@ -593,7 +593,18 @@ async function fundOwnedOrders(ownedOrders, config) {
     const ob = new ethers.utils.Interface(orderbookAbi);
     const rp = new ethers.utils.Interface(routeProcessor3Abi);
     const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[config.chain.id];
-    const gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
+    let gasPrice;
+    for (let i = 0; i < 4; i++) {
+        try {
+            gasPrice = ethers.BigNumber.from(await config.viemClient.getGasPrice());
+            break;
+        } catch (e) {
+            if (i == 3) return [{
+                error: errorSnapshot("failed to get gas price", e)
+            }];
+            else await sleep(10000 * (i + 1));
+        }
+    }
     if (config.selfFundOrders) {
         for (let i = 0; i < ownedOrders.length; i++) {
             const ownedOrder = ownedOrders[i];
@@ -693,7 +704,7 @@ async function fundOwnedOrders(ownedOrders, config) {
                     } catch (error) {
                         failedFundings.push({
                             ownedOrder,
-                            error: errorSnapshot("failed to fund owned order", error)
+                            error: errorSnapshot("Failed to fund owned vault", error)
                         });
                     }
                 }
