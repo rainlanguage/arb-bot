@@ -101,7 +101,7 @@ const getConfig = async(
     rpcUrls,
     walletKey,
     arbAddress,
-    options = configOptions
+    options
 ) => {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
@@ -188,6 +188,7 @@ const getConfig = async(
     config.viemClient               = viemClient;
     config.dataFetcher              = dataFetcher;
     config.watchedTokens            = options?.tokens ?? [];
+    config.selfFundOrders           = options?.selfFundOrders;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(

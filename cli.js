@@ -330,7 +330,6 @@ async function startup(argv) {
                 : undefined,
         }
     );
-    config.selfFundOrders = options.selfFundOrders;
 
     return {
         roundGap,
@@ -405,6 +404,8 @@ const main = async argv => {
         }
     });
 
+    const day = 24 * 60 * 60 * 1000;
+    let lastGasReset = Date.now() + day;
     let lastInterval = Date.now() + poolUpdateInterval;
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost;
@@ -472,6 +473,11 @@ const main = async argv => {
 
                 // keep avg gas cost
                 if (roundAvgGasCost) {
+                    const _now = Date.now();
+                    if (lastGasReset <= _now) {
+                        lastGasReset = _now + day;
+                        avgGasCost = undefined;
+                    }
                     if (avgGasCost) {
                         avgGasCost = avgGasCost.add(roundAvgGasCost).div(2);
                     } else {

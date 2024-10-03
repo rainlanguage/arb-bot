@@ -131,7 +131,7 @@ async function manageAccounts(config, options, avgGasCost, lastIndex, wgc) {
     let accountsToAdd = 0;
     const gasPrice = await config.viemClient.getGasPrice();
     for (let i = config.accounts.length - 1; i >= 0; i--) {
-        if (config.accounts[i].BALANCE.lt(avgGasCost.mul(15))) {
+        if (config.accounts[i].BALANCE.lt(avgGasCost.mul(4))) {
             try {
                 await sweepToMainWallet(
                     config.accounts[i],
