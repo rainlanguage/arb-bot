@@ -271,7 +271,7 @@ const processOrders = async(
                                 message = errorSnapshot(message, e.error);
                                 span.recordException(e.error);
                             }
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setAttribute("severity", ErrorSeverity.LOW);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                         } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
                             let message = pair + ": failed to get pool details";
@@ -505,6 +505,7 @@ async function processPair(args) {
                 outputToEthPrice = "0";
             } else {
                 result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+                result.error = "no-route";
                 return Promise.reject(result);
             }
         }
