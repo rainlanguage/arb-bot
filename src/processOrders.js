@@ -104,7 +104,7 @@ const processOrders = async(
                     if (emptyOrders.length) {
                         message.push(
                             "Reason: following owned vaults are empty:",
-                            ...emptyOrders.map(v => `\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+                            ...emptyOrders.map(v => `\ntoken: ${v.symbol},\nvaultId: ${v.vaultId}`)
                         );
                     }
                     if (failedFundings.length) {

@@ -591,6 +591,7 @@ async function setWatchedTokens(account, watchedTokens, viemClient) {
 async function fundOwnedOrders(ownedOrders, config) {
     const failedFundings = [];
     const ob = new ethers.utils.Interface(orderbookAbi);
+    const erc20 = new ethers.utils.Interface(erc20Abi);
     const rp = new ethers.utils.Interface(routeProcessor3Abi);
     const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[config.chain.id];
     let gasPrice;
@@ -621,67 +622,108 @@ async function fundOwnedOrders(ownedOrders, config) {
                         ownedOrder.decimals
                     );
                     try {
-                        const token = new Token({
-                            chainId: config.chain.id,
-                            decimals: ownedOrder.decimals,
-                            address: ownedOrder.token,
-                            symbol: ownedOrder.symbol,
-                        });
-                        const { route } = await getRpSwap(
-                            config.chain.id,
-                            topupAmount,
-                            token,
-                            Native.onChain(config.chain.id),
-                            config.mainAccount.account.address,
-                            rp4Address,
-                            config.dataFetcher,
-                            gasPrice
-                        );
-                        const initSellAmount = ethers.BigNumber.from(route.amountOutBI);
-                        let sellAmount, finalRpParams;
-                        for (let j = 0; j < 25; j++) {
-                            sellAmount = initSellAmount.mul(100 + j).div(100);
-                            const { rpParams, route } = await getRpSwap(
+                        const balance = (await config.mainAccount.call({
+                            to: ownedOrder.token,
+                            data: erc20.encodeFunctionData("balanceOf", [config.mainAccount.account.address])
+                        })).data;
+                        if (topupAmount.gt(balance)) {
+                            const token = new Token({
+                                chainId: config.chain.id,
+                                decimals: ownedOrder.decimals,
+                                address: ownedOrder.token,
+                                symbol: ownedOrder.symbol,
+                            });
+                            const { route } = await getRpSwap(
                                 config.chain.id,
-                                sellAmount,
-                                Native.onChain(config.chain.id),
+                                topupAmount,
                                 token,
+                                Native.onChain(config.chain.id),
                                 config.mainAccount.account.address,
                                 rp4Address,
                                 config.dataFetcher,
                                 gasPrice
                             );
-                            if (topupAmount.lte(route.amountOutBI)) {
-                                finalRpParams = rpParams;
-                                break;
+                            const initSellAmount = ethers.BigNumber.from(route.amountOutBI);
+                            let sellAmount, finalRpParams;
+                            for (let j = 0; j < 25; j++) {
+                                sellAmount = initSellAmount.mul(100 + j).div(100);
+                                const { rpParams, route } = await getRpSwap(
+                                    config.chain.id,
+                                    sellAmount,
+                                    Native.onChain(config.chain.id),
+                                    token,
+                                    config.mainAccount.account.address,
+                                    rp4Address,
+                                    config.dataFetcher,
+                                    gasPrice
+                                );
+                                if (topupAmount.lte(route.amountOutBI)) {
+                                    finalRpParams = rpParams;
+                                    break;
+                                }
+                            }
+                            const data = rp.encodeFunctionData(
+                                "processRoute",
+                                [
+                                    finalRpParams.tokenIn,
+                                    finalRpParams.amountIn,
+                                    finalRpParams.tokenOut,
+                                    finalRpParams.amountOutMin,
+                                    finalRpParams.to,
+                                    finalRpParams.routeCode
+                                ]
+                            );
+                            const swapHash = await config.mainAccount.sendTransaction({
+                                to: rp4Address,
+                                value: sellAmount.toBigInt(),
+                                data,
+                            });
+                            const swapReceipt = await config.mainAccount.waitForTransactionReceipt({
+                                hash: swapHash,
+                                confirmations: 2
+                            });
+                            const swapTxCost = ethers.BigNumber
+                                .from(swapReceipt.effectiveGasPrice)
+                                .mul(swapReceipt.gasUsed);
+                            config.mainAccount.BALANCE = config.mainAccount.BALANCE
+                                .sub(swapTxCost);
+                            if (swapReceipt.status === "success") {
+                                config.mainAccount.BALANCE = config.mainAccount.BALANCE
+                                    .sub(sellAmount);
+                            } else {
+                                throw "failed to swap eth to vault token";
                             }
                         }
-                        const data = rp.encodeFunctionData(
-                            "processRoute",
-                            [
-                                finalRpParams.tokenIn,
-                                finalRpParams.amountIn,
-                                finalRpParams.tokenOut,
-                                finalRpParams.amountOutMin,
-                                finalRpParams.to,
-                                finalRpParams.routeCode
-                            ]
-                        );
-                        const swapHash = await config.mainAccount.sendTransaction({
-                            to: rp4Address,
-                            value: sellAmount.toBigInt(),
-                            data,
-                        });
-                        const swapReceipt = await config.mainAccount.waitForTransactionReceipt({
-                            hash: swapHash,
-                            confirmations: 2
-                        });
-                        const swapTxCost = ethers.BigNumber
-                            .from(swapReceipt.effectiveGasPrice)
-                            .mul(swapReceipt.gasUsed);
-                        config.mainAccount.BALANCE = config.mainAccount.BALANCE
-                            .sub(swapTxCost)
-                            .sub(sellAmount);
+
+                        const allowance = (await config.mainAccount.call({
+                            to: ownedOrder.token,
+                            data: erc20.encodeFunctionData(
+                                "allowance",
+                                [config.mainAccount.account.address, ownedOrder.orderbook]
+                            )
+                        })).data;
+                        if (topupAmount.gt(allowance)) {
+                            const approveHash = await config.mainAccount.sendTransaction({
+                                to: ownedOrder.token,
+                                data: erc20.encodeFunctionData(
+                                    "approve",
+                                    [ownedOrder.orderbook, topupAmount.mul(20)]
+                                )
+                            });
+                            const approveReceipt = await config.mainAccount
+                                .waitForTransactionReceipt({
+                                    hash: approveHash,
+                                    confirmations: 2
+                                });
+                            const approveTxCost = ethers.BigNumber
+                                .from(approveReceipt.effectiveGasPrice)
+                                .mul(approveReceipt.gasUsed);
+                            config.mainAccount.BALANCE = config.mainAccount.BALANCE
+                                .sub(approveTxCost);
+                            if (approveReceipt.status === "reverted") {
+                                throw "failed to approve token spend";
+                            }
+                        }
 
                         const hash = await config.mainAccount.sendTransaction({
                             to: ownedOrder.orderbook,

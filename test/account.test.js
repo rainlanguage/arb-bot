@@ -330,6 +330,7 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
+                call: async() => ({ data: "0x00" }),
                 waitForTransactionReceipt: async () => ({
                     status: "success",
                     effectiveGasPrice: ethers.BigNumber.from(50_000_000_000),
