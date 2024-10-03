@@ -90,41 +90,55 @@ const processOrders = async(
         true,
     );
 
-    // check owned orders' vaults
-    const ownedOrders = await checkOwnedOrders(config, bundledOrders);
-    if (ownedOrders.length) {
-        const failedFundings = await fundOwnedOrders(ownedOrders, config);
-        const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
-        if (failedFundings.length || emptyOrders.length) {
+    // check owned vaults and top them up if necessary
+    let didPostSpan = false;
+    try {
+        const ownedOrders = await checkOwnedOrders(config, bundledOrders);
+        if (ownedOrders.length) {
+            const failedFundings = await fundOwnedOrders(ownedOrders, config);
+            const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
+            if (failedFundings.length || emptyOrders.length) {
+                await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
+                    didPostSpan = true;
+                    const message = [];
+                    if (emptyOrders.length) {
+                        message.push(
+                            "Reason: following owned vaults are empty:",
+                            ...emptyOrders.map(v => `\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
+                        );
+                    }
+                    if (failedFundings.length) {
+                        span.setAttribute("failedFundings", failedFundings.map(v => (
+                            JSON.stringify({
+                                error: v.error,
+                                ...(v.ownedOrder
+                                    ? {
+                                        orderId: v.ownedOrder.id,
+                                        orderbook: v.ownedOrder.orderbook,
+                                        vaultId: v.ownedOrder.vaultId,
+                                        token: v.ownedOrder.token,
+                                        symbol: v.ownedOrder.symbol,
+                                    }
+                                    : {}
+                                )
+                            })
+                        )));
+                    }
+                    span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
+                    span.end();
+                });
+            }
+        }
+    } catch(e) {
+        if (!didPostSpan) {
             await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
-                let severity = ErrorSeverity.MEDIUM;
-                const message = [];
-                if (emptyOrders.length) {
-                    severity = ErrorSeverity.HIGH;
-                    message.push(...[
-                        "Reason: following owned vaults are empty:",
-                        ...ownedOrders.map(v => `\ntoken: ${v.symbol},\nvault: ${v.vaultId}`)
-                    ]);
-                }
-                if (failedFundings.length) {
-                    span.setAttribute("failedFundings", failedFundings.map(v => (
-                        JSON.stringify({
-                            error: v.error,
-                            ...(v.ownedOrder
-                                ? {
-                                    orderId: v.ownedOrder.id,
-                                    orderbook: v.ownedOrder.orderbook,
-                                    vaultId: v.ownedOrder.vaultId,
-                                    token: v.ownedOrder.token,
-                                    symbol: v.ownedOrder.symbol,
-                                }
-                                : {}
-                            )
-                        })
-                    )));
-                }
-                span.setAttribute("severity", severity);
-                span.setStatus({ code: SpanStatusCode.ERROR, message });
+                span.setAttribute("severity", ErrorSeverity.HIGH);
+                span.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: errorSnapshot("Failed to check owned vaults", e)
+                });
+                span.recordException(e);
                 span.end();
             });
         }

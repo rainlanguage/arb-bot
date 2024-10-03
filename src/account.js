@@ -600,7 +600,6 @@ async function fundOwnedOrders(ownedOrders, config) {
             break;
         } catch (e) {
             if (i == 3) return [{
-                gasError: true,
                 error: errorSnapshot("failed to get gas price", e)
             }];
             else await sleep(10000 * (i + 1));
@@ -705,7 +704,7 @@ async function fundOwnedOrders(ownedOrders, config) {
                     } catch (error) {
                         failedFundings.push({
                             ownedOrder,
-                            error: errorSnapshot("failed to fund owned order", error)
+                            error: errorSnapshot("Failed to fund owned vault", error)
                         });
                     }
                 }
