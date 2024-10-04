@@ -325,6 +325,7 @@ async function startup(argv) {
             topupAmount          : options.topupAmount,
             walletCount          : options.walletCount,
             genericArbAddress    : options.genericArbAddress,
+            selfFundOrders       : options.selfFundOrders,
             liquidityProviders   : options.lps
                 ? Array.from(options.lps.matchAll(/[^,\s]+/g)).map(v => v[0])
                 : undefined,
