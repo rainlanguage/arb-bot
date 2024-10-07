@@ -106,6 +106,8 @@ export type TestViemClient = TestClient<"hardhat"> &
     PublicActions &
     WalletActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
 
+export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
+
 export type ChainConfig = {
     chain: Chain;
     nativeWrappedToken: Token;
@@ -133,7 +135,7 @@ export type BotConfig = {
     gasCoveragePercentage: string;
     watchedTokens?: TokenDetails[];
     viemClient: PublicClient;
-    dataFetcher: DataFetcher;
+    dataFetcher: BotDataFetcher;
     mainAccount: ViemClient;
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];

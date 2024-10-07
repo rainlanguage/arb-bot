@@ -2,8 +2,8 @@ import { BigNumber } from "ethers";
 import { getSgOrderbooks } from "./sg";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
-import { BotConfig, ChainConfig, ViemClient } from "./types";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
+import { BotConfig, BotDataFetcher, ChainConfig, ViemClient } from "./types";
 import {
     createWalletClient,
     fallback,
@@ -102,7 +102,7 @@ export async function getDataFetcher(
     configOrViemClient: BotConfig | PublicClient,
     liquidityProviders: LiquidityProviders[] = [],
     useFallbacks = false,
-): Promise<DataFetcher> {
+): Promise<BotDataFetcher> {
     try {
         const dataFetcher = new DataFetcher(
             configOrViemClient.chain!.id as ChainId,
@@ -121,7 +121,7 @@ export async function getDataFetcher(
         dataFetcher.startDataFetching(!liquidityProviders.length ? undefined : liquidityProviders);
         dataFetcher.stopDataFetching();
         (dataFetcher as any).fetchedPairPools = [];
-        return dataFetcher;
+        return dataFetcher as BotDataFetcher;
     } catch (error) {
         throw "cannot instantiate DataFetcher for this network";
     }

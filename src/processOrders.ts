@@ -1,8 +1,8 @@
+import { ChainId } from "sushi";
 import { findOpp } from "./modes";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
-import { ChainId, DataFetcher } from "sushi";
 import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -18,6 +18,7 @@ import {
     RoundReport,
     BundledOrders,
     ProcessPairResult,
+    BotDataFetcher,
 } from "./types";
 import {
     toNumber,
@@ -337,7 +338,7 @@ export async function processPair(args: {
     config: BotConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
-    dataFetcher: DataFetcher;
+    dataFetcher: BotDataFetcher;
     signer: ViemClient;
     flashbotSigner: ViemClient | undefined;
     arb: Contract;
@@ -429,7 +430,7 @@ export async function processPair(args: {
 
     // get pool details
     if (
-        !(dataFetcher as any).fetchedPairPools.includes(pair) ||
+        !dataFetcher.fetchedPairPools.includes(pair) ||
         !(await routeExists(config, fromToken, toToken, gasPrice))
     ) {
         try {
@@ -443,12 +444,8 @@ export async function processPair(args: {
             await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
             const p1 = `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`;
             const p2 = `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`;
-            if (!(dataFetcher as any).fetchedPairPools.includes(p1)) {
-                (dataFetcher as any).fetchedPairPools.push(p1);
-            }
-            if (!(dataFetcher as any).fetchedPairPools.includes(p2)) {
-                (dataFetcher as any).fetchedPairPools.push(p2);
-            }
+            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
+            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
         } catch (e) {
             result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;
@@ -508,12 +505,8 @@ export async function processPair(args: {
         } else {
             const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
             const p2 = `${orderPairObject.sellTokenSymbol}/${config.nativeWrappedToken.symbol}`;
-            if (!(dataFetcher as any).fetchedPairPools.includes(p1)) {
-                (dataFetcher as any).fetchedPairPools.push(p1);
-            }
-            if (!(dataFetcher as any).fetchedPairPools.includes(p2)) {
-                (dataFetcher as any).fetchedPairPools.push(p2);
-            }
+            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
+            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
