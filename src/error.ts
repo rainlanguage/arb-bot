@@ -1,23 +1,18 @@
-const { BaseError } = require("viem");
+import { BaseError } from "viem";
 
 /**
  * Specifies error severity
- * @readonly
- * @enum {string}
  */
-const ErrorSeverity = {
-    LOW: "LOW",
-    MEDIUM: "MEDIUM",
-    HIGH: "HIGH",
-};
+export enum ErrorSeverity {
+    LOW = "LOW",
+    MEDIUM = "MEDIUM",
+    HIGH = "HIGH",
+}
 
 /**
  * Get error with snapshot
- * @param {string} header
- * @param {any} err
- * @returns {string}
  */
-function errorSnapshot(header, err) {
+export function errorSnapshot(header: string, err: any): string {
     const message = [header];
     if (err instanceof BaseError) {
         if (err.shortMessage) message.push("Reason: " + err.shortMessage);
@@ -37,8 +32,3 @@ function errorSnapshot(header, err) {
     }
     return message.join("\n");
 }
-
-module.exports = {
-    ErrorSeverity,
-    errorSnapshot,
-};

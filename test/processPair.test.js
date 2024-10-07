@@ -3,8 +3,15 @@ const fixtures = require("./data");
 const mockServer = require("mockttp").getLocal();
 const { encodeQuoteResponse } = require("./utils");
 const { clone, estimateProfit } = require("../src/utils");
-const { ethers, utils: { formatUnits } } = require("ethers");
-const { processPair, ProcessPairHaltReason, ProcessPairReportStatus } = require("../src/processOrders");
+const {
+    ethers,
+    utils: { formatUnits },
+} = require("ethers");
+const {
+    processPair,
+    ProcessPairHaltReason,
+    ProcessPairReportStatus,
+} = require("../src/processOrders");
 
 describe("Test process pair", async function () {
     // mock dataFecther, ethers signer and viem client
@@ -41,7 +48,7 @@ describe("Test process pair", async function () {
         mockServer.start(8082);
         config.gasCoveragePercentage = "0";
         signer = {
-            account: {address: "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb"},
+            account: { address: "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb" },
             BALANCE: ethers.BigNumber.from(0),
             BOUNTY: [],
             getAddress: () => "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
@@ -57,11 +64,11 @@ describe("Test process pair", async function () {
                     logs: [],
                     events: [],
                 };
-            }
+            },
         };
         dataFetcher = {
             fetchPoolsForToken: async () => {},
-            fetchedPairPools: []
+            fetchedPairPools: [],
         };
         viemClient = {
             chain: { id: 137 },
@@ -76,12 +83,12 @@ describe("Test process pair", async function () {
                     logs: [],
                     events: [],
                 };
-            }
+            },
         };
         config.dataFetcher = {
             getCurrentPoolCodeMap: () => {
                 return poolCodeMap;
-            }
+            },
         };
     });
     afterEach(() => mockServer.stop());
@@ -131,14 +138,14 @@ describe("Test process pair", async function () {
                 "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
                 "details.marketQuote.num": 0.99699,
                 "details.marketQuote.str": "0.99699",
-                "oppBlockNumber": 123456,
+                oppBlockNumber: 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.route": expectedRouteVisual,
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.mul(107).div(100).toString(),
-                "foundOpp": true,
-                "didClear": true,
+                foundOpp: true,
+                didClear: true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
                 "details.quote": JSON.stringify({
@@ -152,10 +159,10 @@ describe("Test process pair", async function () {
                         ethers.utils.parseUnits("1"),
                         undefined,
                         getCurrentPrice(vaultBalance),
-                        vaultBalance
-                    )
-                )
-            }
+                        vaultBalance,
+                    ),
+                ),
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -206,13 +213,13 @@ describe("Test process pair", async function () {
                 "details.blockNumber": 123456,
                 "details.blockNumberDiff": 0,
                 "details.maxInput": vaultBalance.toString(),
-                "oppBlockNumber": 123456,
+                oppBlockNumber: 123456,
                 "details.orders": [orderPairObject.takeOrders[0].id],
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.mul(107).div(100).toString(),
-                "foundOpp": true,
-                "didClear": true,
+                foundOpp: true,
+                didClear: true,
                 "details.marketQuote.num": 0.99699,
                 "details.marketQuote.str": "0.99699",
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
@@ -228,10 +235,10 @@ describe("Test process pair", async function () {
                         ethers.utils.parseUnits("1"),
                         orderbooksOrders[0][0],
                         undefined,
-                        vaultBalance
-                    )
-                )
-            }
+                        vaultBalance,
+                    ),
+                ),
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -240,9 +247,9 @@ describe("Test process pair", async function () {
         // set quote max output to zero
         await mockServer
             .forPost("/rpc")
-            .thenSendJsonRpcResult(encodeQuoteResponse([
-                [true, ethers.constants.Zero, ethers.constants.Zero]
-            ]));
+            .thenSendJsonRpcResult(
+                encodeQuoteResponse([[true, ethers.constants.Zero, ethers.constants.Zero]]),
+            );
         const orderPairObjectCopy = clone(orderPairObject);
         const result = await processPair({
             config,
@@ -270,8 +277,8 @@ describe("Test process pair", async function () {
             },
             spanAttributes: {
                 "details.orders": [orderPairObject.takeOrders[0].id],
-                "details.pair": pair
-            }
+                "details.pair": pair,
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -294,16 +301,21 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expected = {
-                report: undefined,
+                report: {
+                    status: ProcessPairReportStatus.NoOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                },
                 gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToQuote,
-                error: "Execution reverted with unknown error. Data: \"\" ",
+                error: 'Execution reverted with unknown error. Data: "" ',
                 spanAttributes: {
                     "details.pair": pair,
-                    "details.orders": [orderPairObject.takeOrders[0].id]
-                }
+                    "details.orders": [orderPairObject.takeOrders[0].id],
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -331,9 +343,14 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expected = {
-                report: undefined,
+                report: {
+                    status: ProcessPairReportStatus.NoOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                },
                 gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetGasPrice,
                 error: evmError,
@@ -343,8 +360,8 @@ describe("Test process pair", async function () {
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
-                    })
-                }
+                    }),
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -372,9 +389,14 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expected = {
-                report: undefined,
+                report: {
+                    status: ProcessPairReportStatus.NoOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                },
                 gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetEthPrice,
                 error: "no-route",
@@ -387,8 +409,8 @@ describe("Test process pair", async function () {
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
-                    })
-                }
+                    }),
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -416,9 +438,14 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expected = {
-                report: undefined,
+                report: {
+                    status: ProcessPairReportStatus.NoOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                },
                 gasCost: undefined,
                 reason: ProcessPairHaltReason.FailedToGetPools,
                 error: evmError,
@@ -429,8 +456,8 @@ describe("Test process pair", async function () {
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
-                    })
-                }
+                    }),
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -461,32 +488,29 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
                 maximumInput: vaultBalance,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
-                data: expectedRouteData
+                data: expectedRouteData,
             };
             const task = {
                 evaluable: {
-                    interpreter: orderPairObject
-                        .takeOrders[0].takeOrder.order.evaluable.interpreter,
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x"
+                    bytecode: "0x",
                 },
-                signedContext: []
+                signedContext: [],
             };
             const rawtx = {
-                data: arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]
-                ),
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
                 to: arb.address,
                 gasPrice: gasPrice.mul(107).div(100).toString(),
                 gas: gasLimitEstimation.toString(),
@@ -511,9 +535,9 @@ describe("Test process pair", async function () {
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
                     "details.amountIn": formatUnits(vaultBalance),
                     "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
-                    "oppBlockNumber": 123456,
+                    oppBlockNumber: 123456,
                     "details.route": expectedRouteVisual,
-                    "foundOpp": true,
+                    foundOpp: true,
                     "details.rawTx": JSON.stringify(rawtx),
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
@@ -530,10 +554,10 @@ describe("Test process pair", async function () {
                             ethers.utils.parseUnits("1"),
                             undefined,
                             getCurrentPrice(vaultBalance),
-                            vaultBalance
-                        )
-                    )
-                }
+                            vaultBalance,
+                        ),
+                    ),
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -568,7 +592,7 @@ describe("Test process pair", async function () {
                 fetchedPairPools: [],
             });
             assert.fail("expected to reject, but resolved");
-        } catch(error) {
+        } catch (error) {
             const expected = {
                 report: {
                     status: ProcessPairReportStatus.FoundOpportunity,
@@ -590,9 +614,9 @@ describe("Test process pair", async function () {
                     "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
                     "details.amountIn": formatUnits(vaultBalance),
                     "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
-                    "oppBlockNumber": 123456,
+                    oppBlockNumber: 123456,
                     "details.route": expectedRouteVisual,
-                    "foundOpp": true,
+                    foundOpp: true,
                     "details.txUrl": scannerUrl + "/tx/" + txHash,
                     "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                     "details.outputToEthPrice": "1",
@@ -609,10 +633,10 @@ describe("Test process pair", async function () {
                             ethers.utils.parseUnits("1"),
                             undefined,
                             getCurrentPrice(vaultBalance),
-                            vaultBalance
-                        )
-                    )
-                }
+                            vaultBalance,
+                        ),
+                    ),
+                },
             };
             assert.deepEqual(error, expected);
         }

@@ -2,15 +2,23 @@ const { assert } = require("chai");
 const testData = require("./data");
 const { errorSnapshot } = require("../src/error");
 const { estimateProfit } = require("../src/utils");
-const { ethers, utils: { formatUnits } } = require("ethers");
+const {
+    ethers,
+    utils: { formatUnits },
+} = require("ethers");
 const { getBountyEnsureBytecode } = require("../src/config");
-const { dryrun, findOpp, findOppWithRetries, RouteProcessorDryrunHaltReason } = require("../src/modes/routeProcessor");
+const {
+    dryrun,
+    findOpp,
+    findOppWithRetries,
+    RouteProcessorDryrunHaltReason,
+} = require("../src/modes/routeProcessor");
 
 // mocking signer and dataFetcher
 let signer = {};
 let dataFetcher = {};
 const viemClient = {
-    getBlockNumber: async() => BigInt(oppBlockNumber)
+    getBlockNumber: async () => BigInt(oppBlockNumber),
 };
 
 const oppBlockNumber = 123456;
@@ -34,13 +42,13 @@ const {
 describe("Test route processor dryrun", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            getBalance: async () => ethers.BigNumber.from(0),
         };
         dataFetcher = {
-            fetchedPairPools: []
+            fetchedPairPools: [],
         };
     });
 
@@ -68,7 +76,7 @@ describe("Test route processor dryrun", async function () {
             maximumInput: vaultBalance,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
-            data: expectedRouteData
+            data: expectedRouteData,
         };
         const task = {
             evaluable: {
@@ -77,22 +85,19 @@ describe("Test route processor dryrun", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul(gasPrice)
-                )
+                    gasLimitEstimation.mul(gasPrice),
+                ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -107,8 +112,8 @@ describe("Test route processor dryrun", async function () {
                     undefined,
                     undefined,
                     getCurrentPrice(vaultBalance),
-                    vaultBalance
-                )
+                    vaultBalance,
+                ),
             },
             reason: undefined,
             spanAttributes: {
@@ -118,7 +123,7 @@ describe("Test route processor dryrun", async function () {
                 amountOut: formatUnits(getAmountOut(vaultBalance), 6),
                 marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -150,8 +155,8 @@ describe("Test route processor dryrun", async function () {
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {
                     amountIn: formatUnits(vaultBalance),
-                    route: "no-way"
-                }
+                    route: "no-way",
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -187,29 +192,26 @@ describe("Test route processor dryrun", async function () {
                 maximumInput: vaultBalance,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
-                data: expectedRouteData
+                data: expectedRouteData,
             };
             const task = {
                 evaluable: {
-                    interpreter: orderPairObject.takeOrders[0]
-                        .takeOrder.order.evaluable.interpreter,
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x"
+                    bytecode: "0x",
                 },
-                signedContext: []
+                signedContext: [],
             };
             const rawtx = {
-                data: arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]
-                ),
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
                 to: arb.address,
                 gasPrice,
-                from: signer.account.address
+                from: signer.account.address,
             };
             const expected = {
                 value: undefined,
@@ -221,8 +223,8 @@ describe("Test route processor dryrun", async function () {
                     blockNumber: oppBlockNumber,
                     error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
                     route: expectedRouteVisual,
-                    rawtx: JSON.stringify(rawtx)
-                }
+                    rawtx: JSON.stringify(rawtx),
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -232,13 +234,13 @@ describe("Test route processor dryrun", async function () {
 describe("Test route processor find opp", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            getBalance: async () => ethers.BigNumber.from(0),
         };
         dataFetcher = {
-            fetchedPairPools: []
+            fetchedPairPools: [],
         };
     });
 
@@ -264,7 +266,7 @@ describe("Test route processor find opp", async function () {
             maximumInput: vaultBalance,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
-            data: expectedRouteData
+            data: expectedRouteData,
         };
         const task = {
             evaluable: {
@@ -273,22 +275,19 @@ describe("Test route processor find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul(gasPrice)
-                )
+                    gasLimitEstimation.mul(gasPrice),
+                ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -303,8 +302,8 @@ describe("Test route processor find opp", async function () {
                     undefined,
                     undefined,
                     getCurrentPrice(vaultBalance),
-                    vaultBalance
-                )
+                    vaultBalance,
+                ),
             },
             reason: undefined,
             spanAttributes: {
@@ -314,7 +313,7 @@ describe("Test route processor find opp", async function () {
                 amountOut: formatUnits(getAmountOut(vaultBalance), 6),
                 marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -350,7 +349,7 @@ describe("Test route processor find opp", async function () {
             maximumInput: vaultBalance.mul(3).div(4),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
-            data: expectedRouteData
+            data: expectedRouteData,
         };
         const task = {
             evaluable: {
@@ -359,22 +358,19 @@ describe("Test route processor find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul(gasPrice)
-                )
+                    gasLimitEstimation.mul(gasPrice),
+                ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -390,7 +386,7 @@ describe("Test route processor find opp", async function () {
                     undefined,
                     getCurrentPrice(vaultBalance.mul(3).div(4)),
                     vaultBalance.mul(3).div(4),
-                )
+                ),
             },
             reason: undefined,
             spanAttributes: {
@@ -398,11 +394,9 @@ describe("Test route processor find opp", async function () {
                 foundOpp: true,
                 amountIn: formatUnits(vaultBalance.mul(3).div(4)),
                 amountOut: formatUnits(getAmountOut(vaultBalance.mul(3).div(4)), 6),
-                marketPrice: formatUnits(
-                    getCurrentPrice(vaultBalance.sub(vaultBalance.div(4)))
-                ),
+                marketPrice: formatUnits(getCurrentPrice(vaultBalance.sub(vaultBalance.div(4)))),
                 route: expectedRouteVisual,
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -435,29 +429,26 @@ describe("Test route processor find opp", async function () {
                 maximumInput: vaultBalance,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
-                data: expectedRouteData
+                data: expectedRouteData,
             };
             const task = {
                 evaluable: {
-                    interpreter: orderPairObject.takeOrders[0]
-                        .takeOrder.order.evaluable.interpreter,
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x"
+                    bytecode: "0x",
                 },
-                signedContext: []
+                signedContext: [],
             };
             const rawtx = JSON.stringify({
-                data: arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]
-                ),
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
                 to: arb.address,
                 gasPrice,
-                from: signer.account.address
+                from: signer.account.address,
             });
             const expected = {
                 value: undefined,
@@ -467,8 +458,8 @@ describe("Test route processor find opp", async function () {
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                    ]
-                }
+                    ],
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -502,8 +493,8 @@ describe("Test route processor find opp", async function () {
                         `{"amountIn":"${formatUnits(vaultBalance)}","route":"no-way"}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(2))}","route":"no-way"}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(4))}","route":"no-way"}`,
-                    ]
-                }
+                    ],
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -513,13 +504,13 @@ describe("Test route processor find opp", async function () {
 describe("Test find opp with retries", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            getBalance: async () => ethers.BigNumber.from(0),
         };
         dataFetcher = {
-            fetchedPairPools: []
+            fetchedPairPools: [],
         };
     });
 
@@ -554,7 +545,7 @@ describe("Test find opp with retries", async function () {
                 orderPairObject.takeOrders[0].takeOrder,
                 orderPairObject.takeOrders[0].takeOrder,
             ],
-            data: expectedRouteData
+            data: expectedRouteData,
         };
         const task = {
             evaluable: {
@@ -563,22 +554,19 @@ describe("Test find opp with retries", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
-                    gasLimitEstimation.mul(gasPrice)
-                )
+                    gasLimitEstimation.mul(gasPrice),
+                ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -594,7 +582,7 @@ describe("Test find opp with retries", async function () {
                     undefined,
                     getCurrentPrice(vaultBalance),
                     vaultBalance,
-                )
+                ),
             },
             reason: undefined,
             spanAttributes: {
@@ -604,7 +592,7 @@ describe("Test find opp with retries", async function () {
                 amountOut: formatUnits(getAmountOut(vaultBalance), 6),
                 marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -636,29 +624,26 @@ describe("Test find opp with retries", async function () {
                 maximumInput: vaultBalance,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
-                data: expectedRouteData
+                data: expectedRouteData,
             };
             const task = {
                 evaluable: {
-                    interpreter: orderPairObject.takeOrders[0]
-                        .takeOrder.order.evaluable.interpreter,
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x"
+                    bytecode: "0x",
                 },
-                signedContext: []
+                signedContext: [],
             };
             const rawtx = JSON.stringify({
-                data: arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]
-                ),
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
                 to: arb.address,
                 gasPrice,
-                from: signer.account.address
+                from: signer.account.address,
             });
             const expected = {
                 value: undefined,
@@ -668,8 +653,8 @@ describe("Test find opp with retries", async function () {
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
                         `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                    ]
-                }
+                    ],
+                },
             };
             assert.deepEqual(error, expected);
         }
@@ -697,7 +682,7 @@ describe("Test find opp with retries", async function () {
             const expected = {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
-                spanAttributes: { route: "no-way" }
+                spanAttributes: { route: "no-way" },
             };
             assert.deepEqual(error, expected);
         }

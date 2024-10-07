@@ -9,8 +9,8 @@ const { dryrun, findOpp } = require("../src/modes/intraOrderbook");
 // mocking signer and dataFetcher
 let signer = {};
 const viemClient = {
-    getBlockNumber: async() => BigInt(oppBlockNumber),
-    call: async() => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() })
+    getBlockNumber: async () => BigInt(oppBlockNumber),
+    call: async () => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() }),
 };
 
 const oppBlockNumber = 123456;
@@ -30,10 +30,10 @@ orderbooksOrders[0][0].orderbook = orderPairObject.orderbook;
 describe("Test intra-orderbook dryrun", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            getBalance: async () => ethers.BigNumber.from(0),
         };
     });
     const inputBalance = ethers.BigNumber.from("1000000000000000000");
@@ -64,53 +64,43 @@ describe("Test intra-orderbook dryrun", async function () {
                     outputBalance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice),
                 ),
             },
-            signedContext: []
+            signedContext: [],
         };
-        const withdrawInputCalldata = orderbook.interface.encodeFunctionData(
-            "withdraw2",
-            [
-                orderPairObject.buyToken,
-                "1",
-                ethers.constants.MaxUint256,
-                []
-            ]
-        );
-        const withdrawOutputCalldata = orderbook.interface.encodeFunctionData(
-            "withdraw2",
-            [
-                orderPairObject.sellToken,
-                "1",
-                ethers.constants.MaxUint256,
-                [task]
-            ]
-        );
-        const clear2Calldata = orderbook.interface.encodeFunctionData(
-            "clear2",
-            [
-                orderPairObject.takeOrders[0].takeOrder.order,
-                orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
-                {
-                    aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
-                    aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
-                    bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
-                    bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
-                    aliceBountyVaultId: "1",
-                    bobBountyVaultId: "1",
-                },
-                [],
-                []
-            ]
-        );
+        const withdrawInputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+            orderPairObject.buyToken,
+            "1",
+            ethers.constants.MaxUint256,
+            [],
+        ]);
+        const withdrawOutputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+            orderPairObject.sellToken,
+            "1",
+            ethers.constants.MaxUint256,
+            [task],
+        ]);
+        const clear2Calldata = orderbook.interface.encodeFunctionData("clear2", [
+            orderPairObject.takeOrders[0].takeOrder.order,
+            orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
+            {
+                aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
+                aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
+                bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
+                bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
+                aliceBountyVaultId: "1",
+                bobBountyVaultId: "1",
+            },
+            [],
+            [],
+        ]);
         const expected = {
             value: {
                 rawtx: {
-                    data: orderbook.interface.encodeFunctionData(
-                        "multicall",
-                        [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
-                    ),
+                    data: orderbook.interface.encodeFunctionData("multicall", [
+                        [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
+                    ]),
                     to: orderPairObject.orderbook,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -121,13 +111,13 @@ describe("Test intra-orderbook dryrun", async function () {
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
                     orderbooksOrders[0][0].takeOrders[0],
-                )
+                ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
-                foundOpp: true
-            }
+                foundOpp: true,
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -157,7 +147,7 @@ describe("Test intra-orderbook dryrun", async function () {
                 spanAttributes: {
                     blockNumber: oppBlockNumber,
                     error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
-                }
+                },
             };
             assert.deepEqual(error.value, expected.value);
             assert.deepEqual(error.reason, expected.reason);
@@ -170,13 +160,10 @@ describe("Test intra-orderbook dryrun", async function () {
 describe("Test intra-orderbook find opp", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
-        };
-        dataFetcher = {
-            fetchedPairPools: []
+            getBalance: async () => ethers.BigNumber.from(0),
         };
     });
     const balance = ethers.BigNumber.from("1000000000000000000");
@@ -204,53 +191,43 @@ describe("Test intra-orderbook find opp", async function () {
                     balance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice),
                 ),
             },
-            signedContext: []
+            signedContext: [],
         };
-        const withdrawInputCalldata = orderbook.interface.encodeFunctionData(
-            "withdraw2",
-            [
-                orderPairObject.buyToken,
-                "1",
-                ethers.constants.MaxUint256,
-                []
-            ]
-        );
-        const withdrawOutputCalldata = orderbook.interface.encodeFunctionData(
-            "withdraw2",
-            [
-                orderPairObject.sellToken,
-                "1",
-                ethers.constants.MaxUint256,
-                [task]
-            ]
-        );
-        const clear2Calldata = orderbook.interface.encodeFunctionData(
-            "clear2",
-            [
-                orderPairObject.takeOrders[0].takeOrder.order,
-                orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
-                {
-                    aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
-                    aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
-                    bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
-                    bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
-                    aliceBountyVaultId: "1",
-                    bobBountyVaultId: "1",
-                },
-                [],
-                []
-            ]
-        );
+        const withdrawInputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+            orderPairObject.buyToken,
+            "1",
+            ethers.constants.MaxUint256,
+            [],
+        ]);
+        const withdrawOutputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+            orderPairObject.sellToken,
+            "1",
+            ethers.constants.MaxUint256,
+            [task],
+        ]);
+        const clear2Calldata = orderbook.interface.encodeFunctionData("clear2", [
+            orderPairObject.takeOrders[0].takeOrder.order,
+            orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
+            {
+                aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
+                aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
+                bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
+                bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
+                aliceBountyVaultId: "1",
+                bobBountyVaultId: "1",
+            },
+            [],
+            [],
+        ]);
         const expected = {
             value: {
                 rawtx: {
-                    data: orderbook.interface.encodeFunctionData(
-                        "multicall",
-                        [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
-                    ),
+                    data: orderbook.interface.encodeFunctionData("multicall", [
+                        [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
+                    ]),
                     to: orderPairObject.orderbook,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -261,13 +238,13 @@ describe("Test intra-orderbook find opp", async function () {
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
                     orderbooksOrders[0][0].takeOrders[0],
-                )
+                ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -290,62 +267,52 @@ describe("Test intra-orderbook find opp", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
-            const withdrawInputCalldata = orderbook.interface.encodeFunctionData(
-                "withdraw2",
-                [
-                    orderPairObject.buyToken,
-                    "1",
-                    ethers.constants.MaxUint256,
-                    []
-                ]
-            );
-            const withdrawOutputCalldata = orderbook.interface.encodeFunctionData(
-                "withdraw2",
-                [
-                    orderPairObject.sellToken,
-                    "1",
-                    ethers.constants.MaxUint256,
-                    []
-                ]
-            );
-            const clear2Calldata = orderbook.interface.encodeFunctionData(
-                "clear2",
-                [
-                    orderPairObject.takeOrders[0].takeOrder.order,
-                    orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
-                    {
-                        aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
-                        aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
-                        bobInputIOIndex: orderbooksOrders[0][0]
-                            .takeOrders[0].takeOrder.inputIOIndex,
-                        bobOutputIOIndex: orderbooksOrders[0][0]
-                            .takeOrders[0].takeOrder.outputIOIndex,
-                        aliceBountyVaultId: "1",
-                        bobBountyVaultId: "1",
-                    },
-                    [],
-                    []
-                ]
-            );
+            const withdrawInputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+                orderPairObject.buyToken,
+                "1",
+                ethers.constants.MaxUint256,
+                [],
+            ]);
+            const withdrawOutputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
+                orderPairObject.sellToken,
+                "1",
+                ethers.constants.MaxUint256,
+                [],
+            ]);
+            const clear2Calldata = orderbook.interface.encodeFunctionData("clear2", [
+                orderPairObject.takeOrders[0].takeOrder.order,
+                orderbooksOrders[0][0].takeOrders[0].takeOrder.order,
+                {
+                    aliceInputIOIndex: orderPairObject.takeOrders[0].takeOrder.inputIOIndex,
+                    aliceOutputIOIndex: orderPairObject.takeOrders[0].takeOrder.outputIOIndex,
+                    bobInputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.inputIOIndex,
+                    bobOutputIOIndex: orderbooksOrders[0][0].takeOrders[0].takeOrder.outputIOIndex,
+                    aliceBountyVaultId: "1",
+                    bobBountyVaultId: "1",
+                },
+                [],
+                [],
+            ]);
             const rawtx = {
-                data: orderbook.interface.encodeFunctionData(
-                    "multicall",
-                    [[clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata]]
-                ),
+                data: orderbook.interface.encodeFunctionData("multicall", [
+                    [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
+                ]),
                 to: orderPairObject.orderbook,
                 gasPrice,
-                from: signer.account.address
+                from: signer.account.address,
             };
             const expected = {
                 value: undefined,
                 reason: undefined,
                 spanAttributes: {
-                    intraOrderbook: [JSON.stringify({
-                        blockNumber: oppBlockNumber,
-                        error: errorSnapshot("", err),
-                        rawtx: JSON.stringify(rawtx)
-                    })],
-                }
+                    intraOrderbook: [
+                        JSON.stringify({
+                            blockNumber: oppBlockNumber,
+                            error: errorSnapshot("", err),
+                            rawtx: JSON.stringify(rawtx),
+                        }),
+                    ],
+                },
             };
             assert.deepEqual(error, expected);
         }

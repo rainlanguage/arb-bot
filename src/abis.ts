@@ -1,31 +1,37 @@
 /**
  * Minimal ABI for ERC20 contract only including Transfer event
  */
-const erc20Abi = [
+export const erc20Abi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
     "function symbol() public view returns (string memory)",
     "function transfer(address to, uint256 amount) external returns (bool)",
     "function balanceOf(address account) external view returns (uint256)",
     "function approve(address spender, uint256 amount) external returns (bool)",
-    "function allowance(address owner, address spender) external view returns (uint256)"
-];
+    "function allowance(address owner, address spender) external view returns (uint256)",
+] as const;
 
 // structs used in the orderbook and arb abis
-const IO = "(address token, uint8 decimals, uint256 vaultId)";
-const EvaluableV3 = "(address interpreter, address store, bytes bytecode)";
-const SignedContextV1 = "(address signer, uint256[] context, bytes signature)";
-const TaskV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)`;
-const ClearStateChange = "(uint256 aliceOutput, uint256 bobOutput, uint256 aliceInput, uint256 bobInput)";
-const OrderV3 = `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce)`;
-const TakeOrderConfigV3 = `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)`;
-const OrderConfigV3 = `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)`;
-const TakeOrdersConfigV3 = `(uint256 minimumInput, uint256 maximumInput, uint256 maximumIORatio, ${TakeOrderConfigV3}[] orders, bytes data)`;
-const ClearConfig = "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uint256 bobInputIOIndex, uint256 bobOutputIOIndex, uint256 aliceBountyVaultId, uint256 bobBountyVaultId)";
+export const IO = "(address token, uint8 decimals, uint256 vaultId)" as const;
+export const EvaluableV3 = "(address interpreter, address store, bytes bytecode)" as const;
+export const SignedContextV1 = "(address signer, uint256[] context, bytes signature)" as const;
+export const TaskV1 = `(${EvaluableV3} evaluable, ${SignedContextV1}[] signedContext)` as const;
+export const ClearStateChange =
+    "(uint256 aliceOutput, uint256 bobOutput, uint256 aliceInput, uint256 bobInput)" as const;
+export const OrderV3 =
+    `(address owner, ${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce)` as const;
+export const TakeOrderConfigV3 =
+    `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)` as const;
+export const OrderConfigV3 =
+    `(${EvaluableV3} evaluable, ${IO}[] validInputs, ${IO}[] validOutputs, bytes32 nonce, bytes32 secret, bytes meta)` as const;
+export const TakeOrdersConfigV3 =
+    `(uint256 minimumInput, uint256 maximumInput, uint256 maximumIORatio, ${TakeOrderConfigV3}[] orders, bytes data)` as const;
+export const ClearConfig =
+    "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uint256 bobInputIOIndex, uint256 bobOutputIOIndex, uint256 aliceBountyVaultId, uint256 bobBountyVaultId)" as const;
 
 /**
  * Minimal ABI for Orderbook contract only including vaultBalance() function
  */
-const orderbookAbi = [
+export const orderbookAbi = [
     `event AddOrderV2(address sender, bytes32 orderHash, ${OrderV3} order)`,
     `event AfterClear(address sender, ${ClearStateChange} clearStateChange)`,
     "function vaultBalance(address owner, address token, uint256 vaultId) external view returns (uint256 balance)",
@@ -38,25 +44,25 @@ const orderbookAbi = [
     "function multicall(bytes[] calldata data) external returns (bytes[] memory results)",
     `function takeOrders2(${TakeOrdersConfigV3} memory config) external returns (uint256 totalInput, uint256 totalOutput)`,
     `function clear2(${OrderV3} memory aliceOrder, ${OrderV3} memory bobOrder, ${ClearConfig} calldata clearConfig, ${SignedContextV1}[] memory aliceSignedContext, ${SignedContextV1}[] memory bobSignedContext) external`,
-];
+] as const;
 
 /**
  * Minimal ABI for IInterpreterV2 contract only including eval() function
  */
-const interpreterV2Abi = [
+export const interpreterV2Abi = [
     `function eval2(
         address store,
         uint256 namespace,
         uint256 dispatch,
         uint256[][] calldata context,
         uint256[] calldata inputs
-    ) external view returns (uint256[] calldata stack, uint256[] calldata writes)`
-];
+    ) external view returns (uint256[] calldata stack, uint256[] calldata writes)`,
+] as const;
 
 /**
  * Minimal ABI for SushiSwap RouteProcessor3 contract only including processRoute() function
  */
-const routeProcessor3Abi = [
+export const routeProcessor3Abi = [
     `function processRoute(
         address tokenIn,
         uint256 amountIn,
@@ -64,43 +70,25 @@ const routeProcessor3Abi = [
         uint256 amountOutMin,
         address to,
         bytes memory route
-    ) external payable returns (uint256 amountOut)`
-];
+    ) external payable returns (uint256 amountOut)`,
+] as const;
 
 /**
  * Minimal ABI for Arb contract
  */
-const arbAbis = [
+export const arbAbis = [
     `function arb2(${TakeOrdersConfigV3} calldata takeOrders, uint256 minimumSenderOutput, ${EvaluableV3} calldata evaluable) external payable`,
     `function arb3(address orderBook, ${TakeOrdersConfigV3} calldata takeOrders, ${TaskV1} calldata task)`,
-    "function iRouteProcessor() external view returns (address)"
-];
+    "function iRouteProcessor() external view returns (address)",
+] as const;
 
-const multicall3Abi = [
-    "function getEthBalance(address addr) external view returns (uint256 balance)"
-];
+export const multicall3Abi = [
+    "function getEthBalance(address addr) external view returns (uint256 balance)",
+] as const;
 
 // an empty evaluable mainly used as default evaluable for arb contracts
-const DefaultArbEvaluable = {
+export const DefaultArbEvaluable = {
     interpreter: "0x" + "0".repeat(40),
     store: "0x" + "0".repeat(40),
-    bytecode: "0x"
-};
-
-module.exports = {
-    arbAbis,
-    erc20Abi,
-    orderbookAbi,
-    routeProcessor3Abi,
-    interpreterV2Abi,
-    IO,
-    EvaluableV3,
-    SignedContextV1,
-    ActionV1: TaskV1,
-    OrderV3,
-    TakeOrderConfigV3,
-    OrderConfigV3,
-    TakeOrdersConfigV3,
-    DefaultArbEvaluable,
-    multicall3Abi,
-};
+    bytecode: "0x",
+} as const;

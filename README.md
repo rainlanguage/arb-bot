@@ -64,9 +64,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 -- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 
 as well as at least one or both of below arguments:
-
-- `-o` or `--orders`, The path to a local json file containing the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables
- - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
+- `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 
 Other optional arguments are:
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
@@ -171,10 +169,6 @@ ORDERBOOK_ADDRESS="0x123..."
 # one or more subgraph urls to read orders details from, can be used in combination with ORDERS
 # for more than 1 subgraphs, seperate them by comma and a space
 SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
-
-# path to a .json file containing encoded orders bytes as hex string, can be used in combination with SUBGRAPH 
-# OR e.g. the path to the volume mounted by docker compose
-ORDERS="/etc/rainprotocol/arb-bot/orders.json"
 
 # list of liquidity providers names seperated by a comma for each
 LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"

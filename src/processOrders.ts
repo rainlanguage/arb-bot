@@ -1,76 +1,76 @@
-const ethers = require("ethers");
-const { findOpp } = require("./modes");
-const { Token } = require("sushi/currency");
-const { rotateAccounts, fundOwnedOrders } = require("./account");
-const { createViemClient } = require("./config");
-const { arbAbis, orderbookAbi } = require("./abis");
-const { SpanStatusCode } = require("@opentelemetry/api");
-const { privateKeyToAccount } = require("viem/accounts");
-const { ErrorSeverity, errorSnapshot } = require("./error");
-const {
+import { ChainId } from "sushi";
+import { findOpp } from "./modes";
+import { PublicClient } from "viem";
+import { Token } from "sushi/currency";
+import { createViemClient } from "./config";
+import { arbAbis, orderbookAbi } from "./abis";
+import { privateKeyToAccount } from "viem/accounts";
+import { BigNumber, Contract, ethers } from "ethers";
+import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { ErrorSeverity, errorSnapshot } from "./error";
+import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { fundOwnedOrders, rotateAccounts } from "./account";
+import {
+    Report,
+    BotConfig,
+    SpanAttrs,
+    ViemClient,
+    RoundReport,
+    BundledOrders,
+    ProcessPairResult,
+    BotDataFetcher,
+} from "./types";
+import {
     toNumber,
     getIncome,
-    routeExists,
     getEthPrice,
     quoteOrders,
+    routeExists,
     bundleOrders,
     PoolBlackList,
     getMarketQuote,
     getTotalIncome,
-    quoteSingleOrder,
     checkOwnedOrders,
+    quoteSingleOrder,
     getActualClearAmount,
     withBigintSerializer,
-} = require("./utils");
-
-/**
- * @import { Tracer } from "@opentelemetry/sdk-trace-base"
- * @import { Context, Span } from "@opentelemetry/api"
- * @import { PublicClient } from "viem"
- * @import { DataFetcher } from "sushi"
- * @import { BotConfig, BundledOrders, ProcessPairResult, ViemClient } from "./types"
- */
+} from "./utils";
 
 /**
  * Specifies reason that order process halted
- * @readonly
- * @enum {number}
  */
-const ProcessPairHaltReason = {
-    FailedToQuote: 1,
-    FailedToGetGasPrice: 2,
-    FailedToGetEthPrice: 3,
-    FailedToGetPools: 4,
-    TxFailed: 5,
-    TxMineFailed: 6,
-    UnexpectedError: 7,
-};
+export enum ProcessPairHaltReason {
+    FailedToQuote = 1,
+    FailedToGetGasPrice = 2,
+    FailedToGetEthPrice = 3,
+    FailedToGetPools = 4,
+    TxFailed = 5,
+    TxMineFailed = 6,
+    UnexpectedError = 7,
+}
 
 /**
  * Specifies status of an processed order report
- * @readonly
- * @enum {number}
  */
-const ProcessPairReportStatus = {
-    ZeroOutput: 1,
-    NoOpportunity: 2,
-    FoundOpportunity: 3,
-};
+export enum ProcessPairReportStatus {
+    ZeroOutput = 1,
+    NoOpportunity = 2,
+    FoundOpportunity = 3,
+}
 
 /**
  * Main function that processes all given orders and tries clearing them against onchain liquidity and reports the result
- *
- * @param {BotConfig} config - The configuration object
- * @param {any[]} ordersDetails - The order details queried from subgraph
- * @param {Tracer} tracer
- * @param {Context} ctx
+ * @param config - The configuration object
+ * @param ordersDetails - The order details queried from subgraph
+ * @param tracer
+ * @param ctx
  */
-const processOrders = async(
-    config,
-    ordersDetails,
-    tracer,
-    ctx,
-) => {
+export const processOrders = async (
+    config: BotConfig,
+    ordersDetails: any[],
+    tracer: Tracer,
+    ctx: Context,
+): Promise<RoundReport> => {
     const viemClient = config.viemClient;
     const dataFetcher = config.dataFetcher;
     const accounts = config.accounts;
@@ -84,11 +84,7 @@ const processOrders = async(
     }
 
     // prepare orders
-    const bundledOrders = bundleOrders(
-        ordersDetails,
-        config.shuffle,
-        true,
-    );
+    const bundledOrders = bundleOrders(ordersDetails, false, true);
 
     // check owned vaults and top them up if necessary
     let didPostSpan = false;
@@ -96,33 +92,37 @@ const processOrders = async(
         const ownedOrders = await checkOwnedOrders(config, bundledOrders);
         if (ownedOrders.length) {
             const failedFundings = await fundOwnedOrders(ownedOrders, config);
-            const emptyOrders = ownedOrders.filter(v => v.vaultBalance.isZero());
+            const emptyOrders = ownedOrders.filter((v) => v.vaultBalance.isZero());
             if (failedFundings.length || emptyOrders.length) {
                 await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
                     didPostSpan = true;
-                    const message = [];
+                    const message: string[] = [];
                     if (emptyOrders.length) {
                         message.push(
                             "Reason: following owned vaults are empty:",
-                            ...emptyOrders.map(v => `\ntoken: ${v.symbol},\nvaultId: ${v.vaultId}`)
+                            ...emptyOrders.map(
+                                (v) => `\ntoken: ${v.symbol},\nvaultId: ${v.vaultId}`,
+                            ),
                         );
                     }
                     if (failedFundings.length) {
-                        span.setAttribute("failedFundings", failedFundings.map(v => (
-                            JSON.stringify({
-                                error: v.error,
-                                ...(v.ownedOrder
-                                    ? {
-                                        orderId: v.ownedOrder.id,
-                                        orderbook: v.ownedOrder.orderbook,
-                                        vaultId: v.ownedOrder.vaultId,
-                                        token: v.ownedOrder.token,
-                                        symbol: v.ownedOrder.symbol,
-                                    }
-                                    : {}
-                                )
-                            })
-                        )));
+                        span.setAttribute(
+                            "failedFundings",
+                            failedFundings.map((v) =>
+                                JSON.stringify({
+                                    error: v.error,
+                                    ...(v.ownedOrder
+                                        ? {
+                                              orderId: v.ownedOrder.id,
+                                              orderbook: v.ownedOrder.orderbook,
+                                              vaultId: v.ownedOrder.vaultId,
+                                              token: v.ownedOrder.token,
+                                              symbol: v.ownedOrder.symbol,
+                                          }
+                                        : {}),
+                                }),
+                            ),
+                        );
                     }
                     span.setAttribute("severity", ErrorSeverity.MEDIUM);
                     span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
@@ -130,13 +130,13 @@ const processOrders = async(
                 });
             }
         }
-    } catch(e) {
+    } catch (e: any) {
         if (!didPostSpan) {
             await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({
                     code: SpanStatusCode.ERROR,
-                    message: errorSnapshot("Failed to check owned vaults", e)
+                    message: errorSnapshot("Failed to check owned vaults", e),
                 });
                 span.recordException(e);
                 span.end();
@@ -148,14 +148,14 @@ const processOrders = async(
     try {
         await quoteOrders(
             bundledOrders,
-            config.isTest ? config.quoteRpc : config.rpc
+            (config as any).isTest ? (config as any).quoteRpc : config.rpc,
         );
-    } catch(e) {
+    } catch (e) {
         throw errorSnapshot("Failed to batch quote orders", e);
     }
 
-    let avgGasCost;
-    const reports = [];
+    let avgGasCost: BigNumber | undefined;
+    const reports: Report[] = [];
     for (const orderbookOrders of bundledOrders) {
         for (const pairOrders of orderbookOrders) {
             // instantiating orderbook contract
@@ -170,19 +170,21 @@ const processOrders = async(
                     sellToken: pairOrders.sellToken,
                     sellTokenSymbol: pairOrders.sellTokenSymbol,
                     sellTokenDecimals: pairOrders.sellTokenDecimals,
-                    takeOrders: [pairOrders.takeOrders[i]]
+                    takeOrders: [pairOrders.takeOrders[i]],
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
                 const flashbotSigner = config.flashbotRpc
                     ? await createViemClient(
-                        config.chain.id,
-                        [config.flashbotRpc],
-                        undefined,
-                        privateKeyToAccount(ethers.utils.hexlify(
-                            ethers.utils.hexlify(signer.account.getHdKey().privateKey)
-                        )),
-                        config.timeout
-                    )
+                          config.chain.id as ChainId,
+                          [config.flashbotRpc],
+                          undefined,
+                          privateKeyToAccount(
+                              ethers.utils.hexlify(
+                                  ethers.utils.hexlify(signer.account.getHdKey().privateKey!),
+                              ) as `0x${string}`,
+                          ),
+                          config.timeout,
+                      )
                     : undefined;
 
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
@@ -203,9 +205,7 @@ const processOrders = async(
                         genericArb,
                         orderbook,
                         pair,
-                        mainAccount,
-                        accounts,
-                        orderbooksOrders: bundledOrders
+                        orderbooksOrders: bundledOrders,
                     });
 
                     // keep track of avggas cost
@@ -234,8 +234,7 @@ const processOrders = async(
                         span.setAttribute("severity", ErrorSeverity.HIGH);
                         span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
                     }
-                } catch(e) {
-
+                } catch (e: any) {
                     // keep track of avg gas cost
                     if (e.gasCost) {
                         if (!avgGasCost) {
@@ -260,7 +259,8 @@ const processOrders = async(
 
                         // set the otel span status based on returned reason
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
-                            let message = "failed to quote order: " + orderPairObject.takeOrders[0].id;
+                            let message =
+                                "failed to quote order: " + orderPairObject.takeOrders[0].id;
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                             }
@@ -333,22 +333,20 @@ const processOrders = async(
 
 /**
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
- * @param {{
- *  config: BotConfig,
- *  orderPairObject: BundledOrders,
- *  viemClient: PublicClient,
- *  dataFetcher: DataFetcher,
- *  signer: ViemClient,
- *  flashbotSigner: ViemClient|undefined,
- *  arb: ethers.Contract,
- *  genericArb: ethers.Contract,
- *  orderbook: ethers.Contract,
- *  pair: string,
- *  orderbooksOrders: BundledOrders[][]
- * }} args
- * @returns {Promise<ProcessPairResult>}
  */
-async function processPair(args) {
+export async function processPair(args: {
+    config: BotConfig;
+    orderPairObject: BundledOrders;
+    viemClient: PublicClient;
+    dataFetcher: BotDataFetcher;
+    signer: ViemClient;
+    flashbotSigner: ViemClient | undefined;
+    arb: Contract;
+    genericArb: Contract | undefined;
+    orderbook: Contract;
+    pair: string;
+    orderbooksOrders: BundledOrders[][];
+}): Promise<ProcessPairResult> {
     const {
         config,
         orderPairObject,
@@ -363,37 +361,42 @@ async function processPair(args) {
         orderbooksOrders,
     } = args;
 
-    const spanAttributes = {};
-    const result = {
+    const spanAttributes: SpanAttrs = {};
+    const result: ProcessPairResult = {
         reason: undefined,
         error: undefined,
-        report: undefined,
         gasCost: undefined,
         spanAttributes,
+        report: {
+            status: ProcessPairReportStatus.NoOpportunity,
+            tokenPair: pair,
+            buyToken: orderPairObject.buyToken,
+            sellToken: orderPairObject.sellToken,
+        },
     };
 
-    spanAttributes["details.orders"] = orderPairObject.takeOrders.map(v => v.id);
+    spanAttributes["details.orders"] = orderPairObject.takeOrders.map((v) => v.id);
     spanAttributes["details.pair"] = pair;
 
     const fromToken = new Token({
         chainId: config.chain.id,
         decimals: orderPairObject.sellTokenDecimals,
         address: orderPairObject.sellToken,
-        symbol: orderPairObject.sellTokenSymbol
+        symbol: orderPairObject.sellTokenSymbol,
     });
     const toToken = new Token({
         chainId: config.chain.id,
         decimals: orderPairObject.buyTokenDecimals,
         address: orderPairObject.buyToken,
-        symbol: orderPairObject.buyTokenSymbol
+        symbol: orderPairObject.buyTokenSymbol,
     });
 
     try {
         await quoteSingleOrder(
             orderPairObject,
-            config.isTest ? config.quoteRpc : config.rpc
+            (config as any).isTest ? (config as any).quoteRpc : config.rpc,
         );
-        if (orderPairObject.takeOrders[0].quote.maxOutput.isZero()) {
+        if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {
                 status: ProcessPairReportStatus.ZeroOutput,
                 tokenPair: pair,
@@ -402,15 +405,15 @@ async function processPair(args) {
             };
             return result;
         }
-    } catch(e) {
+    } catch (e) {
         result.error = e;
         result.reason = ProcessPairHaltReason.FailedToQuote;
         throw result;
     }
 
     spanAttributes["details.quote"] = JSON.stringify({
-        maxOutput: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote.maxOutput),
-        ratio: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote.ratio),
+        maxOutput: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote!.maxOutput),
+        ratio: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote!.ratio),
     });
 
     // get gas price
@@ -419,7 +422,7 @@ async function processPair(args) {
         const gasPriceBigInt = await viemClient.getGasPrice();
         gasPrice = ethers.BigNumber.from(gasPriceBigInt).mul("107").div("100");
         spanAttributes["details.gasPrice"] = gasPrice.toString();
-    } catch(e) {
+    } catch (e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
         result.error = e;
         throw result;
@@ -435,20 +438,15 @@ async function processPair(args) {
                 fetchPoolsTimeout: 90000,
             };
             // pin block number for test case
-            if (config.isTest && config.testBlockNumber) {
-                options.blockNumber = config.testBlockNumber;
+            if ((config as any).isTest && (config as any).testBlockNumber) {
+                (options as any).blockNumber = (config as any).testBlockNumber;
             }
-            await dataFetcher.fetchPoolsForToken(
-                fromToken,
-                toToken,
-                PoolBlackList,
-                options
-            );
+            await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
             const p1 = `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`;
             const p2 = `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`;
             if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
             if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
-        } catch(e) {
+        } catch (e) {
             result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;
             throw result;
@@ -460,10 +458,12 @@ async function processPair(args) {
         if (marketQuote) {
             spanAttributes["details.marketQuote.str"] = marketQuote.price;
             spanAttributes["details.marketQuote.num"] = toNumber(
-                ethers.utils.parseUnits(marketQuote.price)
+                ethers.utils.parseUnits(marketQuote.price),
             );
         }
-    } catch { /**/ }
+    } catch {
+        /**/
+    }
 
     // get in/out tokens to eth price
     let inputToEthPrice, outputToEthPrice;
@@ -472,8 +472,8 @@ async function processPair(args) {
             fetchPoolsTimeout: 30000,
         };
         // pin block number for test case
-        if (config.isTest && config.testBlockNumber) {
-            options.blockNumber = config.testBlockNumber;
+        if ((config as any).isTest && (config as any).testBlockNumber) {
+            (options as any).blockNumber = (config as any).testBlockNumber;
         }
         inputToEthPrice = await getEthPrice(
             config,
@@ -502,8 +502,7 @@ async function processPair(args) {
                 result.error = "no-route";
                 return Promise.reject(result);
             }
-        }
-        else {
+        } else {
             const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
             const p2 = `${orderPairObject.sellTokenSymbol}/${config.nativeWrappedToken.symbol}`;
             if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
@@ -511,7 +510,7 @@ async function processPair(args) {
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }
-    } catch(e) {
+    } catch (e) {
         if (config.gasCoveragePercentage === "0") {
             inputToEthPrice = "0";
             outputToEthPrice = "0";
@@ -540,21 +539,22 @@ async function processPair(args) {
             outputToEthPrice,
             orderbooksOrders,
         });
-        ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value);
+        ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value!);
+
+        if (!rawtx || !oppBlockNumber) throw "undefined tx/block number";
 
         // record span attrs
         spanAttributes["details.estimatedProfit"] = ethers.utils.formatUnits(estimatedProfit);
-        for (attrKey in findOppResult.spanAttributes) {
+        for (const attrKey in findOppResult.spanAttributes) {
             if (attrKey !== "oppBlockNumber" && attrKey !== "foundOpp") {
                 spanAttributes["details." + attrKey] = findOppResult.spanAttributes[attrKey];
-            }
-            else {
+            } else {
                 spanAttributes[attrKey] = findOppResult.spanAttributes[attrKey];
             }
         }
-    } catch (e) {
+    } catch (e: any) {
         // record all span attributes
-        for (attrKey in e.spanAttributes) {
+        for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
         result.report = {
@@ -576,12 +576,12 @@ async function processPair(args) {
     spanAttributes["foundOpp"] = true;
 
     // get block number
-    let blockNumber;
+    let blockNumber: number;
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["details.blockNumber"] = blockNumber;
         spanAttributes["details.blockNumberDiff"] = blockNumber - oppBlockNumber;
-    } catch(e) {
+    } catch (e) {
         // dont reject if getting block number fails but just record it,
         // since an opp is found and can ultimately be cleared
         spanAttributes["details.blockNumberError"] = errorSnapshot("failed to get block number", e);
@@ -590,20 +590,24 @@ async function processPair(args) {
     // submit the tx
     let txhash, txUrl;
     try {
-        txhash = flashbotSigner !== undefined
-            ? await flashbotSigner.sendTransaction(rawtx)
-            : await signer.sendTransaction(rawtx);
+        txhash =
+            flashbotSigner !== undefined
+                ? await flashbotSigner.sendTransaction(rawtx)
+                : await signer.sendTransaction(rawtx);
 
-        txUrl = config.chain.blockExplorers.default.url + "/tx/" + txhash;
+        txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
         // eslint-disable-next-line no-console
         console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
         spanAttributes["details.txUrl"] = txUrl;
-    } catch(e) {
+    } catch (e) {
         // record rawtx in case it is not already present in the error
-        spanAttributes["details.rawTx"] = JSON.stringify({
-            ...rawtx,
-            from: signer.account.address
-        }, withBigintSerializer);
+        spanAttributes["details.rawTx"] = JSON.stringify(
+            {
+                ...rawtx,
+                from: signer.account.address,
+            },
+            withBigintSerializer,
+        );
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -613,31 +617,25 @@ async function processPair(args) {
     try {
         const receipt = await viemClient.waitForTransactionReceipt({
             hash: txhash,
-            confirmation: 1
+            confirmations: 1,
         });
 
-        const actualGasCost = ethers.BigNumber
-            .from(receipt.effectiveGasPrice)
-            .mul(receipt.gasUsed);
+        const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
         signer.BALANCE = signer.BALANCE.sub(actualGasCost);
         if (receipt.status === "success") {
             spanAttributes["didClear"] = true;
 
-            const clearActualAmount = getActualClearAmount(
-                rawtx.to,
-                orderbook.address,
-                receipt
-            );
+            const clearActualAmount = getActualClearAmount(rawtx.to, orderbook.address, receipt);
 
             const inputTokenIncome = getIncome(
                 signer.account.address,
                 receipt,
-                orderPairObject.buyToken
+                orderPairObject.buyToken,
             );
             const outputTokenIncome = getIncome(
                 signer.account.address,
                 receipt,
-                orderPairObject.sellToken
+                orderPairObject.sellToken,
             );
             const income = getTotalIncome(
                 inputTokenIncome,
@@ -645,27 +643,25 @@ async function processPair(args) {
                 inputToEthPrice,
                 outputToEthPrice,
                 orderPairObject.buyTokenDecimals,
-                orderPairObject.sellTokenDecimals
+                orderPairObject.sellTokenDecimals,
             );
-            const netProfit = income
-                ? income.sub(actualGasCost)
-                : undefined;
+            const netProfit = income ? income.sub(actualGasCost) : undefined;
 
             if (income) {
                 spanAttributes["details.income"] = toNumber(income);
-                spanAttributes["details.netProfit"] = toNumber(netProfit);
+                spanAttributes["details.netProfit"] = toNumber(netProfit!);
                 spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
             }
             if (inputTokenIncome) {
                 spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
                     inputTokenIncome,
-                    orderPairObject.buyTokenDecimals
+                    orderPairObject.buyTokenDecimals,
                 );
             }
             if (outputTokenIncome) {
                 spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
                     outputTokenIncome,
-                    orderPairObject.sellTokenDecimals
+                    orderPairObject.sellTokenDecimals,
                 );
             }
 
@@ -685,9 +681,7 @@ async function processPair(args) {
                     ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
                     : undefined,
                 netProfit,
-                clearedOrders: orderPairObject.takeOrders.map(
-                    v => v.id
-                ),
+                clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
             };
 
             // keep track of gas consumption of the account and bounty token
@@ -695,7 +689,7 @@ async function processPair(args) {
             if (
                 inputTokenIncome &&
                 inputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find(v => v.address === orderPairObject.buyToken)
+                !signer.BOUNTY.find((v) => v.address === orderPairObject.buyToken)
             ) {
                 signer.BOUNTY.push({
                     address: orderPairObject.buyToken.toLowerCase(),
@@ -706,7 +700,7 @@ async function processPair(args) {
             if (
                 outputTokenIncome &&
                 outputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find(v => v.address === orderPairObject.sellToken)
+                !signer.BOUNTY.find((v) => v.address === orderPairObject.sellToken)
             ) {
                 signer.BOUNTY.push({
                     address: orderPairObject.sellToken.toLowerCase(),
@@ -728,12 +722,13 @@ async function processPair(args) {
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
         }
-    } catch(e) {
+    } catch (e: any) {
         // keep track of gas consumption of the account
         let actualGasCost;
         try {
-            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice)
-                .mul(e.receipt.gasUsed);
+            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice).mul(
+                e.receipt.gasUsed,
+            );
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
         } catch {
             /**/
@@ -753,10 +748,3 @@ async function processPair(args) {
         throw result;
     }
 }
-
-module.exports = {
-    processOrders,
-    processPair,
-    ProcessPairHaltReason,
-    ProcessPairReportStatus,
-};

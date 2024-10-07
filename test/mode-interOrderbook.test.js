@@ -10,7 +10,7 @@ const { dryrun, findOpp } = require("../src/modes/interOrderbook");
 // mocking signer and dataFetcher
 let signer = {};
 const viemClient = {
-    getBlockNumber: async() => BigInt(oppBlockNumber)
+    getBlockNumber: async () => BigInt(oppBlockNumber),
 };
 
 const oppBlockNumber = 123456;
@@ -31,10 +31,10 @@ const {
 describe("Test inter-orderbook dryrun", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
+            getBalance: async () => ethers.BigNumber.from(0),
         };
     });
 
@@ -54,19 +54,19 @@ describe("Test inter-orderbook dryrun", async function () {
         const opposingMaxInput = vaultBalance
             .mul(orderPairObject.takeOrders[0].quote.ratio)
             .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
-            .div(orderPairObject.takeOrders[0].quote.ratio);
+        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`).div(
+            orderPairObject.takeOrders[0].quote.ratio,
+        );
         const obInterface = new ethers.utils.Interface(orderbookAbi);
-        const encodedFN = obInterface.encodeFunctionData(
-            "takeOrders2",
-            [{
+        const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
+            {
                 minimumInput: ethers.constants.One,
                 maximumInput: opposingMaxInput,
                 maximumIORatio: opposingMaxIORatio,
-                orders: opposingOrderPairObject.takeOrders.map(v => v.takeOrder),
-                data: "0x"
-            }]
-        );
+                orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
+                data: "0x",
+            },
+        ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
             maximumInput: vaultBalance,
@@ -74,8 +74,8 @@ describe("Test inter-orderbook dryrun", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(
                 ["address", "address", "bytes"],
-                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN]
-            )
+                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN],
+            ),
         };
         const task = {
             evaluable: {
@@ -84,22 +84,19 @@ describe("Test inter-orderbook dryrun", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice),
                 ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -112,15 +109,15 @@ describe("Test inter-orderbook dryrun", async function () {
                     ethers.utils.parseUnits(outputToEthPrice),
                     opposingOrderPairObject,
                     undefined,
-                    vaultBalance
-                )
+                    vaultBalance,
+                ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
                 maxInput: vaultBalance.toString(),
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -152,7 +149,7 @@ describe("Test inter-orderbook dryrun", async function () {
                     maxInput: vaultBalance.toString(),
                     blockNumber: oppBlockNumber,
                     error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
-                }
+                },
             };
             assert.deepEqual(error.value, expected.value);
             assert.deepEqual(error.reason, expected.reason);
@@ -166,13 +163,10 @@ describe("Test inter-orderbook dryrun", async function () {
 describe("Test inter-orderbook find opp", async function () {
     beforeEach(() => {
         signer = {
-            account: {address: `0x${"1".repeat(40)}`},
+            account: { address: `0x${"1".repeat(40)}` },
             getBlockNumber: async () => oppBlockNumber,
             estimateGas: async () => gasLimitEstimation,
-            getBalance: async () => ethers.BigNumber.from(0)
-        };
-        dataFetcher = {
-            fetchedPairPools: []
+            getBalance: async () => ethers.BigNumber.from(0),
         };
     });
 
@@ -191,19 +185,19 @@ describe("Test inter-orderbook find opp", async function () {
         const opposingMaxInput = vaultBalance
             .mul(orderPairObject.takeOrders[0].quote.ratio)
             .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
-            .div(orderPairObject.takeOrders[0].quote.ratio);
+        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`).div(
+            orderPairObject.takeOrders[0].quote.ratio,
+        );
         const obInterface = new ethers.utils.Interface(orderbookAbi);
-        const encodedFN = obInterface.encodeFunctionData(
-            "takeOrders2",
-            [{
+        const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
+            {
                 minimumInput: ethers.constants.One,
                 maximumInput: opposingMaxInput,
                 maximumIORatio: opposingMaxIORatio,
-                orders: opposingOrderPairObject.takeOrders.map(v => v.takeOrder),
-                data: "0x"
-            }]
-        );
+                orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
+                data: "0x",
+            },
+        ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
             maximumInput: vaultBalance,
@@ -211,8 +205,8 @@ describe("Test inter-orderbook find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(
                 ["address", "address", "bytes"],
-                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN]
-            )
+                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN],
+            ),
         };
         const task = {
             evaluable: {
@@ -221,22 +215,19 @@ describe("Test inter-orderbook find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice),
                 ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -249,15 +240,15 @@ describe("Test inter-orderbook find opp", async function () {
                     ethers.utils.parseUnits(outputToEthPrice),
                     opposingOrderPairObject,
                     undefined,
-                    vaultBalance
-                )
+                    vaultBalance,
+                ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
                 maxInput: vaultBalance.toString(),
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -284,22 +275,23 @@ describe("Test inter-orderbook find opp", async function () {
             orderbooksOrders,
         });
         const opposingMaxInput = vaultBalance
-            .mul(3).div(4)
+            .mul(3)
+            .div(4)
             .mul(orderPairObject.takeOrders[0].quote.ratio)
             .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
-            .div(orderPairObject.takeOrders[0].quote.ratio);
+        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`).div(
+            orderPairObject.takeOrders[0].quote.ratio,
+        );
         const obInterface = new ethers.utils.Interface(orderbookAbi);
-        const encodedFN = obInterface.encodeFunctionData(
-            "takeOrders2",
-            [{
+        const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
+            {
                 minimumInput: ethers.constants.One,
                 maximumInput: opposingMaxInput,
                 maximumIORatio: opposingMaxIORatio,
-                orders: opposingOrderPairObject.takeOrders.map(v => v.takeOrder),
-                data: "0x"
-            }]
-        );
+                orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
+                data: "0x",
+            },
+        ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
             maximumInput: vaultBalance.mul(3).div(4),
@@ -307,8 +299,8 @@ describe("Test inter-orderbook find opp", async function () {
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(
                 ["address", "address", "bytes"],
-                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN]
-            )
+                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN],
+            ),
         };
         const task = {
             evaluable: {
@@ -317,22 +309,19 @@ describe("Test inter-orderbook find opp", async function () {
                 bytecode: getBountyEnsureBytecode(
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice)
+                    gasLimitEstimation.mul(gasPrice),
                 ),
             },
-            signedContext: []
+            signedContext: [],
         };
         const expected = {
             value: {
                 rawtx: {
-                    data: arb.interface.encodeFunctionData(
-                        "arb3",
-                        [
-                            orderPairObject.orderbook,
-                            expectedTakeOrdersConfigStruct,
-                            task,
-                        ]
-                    ),
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
                     to: arb.address,
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
@@ -345,15 +334,15 @@ describe("Test inter-orderbook find opp", async function () {
                     ethers.utils.parseUnits(outputToEthPrice),
                     opposingOrderPairObject,
                     undefined,
-                    vaultBalance.mul(3).div(4)
-                )
+                    vaultBalance.mul(3).div(4),
+                ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
                 maxInput: vaultBalance.mul(3).div(4).toString(),
-            }
+            },
         };
         assert.deepEqual(result, expected);
     });
@@ -380,19 +369,19 @@ describe("Test inter-orderbook find opp", async function () {
             const opposingMaxInput = vaultBalance
                 .mul(orderPairObject.takeOrders[0].quote.ratio)
                 .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-            const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`)
-                .div(orderPairObject.takeOrders[0].quote.ratio);
+            const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`).div(
+                orderPairObject.takeOrders[0].quote.ratio,
+            );
             const obInterface = new ethers.utils.Interface(orderbookAbi);
-            const encodedFN = obInterface.encodeFunctionData(
-                "takeOrders2",
-                [{
+            const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
+                {
                     minimumInput: ethers.constants.One,
                     maximumInput: opposingMaxInput,
                     maximumIORatio: opposingMaxIORatio,
-                    orders: opposingOrderPairObject.takeOrders.map(v => v.takeOrder),
-                    data: "0x"
-                }]
-            );
+                    orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
+                    data: "0x",
+                },
+            ]);
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
                 maximumInput: vaultBalance,
@@ -403,31 +392,28 @@ describe("Test inter-orderbook find opp", async function () {
                     [
                         opposingOrderPairObject.orderbook,
                         opposingOrderPairObject.orderbook,
-                        encodedFN
-                    ]
-                )
+                        encodedFN,
+                    ],
+                ),
             };
             const task = {
                 evaluable: {
-                    interpreter: orderPairObject.takeOrders[0]
-                        .takeOrder.order.evaluable.interpreter,
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x"
+                    bytecode: "0x",
                 },
-                signedContext: []
+                signedContext: [],
             };
             const rawtx = {
-                data: arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]
-                ),
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
                 to: arb.address,
                 gasPrice,
-                from: signer.account.address
+                from: signer.account.address,
             };
             const expected = {
                 value: undefined,
@@ -438,10 +424,10 @@ describe("Test inter-orderbook find opp", async function () {
                             maxInput: vaultBalance.toString(),
                             blockNumber: oppBlockNumber,
                             error: errorSnapshot("", err),
-                            rawtx: JSON.stringify(rawtx)
-                        }
+                            rawtx: JSON.stringify(rawtx),
+                        },
                     }),
-                }
+                },
             };
             assert.deepEqual(error, expected);
         }

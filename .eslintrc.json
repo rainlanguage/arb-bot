@@ -6,7 +6,15 @@
         "commonjs": true
     },
     "root": true,
-    "extends": [ "eslint:recommended" ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:prettier/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+        "@typescript-eslint"
+    ],
     "parserOptions": { "ecmaVersion": "latest" },
     "rules": {
         "no-empty": "off",
@@ -14,32 +22,43 @@
         "no-console": "error",
         "prefer-const": "error",
         "no-trailing-spaces": "error",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-empty-function": "off",
         "semi": [ "error", "always" ],
-        "no-unused-vars": [
+        "prettier/prettier": [
             "error",
-            { "varsIgnorePattern": "^_" }
-        ],
-        "quotes": [
-            "error",
-            "double"
-        ],
-        "indent": [
-            "error",
-            4,
-            { 
-                "VariableDeclarator": "first",
-                "flatTernaryExpressions": true,
-                "offsetTernaryExpressions": false
-            }
-        ],
-        "max-len": [
-            "error",
-            { 
-                "code": 100,
-                "ignoreStrings": true,
-                "ignoreComments": true,
-                "ignoreTemplateLiterals": true
+            {
+                "printWidth": 100,
+                "tabWidth": 4
             }
         ]
+        // "quotes": [
+        //     "error",
+        //     "double"
+        // ],
+        // "no-unused-vars": [
+        //     "error",
+        //     { "varsIgnorePattern": "^_" }
+        // ],
+        // "indent": [
+        //     "error",
+        //     4,
+        //     { 
+        //         "VariableDeclarator": "first",
+        //         "flatTernaryExpressions": true,
+        //         "offsetTernaryExpressions": false
+        //     }
+        // ],
+        // "max-len": [
+        //     "error",
+        //     { 
+        //         "code": 100,
+        //         "ignoreStrings": true,
+        //         "ignoreComments": true,
+        //         "ignoreTemplateLiterals": true
+        //     }
+        // ]
     }
 }

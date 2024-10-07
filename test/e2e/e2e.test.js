@@ -27,9 +27,8 @@ const {
     encodeQuoteResponse,
     deployOrderBookNPE2,
     rainterpreterNPE2Deploy,
-    rainterpreterStoreNPE2Deploy
+    rainterpreterStoreNPE2Deploy,
 } = require("../utils");
-
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {
@@ -57,15 +56,14 @@ for (let i = 0; i < testData.length; i++) {
         const config = getChainConfig(chainId);
 
         // get available route processor versions for the chain (only RP4)
-        const rpVersions = Object.keys(config.routeProcessors).filter(v => v === "4");
-        if (rpVersions.length === 0) assert.fail(
-            `Found no known RP4 contract address on ${ChainKey[chainId]} chain`
-        );
+        const rpVersions = Object.keys(config.routeProcessors).filter((v) => v === "4");
+        if (rpVersions.length === 0)
+            assert.fail(`Found no known RP4 contract address on ${ChainKey[chainId]} chain`);
 
         const exporter = new OTLPTraceExporter();
         const provider = new BasicTracerProvider({
             resource: new Resource({
-                [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
+                [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test",
             }),
         });
         provider.addSpanProcessor(new BatchSpanProcessor(exporter));
@@ -76,7 +74,7 @@ for (let i = 0; i < testData.length; i++) {
         for (let j = 0; j < rpVersions.length; j++) {
             const rpVersion = rpVersions[j];
 
-            it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+            it.only(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -87,14 +85,23 @@ for (let i = 0; i < testData.length; i++) {
                 await helpers.reset(rpc, blockNumber);
                 // get bot signer
                 const bot = botAddress
-                    ? (await viem.getTestClient({account: botAddress}))
-                        .extend(publicActions)
-                        .extend(walletActions)
-                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
-                        .extend(publicActions)
-                        .extend(walletActions);
-                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
-                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({ account: botAddress }))
+                          .extend(publicActions)
+                          .extend(walletActions)
+                    : (
+                          await viem.getTestClient({
+                              account: "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                          })
+                      )
+                          .extend(publicActions)
+                          .extend(walletActions);
+                bot.impersonateAccount({
+                    address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                });
+                await network.provider.send("hardhat_setBalance", [
+                    bot.account.address,
+                    "0x4563918244F40000",
+                ]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -106,10 +113,7 @@ for (let i = 0; i < testData.length; i++) {
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
 
                 const arb = !arbAddress
-                    ? await arbDeploy(
-                        orderbook.address,
-                        config.routeProcessors[rpVersion],
-                    )
+                    ? await arbDeploy(orderbook.address, config.routeProcessors[rpVersion])
                     : await ethers.getContractAt(arbAbis, arbAddress);
 
                 // set up tokens contracts and impersonate owners
@@ -117,21 +121,22 @@ for (let i = 0; i < testData.length; i++) {
                 for (let i = 0; i < tokens.length; i++) {
                     tokens[i].contract = await ethers.getContractAt(
                         ERC20Artifact.abi,
-                        tokens[i].address
+                        tokens[i].address,
                     );
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
-                    tokens[i].depositAmount = ethers.utils.parseUnits((deposits[i] ?? "100"), tokens[i].decimals);
+                    tokens[i].depositAmount = ethers.utils.parseUnits(
+                        deposits[i] ?? "100",
+                        tokens[i].decimals,
+                    );
                     // owners.push(
                     //     (await viem.getTestClient({account: addressesWithBalance[i]})).extend(publicActions).extend(walletActions)
                     //     // await ethers.getImpersonatedSigner(addressesWithBalance[i])
                     // );
-                    owners.push(
-                        await ethers.getImpersonatedSigner(addressesWithBalance[i])
-                    );
-                    await network.provider.send(
-                        "hardhat_setBalance",
-                        [addressesWithBalance[i], "0x4563918244F40000"]
-                    );
+                    owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
+                    await network.provider.send("hardhat_setBalance", [
+                        addressesWithBalance[i],
+                        "0x4563918244F40000",
+                    ]);
                 }
 
                 // bot original token balances
@@ -149,10 +154,9 @@ for (let i = 0; i < testData.length; i++) {
                     const depositConfigStruct = {
                         token: tokens[i].address,
                         vaultId: tokens[i].vaultId,
-                        amount: tokens[i].depositAmount.toString()
+                        amount: tokens[i].depositAmount.toString(),
                     };
-                    await tokens[i]
-                        .contract
+                    await tokens[i].contract
                         .connect(owners[i])
                         .approve(orderbook.address, depositConfigStruct.amount);
                     await orderbook
@@ -161,7 +165,7 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct.token,
                             depositConfigStruct.vaultId,
                             depositConfigStruct.amount,
-                            []
+                            [],
                         );
 
                     // prebuild bytecode: "_ _: 0 max; :;"
@@ -176,26 +180,30 @@ for (let i = 0; i < testData.length; i++) {
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
-                        validInputs: [{
-                            token: tokens[0].address,
-                            decimals: tokens[0].decimals,
-                            vaultId: tokens[0].vaultId
-                        }],
-                        validOutputs: [{
-                            token: tokens[i].address,
-                            decimals: tokens[i].decimals,
-                            vaultId: tokens[i].vaultId
-                        }],
+                        validInputs: [
+                            {
+                                token: tokens[0].address,
+                                decimals: tokens[0].decimals,
+                                vaultId: tokens[0].vaultId,
+                            },
+                        ],
+                        validOutputs: [
+                            {
+                                token: tokens[i].address,
+                                decimals: tokens[i].decimals,
+                                vaultId: tokens[i].vaultId,
+                            },
+                        ],
                         meta: encodeMeta("some_order"),
                     };
-                    const tx = await orderbook
-                        .connect(owners[i])
-                        .addOrder2(addOrderConfig, []);
-                    orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx, "AddOrderV2", orderbook),
-                        orderbook,
-                        tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
-                    ));
+                    const tx = await orderbook.connect(owners[i]).addOrder2(addOrderConfig, []);
+                    orders.push(
+                        await mockSgFromEvent(
+                            await getEventArgs(tx, "AddOrderV2", orderbook),
+                            orderbook,
+                            tokens.map((v) => ({ ...v.contract, knownSymbol: v.symbol })),
+                        ),
+                    );
                 }
 
                 // mock quote responses
@@ -204,23 +212,23 @@ for (let i = 0; i < testData.length; i++) {
                     .once()
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse(
-                            tokens.slice(1).map(v => [
+                            tokens.slice(1).map((v) => [
                                 true, // success
                                 v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
                                 ethers.constants.Zero, // ratio
-                            ])
-                        )
+                            ]),
+                        ),
                     );
                 for (let i = 1; i < tokens.length; i++) {
-                    const output = tokens[i].depositAmount.mul("1" + "0".repeat(18 - tokens[i].decimals));
+                    const output = tokens[i].depositAmount.mul(
+                        "1" + "0".repeat(18 - tokens[i].decimals),
+                    );
                     await mockServer
                         .forPost("/rpc")
                         .withBodyIncluding(owners[i].address.substring(2).toLowerCase())
-                        .thenSendJsonRpcResult(encodeQuoteResponse([[
-                            true,
-                            output,
-                            ethers.constants.Zero
-                        ]]));
+                        .thenSendJsonRpcResult(
+                            encodeQuoteResponse([[true, output, ethers.constants.Zero]]),
+                        );
                 }
 
                 // run the clearing process
@@ -244,10 +252,7 @@ for (let i = 0; i < testData.length; i++) {
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
-                assert.ok(
-                    reports.length == tokens.length - 1,
-                    "Failed to clear all given orders"
-                );
+                assert.ok(reports.length == tokens.length - 1, "Failed to clear all given orders");
 
                 // validate each cleared order
                 let inputProfit = ethers.constants.Zero;
@@ -261,67 +266,70 @@ for (let i = 0; i < testData.length; i++) {
                     const outputVault = await orderbook.vaultBalance(
                         owners[i + 1].address,
                         tokens[i + 1].address,
-                        tokens[i + 1].vaultId
+                        tokens[i + 1].vaultId,
                     );
                     const inputVault = await orderbook.vaultBalance(
                         owners[0].address,
                         tokens[0].address,
-                        tokens[0].vaultId
+                        tokens[0].vaultId,
                     );
-                    const botTokenBalance = await tokens[i + 1].contract
-                        .balanceOf(bot.account.address);
+                    const botTokenBalance = await tokens[i + 1].contract.balanceOf(
+                        bot.account.address,
+                    );
 
                     assert.equal(reports[i].tokenPair, pair);
 
                     // should have cleared equal to vault balance or lower
                     assert.ok(
                         tokens[i + 1].depositAmount.gte(clearedAmount),
-                        `Did not clear expected amount for: ${pair}`
+                        `Did not clear expected amount for: ${pair}`,
                     );
                     assert.ok(
                         outputVault.eq(tokens[i + 1].depositAmount.sub(clearedAmount)),
-                        `Unexpected current output vault balance: ${pair}`
+                        `Unexpected current output vault balance: ${pair}`,
                     );
-                    assert.ok(
-                        inputVault.eq(0),
-                        `Unexpected current input vault balance: ${pair}`
-                    );
+                    assert.ok(inputVault.eq(0), `Unexpected current input vault balance: ${pair}`);
                     assert.ok(
                         originalBotTokenBalances[i + 1].eq(botTokenBalance),
-                        `Unexpected current bot ${tokens[i + 1].symbol} balance`
+                        `Unexpected current bot ${tokens[i + 1].symbol} balance`,
                     );
 
                     // collect all bot's input income (bounty) and gas cost
                     inputProfit = inputProfit.add(
-                        ethers.utils.parseUnits(reports[i].inputTokenIncome)
+                        ethers.utils.parseUnits(reports[i].inputTokenIncome),
                     );
                     gasSpent = gasSpent.add(ethers.utils.parseUnits(reports[i].actualGasCost));
                 }
 
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
-                    originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.balanceOf(bot.account.address)
-                    ),
-                    "Unexpected bot bounty"
+                    originalBotTokenBalances[0]
+                        .add(inputProfit)
+                        .eq(await tokens[0].contract.balanceOf(bot.account.address)),
+                    "Unexpected bot bounty",
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, [{
-                    address: tokens[0].address.toLowerCase(),
-                    decimals: tokens[0].decimals,
-                    symbol: tokens[0].symbol
-                }]);
+                assert.deepEqual(bot.BOUNTY, [
+                    {
+                        address: tokens[0].address.toLowerCase(),
+                        decimals: tokens[0].decimals,
+                        symbol: tokens[0].symbol,
+                    },
+                ]);
                 assert.equal(
                     bot.BALANCE.toString(),
-                    (await bot.getBalance({address: bot.account.address})).toString()
+                    (await bot.getBalance({ address: bot.account.address })).toString(),
                 );
-                assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
+                assert.equal(
+                    gasSpent.toString(),
+                    ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString(),
+                );
 
                 testSpan.end();
             });
 
-            it("should clear orders successfully using inter-orderbook", async function () {
+            it.only("should clear orders successfully using inter-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -333,14 +341,23 @@ for (let i = 0; i < testData.length; i++) {
 
                 // get bot signer
                 const bot = botAddress
-                    ? (await viem.getTestClient({account: botAddress}))
-                        .extend(publicActions)
-                        .extend(walletActions)
-                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
-                        .extend(publicActions)
-                        .extend(walletActions);
-                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
-                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({ account: botAddress }))
+                          .extend(publicActions)
+                          .extend(walletActions)
+                    : (
+                          await viem.getTestClient({
+                              account: "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                          })
+                      )
+                          .extend(publicActions)
+                          .extend(walletActions);
+                bot.impersonateAccount({
+                    address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                });
+                await network.provider.send("hardhat_setBalance", [
+                    bot.account.address,
+                    "0x4563918244F40000",
+                ]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -353,10 +370,7 @@ for (let i = 0; i < testData.length; i++) {
                 const orderbook2 = await deployOrderBookNPE2();
                 const genericArb = await genericArbrbDeploy(orderbook2.address);
                 const arb = !arbAddress
-                    ? await arbDeploy(
-                        orderbook1.address,
-                        config.routeProcessors[rpVersion],
-                    )
+                    ? await arbDeploy(orderbook1.address, config.routeProcessors[rpVersion])
                     : await ethers.getContractAt(arbAbis, arbAddress);
 
                 // set up tokens contracts and impersonate owners
@@ -364,7 +378,7 @@ for (let i = 0; i < testData.length; i++) {
                 for (let i = 0; i < tokens.length; i++) {
                     tokens[i].contract = await ethers.getContractAt(
                         ERC20Artifact.abi,
-                        tokens[i].address
+                        tokens[i].address,
                     );
                     if (i === 0) {
                         tokens[0].vaultIds = [];
@@ -373,18 +387,20 @@ for (let i = 0; i < testData.length; i++) {
                         }
                     }
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
-                    tokens[i].depositAmount = i > 0
-                        ? tokens[i].depositAmount = ethers.utils.parseUnits(
-                            (deposits[i] ?? "100"), tokens[i].decimals
-                        )
-                        : tokens[i].depositAmount = ethers.utils.parseUnits(
-                            (deposits[i] ?? "100"), tokens[i].decimals
-                        ).div(tokens.length - 1);
+                    tokens[i].depositAmount =
+                        i > 0
+                            ? (tokens[i].depositAmount = ethers.utils.parseUnits(
+                                  deposits[i] ?? "100",
+                                  tokens[i].decimals,
+                              ))
+                            : (tokens[i].depositAmount = ethers.utils
+                                  .parseUnits(deposits[i] ?? "100", tokens[i].decimals)
+                                  .div(tokens.length - 1));
                     owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
-                    await network.provider.send(
-                        "hardhat_setBalance",
-                        [addressesWithBalance[i], "0x4563918244F40000"]
-                    );
+                    await network.provider.send("hardhat_setBalance", [
+                        addressesWithBalance[i],
+                        "0x4563918244F40000",
+                    ]);
                 }
 
                 // bot original token balances
@@ -402,10 +418,9 @@ for (let i = 0; i < testData.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
                         vaultId: tokens[i].vaultId,
-                        amount: tokens[i].depositAmount.toString()
+                        amount: tokens[i].depositAmount.toString(),
                     };
-                    await tokens[i]
-                        .contract
+                    await tokens[i].contract
                         .connect(owners[i])
                         .approve(orderbook1.address, depositConfigStruct1.amount);
                     await orderbook1
@@ -414,7 +429,7 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct1.token,
                             depositConfigStruct1.vaultId,
                             depositConfigStruct1.amount,
-                            []
+                            [],
                         );
 
                     // prebuild bytecode: "_ _: 0 max; :;"
@@ -429,35 +444,38 @@ for (let i = 0; i < testData.length; i++) {
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
-                        validInputs: [{
-                            token: tokens[0].address,
-                            decimals: tokens[0].decimals,
-                            vaultId: tokens[0].vaultId
-                        }],
-                        validOutputs: [{
-                            token: tokens[i].address,
-                            decimals: tokens[i].decimals,
-                            vaultId: tokens[i].vaultId
-                        }],
+                        validInputs: [
+                            {
+                                token: tokens[0].address,
+                                decimals: tokens[0].decimals,
+                                vaultId: tokens[0].vaultId,
+                            },
+                        ],
+                        validOutputs: [
+                            {
+                                token: tokens[i].address,
+                                decimals: tokens[i].decimals,
+                                vaultId: tokens[i].vaultId,
+                            },
+                        ],
                         meta: encodeMeta("some_order"),
                     };
-                    const tx1 = await orderbook1
-                        .connect(owners[i])
-                        .addOrder2(addOrderConfig1, []);
-                    orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx1, "AddOrderV2", orderbook1),
-                        orderbook1,
-                        tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
-                    ));
+                    const tx1 = await orderbook1.connect(owners[i]).addOrder2(addOrderConfig1, []);
+                    orders.push(
+                        await mockSgFromEvent(
+                            await getEventArgs(tx1, "AddOrderV2", orderbook1),
+                            orderbook1,
+                            tokens.map((v) => ({ ...v.contract, knownSymbol: v.symbol })),
+                        ),
+                    );
 
                     // opposing orders
                     const depositConfigStruct2 = {
                         token: tokens[0].address,
                         vaultId: tokens[0].vaultIds[i - 1],
-                        amount: tokens[0].depositAmount.toString()
+                        amount: tokens[0].depositAmount.toString(),
                     };
-                    await tokens[0]
-                        .contract
+                    await tokens[0].contract
                         .connect(owners[0])
                         .approve(orderbook2.address, depositConfigStruct2.amount);
                     await orderbook2
@@ -466,7 +484,7 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct2.token,
                             depositConfigStruct2.vaultId,
                             depositConfigStruct2.amount,
-                            []
+                            [],
                         );
                     const addOrderConfig2 = {
                         evaluable: {
@@ -476,26 +494,30 @@ for (let i = 0; i < testData.length; i++) {
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
-                        validInputs: [{
-                            token: tokens[i].address,
-                            decimals: tokens[i].decimals,
-                            vaultId: tokens[i].vaultId
-                        }],
-                        validOutputs: [{
-                            token: tokens[0].address,
-                            decimals: tokens[0].decimals,
-                            vaultId: tokens[0].vaultIds[i - 1]
-                        }],
+                        validInputs: [
+                            {
+                                token: tokens[i].address,
+                                decimals: tokens[i].decimals,
+                                vaultId: tokens[i].vaultId,
+                            },
+                        ],
+                        validOutputs: [
+                            {
+                                token: tokens[0].address,
+                                decimals: tokens[0].decimals,
+                                vaultId: tokens[0].vaultIds[i - 1],
+                            },
+                        ],
                         meta: encodeMeta("some_order"),
                     };
-                    const tx2 = await orderbook2
-                        .connect(owners[0])
-                        .addOrder2(addOrderConfig2, []);
-                    orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx2, "AddOrderV2", orderbook2),
-                        orderbook2,
-                        tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
-                    ));
+                    const tx2 = await orderbook2.connect(owners[0]).addOrder2(addOrderConfig2, []);
+                    orders.push(
+                        await mockSgFromEvent(
+                            await getEventArgs(tx2, "AddOrderV2", orderbook2),
+                            orderbook2,
+                            tokens.map((v) => ({ ...v.contract, knownSymbol: v.symbol })),
+                        ),
+                    );
                 }
 
                 // mock quote responses
@@ -504,37 +526,39 @@ for (let i = 0; i < testData.length; i++) {
                     .once()
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse([
-                            ...tokens.slice(1).map(v => [
+                            ...tokens.slice(1).map((v) => [
                                 true, // success
                                 v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
                                 ethers.constants.Zero, // ratio
                             ]),
-                            ...tokens.slice(1).map(() => [
-                                true,
-                                tokens[0].depositAmount.mul("1" + "0".repeat(18 - tokens[0].decimals)),
-                                ethers.constants.Zero,
-                            ]),
-                        ])
+                            ...tokens
+                                .slice(1)
+                                .map(() => [
+                                    true,
+                                    tokens[0].depositAmount.mul(
+                                        "1" + "0".repeat(18 - tokens[0].decimals),
+                                    ),
+                                    ethers.constants.Zero,
+                                ]),
+                        ]),
                     );
                 for (let i = 1; i < tokens.length; i++) {
-                    const output = tokens[i].depositAmount.mul("1" + "0".repeat(18 - tokens[i].decimals));
+                    const output = tokens[i].depositAmount.mul(
+                        "1" + "0".repeat(18 - tokens[i].decimals),
+                    );
                     await mockServer
                         .forPost("/rpc")
                         .withBodyIncluding(owners[i].address.substring(2).toLowerCase())
-                        .thenSendJsonRpcResult(encodeQuoteResponse([[
-                            true,
-                            output,
-                            ethers.constants.Zero
-                        ]]));
+                        .thenSendJsonRpcResult(
+                            encodeQuoteResponse([[true, output, ethers.constants.Zero]]),
+                        );
                 }
                 await mockServer
                     .forPost("/rpc")
                     .withBodyIncluding(owners[0].address.substring(2).toLowerCase())
-                    .thenSendJsonRpcResult(encodeQuoteResponse([[
-                        true,
-                        ethers.constants.Zero,
-                        ethers.constants.Zero
-                    ]]));
+                    .thenSendJsonRpcResult(
+                        encodeQuoteResponse([[true, ethers.constants.Zero, ethers.constants.Zero]]),
+                    );
 
                 // run the clearing process
                 config.isTest = true;
@@ -560,7 +584,7 @@ for (let i = 0; i < testData.length; i++) {
                 // should have cleared correct number of orders
                 assert.ok(
                     reports.length == (tokens.length - 1) * 2,
-                    "Failed to clear all given orders"
+                    "Failed to clear all given orders",
                 );
 
                 // validate each cleared order
@@ -575,74 +599,80 @@ for (let i = 0; i < testData.length; i++) {
                     const outputVault = await orderbook1.vaultBalance(
                         owners[i + 1].address,
                         tokens[i + 1].address,
-                        tokens[i + 1].vaultId
+                        tokens[i + 1].vaultId,
                     );
                     const inputVault = await orderbook1.vaultBalance(
                         owners[0].address,
                         tokens[0].address,
-                        tokens[0].vaultId
+                        tokens[0].vaultId,
                     );
-                    const botTokenBalance = await tokens[i + 1].contract
-                        .balanceOf(bot.account.address);
+                    const botTokenBalance = await tokens[i + 1].contract.balanceOf(
+                        bot.account.address,
+                    );
 
                     assert.equal(reports[i].tokenPair, pair);
 
                     // should have cleared equal to vault balance or lower
                     assert.ok(
                         tokens[i + 1].depositAmount.gte(clearedAmount),
-                        `Did not clear expected amount for: ${pair}`
+                        `Did not clear expected amount for: ${pair}`,
                     );
                     assert.ok(
                         outputVault.eq(tokens[i + 1].depositAmount.sub(clearedAmount)),
-                        `Unexpected current output vault balance: ${pair}`
+                        `Unexpected current output vault balance: ${pair}`,
                     );
-                    assert.ok(
-                        inputVault.eq(0),
-                        `Unexpected current input vault balance: ${pair}`
-                    );
+                    assert.ok(inputVault.eq(0), `Unexpected current input vault balance: ${pair}`);
 
                     // output bounties should equal to current bot's token balance
                     assert.ok(
                         originalBotTokenBalances[i + 1]
-                            .add(ethers.utils.parseUnits(
-                                reports[i].outputTokenIncome,
-                                tokens[i + 1].decimals
-                            ))
+                            .add(
+                                ethers.utils.parseUnits(
+                                    reports[i].outputTokenIncome,
+                                    tokens[i + 1].decimals,
+                                ),
+                            )
                             .eq(botTokenBalance),
-                        `Unexpected current bot ${tokens[i + 1].symbol} balance`
+                        `Unexpected current bot ${tokens[i + 1].symbol} balance`,
                     );
 
                     // collect all bot's input income (bounty) and gas cost
                     inputProfit = inputProfit.add(
-                        ethers.utils.parseUnits(reports[i].inputTokenIncome)
+                        ethers.utils.parseUnits(reports[i].inputTokenIncome),
                     );
                     gasSpent = gasSpent.add(ethers.utils.parseUnits(reports[i].actualGasCost));
                 }
 
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
-                    originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.balanceOf(bot.account.address)
-                    ),
-                    "Unexpected bot bounty"
+                    originalBotTokenBalances[0]
+                        .add(inputProfit)
+                        .eq(await tokens[0].contract.balanceOf(bot.account.address)),
+                    "Unexpected bot bounty",
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, tokens.map(v => ({
-                    address: v.address.toLowerCase(),
-                    decimals: v.decimals,
-                    symbol: v.symbol
-                })));
+                assert.deepEqual(
+                    bot.BOUNTY,
+                    tokens.map((v) => ({
+                        address: v.address.toLowerCase(),
+                        decimals: v.decimals,
+                        symbol: v.symbol,
+                    })),
+                );
                 assert.equal(
                     bot.BALANCE.toString(),
-                    (await bot.getBalance({address: bot.account.address})).toString()
+                    (await bot.getBalance({ address: bot.account.address })).toString(),
                 );
-                assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
+                assert.equal(
+                    gasSpent.toString(),
+                    ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString(),
+                );
 
                 testSpan.end();
             });
 
-            it("should clear orders successfully using intra-orderbook", async function () {
+            it.only("should clear orders successfully using intra-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -654,14 +684,23 @@ for (let i = 0; i < testData.length; i++) {
 
                 // get bot signer
                 const bot = botAddress
-                    ? (await viem.getTestClient({account: botAddress}))
-                        .extend(publicActions)
-                        .extend(walletActions)
-                    : (await viem.getTestClient({account: "0x22025257BeF969A81eDaC0b343ce82d777931327"}))
-                        .extend(publicActions)
-                        .extend(walletActions);
-                bot.impersonateAccount({address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327"});
-                await network.provider.send("hardhat_setBalance", [bot.account.address, "0x4563918244F40000"]);
+                    ? (await viem.getTestClient({ account: botAddress }))
+                          .extend(publicActions)
+                          .extend(walletActions)
+                    : (
+                          await viem.getTestClient({
+                              account: "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                          })
+                      )
+                          .extend(publicActions)
+                          .extend(walletActions);
+                bot.impersonateAccount({
+                    address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
+                });
+                await network.provider.send("hardhat_setBalance", [
+                    bot.account.address,
+                    "0x4563918244F40000",
+                ]);
                 bot.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
                 bot.BOUNTY = [];
 
@@ -672,10 +711,7 @@ for (let i = 0; i < testData.length; i++) {
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
                 const arb = !arbAddress
-                    ? await arbDeploy(
-                        orderbook.address,
-                        config.routeProcessors[rpVersion],
-                    )
+                    ? await arbDeploy(orderbook.address, config.routeProcessors[rpVersion])
                     : await ethers.getContractAt(arbAbis, arbAddress);
 
                 // set up tokens contracts and impersonate owners
@@ -683,7 +719,7 @@ for (let i = 0; i < testData.length; i++) {
                 for (let i = 0; i < tokens.length; i++) {
                     tokens[i].contract = await ethers.getContractAt(
                         ERC20Artifact.abi,
-                        tokens[i].address
+                        tokens[i].address,
                     );
                     if (i === 0) {
                         tokens[0].vaultIds = [];
@@ -692,18 +728,20 @@ for (let i = 0; i < testData.length; i++) {
                         }
                     }
                     tokens[i].vaultId = ethers.BigNumber.from(randomUint256());
-                    tokens[i].depositAmount = i > 0
-                        ? tokens[i].depositAmount = ethers.utils.parseUnits(
-                            (deposits[i] ?? "100"), tokens[i].decimals
-                        )
-                        : tokens[i].depositAmount = ethers.utils.parseUnits(
-                            (deposits[i] ?? "100"), tokens[i].decimals
-                        ).div(tokens.length - 1);
+                    tokens[i].depositAmount =
+                        i > 0
+                            ? (tokens[i].depositAmount = ethers.utils.parseUnits(
+                                  deposits[i] ?? "100",
+                                  tokens[i].decimals,
+                              ))
+                            : (tokens[i].depositAmount = ethers.utils
+                                  .parseUnits(deposits[i] ?? "100", tokens[i].decimals)
+                                  .div(tokens.length - 1));
                     owners.push(await ethers.getImpersonatedSigner(addressesWithBalance[i]));
-                    await network.provider.send(
-                        "hardhat_setBalance",
-                        [addressesWithBalance[i], "0x4563918244F40000"]
-                    );
+                    await network.provider.send("hardhat_setBalance", [
+                        addressesWithBalance[i],
+                        "0x4563918244F40000",
+                    ]);
                 }
 
                 // bot original token balances
@@ -721,10 +759,9 @@ for (let i = 0; i < testData.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
                         vaultId: tokens[i].vaultId,
-                        amount: tokens[i].depositAmount.toString()
+                        amount: tokens[i].depositAmount.toString(),
                     };
-                    await tokens[i]
-                        .contract
+                    await tokens[i].contract
                         .connect(owners[i])
                         .approve(orderbook.address, depositConfigStruct1.amount);
                     await orderbook
@@ -733,11 +770,14 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct1.token,
                             depositConfigStruct1.vaultId,
                             depositConfigStruct1.amount,
-                            []
+                            [],
                         );
 
                     // prebuild bytecode: "_ _: 0.5 max; :;"
-                    const ratio1 = ethers.BigNumber.from("500000000000000000").toHexString().substring(2).padStart(64, "0"); // 0.5
+                    const ratio1 = ethers.BigNumber.from("500000000000000000")
+                        .toHexString()
+                        .substring(2)
+                        .padStart(64, "0"); // 0.5
                     const maxOutput1 = "f".repeat(64); // max
                     const bytecode1 = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput1}${ratio1}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
                     const addOrderConfig1 = {
@@ -748,35 +788,38 @@ for (let i = 0; i < testData.length; i++) {
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
-                        validInputs: [{
-                            token: tokens[0].address,
-                            decimals: tokens[0].decimals,
-                            vaultId: tokens[0].vaultId
-                        }],
-                        validOutputs: [{
-                            token: tokens[i].address,
-                            decimals: tokens[i].decimals,
-                            vaultId: tokens[i].vaultId
-                        }],
+                        validInputs: [
+                            {
+                                token: tokens[0].address,
+                                decimals: tokens[0].decimals,
+                                vaultId: tokens[0].vaultId,
+                            },
+                        ],
+                        validOutputs: [
+                            {
+                                token: tokens[i].address,
+                                decimals: tokens[i].decimals,
+                                vaultId: tokens[i].vaultId,
+                            },
+                        ],
                         meta: encodeMeta("some_order"),
                     };
-                    const tx1 = await orderbook
-                        .connect(owners[i])
-                        .addOrder2(addOrderConfig1, []);
-                    orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx1, "AddOrderV2", orderbook),
-                        orderbook,
-                        tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
-                    ));
+                    const tx1 = await orderbook.connect(owners[i]).addOrder2(addOrderConfig1, []);
+                    orders.push(
+                        await mockSgFromEvent(
+                            await getEventArgs(tx1, "AddOrderV2", orderbook),
+                            orderbook,
+                            tokens.map((v) => ({ ...v.contract, knownSymbol: v.symbol })),
+                        ),
+                    );
 
                     // opposing orders
                     const depositConfigStruct2 = {
                         token: tokens[0].address,
                         vaultId: tokens[0].vaultIds[i - 1],
-                        amount: tokens[0].depositAmount.toString()
+                        amount: tokens[0].depositAmount.toString(),
                     };
-                    await tokens[0]
-                        .contract
+                    await tokens[0].contract
                         .connect(owners[0])
                         .approve(orderbook.address, depositConfigStruct2.amount);
                     await orderbook
@@ -785,11 +828,14 @@ for (let i = 0; i < testData.length; i++) {
                             depositConfigStruct2.token,
                             depositConfigStruct2.vaultId,
                             depositConfigStruct2.amount,
-                            []
+                            [],
                         );
 
                     // prebuild bytecode: "_ _: 1 max; :;"
-                    const ratio2 = ethers.BigNumber.from("1000000000000000000").toHexString().substring(2).padStart(64, "0"); // 1
+                    const ratio2 = ethers.BigNumber.from("1000000000000000000")
+                        .toHexString()
+                        .substring(2)
+                        .padStart(64, "0"); // 1
                     const maxOutput2 = "f".repeat(64); // max
                     const bytecode2 = `0x0000000000000000000000000000000000000000000000000000000000000002${maxOutput2}${ratio2}0000000000000000000000000000000000000000000000000000000000000015020000000c02020002011000000110000100000000`;
                     const addOrderConfig2 = {
@@ -800,26 +846,30 @@ for (let i = 0; i < testData.length; i++) {
                         },
                         nonce: "0x" + "0".repeat(63) + "1",
                         secret: "0x" + "0".repeat(63) + "1",
-                        validInputs: [{
-                            token: tokens[i].address,
-                            decimals: tokens[i].decimals,
-                            vaultId: tokens[i].vaultId
-                        }],
-                        validOutputs: [{
-                            token: tokens[0].address,
-                            decimals: tokens[0].decimals,
-                            vaultId: tokens[0].vaultIds[i - 1]
-                        }],
+                        validInputs: [
+                            {
+                                token: tokens[i].address,
+                                decimals: tokens[i].decimals,
+                                vaultId: tokens[i].vaultId,
+                            },
+                        ],
+                        validOutputs: [
+                            {
+                                token: tokens[0].address,
+                                decimals: tokens[0].decimals,
+                                vaultId: tokens[0].vaultIds[i - 1],
+                            },
+                        ],
                         meta: encodeMeta("some_order"),
                     };
-                    const tx2 = await orderbook
-                        .connect(owners[0])
-                        .addOrder2(addOrderConfig2, []);
-                    orders.push(await mockSgFromEvent(
-                        await getEventArgs(tx2, "AddOrderV2", orderbook),
-                        orderbook,
-                        tokens.map(v => ({ ...v.contract, knownSymbol: v.symbol }))
-                    ));
+                    const tx2 = await orderbook.connect(owners[0]).addOrder2(addOrderConfig2, []);
+                    orders.push(
+                        await mockSgFromEvent(
+                            await getEventArgs(tx2, "AddOrderV2", orderbook),
+                            orderbook,
+                            tokens.map((v) => ({ ...v.contract, knownSymbol: v.symbol })),
+                        ),
+                    );
                 }
 
                 // mock quote responses
@@ -828,7 +878,7 @@ for (let i = 0; i < testData.length; i++) {
                     .once()
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse([
-                            ...tokens.slice(1).flatMap(v => [
+                            ...tokens.slice(1).flatMap((v) => [
                                 [
                                     true, // success
                                     v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
@@ -836,31 +886,31 @@ for (let i = 0; i < testData.length; i++) {
                                 ],
                                 [
                                     true,
-                                    tokens[0].depositAmount.mul("1" + "0".repeat(18 - tokens[0].decimals)),
+                                    tokens[0].depositAmount.mul(
+                                        "1" + "0".repeat(18 - tokens[0].decimals),
+                                    ),
                                     ethers.constants.Zero,
-                                ]
+                                ],
                             ]),
-                        ])
+                        ]),
                     );
                 for (let i = 1; i < tokens.length; i++) {
-                    const output = tokens[i].depositAmount.mul("1" + "0".repeat(18 - tokens[i].decimals));
+                    const output = tokens[i].depositAmount.mul(
+                        "1" + "0".repeat(18 - tokens[i].decimals),
+                    );
                     await mockServer
                         .forPost("/rpc")
                         .withBodyIncluding(owners[i].address.substring(2).toLowerCase())
-                        .thenSendJsonRpcResult(encodeQuoteResponse([[
-                            true,
-                            output,
-                            ethers.constants.Zero
-                        ]]));
+                        .thenSendJsonRpcResult(
+                            encodeQuoteResponse([[true, output, ethers.constants.Zero]]),
+                        );
                 }
                 await mockServer
                     .forPost("/rpc")
                     .withBodyIncluding(owners[0].address.substring(2).toLowerCase())
-                    .thenSendJsonRpcResult(encodeQuoteResponse([[
-                        true,
-                        ethers.constants.Zero,
-                        ethers.constants.Zero
-                    ]]));
+                    .thenSendJsonRpcResult(
+                        encodeQuoteResponse([[true, ethers.constants.Zero, ethers.constants.Zero]]),
+                    );
 
                 // run the clearing process
                 config.isTest = true;
@@ -885,7 +935,7 @@ for (let i = 0; i < testData.length; i++) {
                 // should have cleared correct number of orders
                 assert.ok(
                     reports.length == (tokens.length - 1) * 2,
-                    "Failed to clear all given orders"
+                    "Failed to clear all given orders",
                 );
 
                 // validate each cleared order
@@ -902,62 +952,63 @@ for (let i = 0; i < testData.length; i++) {
                     const outputVault = await orderbook.vaultBalance(
                         owners[c].address,
                         tokens[c].address,
-                        tokens[c].vaultId
+                        tokens[c].vaultId,
                     );
                     const inputVault = await orderbook.vaultBalance(
                         owners[0].address,
                         tokens[0].address,
-                        tokens[0].vaultId
+                        tokens[0].vaultId,
                     );
-                    const botTokenBalance = await tokens[c].contract
-                        .balanceOf(bot.account.address);
+                    const botTokenBalance = await tokens[c].contract.balanceOf(bot.account.address);
 
                     assert.equal(reports[i].tokenPair, pair);
 
                     // should have cleared equal to vault balance or lower
                     assert.ok(
                         tokens[c].depositAmount.gte(clearedAmount),
-                        `Did not clear expected amount for: ${pair}`
+                        `Did not clear expected amount for: ${pair}`,
                     );
                     assert.ok(
                         outputVault.eq(tokens[c].depositAmount.sub(clearedAmount)),
-                        `Unexpected current output vault balance: ${pair}`
+                        `Unexpected current output vault balance: ${pair}`,
                     );
-                    assert.ok(
-                        inputVault.eq(0),
-                        `Unexpected current input vault balance: ${pair}`
-                    );
+                    assert.ok(inputVault.eq(0), `Unexpected current input vault balance: ${pair}`);
                     assert.ok(
                         originalBotTokenBalances[c].eq(botTokenBalance),
-                        `Unexpected current bot ${tokens[c].symbol} balance`
+                        `Unexpected current bot ${tokens[c].symbol} balance`,
                     );
 
                     // collect all bot's input income (bounty) and gas cost
                     inputProfit = inputProfit.add(
-                        ethers.utils.parseUnits(reports[i].inputTokenIncome)
+                        ethers.utils.parseUnits(reports[i].inputTokenIncome),
                     );
                     gasSpent = gasSpent.add(ethers.utils.parseUnits(reports[i].actualGasCost));
                     c++;
                 }
                 // all input bounties (+ old balance) should be equal to current bot's balance
                 assert.ok(
-                    originalBotTokenBalances[0].add(inputProfit).eq(
-                        await tokens[0].contract.balanceOf(bot.account.address)
-                    ),
-                    "Unexpected bot bounty"
+                    originalBotTokenBalances[0]
+                        .add(inputProfit)
+                        .eq(await tokens[0].contract.balanceOf(bot.account.address)),
+                    "Unexpected bot bounty",
                 );
 
                 // bot's gas token balance and bounty tokens should be correct
-                assert.deepEqual(bot.BOUNTY, [{
-                    address: tokens[0].address.toLowerCase(),
-                    decimals: tokens[0].decimals,
-                    symbol: tokens[0].symbol
-                }]);
+                assert.deepEqual(bot.BOUNTY, [
+                    {
+                        address: tokens[0].address.toLowerCase(),
+                        decimals: tokens[0].decimals,
+                        symbol: tokens[0].symbol,
+                    },
+                ]);
                 assert.equal(
                     bot.BALANCE.toString(),
-                    (await bot.getBalance({address: bot.account.address})).toString()
+                    (await bot.getBalance({ address: bot.account.address })).toString(),
                 );
-                assert.equal(gasSpent.toString(), ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString());
+                assert.equal(
+                    gasSpent.toString(),
+                    ethers.BigNumber.from("0x4563918244F40000").sub(bot.BALANCE).toString(),
+                );
 
                 testSpan.end();
             });

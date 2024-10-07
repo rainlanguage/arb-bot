@@ -22,8 +22,11 @@ describe("Test accounts", async function () {
             chain: { id: 137 },
             multicall: async () => balances,
         };
-        const result = await getBatchEthBalance([`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`], viemClient);
-        const expected = balances.map(v => ethers.BigNumber.from(v));
+        const result = await getBatchEthBalance(
+            [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`],
+            viemClient,
+        );
+        const expected = balances.map((v) => ethers.BigNumber.from(v));
         assert.deepEqual(result, expected);
     });
 
@@ -36,9 +39,9 @@ describe("Test accounts", async function () {
         const result = await getBatchTokenBalanceForAccount(
             { account: { address: `0x${"0".repeat(64)}` } },
             [`0x${"0".repeat(64)}`, `0x${"0".repeat(64)}`],
-            viemClient
+            viemClient,
         );
-        const expected = balances.map(v => ethers.BigNumber.from(v));
+        const expected = balances.map((v) => ethers.BigNumber.from(v));
         assert.deepEqual(result, expected);
     });
 
@@ -46,25 +49,26 @@ describe("Test accounts", async function () {
         const viemClient = {
             chain: { id: 137 },
             multicall: async () => [10000n, 0n, 0n],
-            getGasPrice: async() => 3000000n
+            getGasPrice: async () => 3000000n,
         };
         const config = {
             chain: { id: 31337 },
             rpc: ["test"],
             watchedTokens: [],
-            viemClient
+            viemClient,
+            testClientViem: viem.getTestClient,
         };
         const options = {
             walletCount: 2,
-            topupAmount: "0.0000000000000001"
+            topupAmount: "0.0000000000000001",
         };
         const mnemonic = "test test test test test test test test test test test junk";
         const { mainAccount, accounts } = await initAccounts(mnemonic, config, options);
 
         const expected = [
-            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
-            {address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"},
-            {address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"},
+            { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
+            { address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" },
+            { address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" },
         ];
         assert.equal(mainAccount.account.address, expected[0].address);
         assert.equal(accounts[0].account.address, expected[1].address);
@@ -80,17 +84,18 @@ describe("Test accounts", async function () {
             chain: { id: 31337 },
             rpc: ["test"],
             watchedTokens: [],
-            viemClient
+            viemClient,
+            testClientViem: viem.getTestClient,
         };
         const options = {
             walletCount: 2,
-            topupAmount: "100"
+            topupAmount: "100",
         };
         const key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
         const { mainAccount, accounts } = await initAccounts(key, config, options);
 
         const expected = [
-            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "10000"},
+            { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "10000" },
         ];
         assert.isEmpty(accounts);
         assert.equal(mainAccount.account.address, expected[0].address);
@@ -101,16 +106,37 @@ describe("Test accounts", async function () {
         const viemClient = {
             chain: { id: 137 },
             multicall: async () => [10000n, 0n, 0n],
-            getGasPrice: async() => 3000000n
+            getGasPrice: async () => 3000000n,
         };
         const mnemonic = "test test test test test test test test test test test junk";
 
-        const mainAccount = (await viem.getTestClient({account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"})).extend(publicActions).extend(walletActions);
-        const acc1 = (await viem.getTestClient({account: "0xdF906eA18C6537C6379aC83157047F507FB37263"})).extend(publicActions).extend(walletActions);
-        const acc2 = (await viem.getTestClient({account: "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245"})).extend(publicActions).extend(walletActions);
-        await network.provider.send("hardhat_setBalance", [mainAccount.account.address, "0x4563918244F40000"]);
-        await network.provider.send("hardhat_setBalance", [acc1.account.address, "0x4563918244F40000"]);
-        await network.provider.send("hardhat_setBalance", [acc2.account.address, "0x4563918244F40000"]);
+        const mainAccount = (
+            await viem.getTestClient({ account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" })
+        )
+            .extend(publicActions)
+            .extend(walletActions);
+        const acc1 = (
+            await viem.getTestClient({ account: "0xdF906eA18C6537C6379aC83157047F507FB37263" })
+        )
+            .extend(publicActions)
+            .extend(walletActions);
+        const acc2 = (
+            await viem.getTestClient({ account: "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245" })
+        )
+            .extend(publicActions)
+            .extend(walletActions);
+        await network.provider.send("hardhat_setBalance", [
+            mainAccount.account.address,
+            "0x4563918244F40000",
+        ]);
+        await network.provider.send("hardhat_setBalance", [
+            acc1.account.address,
+            "0x4563918244F40000",
+        ]);
+        await network.provider.send("hardhat_setBalance", [
+            acc2.account.address,
+            "0x4563918244F40000",
+        ]);
         acc1.BOUNTY = ["0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"];
         acc2.BOUNTY = ["0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"];
 
@@ -125,24 +151,19 @@ describe("Test accounts", async function () {
             watchedTokens: [],
             viemClient,
             accounts,
-            mainAccount
+            mainAccount,
+            testClientViem: viem.getTestClient,
         };
         const options = {
             walletCount: 2,
             topupAmount: "0.00000000001",
-            mnemonic
+            mnemonic,
         };
-        const result = await manageAccounts(
-            config,
-            options,
-            ethers.BigNumber.from("100"),
-            20,
-            [],
-        );
+        const result = await manageAccounts(config, options, ethers.BigNumber.from("100"), 20, []);
         const expectedAccounts = [
-            {address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
-            {address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D"},
-            {address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE"},
+            { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
+            { address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D" },
+            { address: "0x08135Da0A343E492FA2d4282F2AE34c6c5CC1BbE" },
         ];
 
         assert.equal(result, 22);
@@ -152,21 +173,26 @@ describe("Test accounts", async function () {
     });
 
     it("should rotate providers", async function () {
-        const rpcs = [
-            "http://localhost:8080/rpc-url1",
-            "http://localhost:8080/rpc-url2"
+        const rpcs = ["http://localhost:8080/rpc-url1", "http://localhost:8080/rpc-url2"];
+        const mainAccount = (
+            await viem.getTestClient({ account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" })
+        )
+            .extend(publicActions)
+            .extend(walletActions);
+        const accounts = [
+            (await viem.getTestClient({ account: "0xdF906eA18C6537C6379aC83157047F507FB37263" }))
+                .extend(publicActions)
+                .extend(walletActions),
         ];
-        const mainAccount = (await viem.getTestClient({account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"})).extend(publicActions).extend(walletActions);
-        const accounts = [(await viem.getTestClient({account: "0xdF906eA18C6537C6379aC83157047F507FB37263"})).extend(publicActions).extend(walletActions)];
         const dataFectherBefore = {
-            fetchedPairPools: []
+            fetchedPairPools: [],
         };
         const config = {
             rpc: rpcs,
             chain: { id: 137 },
             mainAccount,
             accounts,
-            dataFetcher: dataFectherBefore
+            dataFetcher: dataFectherBefore,
         };
 
         await rotateProviders(config, mainAccount, true);
@@ -180,7 +206,7 @@ describe("Test accounts", async function () {
         assert.equal(config.viemClient.transport.transports[0].value.url, config.rpc[0]);
         assert.equal(config.viemClient.transport.transports[1].value.url, config.rpc[1]);
         assert.equal(config.mainAccount.provider, config.provider);
-        accounts.forEach(v => {
+        accounts.forEach((v) => {
             assert.equal(v.provider, config.provider);
         });
         // make sure datafetcher gets restarted not matter what
@@ -215,8 +241,8 @@ describe("Test accounts", async function () {
                         100000000000000000000000n,
                     ),
                     "QuickSwap",
-                    "QuickSwap 0.3%"
-                )
+                    "QuickSwap 0.3%",
+                ),
             ],
             [
                 WNATIVE_ADDRESS[chainId],
@@ -234,14 +260,14 @@ describe("Test accounts", async function () {
                         0,
                         50_000,
                     ),
-                    LiquidityProviders.NativeWrap
+                    LiquidityProviders.NativeWrap,
                 ),
-            ]
+            ],
         ]);
         const config = {
             chain: { id: chainId },
             mainAccount: {
-                account: {address: wallet},
+                account: { address: wallet },
                 BOUNTY: [fromToken],
                 BALANCE: ethers.BigNumber.from("10000"),
                 getAddress: () => wallet,
@@ -255,7 +281,7 @@ describe("Test accounts", async function () {
                     gasUsed: ethers.BigNumber.from(10),
                     logs: [],
                     events: [],
-                })
+                }),
             },
             dataFetcher: {
                 fetchedPairPools: [],
@@ -296,8 +322,8 @@ describe("Test accounts", async function () {
                         100000000000000000000000n,
                     ),
                     "QuickSwap",
-                    "QuickSwap 0.3%"
-                )
+                    "QuickSwap 0.3%",
+                ),
             ],
             [
                 WNATIVE_ADDRESS[chainId],
@@ -315,14 +341,14 @@ describe("Test accounts", async function () {
                         0,
                         50_000,
                     ),
-                    LiquidityProviders.NativeWrap
+                    LiquidityProviders.NativeWrap,
                 ),
-            ]
+            ],
         ]);
         const config = {
             chain: { id: chainId },
             mainAccount: {
-                account: {address: wallet},
+                account: { address: wallet },
                 BOUNTY: [fromToken],
                 BALANCE: ethers.utils.parseUnits("1000"),
                 getAddress: () => wallet,
@@ -330,14 +356,14 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
-                call: async() => ({ data: "0x00" }),
+                call: async () => ({ data: "0x00" }),
                 waitForTransactionReceipt: async () => ({
                     status: "success",
                     effectiveGasPrice: ethers.BigNumber.from(50_000_000_000),
                     gasUsed: ethers.BigNumber.from(1_000_000_000),
                     logs: [],
                     events: [],
-                })
+                }),
             },
             dataFetcher: {
                 fetchedPairPools: [],
@@ -350,34 +376,37 @@ describe("Test accounts", async function () {
                 getGasPrice: async () => 5n,
                 call: async () => ({ data: `0x${"1" + "0".repeat(18)}` }),
             },
-            selfFundOrders: [{
-                token: fromToken.address,
-                vaultId,
-                threshold: "0.0001",
-                topupAmount: "1",
-            }]
+            selfFundOrders: [
+                {
+                    token: fromToken.address,
+                    vaultId,
+                    threshold: "0.0001",
+                    topupAmount: "1",
+                },
+            ],
         };
-        const ownedOrders = [{
-            id: orderId,
-            vaultId,
-            token: fromToken.address,
-            symbol: fromToken.symbol,
-            decimals: fromToken.decimals,
-            orderbook,
-            vaultBalance: ethers.BigNumber.from("0")
-        }];
+        const ownedOrders = [
+            {
+                id: orderId,
+                vaultId,
+                token: fromToken.address,
+                symbol: fromToken.symbol,
+                decimals: fromToken.decimals,
+                orderbook,
+                vaultBalance: ethers.BigNumber.from("0"),
+            },
+        ];
 
         const result = await fundOwnedOrders(ownedOrders, config);
         assert.deepEqual(result, []);
         assert.ok(
             // (balance - gasCost - gasCost - sent topup) >= current balance (a bit lower than right side because of pool fee)
-            ethers.utils.parseUnits((1000 - 50 - 50 - 1).toString())
+            ethers.utils
+                .parseUnits((1000 - 50 - 50 - 1).toString())
                 .gte(config.mainAccount.BALANCE),
-            `${
-                ethers.utils.parseUnits((1000 - 100 - 1).toString())
-            } not gte to ${
-                config.mainAccount.BALANCE.toString()
-            }`
+            `${ethers.utils.parseUnits(
+                (1000 - 100 - 1).toString(),
+            )} not gte to ${config.mainAccount.BALANCE.toString()}`,
         );
     });
 });

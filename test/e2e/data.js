@@ -21,7 +21,7 @@ module.exports = [
                 chainId: ChainId.POLYGON,
                 address: "0xd0e9c8f5Fae381459cf07Ec506C1d2896E8b5df6",
                 decimals: 18,
-                symbol: "IOEN"
+                symbol: "IOEN",
             }),
         ],
 
@@ -34,13 +34,10 @@ module.exports = [
 
         // liq providers to use for test
         // ideally specify at least one for each univ2 and univ3 protocols
-        [
-            LiquidityProviders.QuickSwapV2,
-            LiquidityProviders.QuickSwapV3,
-        ],
+        [LiquidityProviders.QuickSwapV2, LiquidityProviders.QuickSwapV3],
 
         // deposist amounts per token pair order
-        ["1", "100", "100"]
+        ["1", "100", "100"],
     ],
     [
         ChainId.ARBITRUM,
@@ -53,7 +50,7 @@ module.exports = [
                 chainId: ChainId.ARBITRUM,
                 address: "0x9cAAe40DCF950aFEA443119e51E821D6FE2437ca",
                 decimals: 18,
-                symbol: "BJ"
+                symbol: "BJ",
             }),
         ],
         [
@@ -61,21 +58,14 @@ module.exports = [
             "0x8f9c79B9De8b0713dCAC3E535fc5A1A92DB6EA2D",
             "0x9f29801ac82befe279786e5691b0399b637c560c",
         ],
-        [
-            LiquidityProviders.UniswapV3,
-            LiquidityProviders.Camelot,
-        ],
-        ["1", "100", "100"]
+        [LiquidityProviders.UniswapV3, LiquidityProviders.Camelot],
+        ["1", "100", "100"],
     ],
     [
         ChainId.FLARE,
         process?.env?.TEST_FLARE_RPC,
         28269400,
-        [
-            WNATIVE[ChainId.FLARE],
-            USDT[ChainId.FLARE],
-            ENOSYS_HLN,
-        ],
+        [WNATIVE[ChainId.FLARE], USDT[ChainId.FLARE], ENOSYS_HLN],
         [
             "0x2258e7Ad1D8AC70FAB053CF59c027960e94DB7d1",
             "0x51cD71ec61487A3359993922A5BBac294934A628",
@@ -85,9 +75,9 @@ module.exports = [
             LiquidityProviders.Enosys,
             LiquidityProviders.BlazeSwap,
             LiquidityProviders.SparkDexV2,
-            LiquidityProviders.SparkDexV3
+            LiquidityProviders.SparkDexV3,
         ],
-        ["1", "100", "100", "100"]
+        ["1", "100", "100", "100"],
     ],
     [
         ChainId.ETHEREUM,
@@ -129,19 +119,19 @@ module.exports = [
                 chainId: ChainId.BASE,
                 address: "0x99b2B1A2aDB02B38222ADcD057783D7e5D1FCC7D",
                 decimals: 18,
-                symbol: "WLTH"
+                symbol: "WLTH",
             }),
             new Token({
                 chainId: ChainId.BASE,
                 address: "0x71DDE9436305D2085331AF4737ec6f1fe876Cf9f",
                 decimals: 18,
-                symbol: "PAID"
+                symbol: "PAID",
             }),
             new Token({
                 chainId: ChainId.BASE,
                 address: "0x3982E57fF1b193Ca8eb03D16Db268Bd4B40818f8",
                 decimals: 18,
-                symbol: "BLOOD"
+                symbol: "BLOOD",
             }),
         ],
         [
@@ -150,12 +140,8 @@ module.exports = [
             "0x3ea31919Ef9b3e72Cc25657b604DB1ACDb1DdB4b",
             "0xf6D07A291443F31B129Ca7e2b46C6F882f0FAa5b",
         ],
-        [
-            LiquidityProviders.UniswapV3,
-            LiquidityProviders.UniswapV2,
-            LiquidityProviders.BaseSwap,
-        ],
-        ["1", "10000", "10000", "10000"]
+        [LiquidityProviders.UniswapV3, LiquidityProviders.UniswapV2, LiquidityProviders.BaseSwap],
+        ["1", "10000", "10000", "10000"],
     ],
     [
         ChainId.BSC,
@@ -167,13 +153,13 @@ module.exports = [
                 chainId: ChainId.BSC,
                 address: "0x8f0FB159380176D324542b3a7933F0C2Fd0c2bbf",
                 decimals: 7,
-                symbol: "TFT"
+                symbol: "TFT",
             }),
             new Token({
                 chainId: ChainId.BSC,
                 address: "0xAD86d0E9764ba90DDD68747D64BFfBd79879a238",
                 decimals: 18,
-                symbol: "PAID"
+                symbol: "PAID",
             }),
         ],
         [
@@ -181,11 +167,8 @@ module.exports = [
             "0x66803c0B34B1baCCb68fF515f76cd63ba48a2039",
             "0x604b2B06ad0D5a2f8ef4383626f6dD37E780D090",
         ],
-        [
-            LiquidityProviders.PancakeSwapV2,
-            LiquidityProviders.PancakeSwapV3
-        ],
-        ["1", "10000", "10000"]
+        [LiquidityProviders.PancakeSwapV2, LiquidityProviders.PancakeSwapV3],
+        ["1", "10000", "10000"],
     ],
     [
         ChainId.LINEA,
@@ -198,35 +181,27 @@ module.exports = [
                 chainId: ChainId.LINEA,
                 address: "0x4Ea77a86d6E70FfE8Bb947FC86D68a7F086f198a",
                 decimals: 18,
-                symbol: "CLIP"
+                symbol: "CLIP",
             }),
         ],
         [
             "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67",
             "0x555CE236C0220695b68341bc48C68d52210cC35b",
-            "0x0000619b2b909a6a422c18eb804b92f798370705"
+            "0x0000619b2b909a6a422c18eb804b92f798370705",
         ],
-        [
-            LiquidityProviders.LynexV1,
-            LiquidityProviders.LynexV2,
-        ],
-        ["1", "100"]
+        [LiquidityProviders.LynexV1, LiquidityProviders.LynexV2],
+        ["1", "100"],
     ],
     [
         ChainId.MATCHAIN,
         process?.env?.TEST_MATCHAIN_RPC,
         4077685,
-        [
-            WNATIVE[ChainId.MATCHAIN],
-            USDT[ChainId.MATCHAIN],
-        ],
+        [WNATIVE[ChainId.MATCHAIN], USDT[ChainId.MATCHAIN]],
         [
             "0xf270cAd1CC39E55BaF5B0607e40D39f583dFA4a8",
-            "0xF41a883B88CCD3a2978F176C3e0230128573eB05"
+            "0xF41a883B88CCD3a2978F176C3e0230128573eB05",
         ],
-        [
-            LiquidityProviders.MSwap,
-        ],
-        ["0.01", "100"]
+        [LiquidityProviders.MSwap],
+        ["0.01", "100"],
     ],
 ];

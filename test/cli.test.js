@@ -1,21 +1,20 @@
 require("dotenv").config();
 const { assert } = require("chai");
-const { arbRound, startup } = require("../cli");
 const mockServer = require("mockttp").getLocal();
+const { arbRound, startup } = require("../src/cli");
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
 describe("Test cli", async function () {
-
     beforeEach(() => mockServer.start(8080));
     afterEach(() => mockServer.stop());
 
     it("return correct result for empty orders array", async function () {
         const provider = new BasicTracerProvider({
             resource: new Resource({
-                [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test"
+                [SEMRESATTRS_SERVICE_NAME]: "arb-bot-test",
             }),
         });
         const tracer = provider.getTracer("arb-bot-tracer");
@@ -26,17 +25,17 @@ describe("Test cli", async function () {
         await mockServer
             .forPost("/sg-url")
             .withBodyIncluding("_meta")
-            .thenReply(200, JSON.stringify({data: {_meta: {hasIndexingErrors: false}}}));
+            .thenReply(200, JSON.stringify({ data: { _meta: { hasIndexingErrors: false } } }));
         await mockServer
             .forPost("/sg-url")
             .withBodyIncluding("orders")
-            .thenReply(200, JSON.stringify({data: {orders: []}}));
+            .thenReply(200, JSON.stringify({ data: { orders: [] } }));
 
         // mock provider chain id call
         await mockServer
             .forPost("/rpc-url")
             .withBodyIncluding("eth_chainId")
-            .thenReply(200, JSON.stringify({jsonrpc: "2.0", id: 1, result: "137"}));
+            .thenReply(200, JSON.stringify({ jsonrpc: "2.0", id: 1, result: "137" }));
 
         const options = {
             rpc: ["http://localhost:8080/rpc-url"],
@@ -47,7 +46,7 @@ describe("Test cli", async function () {
             subgraph: ["http://localhost:8080/sg-url"],
         };
 
-        const response = await arbRound(tracer, ctx, options, {mainAccount: {}});
+        const response = await arbRound(tracer, ctx, options, { mainAccount: {} });
         const expected = { txs: [], foundOpp: false, avgGasCost: undefined };
         assert.deepEqual(response, expected);
 
@@ -84,7 +83,8 @@ describe("Test cli", async function () {
             await startup(["", "", "-m", "some-mnemonic"]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "--wallet-count and --toptup-amount are required when using mnemonic option";
+            const expected =
+                "--wallet-count and --toptup-amount are required when using mnemonic option";
             assert.equal(error, expected);
         }
 
@@ -117,7 +117,7 @@ describe("Test cli", async function () {
                 "--orderbook-address",
                 `0x${"0".repeat(64)}`,
                 "--sleep",
-                "abcd"
+                "abcd",
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
@@ -138,11 +138,12 @@ describe("Test cli", async function () {
                 "--orderbook-address",
                 `0x${"0".repeat(64)}`,
                 "--pool-update-interval",
-                "abcd"
+                "abcd",
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "invalid poolUpdateInterval value, must be an integer greater than equal zero";
+            const expected =
+                "invalid poolUpdateInterval value, must be an integer greater than equal zero";
             assert.equal(error, expected);
         }
 
@@ -163,7 +164,8 @@ describe("Test cli", async function () {
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "expected a valid value for --bot-min-balance, it should be an number greater than 0";
+            const expected =
+                "expected a valid value for --bot-min-balance, it should be an number greater than 0";
             assert.equal(error, expected);
         }
 
@@ -179,20 +181,20 @@ describe("Test cli", async function () {
             "--orderbook-address",
             `0x${"2".repeat(40)}`,
             "--bot-min-balance",
-            "0.123"
+            "0.123",
         ]);
         const expected = {
             roundGap: 10000,
             poolUpdateInterval: 900000,
             config: {
                 chain: { id: 137 },
-                rpc: [ "https://rpc.ankr.com/polygon" ],
+                rpc: ["https://rpc.ankr.com/polygon"],
                 orderbookAddress: `0x${"2".repeat(40)}`,
                 arbAddress: `0x${"1".repeat(40)}`,
             },
             options: {
                 botMinBalance: "0.123",
-            }
+            },
         };
         assert.equal(result.roundGap, expected.roundGap);
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
