@@ -20,7 +20,7 @@
     "main": "./dist/index.js",
     "files": [
         "src",
-        "./cli.js",
+        "./dist",
         "./arb-bot.js",
         "./example.env",
         "./lib/sushiswap"
@@ -29,12 +29,14 @@
         "arb-bot": "./arb-bot.js"
     },
     "scripts": {
+        "prepublish": "npm run build",
         "test": "npm run unit-test && npm run e2e-test",
         "unit-test": "hardhat test ./test/*.test.js",
         "e2e-test": "hardhat test",
-        "docgen": "rimraf ./docs && ./node_modules/.bin/jsdoc -c jsdoc.config.json",
-        "lint": "eslint ./src ./test ./arb-bot.js ./cli.js",
-        "lint-fix": "eslint ./src ./test ./arb-bot.js ./cli.js --fix"
+        "lint": "eslint ./src ./test ./arb-bot.js",
+        "lint-fix": "eslint ./src ./test ./arb-bot.js --fix",
+        "arb-bot": "ts-node arb-bot",
+        "build": "tsc"
     },
     "dependencies": {
         "@opentelemetry/api": "^1.8.0",

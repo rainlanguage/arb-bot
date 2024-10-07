@@ -1,7 +1,6 @@
 import { config } from "dotenv";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
-import { version } from "../package.json";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { sleep, getOrdersTokens } from "./utils";
@@ -41,7 +40,6 @@ const ENV_OPTIONS = {
     arbAddress: process?.env?.ARB_ADDRESS,
     genericArbAddress: process?.env?.GENERIC_ARB_ADDRESS,
     orderbookAddress: process?.env?.ORDERBOOK_ADDRESS,
-    orders: process?.env?.ORDERS,
     lps: process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage: process?.env?.GAS_COVER || "100",
     orderHash: process?.env?.ORDER_HASH,
@@ -66,7 +64,7 @@ const ENV_OPTIONS = {
         : undefined,
 };
 
-const getOptions = async (argv: any) => {
+const getOptions = async (argv: any, version?: string) => {
     const cmdOptions = new Command("node arb-bot")
         .option(
             "-k, --key <private-key>",
@@ -79,10 +77,6 @@ const getOptions = async (argv: any) => {
         .option(
             "-r, --rpc <url...>",
             "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables",
-        )
-        .option(
-            "-o, --orders <path>",
-            "The path to a local json file containing an array of the encoded orders bytes as hex string, can be used in combination with --subgraph, Will override the 'ORDERS' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
@@ -172,7 +166,7 @@ const getOptions = async (argv: any) => {
             ].join("\n"),
         )
         .alias("arb-bot")
-        .version(version)
+        .version(version ?? "0.0.0")
         .parse(argv)
         .opts();
 
@@ -183,7 +177,6 @@ const getOptions = async (argv: any) => {
     cmdOptions.arbAddress = cmdOptions.arbAddress || ENV_OPTIONS.arbAddress;
     cmdOptions.genericArbAddress = cmdOptions.genericArbAddress || ENV_OPTIONS.genericArbAddress;
     cmdOptions.orderbookAddress = cmdOptions.orderbookAddress || ENV_OPTIONS.orderbookAddress;
-    cmdOptions.orders = cmdOptions.orders || ENV_OPTIONS.orders;
     cmdOptions.subgraph = cmdOptions.subgraph || ENV_OPTIONS.subgraph;
     cmdOptions.lps = cmdOptions.lps || ENV_OPTIONS.lps;
     cmdOptions.gasCoverage = cmdOptions.gasCoverage || ENV_OPTIONS.gasCoverage;
@@ -315,11 +308,11 @@ export const arbRound = async (
  * CLI startup function
  * @param argv - cli args
  */
-export async function startup(argv: any) {
+export async function startup(argv: any, version?: string) {
     let roundGap = 10000;
     let _poolUpdateInterval = 0;
 
-    const options = await getOptions(argv);
+    const options = await getOptions(argv, version);
 
     if ((!options.key && !options.mnemonic) || (options.key && options.mnemonic)) {
         throw "undefined wallet, only one of key or mnemonic should be specified";
@@ -397,7 +390,7 @@ export async function startup(argv: any) {
     };
 }
 
-export const main = async (argv: any) => {
+export const main = async (argv: any, version?: string) => {
     // startup otel to collect span, logs, etc
     // diag otel
     diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
@@ -436,7 +429,7 @@ export const main = async (argv: any) => {
         "startup",
         async (startupSpan) => {
             try {
-                const result = await startup(argv);
+                const result = await startup(argv, version);
                 startupSpan.setStatus({ code: SpanStatusCode.OK });
                 startupSpan.end();
                 return result;

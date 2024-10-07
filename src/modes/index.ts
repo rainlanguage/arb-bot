@@ -84,7 +84,7 @@ export async function findOpp({
         // pick and return the highest profit
         const res = allResults.filter(
             (v) => v.status === "fulfilled",
-        ) as any as PromiseFulfilledResult<DryrunResult>[];
+        ) as PromiseFulfilledResult<DryrunResult>[];
         return res.sort((a, b) =>
             b.value.value!.estimatedProfit.lt(a.value.value!.estimatedProfit)
                 ? -1

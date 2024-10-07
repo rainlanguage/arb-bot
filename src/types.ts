@@ -26,7 +26,6 @@ export type CliOptions = {
     arbAddress: string;
     genericArbAddress?: string;
     orderbookAddress?: string;
-    orders?: string[];
     subgraph: string[];
     lps?: string[];
     gasCoverage: string;

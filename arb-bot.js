@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 /* eslint-disable no-console */
-const { main } = require("./src/cli");
+const { main } = require("./dist/cli");
+const { version } = require("./package.json");
 
-main(process.argv)
+main(process.argv, version)
     .then(() => {
         console.log(
             "\x1b[32m%s\x1b[0m",
