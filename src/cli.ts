@@ -2,8 +2,8 @@ import { config } from "dotenv";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
-import { Context } from "@opentelemetry/api";
 import { sleep, getOrdersTokens } from "./utils";
+import { Context, Span } from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
@@ -308,7 +308,7 @@ export const arbRound = async (
  * CLI startup function
  * @param argv - cli args
  */
-export async function startup(argv: any, version?: string) {
+export async function startup(argv: any, version?: string, span?: Span) {
     let roundGap = 10000;
     let _poolUpdateInterval = 0;
 
@@ -380,6 +380,7 @@ export async function startup(argv: any, version?: string) {
         options.key ?? options.mnemonic,
         options.arbAddress,
         options as CliOptions,
+        span,
     );
 
     return {
@@ -429,7 +430,7 @@ export const main = async (argv: any, version?: string) => {
         "startup",
         async (startupSpan) => {
             try {
-                const result = await startup(argv, version);
+                const result = await startup(argv, version, startupSpan);
                 startupSpan.setStatus({ code: SpanStatusCode.OK });
                 startupSpan.end();
                 return result;
@@ -474,23 +475,28 @@ export const main = async (argv: any, version?: string) => {
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
-            const botGasBalance = await config.viemClient.getBalance({
-                address: config.mainAccount.account.address,
-            });
+            const botGasBalance = ethers.BigNumber.from(
+                await config.viemClient.getBalance({
+                    address: config.mainAccount.account.address,
+                }),
+            );
+            config.mainAccount.BALANCE = botGasBalance;
             if (botMinBalance.gt(botGasBalance)) {
+                const header = `bot ${
+                    config.mainAccount.account.address
+                } is low on gas, expected at least: ${
+                    options.botMinBalance
+                }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
+                const fill = config.accounts.length
+                    ? `that is the main account that funds the multi wallet, there are still ${
+                          config.accounts.length
+                      } wallets in circulation that clear orders, please consider topuping up soon`
+                    : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
                 roundSpan.setStatus({
                     code: SpanStatusCode.ERROR,
-                    message: `bot is low on gas, expected at least: ${
-                        options.botMinBalance
-                    }, current balance: ${ethers.utils.formatUnits(
-                        ethers.BigNumber.from(botGasBalance),
-                    )}`,
+                    message: header + fill,
                 });
                 roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
-                roundSpan.end();
-                // wait 2 mins before trying again
-                await sleep(120000);
-                return;
             }
             // remove pool memoizer cache on each interval
             let update = false;
@@ -542,6 +548,7 @@ export const main = async (argv: any, version?: string) => {
                         avgGasCost,
                         lastUsedAccountIndex,
                         wgc,
+                        roundSpan,
                     );
                 }
 
@@ -556,7 +563,12 @@ export const main = async (argv: any, version?: string) => {
                     // try to sweep wallets that still have non transfered tokens to main wallet
                     if (wgc.length && gasPrice) {
                         for (let k = wgc.length - 1; k >= 0; k--) {
-                            await sweepToMainWallet(wgc[k], config.mainAccount, gasPrice);
+                            await sweepToMainWallet(
+                                wgc[k],
+                                config.mainAccount,
+                                gasPrice,
+                                roundSpan,
+                            );
                             if (!wgc[k].BOUNTY.length) {
                                 const index = wgcBuffer.findIndex(
                                     (v) => v.address === wgc[k].account.address,
@@ -582,7 +594,7 @@ export const main = async (argv: any, version?: string) => {
                     }
                     // try to sweep main wallet's tokens back to eth
                     try {
-                        await sweepToEth(config);
+                        await sweepToEth(config, roundSpan);
                     } catch {
                         /**/
                     }

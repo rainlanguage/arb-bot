@@ -1,4 +1,5 @@
 import { errorSnapshot } from "./error";
+import { Span } from "@opentelemetry/api";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { parseAbi, PublicClient } from "viem";
@@ -27,6 +28,7 @@ export async function initAccounts(
     mnemonicOrPrivateKey: string,
     config: BotConfig,
     options: CliOptions,
+    span?: Span,
 ) {
     const accounts: ViemClient[] = [];
     const isMnemonic = !/^(0x)?[a-fA-F0-9]{64}$/.test(mnemonicOrPrivateKey);
@@ -69,11 +71,7 @@ export async function initAccounts(
         config.viemClient as any as ViemClient,
     );
     mainAccount.BALANCE = balances[0];
-    await setWatchedTokens(
-        mainAccount,
-        config.watchedTokens ?? [],
-        config.viemClient as any as ViemClient,
-    );
+    await setWatchedTokens(mainAccount, config.watchedTokens ?? []);
 
     // incase of excess accounts, top them up from main account
     if (accounts.length) {
@@ -88,32 +86,36 @@ export async function initAccounts(
             throw "low on funds to topup excess wallets with specified initial topup amount";
         } else {
             for (let i = 0; i < accounts.length; i++) {
-                await setWatchedTokens(
-                    accounts[i],
-                    config.watchedTokens ?? [],
-                    config.viemClient as any as ViemClient,
-                );
+                await setWatchedTokens(accounts[i], config.watchedTokens ?? []);
                 accounts[i].BALANCE = balances[i + 1];
 
                 // only topup those accounts that have lower than expected funds
                 const transferAmount = topupAmountBn.sub(balances[i + 1]);
                 if (transferAmount.gt(0)) {
-                    const hash = await mainAccount.sendTransaction({
-                        to: accounts[i].account.address,
-                        value: transferAmount.toBigInt(),
-                    });
-                    const receipt = await mainAccount.waitForTransactionReceipt({
-                        hash,
-                        confirmations: 4,
-                    });
-                    const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
-                        receipt.gasUsed,
-                    );
-                    if (receipt.status === "success") {
-                        accounts[i].BALANCE = topupAmountBn;
-                        mainAccount.BALANCE = mainAccount.BALANCE.sub(transferAmount).sub(txCost);
-                    } else {
-                        mainAccount.BALANCE = mainAccount.BALANCE.sub(txCost);
+                    try {
+                        const hash = await mainAccount.sendTransaction({
+                            to: accounts[i].account.address,
+                            value: transferAmount.toBigInt(),
+                        });
+                        const receipt = await mainAccount.waitForTransactionReceipt({
+                            hash,
+                            confirmations: 4,
+                            timeout: 100_000,
+                        });
+                        const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
+                            receipt.gasUsed,
+                        );
+                        if (receipt.status === "success") {
+                            accounts[i].BALANCE = topupAmountBn;
+                            mainAccount.BALANCE =
+                                mainAccount.BALANCE.sub(transferAmount).sub(txCost);
+                        } else {
+                            mainAccount.BALANCE = mainAccount.BALANCE.sub(txCost);
+                        }
+                    } catch (error) {
+                        span?.addEvent(
+                            "Startup error, failed to topup wallet: " + errorSnapshot("", error),
+                        );
                     }
                 }
             }
@@ -138,13 +140,14 @@ export async function manageAccounts(
     avgGasCost: BigNumber,
     lastIndex: number,
     wgc: ViemClient[],
+    span?: Span,
 ) {
     let accountsToAdd = 0;
     const gasPrice = await config.viemClient.getGasPrice();
     for (let i = config.accounts.length - 1; i >= 0; i--) {
         if (config.accounts[i].BALANCE.lt(avgGasCost.mul(4))) {
             try {
-                await sweepToMainWallet(config.accounts[i], config.mainAccount, gasPrice);
+                await sweepToMainWallet(config.accounts[i], config.mainAccount, gasPrice, span);
             } catch {
                 /**/
             }
@@ -178,16 +181,12 @@ export async function manageAccounts(
                 await acc.getBalance({ address: acc.account.address }),
             );
             acc.BALANCE = balance;
-            await setWatchedTokens(
-                acc,
-                config.watchedTokens ?? [],
-                config.viemClient as any as ViemClient,
-            );
+            await setWatchedTokens(acc, config.watchedTokens ?? []);
 
             if (topupAmountBN.gt(balance)) {
                 const transferAmount = topupAmountBN.sub(balance);
                 if (config.mainAccount.BALANCE.lt(transferAmount)) {
-                    throw `main account lacks suffecient funds to topup wallets, current balance: ${ethers.utils.formatUnits(
+                    throw `main account lacks suffecient funds to topup new wallets, current balance: ${ethers.utils.formatUnits(
                         config.mainAccount.BALANCE,
                     )}`;
                 }
@@ -199,6 +198,7 @@ export async function manageAccounts(
                     const receipt = await config.mainAccount.waitForTransactionReceipt({
                         hash,
                         confirmations: 4,
+                        timeout: 100_000,
                     });
                     const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
                         receipt.gasUsed,
@@ -220,8 +220,8 @@ export async function manageAccounts(
                     } else {
                         config.mainAccount.BALANCE = config.mainAccount.BALANCE.sub(txCost);
                     }
-                } catch {
-                    /**/
+                } catch (error) {
+                    span?.addEvent("Failed to topup new wallets: " + errorSnapshot("", error));
                 }
             } else {
                 if (
@@ -382,6 +382,7 @@ export async function sweepToMainWallet(
     fromWallet: ViemClient,
     toWallet: ViemClient,
     gasPrice: bigint,
+    span?: Span,
 ) {
     gasPrice = ethers.BigNumber.from(gasPrice).mul(107).div(100).toBigInt();
     const erc20 = new ethers.utils.Interface(erc20Abi);
@@ -407,6 +408,9 @@ export async function sweepToMainWallet(
                     })
                 ).data,
             );
+            if (balance.isZero()) {
+                continue;
+            }
             const tx = {
                 to: bounty.address as `0x${string}`,
                 data: erc20.encodeFunctionData("transfer", [
@@ -432,6 +436,7 @@ export async function sweepToMainWallet(
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
                 confirmations: 2,
+                timeout: 100_000,
             });
             const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
             if (receipt.status === "success") {
@@ -440,8 +445,11 @@ export async function sweepToMainWallet(
             } else {
                 toWallet.BALANCE = toWallet.BALANCE.sub(txCost);
             }
-        } catch {
-            /**/
+        } catch (error) {
+            span?.addEvent(
+                "Failed topping up wallet for sweeping tokens back to main wallet: " +
+                    errorSnapshot("", error),
+            );
         }
     }
 
@@ -451,17 +459,23 @@ export async function sweepToMainWallet(
             const receipt = await fromWallet.waitForTransactionReceipt({
                 hash,
                 confirmations: 2,
+                timeout: 100_000,
             });
             const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
             if (receipt.status === "success") {
                 if (!toWallet.BOUNTY.find((v) => v.address === txs[i].bounty.address)) {
                     toWallet.BOUNTY.push(txs[i].bounty);
                 }
+                span?.addEvent(`Successfully swept ${txs[i].bounty.symbol} back to main wallet`);
             } else {
                 failedBounties.push(txs[i].bounty);
             }
             fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
         } catch (error) {
+            span?.addEvent(
+                `Failed to sweep ${txs[i].bounty.symbol} back to main wallet: ` +
+                    errorSnapshot("", error),
+            );
             failedBounties.push(txs[i].bounty);
         }
     }
@@ -488,6 +502,7 @@ export async function sweepToMainWallet(
                 const receipt = await fromWallet.waitForTransactionReceipt({
                     hash,
                     confirmations: 2,
+                    timeout: 100_000,
                 });
                 const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
                     receipt.gasUsed,
@@ -499,8 +514,10 @@ export async function sweepToMainWallet(
                     fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
                 }
             }
-        } catch {
-            /**/
+        } catch (error) {
+            span?.addEvent(
+                "Failed to sweep gas tokens back to main wallet: " + errorSnapshot("", error),
+            );
         }
     }
     fromWallet.BOUNTY = failedBounties;
@@ -510,7 +527,7 @@ export async function sweepToMainWallet(
  * Sweep bot's bounties to eth
  * @param config - The config obj
  */
-export async function sweepToEth(config: BotConfig) {
+export async function sweepToEth(config: BotConfig, span?: Span) {
     const skipped: TokenDetails[] = [];
     const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[
         config.chain.id as keyof typeof ROUTE_PROCESSOR_4_ADDRESS
@@ -581,6 +598,7 @@ export async function sweepToEth(config: BotConfig) {
                 await config.mainAccount.waitForTransactionReceipt({
                     hash,
                     confirmations: 2,
+                    timeout: 100_000,
                 });
             }
             const rawtx = { to: rp4Address, data };
@@ -592,13 +610,18 @@ export async function sweepToEth(config: BotConfig) {
             } else {
                 (rawtx as any).gas = gas;
                 const hash = await config.mainAccount.sendTransaction(rawtx);
-                await config.mainAccount.waitForTransactionReceipt({
+                const receipt = await config.mainAccount.waitForTransactionReceipt({
                     hash,
                     confirmations: 2,
+                    timeout: 100_000,
                 });
+                if (receipt.status === "success") {
+                    span?.addEvent(`Successfully swept ${bounty.symbol} to eth`);
+                }
             }
         } catch (e) {
             skipped.push(bounty);
+            span?.addEvent(`Failed to sweep ${bounty.symbol} to eth: ` + errorSnapshot("", e));
         }
         await sleep(10000);
     }
@@ -617,28 +640,8 @@ export async function sweepToEth(config: BotConfig) {
     }
 }
 
-export async function setWatchedTokens(
-    account: ViemClient,
-    watchedTokens: TokenDetails[],
-    viemClient: ViemClient,
-) {
-    account.BOUNTY = [];
-    try {
-        if (watchedTokens?.length) {
-            account.BOUNTY = (
-                await getBatchTokenBalanceForAccount(
-                    account.account.address,
-                    watchedTokens,
-                    viemClient,
-                )
-            )
-                .map((v, i) => ({ balance: v, token: watchedTokens[i] }))
-                .filter((v) => v.balance.gt(0))
-                .map((v) => v.token);
-        }
-    } catch {
-        account.BOUNTY = [];
-    }
+export async function setWatchedTokens(account: ViemClient, watchedTokens: TokenDetails[]) {
+    account.BOUNTY = watchedTokens;
 }
 
 /**
@@ -754,6 +757,7 @@ export async function fundOwnedOrders(
                             const swapReceipt = await config.mainAccount.waitForTransactionReceipt({
                                 hash: swapHash,
                                 confirmations: 2,
+                                timeout: 100_000,
                             });
                             const swapTxCost = ethers.BigNumber.from(
                                 swapReceipt.effectiveGasPrice,
@@ -789,6 +793,7 @@ export async function fundOwnedOrders(
                                 await config.mainAccount.waitForTransactionReceipt({
                                     hash: approveHash,
                                     confirmations: 2,
+                                    timeout: 100_000,
                                 });
                             const approveTxCost = ethers.BigNumber.from(
                                 approveReceipt.effectiveGasPrice,
@@ -812,6 +817,7 @@ export async function fundOwnedOrders(
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
                             hash,
                             confirmations: 2,
+                            timeout: 100_000,
                         });
                         const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
                             receipt.gasUsed,
