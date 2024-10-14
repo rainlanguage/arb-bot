@@ -2,8 +2,8 @@ import { config } from "dotenv";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
+import { Context } from "@opentelemetry/api";
 import { sleep, getOrdersTokens } from "./utils";
-import { Context, Span } from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
@@ -234,6 +234,7 @@ export const arbRound = async (
                         orderbook: options.orderbookAddress,
                     },
                     span,
+                    config.timeout,
                 );
                 if (!ordersDetails.length) {
                     span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
@@ -308,7 +309,7 @@ export const arbRound = async (
  * CLI startup function
  * @param argv - cli args
  */
-export async function startup(argv: any, version?: string, span?: Span) {
+export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?: Context) {
     let roundGap = 10000;
     let _poolUpdateInterval = 0;
 
@@ -380,7 +381,8 @@ export async function startup(argv: any, version?: string, span?: Span) {
         options.key ?? options.mnemonic,
         options.arbAddress,
         options as CliOptions,
-        span,
+        tracer,
+        ctx,
     );
 
     return {
@@ -429,8 +431,9 @@ export const main = async (argv: any, version?: string) => {
     const { roundGap, options, poolUpdateInterval, config } = await tracer.startActiveSpan(
         "startup",
         async (startupSpan) => {
+            const ctx = trace.setSpan(context.active(), startupSpan);
             try {
-                const result = await startup(argv, version, startupSpan);
+                const result = await startup(argv, version, tracer, ctx);
                 startupSpan.setStatus({ code: SpanStatusCode.OK });
                 startupSpan.end();
                 return result;
@@ -548,7 +551,8 @@ export const main = async (argv: any, version?: string) => {
                         avgGasCost,
                         lastUsedAccountIndex,
                         wgc,
-                        roundSpan,
+                        tracer,
+                        roundCtx,
                     );
                 }
 
@@ -567,7 +571,8 @@ export const main = async (argv: any, version?: string) => {
                                 wgc[k],
                                 config.mainAccount,
                                 gasPrice,
-                                roundSpan,
+                                tracer,
+                                roundCtx,
                             );
                             if (!wgc[k].BOUNTY.length) {
                                 const index = wgcBuffer.findIndex(
@@ -594,7 +599,7 @@ export const main = async (argv: any, version?: string) => {
                     }
                     // try to sweep main wallet's tokens back to eth
                     try {
-                        await sweepToEth(config, roundSpan);
+                        await sweepToEth(config, tracer, roundCtx);
                     } catch {
                         /**/
                     }

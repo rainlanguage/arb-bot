@@ -25,6 +25,7 @@ export async function getOrderDetails(
     sgs: string[],
     sgFilters?: SgFilter,
     span?: Span,
+    timeout?: number,
 ): Promise<any[]> {
     const hasjson = false;
     const ordersDetails: any[] = [];
@@ -43,7 +44,7 @@ export async function getOrderDetails(
                         axios.post(
                             v,
                             { query: statusCheckQuery },
-                            { headers: { "Content-Type": "application/json" } },
+                            { headers: { "Content-Type": "application/json" }, timeout },
                         ),
                     );
                     validSgs.push(v);
@@ -64,7 +65,7 @@ export async function getOrderDetails(
                                     sgFilters?.orderbook,
                                 ),
                             },
-                            { headers: { "Content-Type": "application/json" } },
+                            { headers: { "Content-Type": "application/json" }, timeout },
                         ),
                     );
             });
@@ -89,7 +90,8 @@ export async function getConfig(
     walletKey: string,
     arbAddress: string,
     options: CliOptions,
-    span?: Span,
+    tracer?: Tracer,
+    ctx?: Context,
 ): Promise<BotConfig> {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
@@ -155,7 +157,7 @@ export async function getConfig(
     config.rpc = rpcUrls;
     config.arbAddress = arbAddress;
     config.genericArbAddress = options.genericArbAddress;
-    config.timeout = options.timeout;
+    config.timeout = timeout;
     config.flashbotRpc = options.flashbotRpc;
     config.maxRatio = !!options.maxRatio;
     config.hops = hops;
@@ -168,7 +170,7 @@ export async function getConfig(
     config.selfFundOrders = options.selfFundOrders;
 
     // init accounts
-    const { mainAccount, accounts } = await initAccounts(walletKey, config, options, span);
+    const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
     config.mainAccount = mainAccount;
     config.accounts = accounts;
 
