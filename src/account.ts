@@ -232,9 +232,11 @@ export async function manageAccounts(
                             receipt.gasUsed,
                         );
                         if (receipt.status === "success") {
+                            accountsToAdd--;
                             acc.BALANCE = topupAmountBN;
                             config.mainAccount.BALANCE =
                                 config.mainAccount.BALANCE.sub(transferAmount).sub(txCost);
+                            span?.addEvent("Successfully added");
                             if (
                                 !config.accounts.find(
                                     (v) =>
@@ -242,9 +244,7 @@ export async function manageAccounts(
                                         acc.account.address.toLowerCase(),
                                 )
                             ) {
-                                span?.addEvent("Successfully added");
                                 config.accounts.push(acc);
-                                accountsToAdd--;
                             }
                         } else {
                             span?.addEvent("Failed to add and top up the wallet: reverted");
@@ -256,6 +256,8 @@ export async function manageAccounts(
                         );
                     }
                 } else {
+                    accountsToAdd--;
+                    span?.addEvent("Successfully added");
                     if (
                         !config.accounts.find(
                             (v) =>
@@ -263,9 +265,7 @@ export async function manageAccounts(
                                 acc.account.address.toLowerCase(),
                         )
                     ) {
-                        span?.addEvent("Successfully added");
                         config.accounts.push(acc);
-                        accountsToAdd--;
                     }
                 }
             } catch (e) {
