@@ -1,14 +1,14 @@
-import { ErrorSeverity, errorSnapshot } from "./error";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { parseAbi, PublicClient } from "viem";
 import { Native, Token } from "sushi/currency";
-import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
-import { getRpSwap, shuffleArray, sleep } from "./utils";
+import { ErrorSeverity, errorSnapshot } from "./error";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { createViemClient, getDataFetcher } from "./config";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
+import { getRpSwap, PoolBlackList, shuffleArray, sleep } from "./utils";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
+import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
 
 /** Standard base path for eth accounts */
@@ -695,7 +695,12 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 address: bounty.address,
                 symbol: bounty.symbol,
             });
-            const { rpParams } = await getRpSwap(
+            await config.dataFetcher.fetchPoolsForToken(
+                token,
+                Native.onChain(config.chain.id),
+                PoolBlackList,
+            );
+            const { rpParams, route } = await getRpSwap(
                 config.chain.id,
                 balance,
                 token,
@@ -705,6 +710,29 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 config.dataFetcher,
                 gasPrice,
             );
+            let routeText = "";
+            route.legs.forEach((v, i) => {
+                if (i === 0)
+                    routeText =
+                        routeText +
+                        v.tokenTo.symbol +
+                        "/" +
+                        v.tokenFrom.symbol +
+                        "(" +
+                        (v as any).poolName +
+                        ")";
+                else
+                    routeText =
+                        routeText +
+                        " + " +
+                        v.tokenTo.symbol +
+                        "/" +
+                        v.tokenFrom.symbol +
+                        "(" +
+                        (v as any).poolName +
+                        ")";
+            });
+            span?.setAttribute("route", routeText);
             const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
             const data = rp.encodeFunctionData("processRoute", [
                 rpParams.tokenIn,
@@ -741,6 +769,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const rawtx = { to: rp4Address, data };
             const gas = await config.mainAccount.estimateGas(rawtx);
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
+            span?.setAttribute("gasCost", ethers.utils.formatUnits(gasCost));
             if (gasCost.mul(25).gte(amountOutMin)) {
                 span?.setStatus({
                     code: SpanStatusCode.OK,
@@ -751,6 +780,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 continue;
             } else {
                 const hash = await config.mainAccount.sendTransaction(rawtx);
+                span?.setAttribute("txHash", hash);
                 const receipt = await config.mainAccount.waitForTransactionReceipt({
                     hash,
                     confirmations: 2,

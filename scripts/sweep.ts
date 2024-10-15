@@ -1,13 +1,16 @@
 /* eslint-disable no-console */
-import { errorSnapshot } from "../error";
 import { ChainId } from "sushi";
 import { ethers } from "ethers";
-import { sleep } from "../utils";
-import { createViemClient } from "../config";
-import { mnemonicToAccount } from "viem/accounts";
-import { erc20Abi } from "../abis";
-import { TokenDetails } from "../types";
-import { setWatchedTokens } from "../account";
+import { PublicClient } from "viem";
+import { TokenDetails } from "../src/types";
+import { errorSnapshot } from "../src/error";
+import { Native, Token } from "sushi/currency";
+import { setWatchedTokens } from "../src/account";
+import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
+import { erc20Abi, routeProcessor3Abi } from "../src/abis";
+import { createViemClient, getDataFetcher } from "../src/config";
+import { getRpSwap, PoolBlackList, processLps, sleep } from "../src/utils";
+import { HDAccount, mnemonicToAccount, PrivateKeyAccount } from "viem/accounts";
 
 /**
  * Sweep wallet's tokens
@@ -196,6 +199,155 @@ export async function sweepWalletTokens(
         } else {
             console.log("not all tokens were swept, so did not sweep the remaining gas");
         }
+        console.log("\n---\n");
+    }
+}
+
+/**
+ * Sweeps tokens to eth
+ */
+export async function sweepToEth(
+    account: HDAccount | PrivateKeyAccount,
+    rpc: string,
+    chainId: ChainId,
+    tokens: TokenDetails[],
+) {
+    const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[
+        chainId as keyof typeof ROUTE_PROCESSOR_4_ADDRESS
+    ] as `0x${string}`;
+    const rp = new ethers.utils.Interface(routeProcessor3Abi);
+    const erc20 = new ethers.utils.Interface(erc20Abi);
+    const mainAccount = await createViemClient(chainId, [rpc], undefined, account, 60_000);
+    setWatchedTokens(mainAccount, tokens);
+    const dataFetcher = await getDataFetcher(
+        mainAccount as any as PublicClient,
+        processLps(),
+        false,
+    );
+    const gasPrice = ethers.BigNumber.from(await mainAccount.getGasPrice())
+        .mul(107)
+        .div(100);
+    for (let i = 0; i < mainAccount.BOUNTY.length; i++) {
+        const bounty = mainAccount.BOUNTY[i];
+        console.log("token", bounty.symbol);
+        console.log("tokenAddress", bounty.address);
+        try {
+            const balance = ethers.BigNumber.from(
+                (
+                    await mainAccount.call({
+                        to: bounty.address as `0x${string}`,
+                        data: erc20.encodeFunctionData("balanceOf", [
+                            mainAccount.account.address,
+                        ]) as `0x${string}`,
+                    })
+                ).data,
+            );
+            console.log("balance", ethers.utils.formatUnits(balance, bounty.decimals));
+            if (balance.isZero()) {
+                console.log("\n---\n");
+                continue;
+            }
+            const token = new Token({
+                chainId: chainId,
+                decimals: bounty.decimals,
+                address: bounty.address,
+                symbol: bounty.symbol,
+            });
+            await dataFetcher.fetchPoolsForToken(token, Native.onChain(chainId), PoolBlackList);
+            const { rpParams, route } = await getRpSwap(
+                chainId,
+                balance,
+                token,
+                Native.onChain(chainId),
+                mainAccount.account.address,
+                rp4Address,
+                dataFetcher,
+                gasPrice,
+            );
+            let routeText = "";
+            route.legs.forEach((v, i) => {
+                if (i === 0)
+                    routeText =
+                        routeText +
+                        v.tokenTo.symbol +
+                        "/" +
+                        v.tokenFrom.symbol +
+                        "(" +
+                        (v as any).poolName +
+                        ")";
+                else
+                    routeText =
+                        routeText +
+                        " + " +
+                        v.tokenTo.symbol +
+                        "/" +
+                        v.tokenFrom.symbol +
+                        "(" +
+                        (v as any).poolName +
+                        ")";
+            });
+            // eslint-disable-next-line no-console
+            console.log("Route portions: ", routeText, "\n");
+            const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
+            const data = rp.encodeFunctionData("processRoute", [
+                rpParams.tokenIn,
+                rpParams.amountIn,
+                rpParams.tokenOut,
+                rpParams.amountOutMin,
+                rpParams.to,
+                rpParams.routeCode,
+            ]) as `0x${string}`;
+            const allowance = (
+                await mainAccount.call({
+                    to: bounty.address as `0x${string}`,
+                    data: erc20.encodeFunctionData("allowance", [
+                        mainAccount.account.address,
+                        rp4Address,
+                    ]) as `0x${string}`,
+                })
+            ).data;
+            if (allowance && balance.gt(allowance)) {
+                console.log("Approving spend limit");
+                const hash = await mainAccount.sendTransaction({
+                    to: bounty.address as `0x${string}`,
+                    data: erc20.encodeFunctionData("approve", [
+                        rp4Address,
+                        balance.mul(100),
+                    ]) as `0x${string}`,
+                });
+                await mainAccount.waitForTransactionReceipt({
+                    hash,
+                    confirmations: 2,
+                    timeout: 100_000,
+                });
+            }
+            const rawtx = { to: rp4Address, data };
+            console.log("rp4 ", rp4Address);
+            const gas = await mainAccount.estimateGas(rawtx);
+            const gasCost = gasPrice.mul(gas).mul(15).div(10);
+            console.log("gas cost: ", ethers.utils.formatUnits(gasCost));
+            if (gasCost.mul(10).gte(amountOutMin)) {
+                console.log("Skipped, balance not large enough to justify sweeping");
+                console.log("\n---\n");
+                continue;
+            } else {
+                const hash = await mainAccount.sendTransaction(rawtx);
+                console.log("tx hash: ", hash);
+                const receipt = await mainAccount.waitForTransactionReceipt({
+                    hash,
+                    confirmations: 2,
+                    timeout: 100_000,
+                });
+                if (receipt.status === "success") {
+                    console.log("Successfully swept to eth");
+                } else {
+                    console.log("Failed to sweet to eth: tx reverted");
+                }
+            }
+        } catch (e) {
+            console.log("Failed to sweep to eth: " + errorSnapshot("", e));
+        }
+        await sleep(5000);
         console.log("\n---\n");
     }
 }
