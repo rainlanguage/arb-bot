@@ -1,9 +1,9 @@
-import { errorSnapshot } from "./error";
+import { ErrorSeverity, errorSnapshot } from "./error";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { parseAbi, PublicClient } from "viem";
 import { Native, Token } from "sushi/currency";
-import { Context, Tracer } from "@opentelemetry/api";
+import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { getRpSwap, shuffleArray, sleep } from "./utils";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { createViemClient, getDataFetcher } from "./config";
@@ -115,7 +115,7 @@ export async function initAccounts(
                                 mainAccount.BALANCE.sub(transferAmount).sub(txCost);
                             span?.addEvent("Successfully topped up");
                         } else {
-                            span?.addEvent("Failed to topup wallet: reverted");
+                            span?.addEvent("Failed to topup wallet: tx reverted");
                             mainAccount.BALANCE = mainAccount.BALANCE.sub(txCost);
                         }
                     } catch (error) {
@@ -180,13 +180,13 @@ export async function manageAccounts(
         }
     }
     if (accountsToAdd > 0) {
-        const _span = tracer?.startSpan("remove-wallets", undefined, ctx);
-        _span?.addEvent(`Adding ${accountsToAdd} new wallet to circulation`);
-        _span?.setAttribute(
+        const rmSpan = tracer?.startSpan("remove-wallets", undefined, ctx);
+        rmSpan?.addEvent(`Adding ${accountsToAdd} new wallet to circulation`);
+        rmSpan?.setAttribute(
             "details.removedWallets",
             removedWallets.map((v) => v.account.address),
         );
-        _span?.end();
+        rmSpan?.end();
 
         const topupAmountBN = ethers.utils.parseUnits(options.topupAmount!);
         while (accountsToAdd > 0) {
@@ -214,9 +214,17 @@ export async function manageAccounts(
                         ethers.utils.formatUnits(transferAmount),
                     );
                     if (config.mainAccount.BALANCE.lt(transferAmount)) {
-                        throw `main account lacks suffecient funds to topup new wallets, current balance: ${ethers.utils.formatUnits(
+                        const msg = `main wallet ${config.mainAccount.account.address} account lacks suffecient funds to topup new wallets, current balance: ${ethers.utils.formatUnits(
                             config.mainAccount.BALANCE,
-                        )}`;
+                        )}, there are still ${config.accounts.length + 1} wallets in circulation to clear orders, please consider topping up the main wallet soon`;
+                        span?.setAttribute(
+                            "severity",
+                            config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
+                        );
+                        span?.setStatus({
+                            code: SpanStatusCode.ERROR,
+                            message: msg,
+                        });
                     }
                     try {
                         const hash = await config.mainAccount.sendTransaction({
@@ -236,7 +244,10 @@ export async function manageAccounts(
                             acc.BALANCE = topupAmountBN;
                             config.mainAccount.BALANCE =
                                 config.mainAccount.BALANCE.sub(transferAmount).sub(txCost);
-                            span?.addEvent("Successfully added");
+                            span?.setStatus({
+                                code: SpanStatusCode.OK,
+                                message: "Successfully added",
+                            });
                             if (
                                 !config.accounts.find(
                                     (v) =>
@@ -247,17 +258,28 @@ export async function manageAccounts(
                                 config.accounts.push(acc);
                             }
                         } else {
-                            span?.addEvent("Failed to add and top up the wallet: reverted");
+                            span?.setAttribute("severity", ErrorSeverity.LOW);
+                            span?.setStatus({
+                                code: SpanStatusCode.ERROR,
+                                message: `Failed to add and top up new wallet ${acc.account.address}: tx reverted`,
+                            });
                             config.mainAccount.BALANCE = config.mainAccount.BALANCE.sub(txCost);
                         }
                     } catch (error) {
-                        span?.addEvent(
-                            "Failed to add and topup new wallets: " + errorSnapshot("", error),
-                        );
+                        span?.setAttribute("severity", ErrorSeverity.LOW);
+                        span?.setStatus({
+                            code: SpanStatusCode.ERROR,
+                            message:
+                                `Failed to add and top up new wallet ${acc.account.address}: ` +
+                                errorSnapshot("", error),
+                        });
                     }
                 } else {
                     accountsToAdd--;
-                    span?.addEvent("Successfully added");
+                    span?.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Successfully added",
+                    });
                     if (
                         !config.accounts.find(
                             (v) =>
@@ -269,8 +291,11 @@ export async function manageAccounts(
                     }
                 }
             } catch (e) {
-                span?.end();
-                throw e;
+                span?.setAttribute("severity", ErrorSeverity.LOW);
+                span?.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: "Failed to add and top up new wallet: " + errorSnapshot("", e),
+                });
             }
             span?.end();
         }
@@ -424,10 +449,19 @@ export async function sweepToMainWallet(
     tracer?: Tracer,
     ctx?: Context,
 ) {
+    const mainSpan = tracer?.startSpan("sweep-wallet-funds", undefined, ctx);
+    const mainCtx = mainSpan ? trace.setSpan(context.active(), mainSpan) : undefined;
+    mainSpan?.setAttribute("details.wallet", fromWallet.account.address);
+    mainSpan?.setAttribute(
+        "details.tokens",
+        fromWallet.BOUNTY.map((v) => v.symbol),
+    );
+
     gasPrice = ethers.BigNumber.from(gasPrice).mul(107).div(100).toBigInt();
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const txs: {
         bounty: TokenDetails;
+        balance: string;
         tx: {
             to: `0x${string}`;
             data: `0x${string}`;
@@ -458,7 +492,7 @@ export async function sweepToMainWallet(
                     balance,
                 ]) as `0x${string}`,
             };
-            txs.push({ tx, bounty });
+            txs.push({ tx, bounty, balance: ethers.utils.formatUnits(balance, bounty.decimals) });
             const gas = await fromWallet.estimateGas(tx);
             cumulativeGasLimit = cumulativeGasLimit.add(gas);
         } catch {
@@ -467,7 +501,7 @@ export async function sweepToMainWallet(
     }
 
     if (cumulativeGasLimit.mul(gasPrice).gt(fromWallet.BALANCE)) {
-        const span = tracer?.startSpan("fund-wallet-to-sweep", undefined, ctx);
+        const span = tracer?.startSpan("fund-wallet-to-sweep", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
             const transferAmount = cumulativeGasLimit.mul(gasPrice).sub(fromWallet.BALANCE);
@@ -483,29 +517,39 @@ export async function sweepToMainWallet(
             });
             const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
             if (receipt.status === "success") {
-                span?.addEvent("Successfully topped up");
+                span?.setStatus({
+                    code: SpanStatusCode.OK,
+                    message: "Successfully topped up",
+                });
                 fromWallet.BALANCE = fromWallet.BALANCE.add(transferAmount);
                 toWallet.BALANCE = toWallet.BALANCE.sub(transferAmount).sub(txCost);
             } else {
                 toWallet.BALANCE = toWallet.BALANCE.sub(txCost);
-                span?.addEvent(
-                    "Failed topping up wallet for sweeping tokens back to main wallet: reverted",
-                );
+                span?.setAttribute("severity", ErrorSeverity.LOW);
+                span?.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message:
+                        "Failed topping up wallet for sweeping tokens back to main wallet: tx reverted",
+                });
             }
         } catch (error) {
-            span?.addEvent(
-                "Failed topping up wallet for sweeping tokens back to main wallet: " +
+            span?.setAttribute("severity", ErrorSeverity.LOW);
+            span?.setStatus({
+                code: SpanStatusCode.ERROR,
+                message:
+                    "Failed topping up wallet for sweeping tokens back to main wallet: " +
                     errorSnapshot("", error),
-            );
+            });
         }
         span?.end();
     }
 
     for (let i = 0; i < txs.length; i++) {
-        const span = tracer?.startSpan("sweep-to-main-wallet", undefined, ctx);
+        const span = tracer?.startSpan("sweep-token-to-main-wallet", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         span?.setAttribute("details.token", txs[i].bounty.symbol);
         span?.setAttribute("details.tokenAddress", txs[i].bounty.address);
+        span?.setAttribute("details.balance", txs[i].balance);
         try {
             const hash = await fromWallet.sendTransaction(txs[i].tx);
             const receipt = await fromWallet.waitForTransactionReceipt({
@@ -518,14 +562,25 @@ export async function sweepToMainWallet(
                 if (!toWallet.BOUNTY.find((v) => v.address === txs[i].bounty.address)) {
                     toWallet.BOUNTY.push(txs[i].bounty);
                 }
-                span?.addEvent("Successfully swept back to main wallet");
+                span?.setStatus({
+                    code: SpanStatusCode.OK,
+                    message: "Successfully swept back to main wallet",
+                });
             } else {
-                span?.addEvent("Failed to sweep back to main wallet: reverted");
+                span?.setAttribute("severity", ErrorSeverity.LOW);
+                span?.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: "Failed to sweep back to main wallet: tx reverted",
+                });
                 failedBounties.push(txs[i].bounty);
             }
             fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
         } catch (error) {
-            span?.addEvent("Failed to sweep back to main wallet: " + errorSnapshot("", error));
+            span?.setAttribute("severity", ErrorSeverity.LOW);
+            span?.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: "Failed to sweep back to main wallet: " + errorSnapshot("", error),
+            });
             failedBounties.push(txs[i].bounty);
         }
         span?.end();
@@ -533,7 +588,7 @@ export async function sweepToMainWallet(
 
     // empty gas if all tokens are swept
     if (!failedBounties.length) {
-        const span = tracer?.startSpan("sweep-gas-to-main-wallet", undefined, ctx);
+        const span = tracer?.startSpan("sweep-gas-to-main-wallet", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
             const gasLimit = ethers.BigNumber.from(
@@ -564,22 +619,36 @@ export async function sweepToMainWallet(
                 if (receipt.status === "success") {
                     toWallet.BALANCE = toWallet.BALANCE.add(transferAmount);
                     fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost).sub(transferAmount);
-                    span?.addEvent("Successfully swept gas tokens back to main wallet");
+                    span?.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Successfully swept gas tokens back to main wallet",
+                    });
                 } else {
                     fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
-                    span?.addEvent("Failed to sweep gas tokens back to main wallet: reverted");
+                    span?.setAttribute("severity", ErrorSeverity.LOW);
+                    span?.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: "Failed to sweep gas tokens back to main wallet: tx reverted",
+                    });
                 }
             } else {
-                span?.addEvent("Transfer amount lower than gas cost");
+                span?.setStatus({
+                    code: SpanStatusCode.OK,
+                    message: "Transfer amount lower than gas cost",
+                });
             }
         } catch (error) {
-            span?.addEvent(
-                "Failed to sweep gas tokens back to main wallet: " + errorSnapshot("", error),
-            );
+            span?.setAttribute("severity", ErrorSeverity.LOW);
+            span?.setStatus({
+                code: SpanStatusCode.ERROR,
+                message:
+                    "Failed to sweep gas tokens back to main wallet: " + errorSnapshot("", error),
+            });
         }
         span?.end();
     }
     fromWallet.BOUNTY = failedBounties;
+    mainSpan?.end();
 }
 
 /**
@@ -673,7 +742,10 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const gas = await config.mainAccount.estimateGas(rawtx);
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
             if (gasCost.mul(25).gte(amountOutMin)) {
-                span?.addEvent("Skipped, balance not large enough to justify sweeping");
+                span?.setStatus({
+                    code: SpanStatusCode.OK,
+                    message: "Skipped, balance not large enough to justify sweeping",
+                });
                 skipped.push(bounty);
                 span?.end();
                 continue;
@@ -685,15 +757,26 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                     timeout: 100_000,
                 });
                 if (receipt.status === "success") {
-                    span?.addEvent("Successfully swept to eth");
+                    span?.setStatus({
+                        code: SpanStatusCode.OK,
+                        message: "Successfully swept to eth",
+                    });
                 } else {
                     skipped.push(bounty);
-                    span?.addEvent("Failed to sweet to eth: reverted");
+                    span?.setAttribute("severity", ErrorSeverity.LOW);
+                    span?.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: "Failed to sweet to eth: tx reverted",
+                    });
                 }
             }
         } catch (e) {
             skipped.push(bounty);
-            span?.addEvent("Failed to sweep to eth: " + errorSnapshot("", e));
+            span?.setAttribute("severity", ErrorSeverity.LOW);
+            span?.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: "Failed to sweep to eth: " + errorSnapshot("", e),
+            });
         }
         span?.end();
         await sleep(10000);

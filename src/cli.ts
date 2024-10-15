@@ -492,14 +492,17 @@ export const main = async (argv: any, version?: string) => {
                 }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
                 const fill = config.accounts.length
                     ? `that is the main account that funds the multi wallet, there are still ${
-                          config.accounts.length
+                          config.accounts.length + 1
                       } wallets in circulation that clear orders, please consider topuping up soon`
                     : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
                 roundSpan.setStatus({
                     code: SpanStatusCode.ERROR,
                     message: header + fill,
                 });
-                roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
+                roundSpan.setAttribute(
+                    "severity",
+                    config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
+                );
             }
             // remove pool memoizer cache on each interval
             let update = false;
@@ -558,42 +561,44 @@ export const main = async (argv: any, version?: string) => {
 
                 // sweep tokens and wallets every 100 rounds
                 if (counter % 100 === 0) {
-                    let gasPrice;
-                    try {
-                        gasPrice = await config.viemClient.getGasPrice();
-                    } catch {
-                        /**/
-                    }
                     // try to sweep wallets that still have non transfered tokens to main wallet
-                    if (wgc.length && gasPrice) {
+                    if (wgc.length) {
                         for (let k = wgc.length - 1; k >= 0; k--) {
-                            await sweepToMainWallet(
-                                wgc[k],
-                                config.mainAccount,
-                                gasPrice,
-                                tracer,
-                                roundCtx,
-                            );
-                            if (!wgc[k].BOUNTY.length) {
-                                const index = wgcBuffer.findIndex(
-                                    (v) => v.address === wgc[k].account.address,
+                            try {
+                                const gasPrice = await config.viemClient.getGasPrice();
+                                await sweepToMainWallet(
+                                    wgc[k],
+                                    config.mainAccount,
+                                    gasPrice,
+                                    tracer,
+                                    roundCtx,
                                 );
-                                if (index > -1) wgcBuffer.splice(index, 1);
-                                wgc.splice(k, 1);
-                            } else {
-                                // retry to sweep garbage wallet 3 times before letting it go
-                                const index = wgcBuffer.findIndex(
-                                    (v) => v.address === wgc[k].account.address,
-                                );
-                                if (index > -1) {
-                                    wgcBuffer[index].count++;
-                                    if (wgcBuffer[index].count >= 2) {
-                                        wgcBuffer.splice(index, 1);
-                                        wgc.splice(k, 1);
-                                    }
+                                if (!wgc[k].BOUNTY.length) {
+                                    const index = wgcBuffer.findIndex(
+                                        (v) => v.address === wgc[k].account.address,
+                                    );
+                                    if (index > -1) wgcBuffer.splice(index, 1);
+                                    wgc.splice(k, 1);
                                 } else {
-                                    wgcBuffer.push({ address: wgc[k].account.address, count: 0 });
+                                    // retry to sweep garbage wallet 3 times before letting it go
+                                    const index = wgcBuffer.findIndex(
+                                        (v) => v.address === wgc[k].account.address,
+                                    );
+                                    if (index > -1) {
+                                        wgcBuffer[index].count++;
+                                        if (wgcBuffer[index].count >= 2) {
+                                            wgcBuffer.splice(index, 1);
+                                            wgc.splice(k, 1);
+                                        }
+                                    } else {
+                                        wgcBuffer.push({
+                                            address: wgc[k].account.address,
+                                            count: 0,
+                                        });
+                                    }
                                 }
+                            } catch {
+                                /**/
                             }
                         }
                     }
