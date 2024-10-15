@@ -234,6 +234,7 @@ export const arbRound = async (
                         orderbook: options.orderbookAddress,
                     },
                     span,
+                    config.timeout,
                 );
                 if (!ordersDetails.length) {
                     span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
@@ -308,7 +309,7 @@ export const arbRound = async (
  * CLI startup function
  * @param argv - cli args
  */
-export async function startup(argv: any, version?: string) {
+export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?: Context) {
     let roundGap = 10000;
     let _poolUpdateInterval = 0;
 
@@ -380,6 +381,8 @@ export async function startup(argv: any, version?: string) {
         options.key ?? options.mnemonic,
         options.arbAddress,
         options as CliOptions,
+        tracer,
+        ctx,
     );
 
     return {
@@ -428,8 +431,9 @@ export const main = async (argv: any, version?: string) => {
     const { roundGap, options, poolUpdateInterval, config } = await tracer.startActiveSpan(
         "startup",
         async (startupSpan) => {
+            const ctx = trace.setSpan(context.active(), startupSpan);
             try {
-                const result = await startup(argv, version);
+                const result = await startup(argv, version, tracer, ctx);
                 startupSpan.setStatus({ code: SpanStatusCode.OK });
                 startupSpan.end();
                 return result;
@@ -474,23 +478,31 @@ export const main = async (argv: any, version?: string) => {
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
-            const botGasBalance = await config.viemClient.getBalance({
-                address: config.mainAccount.account.address,
-            });
+            const botGasBalance = ethers.BigNumber.from(
+                await config.viemClient.getBalance({
+                    address: config.mainAccount.account.address,
+                }),
+            );
+            config.mainAccount.BALANCE = botGasBalance;
             if (botMinBalance.gt(botGasBalance)) {
+                const header = `bot ${
+                    config.mainAccount.account.address
+                } is low on gas, expected at least: ${
+                    options.botMinBalance
+                }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
+                const fill = config.accounts.length
+                    ? `that is the main account that funds the multi wallet, there are still ${
+                          config.accounts.length + 1
+                      } wallets in circulation that clear orders, please consider topuping up soon`
+                    : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
                 roundSpan.setStatus({
                     code: SpanStatusCode.ERROR,
-                    message: `bot is low on gas, expected at least: ${
-                        options.botMinBalance
-                    }, current balance: ${ethers.utils.formatUnits(
-                        ethers.BigNumber.from(botGasBalance),
-                    )}`,
+                    message: header + fill,
                 });
-                roundSpan.setAttribute("severity", ErrorSeverity.HIGH);
-                roundSpan.end();
-                // wait 2 mins before trying again
-                await sleep(120000);
-                return;
+                roundSpan.setAttribute(
+                    "severity",
+                    config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
+                );
             }
             // remove pool memoizer cache on each interval
             let update = false;
@@ -542,47 +554,57 @@ export const main = async (argv: any, version?: string) => {
                         avgGasCost,
                         lastUsedAccountIndex,
                         wgc,
+                        tracer,
+                        roundCtx,
                     );
                 }
 
                 // sweep tokens and wallets every 100 rounds
                 if (counter % 100 === 0) {
-                    let gasPrice;
-                    try {
-                        gasPrice = await config.viemClient.getGasPrice();
-                    } catch {
-                        /**/
-                    }
                     // try to sweep wallets that still have non transfered tokens to main wallet
-                    if (wgc.length && gasPrice) {
+                    if (wgc.length) {
                         for (let k = wgc.length - 1; k >= 0; k--) {
-                            await sweepToMainWallet(wgc[k], config.mainAccount, gasPrice);
-                            if (!wgc[k].BOUNTY.length) {
-                                const index = wgcBuffer.findIndex(
-                                    (v) => v.address === wgc[k].account.address,
+                            try {
+                                const gasPrice = await config.viemClient.getGasPrice();
+                                await sweepToMainWallet(
+                                    wgc[k],
+                                    config.mainAccount,
+                                    gasPrice,
+                                    tracer,
+                                    roundCtx,
                                 );
-                                if (index > -1) wgcBuffer.splice(index, 1);
-                                wgc.splice(k, 1);
-                            } else {
-                                // retry to sweep garbage wallet 3 times before letting it go
-                                const index = wgcBuffer.findIndex(
-                                    (v) => v.address === wgc[k].account.address,
-                                );
-                                if (index > -1) {
-                                    wgcBuffer[index].count++;
-                                    if (wgcBuffer[index].count >= 2) {
-                                        wgcBuffer.splice(index, 1);
-                                        wgc.splice(k, 1);
-                                    }
+                                if (!wgc[k].BOUNTY.length) {
+                                    const index = wgcBuffer.findIndex(
+                                        (v) => v.address === wgc[k].account.address,
+                                    );
+                                    if (index > -1) wgcBuffer.splice(index, 1);
+                                    wgc.splice(k, 1);
                                 } else {
-                                    wgcBuffer.push({ address: wgc[k].account.address, count: 0 });
+                                    // retry to sweep garbage wallet 3 times before letting it go
+                                    const index = wgcBuffer.findIndex(
+                                        (v) => v.address === wgc[k].account.address,
+                                    );
+                                    if (index > -1) {
+                                        wgcBuffer[index].count++;
+                                        if (wgcBuffer[index].count >= 2) {
+                                            wgcBuffer.splice(index, 1);
+                                            wgc.splice(k, 1);
+                                        }
+                                    } else {
+                                        wgcBuffer.push({
+                                            address: wgc[k].account.address,
+                                            count: 0,
+                                        });
+                                    }
                                 }
+                            } catch {
+                                /**/
                             }
                         }
                     }
                     // try to sweep main wallet's tokens back to eth
                     try {
-                        await sweepToEth(config);
+                        await sweepToEth(config, tracer, roundCtx);
                     } catch {
                         /**/
                     }

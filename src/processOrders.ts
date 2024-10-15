@@ -8,8 +8,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ErrorSeverity, errorSnapshot } from "./error";
-import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { fundOwnedOrders, rotateAccounts } from "./account";
+import { Context, SpanStatusCode } from "@opentelemetry/api";
 import {
     Report,
     BotConfig,
@@ -17,8 +17,8 @@ import {
     ViemClient,
     RoundReport,
     BundledOrders,
-    ProcessPairResult,
     BotDataFetcher,
+    ProcessPairResult,
 } from "./types";
 import {
     toNumber,
@@ -618,6 +618,7 @@ export async function processPair(args: {
         const receipt = await viemClient.waitForTransactionReceipt({
             hash: txhash,
             confirmations: 1,
+            timeout: 200_000,
         });
 
         const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
