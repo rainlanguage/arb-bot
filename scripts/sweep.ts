@@ -269,24 +269,27 @@ export async function sweepToEth(
                 if (i === 0)
                     routeText =
                         routeText +
-                        v.tokenTo.symbol +
+                        (v?.tokenTo?.symbol ?? "") +
                         "/" +
-                        v.tokenFrom.symbol +
+                        (v?.tokenFrom?.symbol ?? "") +
                         "(" +
-                        (v as any).poolName +
+                        ((v as any)?.poolName ?? "") +
+                        " " +
+                        (v?.poolAddress ?? "") +
                         ")";
                 else
                     routeText =
                         routeText +
                         " + " +
-                        v.tokenTo.symbol +
+                        (v?.tokenTo?.symbol ?? "") +
                         "/" +
-                        v.tokenFrom.symbol +
+                        (v?.tokenFrom?.symbol ?? "") +
                         "(" +
-                        (v as any).poolName +
+                        ((v as any)?.poolName ?? "") +
+                        " " +
+                        (v?.poolAddress ?? "") +
                         ")";
             });
-            // eslint-disable-next-line no-console
             console.log("Route portions: ", routeText, "\n");
             const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
             const data = rp.encodeFunctionData("processRoute", [

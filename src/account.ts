@@ -715,24 +715,28 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 if (i === 0)
                     routeText =
                         routeText +
-                        v.tokenTo.symbol +
+                        (v?.tokenTo?.symbol ?? "") +
                         "/" +
-                        v.tokenFrom.symbol +
+                        (v?.tokenFrom?.symbol ?? "") +
                         "(" +
-                        (v as any).poolName +
+                        ((v as any)?.poolName ?? "") +
+                        " " +
+                        (v?.poolAddress ?? "") +
                         ")";
                 else
                     routeText =
                         routeText +
                         " + " +
-                        v.tokenTo.symbol +
+                        (v?.tokenTo?.symbol ?? "") +
                         "/" +
-                        v.tokenFrom.symbol +
+                        (v?.tokenFrom?.symbol ?? "") +
                         "(" +
-                        (v as any).poolName +
+                        ((v as any)?.poolName ?? "") +
+                        " " +
+                        (v?.poolAddress ?? "") +
                         ")";
             });
-            span?.setAttribute("route", routeText);
+            span?.setAttribute("details.route", routeText);
             const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
             const data = rp.encodeFunctionData("processRoute", [
                 rpParams.tokenIn,
@@ -769,7 +773,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const rawtx = { to: rp4Address, data };
             const gas = await config.mainAccount.estimateGas(rawtx);
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
-            span?.setAttribute("gasCost", ethers.utils.formatUnits(gasCost));
+            span?.setAttribute("details.gasCost", ethers.utils.formatUnits(gasCost));
             if (gasCost.mul(25).gte(amountOutMin)) {
                 span?.setStatus({
                     code: SpanStatusCode.OK,
