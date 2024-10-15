@@ -181,15 +181,23 @@ export async function manageAccounts(
     }
     if (accountsToAdd > 0) {
         const rmSpan = tracer?.startSpan("remove-wallets", undefined, ctx);
-        rmSpan?.addEvent(`Adding ${accountsToAdd} new wallet to circulation`);
+        rmSpan?.setStatus({
+            code: SpanStatusCode.OK,
+            message: `Removed ${accountsToAdd} wallets from circulation`,
+        });
         rmSpan?.setAttribute(
             "details.removedWallets",
             removedWallets.map((v) => v.account.address),
         );
         rmSpan?.end();
 
+        let counter = 0;
+        const size = accountsToAdd * 3; // equates to max of 3 retries if failed to add new wallets
         const topupAmountBN = ethers.utils.parseUnits(options.topupAmount!);
         while (accountsToAdd > 0) {
+            // infinite loop controll
+            if (counter > size) break;
+            counter++;
             const span = tracer?.startSpan("add-new-wallet", undefined, ctx);
             try {
                 const acc = await createViemClient(
@@ -213,18 +221,21 @@ export async function manageAccounts(
                         "details.topupAmount",
                         ethers.utils.formatUnits(transferAmount),
                     );
+                    config.mainAccount.BALANCE = ethers.BigNumber.from(
+                        await acc.getBalance({ address: config.mainAccount.account.address }),
+                    );
                     if (config.mainAccount.BALANCE.lt(transferAmount)) {
-                        const msg = `main wallet ${config.mainAccount.account.address} account lacks suffecient funds to topup new wallets, current balance: ${ethers.utils.formatUnits(
+                        const message = `main wallet ${config.mainAccount.account.address} lacks suffecient funds to topup new wallets, current balance: ${ethers.utils.formatUnits(
                             config.mainAccount.BALANCE,
                         )}, there are still ${config.accounts.length + 1} wallets in circulation to clear orders, please consider topping up the main wallet soon`;
                         span?.setAttribute(
                             "severity",
                             config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
                         );
-                        span?.setStatus({
-                            code: SpanStatusCode.ERROR,
-                            message: msg,
-                        });
+                        span?.setStatus({ code: SpanStatusCode.ERROR, message });
+                        accountsToAdd--;
+                        span?.end();
+                        continue;
                     }
                     try {
                         const hash = await config.mainAccount.sendTransaction({
@@ -298,6 +309,7 @@ export async function manageAccounts(
                 });
             }
             span?.end();
+            await sleep(7500);
         }
     }
     return lastIndex;

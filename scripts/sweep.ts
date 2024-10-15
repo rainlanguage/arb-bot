@@ -14,7 +14,6 @@ import { HDAccount, mnemonicToAccount, PrivateKeyAccount } from "viem/accounts";
 
 /**
  * Sweep wallet's tokens
- * @param mnemonic - The wallet mnemonic
  */
 export async function sweepWalletTokens(
     mnemonic: string,
@@ -204,9 +203,9 @@ export async function sweepWalletTokens(
 }
 
 /**
- * Sweeps tokens to eth
+ * Sweeps the given tokens to the chain's gas token
  */
-export async function sweepToEth(
+export async function sweepToGas(
     account: HDAccount | PrivateKeyAccount,
     rpc: string,
     chainId: ChainId,
