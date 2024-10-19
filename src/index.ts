@@ -142,9 +142,7 @@ export async function getConfig(
                 throw "invalid retries value, must be an integer between 1 - 3";
         } else throw "invalid retries value, must be an integer between 1 - 3";
     }
-
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrls[0]);
-    const chainId = (await provider.getNetwork()).chainId as ChainId;
+    const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
@@ -197,4 +195,16 @@ export async function clear(
 
     if (majorVersion >= 18) return await processOrders(config, ordersDetails, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
+}
+
+async function getChainId(rpcs: string[]): Promise<number> {
+    for (let i = 0; i < rpcs.length; i++) {
+        try {
+            const provider = new ethers.providers.JsonRpcProvider(rpcs[i]);
+            return (await provider.getNetwork()).chainId;
+        } catch (error) {
+            if (i === rpcs.length - 1) throw error;
+        }
+    }
+    throw "Failed to get chain id";
 }
