@@ -65,33 +65,37 @@ export async function initAccounts(
         }
     }
 
-    // reaed current eth balances of the accounts, this will be
-    // tracked on through the bot's process whenever a tx is submitted
-    const balances = await getBatchEthBalance(
-        [mainAccount.account.address, ...accounts.map((v) => v.account.address)],
-        config.viemClient as any as ViemClient,
+    const mainAccBalance = ethers.BigNumber.from(
+        await mainAccount.getBalance({ address: mainAccount.account.address }),
     );
-    mainAccount.BALANCE = balances[0];
+    mainAccount.BALANCE = mainAccBalance;
     await setWatchedTokens(mainAccount, config.watchedTokens ?? []);
 
     // incase of excess accounts, top them up from main account
     if (accounts.length) {
-        const topupAmountBn = ethers.utils.parseUnits(options.topupAmount!);
         let cumulativeTopupAmount = ethers.constants.Zero;
-        for (let i = 1; i < balances.length; i++) {
-            if (topupAmountBn.gt(balances[i])) {
-                cumulativeTopupAmount = cumulativeTopupAmount.add(topupAmountBn.sub(balances[i]));
+        const topupAmountBn = ethers.utils.parseUnits(options.topupAmount!);
+
+        // get multi accounts balances
+        const balances: BigNumber[] = [];
+        for (let i = 0; i < accounts.length; i++) {
+            const balance = ethers.BigNumber.from(
+                await accounts[i].getBalance({ address: accounts[i].account.address }),
+            );
+            balances.push(balance);
+            if (topupAmountBn.gt(balance)) {
+                cumulativeTopupAmount = cumulativeTopupAmount.add(topupAmountBn.sub(balance));
             }
         }
-        if (cumulativeTopupAmount.gt(balances[0])) {
+        if (cumulativeTopupAmount.gt(mainAccBalance)) {
             throw "low on funds to topup excess wallets with specified initial topup amount";
         } else {
             for (let i = 0; i < accounts.length; i++) {
                 await setWatchedTokens(accounts[i], config.watchedTokens ?? []);
-                accounts[i].BALANCE = balances[i + 1];
+                accounts[i].BALANCE = balances[i];
 
                 // only topup those accounts that have lower than expected funds
-                const transferAmount = topupAmountBn.sub(balances[i + 1]);
+                const transferAmount = topupAmountBn.sub(balances[i]);
                 if (transferAmount.gt(0)) {
                     const span = tracer?.startSpan("fund-wallets", undefined, ctx);
                     span?.setAttribute("details.wallet", accounts[i].account.address);

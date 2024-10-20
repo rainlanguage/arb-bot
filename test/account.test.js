@@ -95,7 +95,10 @@ describe("Test accounts", async function () {
         const { mainAccount, accounts } = await initAccounts(key, config, options);
 
         const expected = [
-            { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "10000" },
+            {
+                address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+                BALANCE: "10000000000000000000000",
+            },
         ];
         assert.isEmpty(accounts);
         assert.equal(mainAccount.account.address, expected[0].address);
