@@ -749,7 +749,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                         ")";
             });
             span?.setAttribute("details.route", routeText);
-            const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin);
+            const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin).mul(98).div(100);
             const data = rp.encodeFunctionData("processRoute", [
                 rpParams.tokenIn,
                 rpParams.amountIn,
