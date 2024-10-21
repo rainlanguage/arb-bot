@@ -11,7 +11,13 @@
       pkgs = rainix.pkgs.${system};
     in rec {
       # For `nix develop`:
-      devShells = rainix.devShells.${system};
+      devShells.default = pkgs.mkShell {
+          nativeBuildInputs = [
+            rainix.node-build-inputs.${system}
+            rainix.sol-build-inputs.${system}
+            pkgs.doctl
+          ];
+        };
     }
   );
 }

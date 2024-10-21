@@ -254,7 +254,12 @@ export const arbRound = async (
             try {
                 let txs;
                 let foundOpp = false;
-                const { reports, avgGasCost } = await clear(config, ordersDetails, tracer, ctx);
+                const { reports = [], avgGasCost = undefined } = await clear(
+                    config,
+                    ordersDetails,
+                    tracer,
+                    ctx,
+                );
                 if (reports && reports.length) {
                     txs = reports.map((v) => v.txUrl).filter((v) => !!v);
                     if (txs.length) {

@@ -21,6 +21,7 @@ import {
     ProcessPairResult,
 } from "./types";
 import {
+    sleep,
     toNumber,
     getIncome,
     getEthPrice,
@@ -87,15 +88,13 @@ export const processOrders = async (
     const bundledOrders = bundleOrders(ordersDetails, false, true);
 
     // check owned vaults and top them up if necessary
-    let didPostSpan = false;
-    try {
-        const ownedOrders = await checkOwnedOrders(config, bundledOrders);
-        if (ownedOrders.length) {
-            const failedFundings = await fundOwnedOrders(ownedOrders, config);
-            const emptyOrders = ownedOrders.filter((v) => v.vaultBalance.isZero());
-            if (failedFundings.length || emptyOrders.length) {
-                await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
-                    didPostSpan = true;
+    await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
+        try {
+            const ownedOrders = await checkOwnedOrders(config, bundledOrders);
+            if (ownedOrders.length) {
+                const failedFundings = await fundOwnedOrders(ownedOrders, config);
+                const emptyOrders = ownedOrders.filter((v) => v.vaultBalance.isZero());
+                if (failedFundings.length || emptyOrders.length) {
                     const message: string[] = [];
                     if (emptyOrders.length) {
                         message.push(
@@ -136,24 +135,24 @@ export const processOrders = async (
                         );
                     }
                     span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: message.join("\n") });
-                    span.end();
-                });
+                    span.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: message.join("\n"),
+                    });
+                } else {
+                    span.setStatus({ code: SpanStatusCode.OK, message: "All good!" });
+                }
             }
-        }
-    } catch (e: any) {
-        if (!didPostSpan) {
-            await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
-                span.setAttribute("severity", ErrorSeverity.HIGH);
-                span.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: errorSnapshot("Failed to check owned vaults", e),
-                });
-                span.recordException(e);
-                span.end();
+        } catch (error: any) {
+            span.setAttribute("severity", ErrorSeverity.HIGH);
+            span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: errorSnapshot("Failed to check owned vaults", error),
             });
+            span.recordException(error);
         }
-    }
+        span.end();
+    });
 
     // batch quote orders to establish the orders to loop over
     try {
@@ -336,6 +335,7 @@ export const processOrders = async (
 
                 // rotate the accounts once they are used once
                 rotateAccounts(accounts);
+                await sleep(2000);
             }
         }
     }
