@@ -22,51 +22,38 @@ exports.basicDeploy = async (artifact, ...args) => {
     return contract;
 };
 
-exports.arbDeploy = async(
-    orderbookAddress,
-    rpAddress,
-) => {
-    return await this.basicDeploy(
-        RouteProcessorOrderBookV4ArbOrderTakerArtifact,
-        {
-            orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
-            task: {
-                evaluable: DefaultArbEvaluable,
-                signedContext: []
-            },
-            implementationData: ethers.utils.defaultAbiCoder.encode(["address"], [rpAddress])
-        }
-    );
+exports.arbDeploy = async (orderbookAddress, rpAddress) => {
+    return await this.basicDeploy(RouteProcessorOrderBookV4ArbOrderTakerArtifact, {
+        orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
+        task: {
+            evaluable: DefaultArbEvaluable,
+            signedContext: [],
+        },
+        implementationData: ethers.utils.defaultAbiCoder.encode(["address"], [rpAddress]),
+    });
 };
 
-exports.genericArbrbDeploy = async(orderbookAddress) => {
-    return await this.basicDeploy(
-        GenericPoolOrderBookV4ArbOrderTakerArtifact,
-        {
-            orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
-            task: {
-                evaluable: DefaultArbEvaluable,
-                signedContext: []
-            },
-            implementationData: "0x"
-        }
-    );
+exports.genericArbrbDeploy = async (orderbookAddress) => {
+    return await this.basicDeploy(GenericPoolOrderBookV4ArbOrderTakerArtifact, {
+        orderBook: orderbookAddress ?? `0x${"0".repeat(40)}`,
+        task: {
+            evaluable: DefaultArbEvaluable,
+            signedContext: [],
+        },
+        implementationData: "0x",
+    });
 };
 
-exports.deployOrderBookNPE2 = async() => {
+exports.deployOrderBookNPE2 = async () => {
     return await this.basicDeploy(OrderbookArtifact);
 };
 
 exports.rainterpreterNPE2Deploy = async () => {
-    return await this.basicDeploy(
-        RainterpreterNPE2Artifact
-    );
+    return await this.basicDeploy(RainterpreterNPE2Artifact);
 };
 
 exports.rainterpreterStoreNPE2Deploy = async () => {
-    return await this.basicDeploy(
-        RainterpreterStoreNPE2Artifact
-    );
+    return await this.basicDeploy(RainterpreterStoreNPE2Artifact);
 };
 
 /**
@@ -78,18 +65,11 @@ exports.rainterpreterStoreNPE2Deploy = async () => {
  * @param {string} contractAddressOverride - (optional) override the contract address which emits this event
  * @returns Array of events with their arguments, which can each be deconstructed by array index or by object key
  */
-exports.getEvents = async (
-    tx,
-    eventName,
-    contract,
-    contractAddressOverride = null
-) => {
-    const address = contractAddressOverride
-        ? contractAddressOverride
-        : contract.address;
+exports.getEvents = async (tx, eventName, contract, contractAddressOverride = null) => {
+    const address = contractAddressOverride ? contractAddressOverride : contract.address;
 
-    const eventObjs = (await tx.wait()).events.filter((x) =>
-        x.topics[0] == contract.filters[eventName]().topics[0] && x.address == address
+    const eventObjs = (await tx.wait()).events.filter(
+        (x) => x.topics[0] == contract.filters[eventName]().topics[0] && x.address == address,
     );
 
     if (!eventObjs.length) {
@@ -97,7 +77,7 @@ exports.getEvents = async (
     }
 
     return eventObjs.map((eventObj) =>
-        contract.interface.decodeEventLog(eventName, eventObj.data, eventObj.topics)
+        contract.interface.decodeEventLog(eventName, eventObj.data, eventObj.topics),
     );
 };
 
@@ -110,29 +90,18 @@ exports.getEvents = async (
  * @param {string} contractAddressOverride - (optional) override the contract address which emits this event
  * @returns Event arguments of first matching event, can be deconstructed by array index or by object key
  */
-exports.getEventArgs = async (
-    tx,
-    eventName,
-    contract,
-    contractAddressOverride = null
-) => {
-    const address = contractAddressOverride
-        ? contractAddressOverride
-        : contract.address;
+exports.getEventArgs = async (tx, eventName, contract, contractAddressOverride = null) => {
+    const address = contractAddressOverride ? contractAddressOverride : contract.address;
 
-    const eventObj = (await tx.wait()).events.find((x) =>
-        x.topics[0] == contract.filters[eventName]().topics[0] && x.address == address
+    const eventObj = (await tx.wait()).events.find(
+        (x) => x.topics[0] == contract.filters[eventName]().topics[0] && x.address == address,
     );
 
     if (!eventObj) {
         throw new Error(`Could not find event ${eventName} at address ${address}`);
     }
 
-    return contract.interface.decodeEventLog(
-        eventName,
-        eventObj.data,
-        eventObj.topics
-    );
+    return contract.interface.decodeEventLog(eventName, eventObj.data, eventObj.topics);
 };
 
 /**
@@ -152,7 +121,7 @@ exports.randomUint256 = () => {
 exports.generateEvaluableConfig = (expressionDeployer, expressionConfig) => {
     return {
         deployer: expressionDeployer.address,
-        ...expressionConfig
+        ...expressionConfig,
     };
 };
 
@@ -177,62 +146,62 @@ exports.encodeMeta = (data) => {
  * @param {ethers.Contract[]} tokens - The tokens contracts
  * @returns An array of order details in form of subgraph query result
  */
-exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
+exports.mockSgFromEvent = async (eventArgs, orderbook, tokens) => {
     const inputDetails = [];
     const outputDetails = [];
     for (let i = 0; i < eventArgs.order.validInputs.length; i++) {
-        const token = tokens.find(e =>
-            e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase()
+        const token = tokens.find(
+            (e) => e.address.toLowerCase() === eventArgs.order.validInputs[i].token.toLowerCase(),
         );
-        const symbol = token?.knownSymbol
-            ?? (await token.contract?.symbol())
-            ?? (await token.symbol());
+        const symbol =
+            token?.knownSymbol ?? (await token.contract?.symbol()) ?? (await token.symbol());
         inputDetails.push({
             symbol,
             balance: await orderbook.vaultBalance(
                 eventArgs.order.owner,
                 eventArgs.order.validInputs[i].token,
-                eventArgs.order.validInputs[i].vaultId.toString()
-            )
+                eventArgs.order.validInputs[i].vaultId.toString(),
+            ),
         });
     }
     for (let i = 0; i < eventArgs.order.validOutputs.length; i++) {
-        const token = tokens.find(e =>
-            e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase()
+        const token = tokens.find(
+            (e) => e.address.toLowerCase() === eventArgs.order.validOutputs[i].token.toLowerCase(),
         );
-        const symbol = token?.knownSymbol
-            ?? (await token.contract?.symbol())
-            ?? (await token.symbol());
+        const symbol =
+            token?.knownSymbol ?? (await token.contract?.symbol()) ?? (await token.symbol());
         outputDetails.push({
             symbol,
             balance: await orderbook.vaultBalance(
                 eventArgs.order.owner,
                 eventArgs.order.validOutputs[i].token,
-                eventArgs.order.validOutputs[i].vaultId.toString()
-            )
+                eventArgs.order.validOutputs[i].vaultId.toString(),
+            ),
         });
     }
 
     return {
-        id: typeof eventArgs.orderHash === "string"
-            ? eventArgs.orderHash.toLowerCase()
-            : eventArgs.orderHash.toHexString().toLowerCase(),
+        id:
+            typeof eventArgs.orderHash === "string"
+                ? eventArgs.orderHash.toLowerCase()
+                : eventArgs.orderHash.toHexString().toLowerCase(),
         owner: eventArgs.order.owner.toLowerCase(),
-        orderHash: typeof eventArgs.orderHash === "string"
-            ? eventArgs.orderHash.toLowerCase()
-            : eventArgs.orderHash.toHexString().toLowerCase(),
+        orderHash:
+            typeof eventArgs.orderHash === "string"
+                ? eventArgs.orderHash.toLowerCase()
+                : eventArgs.orderHash.toHexString().toLowerCase(),
         orderBytes: ethers.utils.defaultAbiCoder.encode([OrderV3], [eventArgs.order]),
         active: true,
         nonce: eventArgs.order.nonce,
         orderbook: {
-            id: orderbook.address.toLowerCase()
+            id: orderbook.address.toLowerCase(),
         },
         inputs: eventArgs.order.validInputs.map((v, i) => {
             return {
                 token: {
                     address: v.token.toLowerCase(),
                     decimals: v.decimals,
-                    symbol: inputDetails[i].symbol
+                    symbol: inputDetails[i].symbol,
                 },
                 balance: inputDetails[i].balance.toString(),
                 vaultId: v.vaultId.toString(),
@@ -243,7 +212,7 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
                 token: {
                     address: v.token.toLowerCase(),
                     decimals: v.decimals,
-                    symbol: outputDetails[i].symbol
+                    symbol: outputDetails[i].symbol,
                 },
                 balance: outputDetails[i].balance.toString(),
                 vaultId: v.vaultId.toString(),
@@ -255,13 +224,13 @@ exports.mockSgFromEvent = async(eventArgs, orderbook, tokens) => {
 /**
  * Prepares orders to be in usable format for arb
  */
-exports.prepareOrders = async(
+exports.prepareOrders = async (
     owners,
     tokens,
     tokensDecimals,
     vaultIds,
     orderbook,
-    expressionDeployer
+    expressionDeployer,
 ) => {
     // topping up owners 1 2 3 vaults with 100 of each token
     for (let i = 0; i < 3; i++) {
@@ -270,15 +239,13 @@ exports.prepareOrders = async(
             vaultId: vaultIds[0],
             amount: "100" + "0".repeat(tokensDecimals[0]),
         };
-        await tokens[0]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
+        await tokens[0].connect(owners[i]).approve(orderbook.address, depositConfigStruct.amount);
         await orderbook
             .connect(owners[i])
             .deposit(
                 depositConfigStruct.token,
                 depositConfigStruct.vaultId,
-                depositConfigStruct.amount
+                depositConfigStruct.amount,
             );
     }
     for (let i = 0; i < 3; i++) {
@@ -287,15 +254,13 @@ exports.prepareOrders = async(
             vaultId: vaultIds[1],
             amount: "100" + "0".repeat(tokensDecimals[1]),
         };
-        await tokens[1]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
+        await tokens[1].connect(owners[i]).approve(orderbook.address, depositConfigStruct.amount);
         await orderbook
             .connect(owners[i])
             .deposit(
                 depositConfigStruct.token,
                 depositConfigStruct.vaultId,
-                depositConfigStruct.amount
+                depositConfigStruct.amount,
             );
     }
     for (let i = 0; i < 3; i++) {
@@ -304,15 +269,13 @@ exports.prepareOrders = async(
             vaultId: vaultIds[2],
             amount: "100" + "0".repeat(tokensDecimals[2]),
         };
-        await tokens[2]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
+        await tokens[2].connect(owners[i]).approve(orderbook.address, depositConfigStruct.amount);
         await orderbook
             .connect(owners[i])
             .deposit(
                 depositConfigStruct.token,
                 depositConfigStruct.vaultId,
-                depositConfigStruct.amount
+                depositConfigStruct.amount,
             );
     }
     for (let i = 0; i < 3; i++) {
@@ -321,15 +284,13 @@ exports.prepareOrders = async(
             vaultId: vaultIds[3],
             amount: "100" + "0".repeat(tokensDecimals[3]),
         };
-        await tokens[3]
-            .connect(owners[i])
-            .approve(orderbook.address, depositConfigStruct.amount);
+        await tokens[3].connect(owners[i]).approve(orderbook.address, depositConfigStruct.amount);
         await orderbook
             .connect(owners[i])
             .deposit(
                 depositConfigStruct.token,
                 depositConfigStruct.vaultId,
-                depositConfigStruct.amount
+                depositConfigStruct.amount,
             );
     }
 
@@ -337,16 +298,13 @@ exports.prepareOrders = async(
     // order expression config
     const expConfig = {
         constants: [
-            ethers.constants.MaxUint256.toHexString(),  // max output
-            "0"
+            ethers.constants.MaxUint256.toHexString(), // max output
+            "0",
         ],
-        bytecode: "0x020000000c02020002010000000100000100000000"
+        bytecode: "0x020000000c02020002010000000100000100000000",
     };
 
-    const EvaluableConfig = this.generateEvaluableConfig(
-        expressionDeployer,
-        expConfig
-    );
+    const EvaluableConfig = this.generateEvaluableConfig(expressionDeployer, expConfig);
 
     // add orders
     const owner1_order1 = {
@@ -363,15 +321,13 @@ exports.prepareOrders = async(
     const tx_owner1_order1 = await orderbook.connect(owners[0]).addOrder(owner1_order1);
 
     // get sg-like order details from tx event
-    sgOrders.push(await this.mockSgFromEvent(
-        await this.getEventArgs(
-            tx_owner1_order1,
-            "AddOrder",
-            orderbook
+    sgOrders.push(
+        await this.mockSgFromEvent(
+            await this.getEventArgs(tx_owner1_order1, "AddOrder", orderbook),
+            orderbook,
+            tokens,
         ),
-        orderbook,
-        tokens
-    ));
+    );
 
     const owner1_order2 = {
         validInputs: [
@@ -384,15 +340,13 @@ exports.prepareOrders = async(
         meta: this.encodeMeta("owner1_order2"),
     };
     const tx_owner1_order2 = await orderbook.connect(owners[0]).addOrder(owner1_order2);
-    sgOrders.push(await this.mockSgFromEvent(
-        await this.getEventArgs(
-            tx_owner1_order2,
-            "AddOrder",
-            orderbook
+    sgOrders.push(
+        await this.mockSgFromEvent(
+            await this.getEventArgs(tx_owner1_order2, "AddOrder", orderbook),
+            orderbook,
+            tokens,
         ),
-        orderbook,
-        tokens
-    ));
+    );
 
     const owner2_order1 = {
         validInputs: [
@@ -405,15 +359,13 @@ exports.prepareOrders = async(
         meta: this.encodeMeta("owner2_order1"),
     };
     const tx_owner2_order1 = await orderbook.connect(owners[1]).addOrder(owner2_order1);
-    sgOrders.push(await this.mockSgFromEvent(
-        await this.getEventArgs(
-            tx_owner2_order1,
-            "AddOrder",
-            orderbook
+    sgOrders.push(
+        await this.mockSgFromEvent(
+            await this.getEventArgs(tx_owner2_order1, "AddOrder", orderbook),
+            orderbook,
+            tokens,
         ),
-        orderbook,
-        tokens
-    ));
+    );
 
     const owner3_order1 = {
         validInputs: [
@@ -426,15 +378,13 @@ exports.prepareOrders = async(
         meta: this.encodeMeta("owner3_order1"),
     };
     const tx_owner3_order1 = await orderbook.connect(owners[2]).addOrder(owner3_order1);
-    sgOrders.push(await this.mockSgFromEvent(
-        await this.getEventArgs(
-            tx_owner3_order1,
-            "AddOrder",
-            orderbook
+    sgOrders.push(
+        await this.mockSgFromEvent(
+            await this.getEventArgs(tx_owner3_order1, "AddOrder", orderbook),
+            orderbook,
+            tokens,
         ),
-        orderbook,
-        tokens
-    ));
+    );
 
     return sgOrders;
 };
@@ -454,14 +404,8 @@ exports.assertError = async function (f, s, e) {
 };
 
 exports.encodeQuoteResponse = function (quoteValue) {
-    const bytes = quoteValue.map(v =>
-        ethers.utils.defaultAbiCoder.encode(
-            ["(bool,uint256,uint256)"],
-            [[ v[0], v[1], v[2] ]]
-        )
+    const bytes = quoteValue.map((v) =>
+        ethers.utils.defaultAbiCoder.encode(["(bool,uint256,uint256)"], [[v[0], v[1], v[2]]]),
     );
-    return ethers.utils.defaultAbiCoder.encode(
-        ["(bool,bytes)[]"],
-        [bytes.map(v => [ true, v ])]
-    );
+    return ethers.utils.defaultAbiCoder.encode(["(bool,bytes)[]"], [bytes.map((v) => [true, v])]);
 };

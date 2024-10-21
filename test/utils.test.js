@@ -1,7 +1,10 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { ethers, utils: { hexlify, randomBytes } } = require("ethers");
 const { clone, getTotalIncome, checkOwnedOrders } = require("../src/utils");
+const {
+    ethers,
+    utils: { hexlify, randomBytes },
+} = require("ethers");
 
 describe("Test utils functions", async function () {
     it("should clone correctly", async function () {
@@ -9,16 +12,16 @@ describe("Test utils functions", async function () {
             a: 123,
             b: true,
             c: "some string",
-            d: [1,2,3],
+            d: [1, 2, 3],
             e: ethers.BigNumber.from(1),
             f: {
                 a: ethers.BigNumber.from(2),
                 b: ["1", "2", "3"],
                 c: {
                     a: true,
-                    b: [ethers.BigNumber.from(1), ethers.BigNumber.from(2)]
-                }
-            }
+                    b: [ethers.BigNumber.from(1), ethers.BigNumber.from(2)],
+                },
+            },
         };
         const result = clone(obj);
         assert.deepEqual(result, obj);
@@ -44,7 +47,7 @@ describe("Test utils functions", async function () {
             inputTokenDecimals,
             outputTokenDecimals,
         );
-        const expected = ethers.utils.parseUnits(((10 * 1.25) + (20 * 0.8)).toString());
+        const expected = ethers.utils.parseUnits((10 * 1.25 + 20 * 0.8).toString());
         assert.equal(result.toString(), expected.toString());
     });
 
@@ -56,28 +59,29 @@ describe("Test utils functions", async function () {
         const orders = [order1, order2];
         const config = {
             chain: {
-                id: 123
+                id: 123,
             },
             mainAccount: {
                 account: {
-                    address: owner
-                }
+                    address: owner,
+                },
             },
             viemClient: {
-                multicall: async() => [0n, 10n],
-            }
+                multicall: async () => [0n, 10n],
+            },
         };
         const result = await checkOwnedOrders(config, orders, hexlify(randomBytes(20)));
         const expected = orders.map((v, i) => ({
             id: v.takeOrders[0].id,
-            vaultId: v.takeOrders[0].takeOrder.order.validOutputs[
-                v.takeOrders[0].takeOrder.outputIOIndex
-            ].vaultId,
+            vaultId:
+                v.takeOrders[0].takeOrder.order.validOutputs[
+                    v.takeOrders[0].takeOrder.outputIOIndex
+                ].vaultId,
             token: v.sellToken,
             symbol: v.sellTokenSymbol,
             decimals: v.sellTokenDecimals,
             orderbook: v.orderbook,
-            vaultBalance: ethers.BigNumber.from(i * 10)
+            vaultBalance: ethers.BigNumber.from(i * 10),
         }));
         assert.deepEqual(result, expected);
     });

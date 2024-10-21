@@ -1,25 +1,19 @@
-const ethers = require("ethers");
-const { Router } = require("sushi/router");
-const { errorSnapshot } = require("../error");
-const { getBountyEnsureBytecode } = require("../config");
-const { visualizeRoute, RPoolFilter, clone, estimateProfit, withBigintSerializer } = require("../utils");
-
-/**
- * @import { PublicClient } from "viem"
- * @import { DataFetcher } from "sushi"
- * @import { Token } from "sushi/currency"
- * @import { BotConfig, BundledOrders, ViemClient, DryrunResult } from "../types"
- */
+import { PublicClient } from "viem";
+import { Token } from "sushi/currency";
+import { errorSnapshot } from "../error";
+import { getBountyEnsureBytecode } from "../config";
+import { ChainId, DataFetcher, Router } from "sushi";
+import { BigNumber, Contract, ethers } from "ethers";
+import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
+import { estimateProfit, RPoolFilter, visualizeRoute, withBigintSerializer } from "../utils";
 
 /**
  * Specifies the reason that dryrun failed
- * @readonly
- * @enum {number}
  */
-const RouteProcessorDryrunHaltReason = {
-    NoOpportunity: 1,
-    NoRoute: 2,
-};
+export enum RouteProcessorDryrunHaltReason {
+    NoOpportunity = 1,
+    NoRoute = 2,
+}
 
 /**
  * Route Processor versions
@@ -29,26 +23,12 @@ const getRouteProcessorParamsVersion = {
     "3.1": Router.routeProcessor3_1Params,
     "3.2": Router.routeProcessor3_2Params,
     "4": Router.routeProcessor4Params,
-};
+} as const;
 
 /**
  * Executes a extimateGas call for an arb() tx, to determine if the tx is successfull ot not
- * @param {{
- *  mode: number,
- *  config: BotConfig,
- *  orderPairObject: BundledOrders,
- *  viemClient: PublicClient,
- *  dataFetcher: DataFetcher,
- *  signer: ViemClient,
- *  arb: ethers.Contract,
- *  gasPrice: bigint,
- *  ethPrice: string,
- *  toToken: Token,
- *  fromToken: Token,
- *  maximumInput: ethers.BigNumber
- * }} args
  */
-async function dryrun({
+export async function dryrun({
     mode,
     orderPairObject,
     dataFetcher,
@@ -61,59 +41,68 @@ async function dryrun({
     ethPrice,
     config,
     viemClient,
+}: {
+    mode: number;
+    config: BotConfig;
+    orderPairObject: BundledOrders;
+    viemClient: PublicClient;
+    dataFetcher: DataFetcher;
+    signer: ViemClient;
+    arb: Contract;
+    gasPrice: bigint;
+    ethPrice: string;
+    toToken: Token;
+    fromToken: Token;
+    maximumInput: BigNumber;
 }) {
-    const spanAttributes = {};
-    const result = {
+    const spanAttributes: SpanAttrs = {};
+    const result: DryrunResult = {
         value: undefined,
         reason: undefined,
         spanAttributes,
     };
 
     const maximumInput = maximumInputFixed.div(
-        "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals)
+        "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals),
     );
     spanAttributes["amountIn"] = ethers.utils.formatUnits(maximumInputFixed);
 
     // get route details from sushi dataFetcher
-    const pcMap = dataFetcher.getCurrentPoolCodeMap(
-        fromToken,
-        toToken
-    );
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
-        config.chain.id,
+        config.chain.id as ChainId,
         fromToken,
         maximumInput.toBigInt(),
         toToken,
         Number(gasPrice),
         undefined,
-        RPoolFilter
+        RPoolFilter,
     );
     if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
-    }
-    else {
+    } else {
         spanAttributes["amountOut"] = ethers.utils.formatUnits(route.amountOutBI, toToken.decimals);
         const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
-            "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals)
+            "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals),
         );
         const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
         spanAttributes["marketPrice"] = ethers.utils.formatEther(price);
 
-        const routeVisual = [];
+        const routeVisual: string[] = [];
         try {
-            visualizeRoute(fromToken, toToken, route.legs).forEach(
-                v => {routeVisual.push(v);}
-            );
+            visualizeRoute(fromToken, toToken, route.legs).forEach((v) => {
+                routeVisual.push(v);
+            });
         } catch {
             /**/
         }
         spanAttributes["route"] = routeVisual;
 
         // exit early if market price is lower than order quote ratio
-        if (price.lt(orderPairObject.takeOrders[0].quote.ratio)) {
+        if (price.lt(orderPairObject.takeOrders[0].quote!.ratio)) {
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             spanAttributes["error"] = "Order's ratio greater than market price";
             return Promise.reject(result);
@@ -124,34 +113,32 @@ async function dryrun({
             route,
             fromToken,
             toToken,
-            arb.address,
+            arb.address as `0x${string}`,
             config.routeProcessors["4"],
         );
 
-        const orders = mode === 0
-            ? orderPairObject.takeOrders.map(v => v.takeOrder)
-            : mode === 1
-                ? [orderPairObject.takeOrders[0].takeOrder]
-                : mode === 2
+        const orders =
+            mode === 0
+                ? orderPairObject.takeOrders.map((v) => v.takeOrder)
+                : mode === 1
+                  ? [orderPairObject.takeOrders[0].takeOrder]
+                  : mode === 2
                     ? [
-                        orderPairObject.takeOrders[0].takeOrder,
-                        orderPairObject.takeOrders[0].takeOrder
-                    ]
+                          orderPairObject.takeOrders[0].takeOrder,
+                          orderPairObject.takeOrders[0].takeOrder,
+                      ]
                     : [
-                        orderPairObject.takeOrders[0].takeOrder,
-                        orderPairObject.takeOrders[0].takeOrder,
-                        orderPairObject.takeOrders[0].takeOrder
-                    ];
+                          orderPairObject.takeOrders[0].takeOrder,
+                          orderPairObject.takeOrders[0].takeOrder,
+                          orderPairObject.takeOrders[0].takeOrder,
+                      ];
 
         const takeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
             maximumInput,
             maximumIORatio: config.maxRatio ? ethers.constants.MaxUint256 : price,
             orders,
-            data: ethers.utils.defaultAbiCoder.encode(
-                ["bytes"],
-                [rpParams.routeCode]
-            )
+            data: ethers.utils.defaultAbiCoder.encode(["bytes"], [rpParams.routeCode]),
         };
 
         const task = {
@@ -160,19 +147,16 @@ async function dryrun({
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
                 bytecode: "0x",
             },
-            signedContext: []
+            signedContext: [],
         };
-        const rawtx = {
-            data: arb.interface.encodeFunctionData(
-                "arb3",
-                [
-                    orderPairObject.orderbook,
-                    takeOrdersConfigStruct,
-                    task
-                ]
-            ),
+        const rawtx: any = {
+            data: arb.interface.encodeFunctionData("arb3", [
+                orderPairObject.orderbook,
+                takeOrdersConfigStruct,
+                task,
+            ]),
             to: arb.address,
-            gasPrice
+            gasPrice,
         };
 
         // trying to find opp with doing gas estimation, once to get gas and calculate
@@ -182,14 +166,16 @@ async function dryrun({
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
-        }
-        catch(e) {
+        } catch (e) {
             // reason, code, method, transaction, error, stack, message
             spanAttributes["error"] = errorSnapshot("", e);
-            spanAttributes["rawtx"] = JSON.stringify({
-                ...rawtx,
-                from: signer.account.address,
-            }, withBigintSerializer);
+            spanAttributes["rawtx"] = JSON.stringify(
+                {
+                    ...rawtx,
+                    from: signer.account.address,
+                },
+                withBigintSerializer,
+            );
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             return Promise.reject(result);
         }
@@ -199,22 +185,17 @@ async function dryrun({
         // coverage is not 0, 0 gas coverage means 0 minimum
         // sender output which is already called above
         if (config.gasCoveragePercentage !== "0") {
-            const headroom = (
-                Number(config.gasCoveragePercentage) * 1.03
-            ).toFixed();
+            const headroom = (Number(config.gasCoveragePercentage) * 1.03).toFixed();
             task.evaluable.bytecode = getBountyEnsureBytecode(
                 ethers.utils.parseUnits(ethPrice),
                 ethers.constants.Zero,
-                gasCost.mul(headroom).div("100")
+                gasCost.mul(headroom).div("100"),
             );
-            rawtx.data = arb.interface.encodeFunctionData(
-                "arb3",
-                [
-                    orderPairObject.orderbook,
-                    takeOrdersConfigStruct,
-                    task,
-                ]
-            );
+            rawtx.data = arb.interface.encodeFunctionData("arb3", [
+                orderPairObject.orderbook,
+                takeOrdersConfigStruct,
+                task,
+            ]);
 
             try {
                 blockNumber = Number(await viemClient.getBlockNumber());
@@ -227,21 +208,20 @@ async function dryrun({
                     ethers.constants.Zero,
                     gasCost.mul(config.gasCoveragePercentage).div("100"),
                 );
-                rawtx.data = arb.interface.encodeFunctionData(
-                    "arb3",
-                    [
-                        orderPairObject.orderbook,
-                        takeOrdersConfigStruct,
-                        task,
-                    ]
-                );
-            }
-            catch(e) {
+                rawtx.data = arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    takeOrdersConfigStruct,
+                    task,
+                ]);
+            } catch (e) {
                 spanAttributes["error"] = errorSnapshot("", e);
-                spanAttributes["rawtx"] = JSON.stringify({
-                    ...rawtx,
-                    from: signer.account.address,
-                }, withBigintSerializer);
+                spanAttributes["rawtx"] = JSON.stringify(
+                    {
+                        ...rawtx,
+                        from: signer.account.address,
+                    },
+                    withBigintSerializer,
+                );
                 result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
                 return Promise.reject(result);
             }
@@ -265,8 +245,8 @@ async function dryrun({
                 undefined,
                 undefined,
                 price,
-                maximumInputFixed
-            )
+                maximumInputFixed,
+            )!,
         };
         return result;
     }
@@ -276,22 +256,8 @@ async function dryrun({
  * Tries to find an opp by doing a binary search for the maxInput of an arb tx
  * it calls dryrun() on each iteration and based on the outcome, +/- the maxInput
  * until the binary search is over and returns teh final result
- * @param {{
- *  mode: number,
- *  config: BotConfig,
- *  orderPairObject: BundledOrders,
- *  viemClient: PublicClient,
- *  dataFetcher: DataFetcher,
- *  signer: ViemClient,
- *  arb: ethers.Contract,
- *  gasPrice: bigint,
- *  ethPrice: string,
- *  toToken: Token,
- *  fromToken: Token
- * }} args
- * @returns {Promise<DryrunResult>}
  */
-async function findOpp({
+export async function findOpp({
     mode,
     orderPairObject,
     dataFetcher,
@@ -303,9 +269,21 @@ async function findOpp({
     ethPrice,
     config,
     viemClient,
-}) {
-    const spanAttributes = {};
-    const result = {
+}: {
+    mode: number;
+    config: BotConfig;
+    orderPairObject: BundledOrders;
+    viemClient: PublicClient;
+    dataFetcher: DataFetcher;
+    signer: ViemClient;
+    arb: Contract;
+    gasPrice: bigint;
+    ethPrice: string;
+    toToken: Token;
+    fromToken: Token;
+}): Promise<DryrunResult> {
+    const spanAttributes: SpanAttrs = {};
+    const result: DryrunResult = {
         value: undefined,
         reason: undefined,
         spanAttributes,
@@ -313,13 +291,13 @@ async function findOpp({
 
     let noRoute = true;
     const initAmount = orderPairObject.takeOrders.reduce(
-        (a, b) => a.add(b.quote.maxOutput),
-        ethers.constants.Zero
+        (a, b) => a.add(b.quote!.maxOutput),
+        ethers.constants.Zero,
     );
-    let maximumInput = clone(initAmount);
+    let maximumInput = BigNumber.from(initAmount.toString());
 
-    const allSuccessHops = [];
-    const allHopsAttributes = [];
+    const allSuccessHops: DryrunResult[] = [];
+    const allHopsAttributes: string[] = [];
     for (let i = 1; i < config.hops + 1; i++) {
         try {
             const dryrunResult = await dryrun({
@@ -346,7 +324,7 @@ async function findOpp({
             }
             // set the maxInput for next hop by increasing
             maximumInput = maximumInput.add(initAmount.div(2 ** i));
-        } catch(e) {
+        } catch (e: any) {
             // the fail reason can only be no route in case all hops fail reasons are no route
             if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
 
@@ -366,8 +344,7 @@ async function findOpp({
 
     if (allSuccessHops.length) {
         return allSuccessHops[allSuccessHops.length - 1];
-    }
-    else {
+    } else {
         // in case of no successfull hop, allHopsAttributes will be included
         spanAttributes["hops"] = allHopsAttributes;
 
@@ -380,21 +357,8 @@ async function findOpp({
 
 /**
  * Tries to find opportunity for a signle order with retries and returns the best one if found any
- * @param {{
- *  config: BotConfig,
- *  orderPairObject: BundledOrders,
- *  viemClient: PublicClient,
- *  dataFetcher: DataFetcher,
- *  signer: ViemClient,
- *  arb: ethers.Contract,
- *  gasPrice: bigint,
- *  ethPrice: string,
- *  toToken: Token,
- *  fromToken: Token
- * }} args
- * @returns {Promise<DryrunResult>}
  */
-async function findOppWithRetries({
+export async function findOppWithRetries({
     orderPairObject,
     dataFetcher,
     fromToken,
@@ -405,15 +369,26 @@ async function findOppWithRetries({
     ethPrice,
     config,
     viemClient,
-}) {
-    const spanAttributes = {};
-    const result = {
+}: {
+    config: BotConfig;
+    orderPairObject: BundledOrders;
+    viemClient: PublicClient;
+    dataFetcher: DataFetcher;
+    signer: ViemClient;
+    arb: Contract;
+    gasPrice: bigint;
+    ethPrice: string;
+    toToken: Token;
+    fromToken: Token;
+}): Promise<DryrunResult> {
+    const spanAttributes: SpanAttrs = {};
+    const result: DryrunResult = {
         value: undefined,
         reason: undefined,
         spanAttributes,
     };
 
-    const promises = [];
+    const promises: Promise<DryrunResult>[] = [];
     for (let i = 1; i < config.retries + 1; i++) {
         promises.push(
             findOpp({
@@ -428,25 +403,23 @@ async function findOppWithRetries({
                 ethPrice,
                 config,
                 viemClient,
-            })
+            }),
         );
     }
     const allPromises = await Promise.allSettled(promises);
-    if (allPromises.some(v => v.status === "fulfilled")) {
+    if (allPromises.some((v) => v.status === "fulfilled")) {
         let choice;
         for (let i = 0; i < allPromises.length; i++) {
             // from retries, choose the one that can clear the most
             // ie its maxInput is the greatest
-            if (allPromises[i].status === "fulfilled") {
-                if (
-                    !choice ||
-                    choice.maximumInput.lt(allPromises[i].value.value.maximumInput)
-                ) {
+            const prom = allPromises[i];
+            if (prom.status === "fulfilled") {
+                if (!choice || choice.maximumInput!.lt(prom.value.value!.maximumInput!)) {
                     // record the attributes of the choosing one
-                    for (attrKey in allPromises[i].value.spanAttributes) {
-                        spanAttributes[attrKey] = allPromises[i].value.spanAttributes[attrKey];
+                    for (const attrKey in prom.value.spanAttributes) {
+                        spanAttributes[attrKey] = prom.value.spanAttributes[attrKey];
                     }
-                    choice = allPromises[i].value.value;
+                    choice = prom.value.value;
                 }
             }
         }
@@ -454,24 +427,17 @@ async function findOppWithRetries({
         return result;
     } else {
         for (let i = 0; i < allPromises.length; i++) {
-            if (allPromises[i].reason.reason === RouteProcessorDryrunHaltReason.NoRoute) {
+            if ((allPromises[i] as any).reason.reason === RouteProcessorDryrunHaltReason.NoRoute) {
                 spanAttributes["route"] = "no-way";
                 result.reason = RouteProcessorDryrunHaltReason.NoRoute;
                 throw result;
             }
         }
         // record all retries span attributes in case neither of above errors were present
-        for (attrKey in allPromises[0].reason.spanAttributes) {
-            spanAttributes[attrKey] = allPromises[0].reason.spanAttributes[attrKey];
+        for (const attrKey in (allPromises[0] as any).reason.spanAttributes) {
+            spanAttributes[attrKey] = (allPromises[0] as any).reason.spanAttributes[attrKey];
         }
         result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
         throw result;
     }
 }
-
-module.exports = {
-    dryrun,
-    findOpp,
-    findOppWithRetries,
-    RouteProcessorDryrunHaltReason,
-};

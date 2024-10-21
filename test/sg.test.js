@@ -4,10 +4,7 @@ const { checkSgStatus, handleSgResults, getSgOrderbooks } = require("../src/sg")
 
 describe("Test read subgraph", async function () {
     it("should check subgraph status", async function () {
-        sgsUrls = [
-            "url1",
-            "url2"
-        ];
+        const sgsUrls = ["url1", "url2"];
         const error1 = new Error("some error");
         const error2 = new Error("some other error");
         const code1 = "some code";
@@ -24,11 +21,11 @@ describe("Test read subgraph", async function () {
                         data: {
                             _meta: {
                                 hasIndexingErrors: false,
-                                block: { number: 123 }
-                            }
-                        }
-                    }
-                }
+                                block: { number: 123 },
+                            },
+                        },
+                    },
+                },
             },
             {
                 status: "fulfilled",
@@ -38,12 +35,12 @@ describe("Test read subgraph", async function () {
                         data: {
                             _meta: {
                                 hasIndexingErrors: false,
-                                block: { number: 122 }
-                            }
-                        }
-                    }
-                }
-            }
+                                block: { number: 122 },
+                            },
+                        },
+                    },
+                },
+            },
         ];
         let result;
         try {
@@ -58,18 +55,18 @@ describe("Test read subgraph", async function () {
             {
                 status: "rejected",
                 reason: axiosError1,
-                value: undefined
+                value: undefined,
             },
             {
                 status: "rejected",
                 reason: axiosError2,
-                value: undefined
-            }
+                value: undefined,
+            },
         ];
         try {
             checkSgStatus(sgsUrls, mockSgStatusRejected);
             throw "expected to reject, but resolved";
-        } catch(error) {
+        } catch (error) {
             const errorMsg = [
                 "subgraphs status check failed",
                 `${sgsUrls[0]}:`,
@@ -86,18 +83,18 @@ describe("Test read subgraph", async function () {
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: undefined
+                value: undefined,
             },
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: undefined
-            }
+                value: undefined,
+            },
         ];
         try {
             checkSgStatus(sgsUrls, mockSgStatusUndefined);
             throw "expected to reject, but resolved";
-        } catch(error) {
+        } catch (error) {
             const errorMsg = [
                 "subgraphs status check failed",
                 `${sgsUrls[0]}:`,
@@ -117,26 +114,25 @@ describe("Test read subgraph", async function () {
                         data: {
                             _meta: {
                                 hasIndexingErrors: false,
-                                block: { number: 123 }
-                            }
-                        }
-                    }
-                }
+                                block: { number: 123 },
+                            },
+                        },
+                    },
+                },
             },
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: undefined
-            }
+                value: undefined,
+            },
         ];
         try {
             result = checkSgStatus(sgsUrls, mockSgStatusUndefinedPartial);
-        } catch(error) {
+        } catch (error) {
             throw "expected to resolve, but rejected";
         }
-        assert.deepEqual(result.reasons, { "url2": "did not receive valid status response" });
+        assert.deepEqual(result.reasons, { url2: "did not receive valid status response" });
         assert.deepEqual(result.availableSgs, ["url1"]);
-
 
         const mockSgStatusIndexingError = [
             {
@@ -147,11 +143,11 @@ describe("Test read subgraph", async function () {
                         data: {
                             _meta: {
                                 hasIndexingErrors: true,
-                                block: { number: 123 }
-                            }
-                        }
-                    }
-                }
+                                block: { number: 123 },
+                            },
+                        },
+                    },
+                },
             },
             {
                 status: "fulfilled",
@@ -161,27 +157,24 @@ describe("Test read subgraph", async function () {
                         data: {
                             _meta: {
                                 hasIndexingErrors: false,
-                                block: { number: 123 }
-                            }
-                        }
-                    }
-                }
-            }
+                                block: { number: 123 },
+                            },
+                        },
+                    },
+                },
+            },
         ];
         try {
             result = checkSgStatus(sgsUrls, mockSgStatusIndexingError);
-        } catch(error) {
+        } catch (error) {
             throw "expected to resolve, but rejected";
         }
-        assert.deepEqual(result.reasons, { "url1": "subgraph has indexing error" });
+        assert.deepEqual(result.reasons, { url1: "subgraph has indexing error" });
         assert.deepEqual(result.availableSgs, ["url2"]);
     });
 
     it("should return correct orders details", async function () {
-        sgsUrls = [
-            "url1",
-            "url2"
-        ];
+        const sgsUrls = ["url1", "url2"];
         const mockSgResultOk = [
             {
                 status: "fulfilled",
@@ -189,13 +182,10 @@ describe("Test read subgraph", async function () {
                 value: {
                     data: {
                         data: {
-                            orders: [
-                                "order1",
-                                "order2"
-                            ]
-                        }
-                    }
-                }
+                            orders: ["order1", "order2"],
+                        },
+                    },
+                },
             },
             {
                 status: "fulfilled",
@@ -203,14 +193,11 @@ describe("Test read subgraph", async function () {
                 value: {
                     data: {
                         data: {
-                            orders: [
-                                "order3",
-                                "order4"
-                            ]
-                        }
-                    }
-                }
-            }
+                            orders: ["order3", "order4"],
+                        },
+                    },
+                },
+            },
         ];
         let result;
         try {
@@ -227,13 +214,10 @@ describe("Test read subgraph", async function () {
                 value: {
                     data: {
                         data: {
-                            orders: [
-                                "order1",
-                                "order2"
-                            ]
-                        }
-                    }
-                }
+                            orders: ["order1", "order2"],
+                        },
+                    },
+                },
             },
             {
                 status: "rejected",
@@ -241,19 +225,16 @@ describe("Test read subgraph", async function () {
                 value: {
                     data: {
                         data: {
-                            orders: [
-                                "order3",
-                                "order4"
-                            ]
-                        }
-                    }
-                }
-            }
+                            orders: ["order3", "order4"],
+                        },
+                    },
+                },
+            },
         ];
         try {
             handleSgResults(sgsUrls, mockSgResultRejected);
             throw "expected to reject, but resolved";
-        } catch(error) {
+        } catch (error) {
             assert.equal(error, "could not get order details from given sgs");
         }
 
@@ -264,19 +245,16 @@ describe("Test read subgraph", async function () {
                 value: {
                     data: {
                         data: {
-                            orders: [
-                                "order1",
-                                "order2"
-                            ]
-                        }
-                    }
-                }
+                            orders: ["order1", "order2"],
+                        },
+                    },
+                },
             },
             {
                 status: "rejected",
                 reason: undefined,
-                value: undefined
-            }
+                value: undefined,
+            },
         ];
         try {
             result = handleSgResults(sgsUrls, mockSgResultPartial);
@@ -293,11 +271,8 @@ describe("Test read subgraph", async function () {
         const orderbook2 = `0x${"2".repeat(40)}`;
         const sgResponse = {
             data: {
-                orderbooks: [
-                    { id: orderbook1 },
-                    { id: orderbook2 }
-                ]
-            }
+                orderbooks: [{ id: orderbook1 }, { id: orderbook2 }],
+            },
         };
         await mockServer.forPost("/sg").thenJson(200, sgResponse);
         const result = await getSgOrderbooks(mockServer.url + "/sg");

@@ -1,18 +1,25 @@
-const axios = require("axios");
-const { ErrorSeverity } = require("./error");
-const { orderbooksQuery } = require("./query");
+import axios from "axios";
+import { ErrorSeverity } from "./error";
+import { Span } from "@opentelemetry/api";
+import { orderbooksQuery } from "./query";
 
 /**
  * Checks a subgraph health status and records the result in an object or throws
  * error if all given subgraphs are unhealthy
  */
-function checkSgStatus(validSgs, statusResult, span, hasjson) {
-    const availableSgs = [];
-    const reasons = {};
+export function checkSgStatus(
+    validSgs: string[],
+    statusResult: PromiseSettledResult<any>[],
+    span?: Span,
+    hasjson = false,
+): { availableSgs: string[]; reasons: Record<string, string> } {
+    const availableSgs: string[] = [];
+    const reasons: Record<string, any> = {};
     let highSeverity = false;
     for (let i = 0; i < statusResult.length; i++) {
-        if (statusResult[i].status === "fulfilled") {
-            const sgStatus = statusResult[i]?.value?.data?.data?._meta;
+        const res = statusResult[i];
+        if (res.status === "fulfilled") {
+            const sgStatus = res?.value?.data?.data?._meta;
             if (sgStatus) {
                 if (sgStatus.hasIndexingErrors) {
                     highSeverity = true;
@@ -22,7 +29,7 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
                 reasons[validSgs[i]] = "did not receive valid status response";
             }
         } else {
-            reasons[validSgs[i]] = statusResult[i].reason;
+            reasons[validSgs[i]] = res.reason;
         }
     }
     if (Object.keys(reasons).length) {
@@ -75,42 +82,44 @@ function checkSgStatus(validSgs, statusResult, span, hasjson) {
  * error else, it will record errors in span attributes and returns the resolved
  * order details.
  */
-function handleSgResults(availableSgs, responses, span, hasjson) {
-    const reasons = {};
-    const ordersDetails = [];
+export function handleSgResults(
+    availableSgs: string[],
+    responses: PromiseSettledResult<any>[],
+    span?: Span,
+    hasjson = false,
+): any[] {
+    const reasons: Record<string, any> = {};
+    const ordersDetails: any[] = [];
     for (let i = 0; i < responses.length; i++) {
-        if (responses[i].status === "fulfilled" && responses[i]?.value?.data?.data?.orders) {
-            ordersDetails.push(
-                ...responses[i].value.data.data.orders
-            );
-        }
-        else if (responses[i].status === "rejected") {
-            reasons[availableSgs[i]] = responses[i].reason;
+        const res = responses[i];
+        if (res.status === "fulfilled" && res?.value?.data?.data?.orders) {
+            ordersDetails.push(...res.value.data.data.orders);
+        } else if (res.status === "rejected") {
+            reasons[availableSgs[i]] = res.reason;
         }
     }
     if (Object.keys(reasons).length) {
         span?.setAttribute("severity", ErrorSeverity.LOW);
         span?.setAttribute("details.sgSourcesErrors", JSON.stringify(reasons));
     }
-    if (!hasjson && Object.keys(reasons).length === responses.length) throw "could not get order details from given sgs";
+    if (!hasjson && Object.keys(reasons).length === responses.length)
+        throw "could not get order details from given sgs";
     return ordersDetails;
 }
 
 /**
  * Returns the orderbook addresses the given subgraph indexes
- * @param {string} url - Subgraph URL
  */
-async function getSgOrderbooks(url) {
+export async function getSgOrderbooks(url: string): Promise<string[]> {
     try {
         const result = await axios.post(
             url,
             { query: orderbooksQuery },
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { "Content-Type": "application/json" } },
         );
         if (result?.data?.data?.orderbooks) {
-            return result.data.data.orderbooks.map(v => v.id);
-        }
-        else  {
+            return result.data.data.orderbooks.map((v: any) => v.id);
+        } else {
             return Promise.reject("Failed to get orderbook addresses");
         }
     } catch (error) {
@@ -119,19 +128,13 @@ async function getSgOrderbooks(url) {
             msg.push("Reason: " + error);
         } else {
             // AxsioError
-            if (error.message) {
-                msg.push("Reason: " + error.message);
+            if ((error as any).message) {
+                msg.push("Reason: " + (error as any).message);
             }
-            if (error.code) {
-                msg.push("Code: " + error.code);
+            if ((error as any).code) {
+                msg.push("Code: " + (error as any).code);
             }
         }
         throw msg.join("\n");
     }
 }
-
-module.exports = {
-    checkSgStatus,
-    handleSgResults,
-    getSgOrderbooks,
-};
