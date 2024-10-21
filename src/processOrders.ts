@@ -106,6 +106,17 @@ export const processOrders = async (
                         );
                     }
                     if (failedFundings.length) {
+                        failedFundings.forEach((v) => {
+                            let msg = v.error;
+                            if (v.ownedOrder) {
+                                const vaultId =
+                                    (v.ownedOrder.vaultId as any) instanceof BigNumber
+                                        ? (v.ownedOrder.vaultId as any as BigNumber).toHexString()
+                                        : v.ownedOrder.vaultId;
+                                msg = `\ntoken: ${v.ownedOrder.symbol},\nvaultId: ${vaultId}\n`;
+                            }
+                            message.push(msg);
+                        });
                         span.setAttribute(
                             "failedFundings",
                             failedFundings.map((v) =>
