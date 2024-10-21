@@ -25,6 +25,7 @@ export async function getOrderDetails(
     sgs: string[],
     sgFilters?: SgFilter,
     span?: Span,
+    timeout?: number,
 ): Promise<any[]> {
     const hasjson = false;
     const ordersDetails: any[] = [];
@@ -43,7 +44,7 @@ export async function getOrderDetails(
                         axios.post(
                             v,
                             { query: statusCheckQuery },
-                            { headers: { "Content-Type": "application/json" } },
+                            { headers: { "Content-Type": "application/json" }, timeout },
                         ),
                     );
                     validSgs.push(v);
@@ -64,7 +65,7 @@ export async function getOrderDetails(
                                     sgFilters?.orderbook,
                                 ),
                             },
-                            { headers: { "Content-Type": "application/json" } },
+                            { headers: { "Content-Type": "application/json" }, timeout },
                         ),
                     );
             });
@@ -89,6 +90,8 @@ export async function getConfig(
     walletKey: string,
     arbAddress: string,
     options: CliOptions,
+    tracer?: Tracer,
+    ctx?: Context,
 ): Promise<BotConfig> {
     const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
@@ -96,15 +99,16 @@ export async function getConfig(
         throw "invalid generic arb contract address";
     }
 
+    let timeout = 30_000;
     if (options.timeout !== undefined) {
         if (typeof options.timeout === "number") {
             if (!Number.isInteger(options.timeout) || options.timeout == 0)
                 throw "invalid timeout, must be an integer greater than 0";
-            else options.timeout = options.timeout * 1000;
+            else timeout = options.timeout * 1000;
         } else if (typeof options.timeout === "string") {
-            if (/^\d+$/.test(options.timeout)) options.timeout = Number(options.timeout) * 1000;
+            if (/^\d+$/.test(options.timeout)) timeout = Number(options.timeout) * 1000;
             else throw "invalid timeout, must be an integer greater than 0";
-            if (options.timeout == 0) throw "invalid timeout, must be an integer greater than 0";
+            if (timeout == 0) throw "invalid timeout, must be an integer greater than 0";
         } else throw "invalid timeout, must be an integer greater than 0";
     }
 
@@ -138,9 +142,7 @@ export async function getConfig(
                 throw "invalid retries value, must be an integer between 1 - 3";
         } else throw "invalid retries value, must be an integer between 1 - 3";
     }
-
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrls[0]);
-    const chainId = (await provider.getNetwork()).chainId as ChainId;
+    const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
@@ -153,7 +155,7 @@ export async function getConfig(
     config.rpc = rpcUrls;
     config.arbAddress = arbAddress;
     config.genericArbAddress = options.genericArbAddress;
-    config.timeout = options.timeout;
+    config.timeout = timeout;
     config.flashbotRpc = options.flashbotRpc;
     config.maxRatio = !!options.maxRatio;
     config.hops = hops;
@@ -166,7 +168,7 @@ export async function getConfig(
     config.selfFundOrders = options.selfFundOrders;
 
     // init accounts
-    const { mainAccount, accounts } = await initAccounts(walletKey, config, options);
+    const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
     config.mainAccount = mainAccount;
     config.accounts = accounts;
 
@@ -193,4 +195,16 @@ export async function clear(
 
     if (majorVersion >= 18) return await processOrders(config, ordersDetails, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
+}
+
+async function getChainId(rpcs: string[]): Promise<number> {
+    for (let i = 0; i < rpcs.length; i++) {
+        try {
+            const provider = new ethers.providers.JsonRpcProvider(rpcs[i]);
+            return (await provider.getNetwork()).chainId;
+        } catch (error) {
+            if (i === rpcs.length - 1) throw error;
+        }
+    }
+    throw "Failed to get chain id";
 }
