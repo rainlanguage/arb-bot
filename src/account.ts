@@ -679,7 +679,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
         .div(100);
     for (let i = 0; i < config.mainAccount.BOUNTY.length; i++) {
         const bounty = config.mainAccount.BOUNTY[i];
-        const span = tracer?.startSpan("sweep-to-eth", undefined, ctx);
+        const span = tracer?.startSpan("sweep-to-gas", undefined, ctx);
         span?.setAttribute("details.token", bounty.symbol);
         span?.setAttribute("details.tokenAddress", bounty.address);
         try {
@@ -800,7 +800,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             if (gasCost.mul(25).gte(amountOutMin)) {
                 span?.setStatus({
                     code: SpanStatusCode.OK,
-                    message: "Skipped, balance not large enough to justify sweeping",
+                    message: "Skipped, balance not large enough to justify sweeping to gas token",
                 });
                 skipped.push(bounty);
                 span?.end();
@@ -816,14 +816,14 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 if (receipt.status === "success") {
                     span?.setStatus({
                         code: SpanStatusCode.OK,
-                        message: "Successfully swept to eth",
+                        message: "Successfully swept to gas token",
                     });
                 } else {
                     skipped.push(bounty);
                     span?.setAttribute("severity", ErrorSeverity.LOW);
                     span?.setStatus({
                         code: SpanStatusCode.ERROR,
-                        message: `Failed to sweep ${bounty.symbol} to eth: tx reverted`,
+                        message: `Failed to sweep ${bounty.symbol} to gas token: tx reverted`,
                     });
                 }
             }
@@ -832,7 +832,8 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             span?.setAttribute("severity", ErrorSeverity.LOW);
             span?.setStatus({
                 code: SpanStatusCode.ERROR,
-                message: `Failed to sweep ${bounty.symbol} to eth: ` + errorSnapshot("", e),
+                message:
+                    `Failed to sweep ${bounty.symbol} to to gas token: ` + errorSnapshot("", e),
             });
         }
         span?.end();
