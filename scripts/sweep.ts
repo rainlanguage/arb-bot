@@ -290,15 +290,6 @@ export async function sweepToGas(
                         ")";
             });
             console.log("Route portions: ", routeText, "\n");
-            const amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin).mul(98).div(100);
-            const data = rp.encodeFunctionData("processRoute", [
-                rpParams.tokenIn,
-                rpParams.amountIn,
-                rpParams.tokenOut,
-                amountOutMin,
-                rpParams.to,
-                rpParams.routeCode,
-            ]) as `0x${string}`;
             const allowance = (
                 await mainAccount.call({
                     to: bounty.address as `0x${string}`,
@@ -323,9 +314,29 @@ export async function sweepToGas(
                     timeout: 100_000,
                 });
             }
-            const rawtx = { to: rp4Address, data };
             console.log("rp4 ", rp4Address);
-            const gas = await mainAccount.estimateGas(rawtx);
+            const rawtx = { to: rp4Address, data: "0x" as `0x${string}` };
+            let gas = 0n;
+            let amountOutMin = ethers.constants.Zero;
+            for (let j = 20; j > 0; j--) {
+                amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin)
+                    .mul(5 * j)
+                    .div(100);
+                rawtx.data = rp.encodeFunctionData("processRoute", [
+                    rpParams.tokenIn,
+                    rpParams.amountIn,
+                    rpParams.tokenOut,
+                    amountOutMin,
+                    rpParams.to,
+                    rpParams.routeCode,
+                ]) as `0x${string}`;
+                try {
+                    gas = await mainAccount.estimateGas(rawtx);
+                    break;
+                } catch (error) {
+                    if (j === 1) throw error;
+                }
+            }
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
             console.log("gas cost: ", ethers.utils.formatUnits(gasCost));
             if (gasCost.mul(10).gte(amountOutMin)) {
