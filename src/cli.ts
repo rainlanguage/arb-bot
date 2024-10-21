@@ -509,7 +509,6 @@ export const main = async (argv: any, version?: string) => {
                                 "severity",
                                 config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
                             );
-                            walletSpan.end();
                         }
                     } catch (error) {
                         walletSpan.setStatus({
@@ -518,8 +517,8 @@ export const main = async (argv: any, version?: string) => {
                                 "Failed to check main wallet balance: " + errorSnapshot("", error),
                         });
                         walletSpan.setAttribute("severity", ErrorSeverity.MEDIUM);
-                        walletSpan.end();
                     }
+                    walletSpan.end();
                 },
             );
             // remove pool memoizer cache on each interval
