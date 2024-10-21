@@ -1161,10 +1161,21 @@ export async function checkOwnedOrders(
                     config.mainAccount.account.address.toLowerCase() &&
                 !ownedOrders.find(
                     (e) =>
-                        e.orderbook === v.orderbook &&
-                        e.outputToken === v.sellToken &&
-                        e.order.takeOrder.order.validOutputs[e.order.takeOrder.outputIOIndex] ==
-                            order.takeOrder.order.validOutputs[order.takeOrder.outputIOIndex],
+                        e.orderbook.toLowerCase() === v.orderbook.toLowerCase() &&
+                        e.outputToken.toLowerCase() === v.sellToken.toLowerCase() &&
+                        e.order.takeOrder.order.validOutputs[
+                            e.order.takeOrder.outputIOIndex
+                        ].token.toLowerCase() ==
+                            order.takeOrder.order.validOutputs[
+                                order.takeOrder.outputIOIndex
+                            ].token.toLowerCase() &&
+                        ethers.BigNumber.from(
+                            e.order.takeOrder.order.validOutputs[e.order.takeOrder.outputIOIndex]
+                                .vaultId,
+                        ).eq(
+                            order.takeOrder.order.validOutputs[order.takeOrder.outputIOIndex]
+                                .vaultId,
+                        ),
                 )
             ) {
                 ownedOrders.push({
@@ -1201,12 +1212,14 @@ export async function checkOwnedOrders(
             })),
         });
         for (let i = 0; i < multicallResult.length; i++) {
+            let vaultId =
+                ownedOrders[i].order.takeOrder.order.validOutputs[
+                    ownedOrders[i].order.takeOrder.outputIOIndex
+                ].vaultId;
+            if (vaultId instanceof BigNumber) vaultId = vaultId.toHexString();
             result.push({
+                vaultId,
                 id: ownedOrders[i].order.id,
-                vaultId:
-                    ownedOrders[i].order.takeOrder.order.validOutputs[
-                        ownedOrders[i].order.takeOrder.outputIOIndex
-                    ].vaultId,
                 token: ownedOrders[i].outputToken,
                 symbol: ownedOrders[i].outputSymbol,
                 decimals: ownedOrders[i].outputDecimals,
