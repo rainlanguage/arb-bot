@@ -478,32 +478,44 @@ export const main = async (argv: any, version?: string) => {
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
-            const botGasBalance = ethers.BigNumber.from(
-                await config.viemClient.getBalance({
-                    address: config.mainAccount.account.address,
-                }),
-            );
-            config.mainAccount.BALANCE = botGasBalance;
-            if (botMinBalance.gt(botGasBalance)) {
-                const header = `bot ${
-                    config.mainAccount.account.address
-                } is low on gas, expected at least: ${
-                    options.botMinBalance
-                }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
-                const fill = config.accounts.length
-                    ? `that is the main account that funds the multi wallet, there are still ${
-                          config.accounts.length + 1
-                      } wallets in circulation that clear orders, please consider topuping up soon`
-                    : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
-                roundSpan.setStatus({
-                    code: SpanStatusCode.ERROR,
-                    message: header + fill,
-                });
-                roundSpan.setAttribute(
-                    "severity",
-                    config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
-                );
-            }
+            await tracer.startActiveSpan("check-wallet-balance", async (walletSpan) => {
+                try {
+                    const botGasBalance = ethers.BigNumber.from(
+                        await config.viemClient.getBalance({
+                            address: config.mainAccount.account.address,
+                        }),
+                    );
+                    config.mainAccount.BALANCE = botGasBalance;
+                    if (botMinBalance.gt(botGasBalance)) {
+                        const header = `bot ${
+                            config.mainAccount.account.address
+                        } is low on gas, expected at least: ${
+                            options.botMinBalance
+                        }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
+                        const fill = config.accounts.length
+                            ? `that is the main account that funds the multi wallet, there are still ${
+                                  config.accounts.length + 1
+                              } wallets in circulation that clear orders, please consider topuping up soon`
+                            : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
+                        walletSpan.setStatus({
+                            code: SpanStatusCode.ERROR,
+                            message: header + fill,
+                        });
+                        walletSpan.setAttribute(
+                            "severity",
+                            config.accounts.length ? ErrorSeverity.MEDIUM : ErrorSeverity.HIGH,
+                        );
+                        walletSpan.end();
+                    }
+                } catch (error) {
+                    walletSpan.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: "Failed to check main wallet balance: " + errorSnapshot("", error),
+                    });
+                    walletSpan.setAttribute("severity", ErrorSeverity.MEDIUM);
+                    walletSpan.end();
+                }
+            });
             // remove pool memoizer cache on each interval
             let update = false;
             const now = Date.now();
