@@ -4,8 +4,8 @@ import { ethers } from "ethers";
 import { PublicClient } from "viem";
 import { TokenDetails } from "../src/types";
 import { errorSnapshot } from "../src/error";
-import { Native, Token } from "sushi/currency";
 import { setWatchedTokens } from "../src/account";
+import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { erc20Abi, routeProcessor3Abi } from "../src/abis";
 import { createViemClient, getDataFetcher } from "../src/config";
@@ -252,7 +252,7 @@ export async function sweepToGas(
                 address: bounty.address,
                 symbol: bounty.symbol,
             });
-            await dataFetcher.fetchPoolsForToken(token, Native.onChain(chainId), PoolBlackList);
+            await dataFetcher.fetchPoolsForToken(token, WNATIVE[chainId], PoolBlackList);
             const { rpParams, route } = await getRpSwap(
                 chainId,
                 balance,
@@ -295,7 +295,7 @@ export async function sweepToGas(
                 rpParams.tokenIn,
                 rpParams.amountIn,
                 rpParams.tokenOut,
-                rpParams.amountOutMin,
+                amountOutMin,
                 rpParams.to,
                 rpParams.routeCode,
             ]) as `0x${string}`;
@@ -343,11 +343,11 @@ export async function sweepToGas(
                 if (receipt.status === "success") {
                     console.log("Successfully swept to eth");
                 } else {
-                    console.log("Failed to sweet to eth: tx reverted");
+                    console.log(`Failed to sweep ${bounty.symbol} to eth: tx reverted`);
                 }
             }
         } catch (e) {
-            console.log("Failed to sweep to eth: " + errorSnapshot("", e));
+            console.log(`Failed to sweep ${bounty.symbol} to eth: ` + errorSnapshot("", e));
         }
         await sleep(5000);
         console.log("\n---\n");

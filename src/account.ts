@@ -1,7 +1,7 @@
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { parseAbi, PublicClient } from "viem";
-import { Native, Token } from "sushi/currency";
+import { Native, Token, WNATIVE } from "sushi/currency";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { createViemClient, getDataFetcher } from "./config";
@@ -709,7 +709,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             });
             await config.dataFetcher.fetchPoolsForToken(
                 token,
-                Native.onChain(config.chain.id),
+                WNATIVE[config.chain.id as keyof typeof WNATIVE],
                 PoolBlackList,
             );
             const { rpParams, route } = await getRpSwap(
@@ -754,7 +754,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 rpParams.tokenIn,
                 rpParams.amountIn,
                 rpParams.tokenOut,
-                rpParams.amountOutMin,
+                amountOutMin,
                 rpParams.to,
                 rpParams.routeCode,
             ]) as `0x${string}`;
@@ -812,7 +812,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                     span?.setAttribute("severity", ErrorSeverity.LOW);
                     span?.setStatus({
                         code: SpanStatusCode.ERROR,
-                        message: "Failed to sweet to eth: tx reverted",
+                        message: `Failed to sweep ${bounty.symbol} to eth: tx reverted`,
                     });
                 }
             }
@@ -821,7 +821,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             span?.setAttribute("severity", ErrorSeverity.LOW);
             span?.setStatus({
                 code: SpanStatusCode.ERROR,
-                message: "Failed to sweep to eth: " + errorSnapshot("", e),
+                message: `Failed to sweep ${bounty.symbol} to eth: ` + errorSnapshot("", e),
             });
         }
         span?.end();
