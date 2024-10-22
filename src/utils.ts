@@ -1270,3 +1270,14 @@ export function getMarketQuote(
         };
     }
 }
+
+export function memory(msg: string) {
+    // eslint-disable-next-line no-console
+    console.log(msg);
+    for (const [key, value] of Object.entries(process.memoryUsage())) {
+        // eslint-disable-next-line no-console
+        console.log(`Memory usage by ${key}, ${value / 1000000}MB `);
+    }
+    // eslint-disable-next-line no-console
+    console.log("\n---\n");
+}
