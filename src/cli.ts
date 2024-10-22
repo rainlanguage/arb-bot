@@ -496,16 +496,16 @@ export const main = async (argv: any, version?: string) => {
                         );
                         config.mainAccount.BALANCE = botGasBalance;
                         if (botMinBalance.gt(botGasBalance)) {
-                            const header = `bot ${
+                            const header = `bot main wallet ${
                                 config.mainAccount.account.address
                             } is low on gas, expected at least: ${
                                 options.botMinBalance
-                            }, current balance: ${ethers.utils.formatUnits(botGasBalance)}, `;
+                            }, current: ${ethers.utils.formatUnits(botGasBalance)}, `;
                             const fill = config.accounts.length
-                                ? `that is the main account that funds the multi wallet, there are still ${
+                                ? `that wallet is the one that funds the multi wallet, there are still ${
                                       config.accounts.length + 1
-                                  } wallets in circulation that clear orders, please consider topuping up soon`
-                                : "it will still work with remaining gas, but as soon as the gas runs out it wont be able to clear any order";
+                                  } wallets with enough balance in circulation that clear orders, please consider toping up soon`
+                                : "it will still work with remaining gas as far as it can, please topup as soon as possible";
                             walletSpan.setStatus({
                                 code: SpanStatusCode.ERROR,
                                 message: header + fill,
@@ -521,7 +521,7 @@ export const main = async (argv: any, version?: string) => {
                             message:
                                 "Failed to check main wallet balance: " + errorSnapshot("", error),
                         });
-                        walletSpan.setAttribute("severity", ErrorSeverity.MEDIUM);
+                        walletSpan.setAttribute("severity", ErrorSeverity.LOW);
                     }
                     walletSpan.end();
                 },
