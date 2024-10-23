@@ -483,6 +483,7 @@ export const getRouteForTokens = async (
  */
 export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[]): string[] => {
     return [
+        // direct
         ...legs
             .filter(
                 (v) =>
@@ -491,6 +492,7 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
             )
             .map((v) => [v]),
 
+        // indirect
         ...legs
             .filter(
                 (v) =>
@@ -498,23 +500,23 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                     v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase(),
             )
             .map((v) => {
-                const portoins: RouteLeg[] = [v];
+                const portions: RouteLeg[] = [v];
                 while (
-                    portoins.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
+                    portions.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
                 ) {
                     const legPortion = legs.find(
                         (e) =>
                             e.tokenFrom.address.toLowerCase() ===
-                                portoins.at(-1)?.tokenTo.address.toLowerCase() &&
-                            !portoins.includes(e),
+                                portions.at(-1)?.tokenTo.address.toLowerCase() &&
+                            !portions.includes(e),
                     );
                     if (legPortion) {
-                        portoins.push(legPortion);
+                        portions.push(legPortion);
                     } else {
                         break;
                     }
                 }
-                return portoins;
+                return portions;
             }),
     ]
         .sort((a, b) => b[0].absolutePortion - a[0].absolutePortion)
@@ -1047,6 +1049,7 @@ export const getRpSwap = async (
     routeProcessorAddress: string,
     dataFetcher: DataFetcher,
     gasPrice: BigNumber,
+    lps?: LiquidityProviders[],
 ) => {
     const amountIn = sellAmount.toBigInt();
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
@@ -1057,7 +1060,7 @@ export const getRpSwap = async (
         amountIn,
         toToken,
         gasPrice.toNumber(),
-        undefined,
+        lps,
         RPoolFilter,
     );
     if (route.status == "NoWay") {

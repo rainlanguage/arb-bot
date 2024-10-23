@@ -1,10 +1,10 @@
-import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { parseAbi, PublicClient } from "viem";
-import { Native, Token, WNATIVE } from "sushi/currency";
 import { ErrorSeverity, errorSnapshot } from "./error";
+import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { createViemClient, getDataFetcher } from "./config";
+import { ChainId, LiquidityProviders, RPParams } from "sushi";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { getRpSwap, PoolBlackList, shuffleArray, sleep } from "./utils";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
@@ -721,6 +721,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 rp4Address,
                 config.dataFetcher,
                 gasPrice,
+                Object.values(LiquidityProviders).filter((v) => v !== LiquidityProviders.CurveSwap),
             );
             let routeText = "";
             route.legs.forEach((v, i) => {
@@ -776,9 +777,9 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const rawtx = { to: rp4Address, data: "0x" as `0x${string}` };
             let gas = 0n;
             let amountOutMin = ethers.constants.Zero;
-            for (let j = 20; j > 0; j--) {
+            for (let j = 50; j > 0; j--) {
                 amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin)
-                    .mul(5 * j)
+                    .mul(2 * j)
                     .div(100);
                 rawtx.data = rp.encodeFunctionData("processRoute", [
                     rpParams.tokenIn,
