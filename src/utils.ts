@@ -498,19 +498,23 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                     v.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase(),
             )
             .map((v) => {
-                const portoin: RouteLeg[] = [v];
+                const portoins: RouteLeg[] = [v];
                 while (
-                    portoin.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
+                    portoins.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
                 ) {
-                    portoin.push(
-                        legs.find(
-                            (e) =>
-                                e.tokenFrom.address.toLowerCase() ===
-                                portoin.at(-1)?.tokenTo.address.toLowerCase(),
-                        )!,
+                    const legPortion = legs.find(
+                        (e) =>
+                            e.tokenFrom.address.toLowerCase() ===
+                                portoins.at(-1)?.tokenTo.address.toLowerCase() &&
+                            !portoins.includes(e),
                     );
+                    if (legPortion) {
+                        portoins.push(legPortion);
+                    } else {
+                        break;
+                    }
                 }
-                return portoin;
+                return portoins;
             }),
     ]
         .sort((a, b) => b[0].absolutePortion - a[0].absolutePortion)
