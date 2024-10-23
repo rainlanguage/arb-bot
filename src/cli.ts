@@ -315,6 +315,8 @@ export const arbRound = async (
  * @param argv - cli args
  */
 export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?: Context) {
+    // eslint-disable-next-line no-console
+    console.log("\nstartup\n");
     let roundGap = 10000;
     let _poolUpdateInterval = 0;
 

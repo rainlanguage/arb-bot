@@ -502,6 +502,7 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                 while (
                     portoin.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
                 ) {
+                    console.log("stuck");
                     portoin.push(
                         legs.find(
                             (e) =>
@@ -1269,4 +1270,15 @@ export function getMarketQuote(
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
         };
     }
+}
+
+export function memory(msg: string) {
+    // eslint-disable-next-line no-console
+    console.log(msg);
+    for (const [key, value] of Object.entries(process.memoryUsage())) {
+        // eslint-disable-next-line no-console
+        console.log(`Memory usage by ${key}, ${value / 1_000_000}MB `);
+    }
+    // eslint-disable-next-line no-console
+    console.log("\n---\n");
 }

@@ -35,6 +35,7 @@ import {
     quoteSingleOrder,
     getActualClearAmount,
     withBigintSerializer,
+    memory,
 } from "./utils";
 
 /**
@@ -440,6 +441,7 @@ export async function processPair(args: {
     }
 
     // get pool details
+    memory("pool fetch start");
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
         !(await routeExists(config, fromToken, toToken, gasPrice))
@@ -452,7 +454,9 @@ export async function processPair(args: {
             if ((config as any).isTest && (config as any).testBlockNumber) {
                 (options as any).blockNumber = (config as any).testBlockNumber;
             }
+            memory("while pool ftech");
             await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
+            memory("after pool fetch");
             const p1 = `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`;
             const p2 = `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`;
             if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
@@ -476,6 +480,7 @@ export async function processPair(args: {
         /**/
     }
 
+    memory("eth price fetch");
     // get in/out tokens to eth price
     let inputToEthPrice, outputToEthPrice;
     try {
@@ -531,10 +536,12 @@ export async function processPair(args: {
             throw result;
         }
     }
+    memory("after eth price fetch");
 
     // execute process to find opp through different modes
     let rawtx, oppBlockNumber, estimatedProfit;
     try {
+        memory("find opp");
         const findOppResult = await findOpp({
             orderPairObject,
             dataFetcher,
@@ -550,6 +557,7 @@ export async function processPair(args: {
             outputToEthPrice,
             orderbooksOrders,
         });
+        memory("after find opp ok");
         ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value!);
 
         if (!rawtx || !oppBlockNumber) throw "undefined tx/block number";
@@ -564,6 +572,7 @@ export async function processPair(args: {
             }
         }
     } catch (e: any) {
+        memory("after find opp err");
         // record all span attributes
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
@@ -598,6 +607,7 @@ export async function processPair(args: {
         spanAttributes["details.blockNumberError"] = errorSnapshot("failed to get block number", e);
     }
 
+    memory("send tx");
     // submit the tx
     let txhash, txUrl;
     try {
@@ -610,7 +620,9 @@ export async function processPair(args: {
         // eslint-disable-next-line no-console
         console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
         spanAttributes["details.txUrl"] = txUrl;
+        memory("after send tx ok");
     } catch (e) {
+        memory("after send tx err");
         // record rawtx in case it is not already present in the error
         spanAttributes["details.rawTx"] = JSON.stringify(
             {
@@ -626,6 +638,7 @@ export async function processPair(args: {
 
     // wait for tx receipt
     try {
+        memory("mine tx");
         const receipt = await viemClient.waitForTransactionReceipt({
             hash: txhash,
             confirmations: 1,
@@ -720,8 +733,10 @@ export async function processPair(args: {
                     symbol: orderPairObject.sellTokenSymbol,
                 });
             }
+            memory("after mine tx ok");
             return result;
         } else {
+            memory("after mine tx revert");
             // keep track of gas consumption of the account
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
@@ -735,6 +750,7 @@ export async function processPair(args: {
             return Promise.reject(result);
         }
     } catch (e: any) {
+        memory("after mine tx err");
         // keep track of gas consumption of the account
         let actualGasCost;
         try {

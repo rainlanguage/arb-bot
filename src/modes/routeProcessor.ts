@@ -5,7 +5,13 @@ import { getBountyEnsureBytecode } from "../config";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
-import { estimateProfit, RPoolFilter, visualizeRoute, withBigintSerializer } from "../utils";
+import {
+    estimateProfit,
+    memory,
+    RPoolFilter,
+    visualizeRoute,
+    withBigintSerializer,
+} from "../utils";
 
 /**
  * Specifies the reason that dryrun failed
@@ -68,6 +74,7 @@ export async function dryrun({
     spanAttributes["amountIn"] = ethers.utils.formatUnits(maximumInputFixed);
 
     // get route details from sushi dataFetcher
+    memory("dryrun route find");
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
@@ -79,6 +86,7 @@ export async function dryrun({
         undefined,
         RPoolFilter,
     );
+    memory("after dryrun route find");
     if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
