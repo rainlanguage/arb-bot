@@ -502,6 +502,7 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                 while (
                     portoin.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
                 ) {
+                    console.log("stuck");
                     portoin.push(
                         legs.find(
                             (e) =>
@@ -1276,8 +1277,12 @@ export function memory(msg: string) {
     console.log(msg);
     for (const [key, value] of Object.entries(process.memoryUsage())) {
         // eslint-disable-next-line no-console
-        console.log(`Memory usage by ${key}, ${value / 1000000}MB `);
+        console.log(`Memory usage by ${key}, ${value / 1_000_000}MB `);
     }
     // eslint-disable-next-line no-console
     console.log("\n---\n");
 }
+c897794c-9c86-4ded-84a6-190d03d70a2d
+
+8cc6ee4a-dc22-42c5-b1e5-126ae19ca74f  
+bec8ec4f-387a-44e8-a037-45854b7282ed    
