@@ -240,8 +240,8 @@ describe("Test accounts", async function () {
                         100000000000000000000000n,
                         100000000000000000000000n,
                     ),
-                    "QuickSwap",
-                    "QuickSwap 0.3%",
+                    "QuickSwapV2",
+                    "QuickSwapV2 0.3%",
                 ),
             ],
             [
