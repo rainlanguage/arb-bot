@@ -34,6 +34,7 @@ export const ClearConfig =
 export const orderbookAbi = [
     `event AddOrderV2(address sender, bytes32 orderHash, ${OrderV3} order)`,
     `event AfterClear(address sender, ${ClearStateChange} clearStateChange)`,
+    `event RemoveOrderV2(address sender, bytes32 orderHash, ${OrderV3} order)`,
     "function vaultBalance(address owner, address token, uint256 vaultId) external view returns (uint256 balance)",
     `function deposit2(address token, uint256 vaultId, uint256 amount, ${TaskV1}[] calldata tasks) external`,
     `function addOrder2(${OrderConfigV3} calldata config, ${TaskV1}[] calldata tasks) external returns (bool stateChanged)`,

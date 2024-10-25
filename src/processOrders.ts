@@ -27,7 +27,7 @@ import {
     getEthPrice,
     quoteOrders,
     routeExists,
-    bundleOrders,
+    // bundleOrders,
     PoolBlackList,
     getMarketQuote,
     getTotalIncome,
@@ -68,7 +68,7 @@ export enum ProcessPairReportStatus {
  */
 export const processOrders = async (
     config: BotConfig,
-    ordersDetails: any[],
+    bundledOrders: BundledOrders[][],
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> => {
@@ -85,7 +85,7 @@ export const processOrders = async (
     }
 
     // prepare orders
-    const bundledOrders = bundleOrders(ordersDetails, false, true);
+    // const bundledOrders = bundleOrders(ordersDetails, false, true);
 
     // check owned vaults and top them up if necessary
     await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
@@ -190,7 +190,7 @@ export const processOrders = async (
                           undefined,
                           privateKeyToAccount(
                               ethers.utils.hexlify(
-                                  ethers.utils.hexlify(signer.account.getHdKey().privateKey!),
+                                  signer.account.getHdKey().privateKey!,
                               ) as `0x${string}`,
                           ),
                           config.timeout,

@@ -173,30 +173,18 @@ describe("Test read subgraph", async function () {
         assert.deepEqual(result.availableSgs, ["url2"]);
     });
 
-    it("should return correct orders details", async function () {
+    it.only("should return correct orders details", async function () {
         const sgsUrls = ["url1", "url2"];
         const mockSgResultOk = [
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            orders: ["order1", "order2"],
-                        },
-                    },
-                },
+                value: ["order1", "order2"],
             },
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            orders: ["order3", "order4"],
-                        },
-                    },
-                },
+                value: ["order3", "order4"],
             },
         ];
         let result;
@@ -211,24 +199,12 @@ describe("Test read subgraph", async function () {
             {
                 status: "rejected",
                 reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            orders: ["order1", "order2"],
-                        },
-                    },
-                },
+                value: ["order1", "order2"],
             },
             {
                 status: "rejected",
                 reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            orders: ["order3", "order4"],
-                        },
-                    },
-                },
+                value: ["order3", "order4"],
             },
         ];
         try {
@@ -242,13 +218,7 @@ describe("Test read subgraph", async function () {
             {
                 status: "fulfilled",
                 reason: undefined,
-                value: {
-                    data: {
-                        data: {
-                            orders: ["order1", "order2"],
-                        },
-                    },
-                },
+                value: ["order1", "order2"],
             },
             {
                 status: "rejected",

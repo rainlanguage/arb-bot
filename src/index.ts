@@ -7,10 +7,10 @@ import { processLps } from "./utils";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
 import { Context, Span } from "@opentelemetry/api";
-import { getQuery, statusCheckQuery } from "./query";
+import { getQuery, SgOrder, statusCheckQuery } from "./query";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { BotConfig, CliOptions, RoundReport, SgFilter } from "./types";
+import { BotConfig, BundledOrders, CliOptions, RoundReport, SgFilter } from "./types";
 import { createViemClient, getChainConfig, getDataFetcher } from "./config";
 
 /**
@@ -26,9 +26,9 @@ export async function getOrderDetails(
     sgFilters?: SgFilter,
     span?: Span,
     timeout?: number,
-): Promise<any[]> {
+): Promise<SgOrder[]> {
     const hasjson = false;
-    const ordersDetails: any[] = [];
+    const ordersDetails: SgOrder[] = [];
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
     if (isInvalidSg) throw "type of provided sources are invalid";
@@ -56,16 +56,11 @@ export async function getOrderDetails(
             availableSgs.forEach((v) => {
                 if (v && typeof v === "string")
                     promises.push(
-                        axios.post(
+                        getQuery(
                             v,
-                            {
-                                query: getQuery(
-                                    sgFilters?.orderHash,
-                                    sgFilters?.orderOwner,
-                                    sgFilters?.orderbook,
-                                ),
-                            },
-                            { headers: { "Content-Type": "application/json" }, timeout },
+                            sgFilters?.orderHash,
+                            sgFilters?.orderOwner,
+                            sgFilters?.orderbook,
                         ),
                     );
             });
@@ -146,6 +141,7 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
+    const watchClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
     const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
@@ -166,6 +162,7 @@ export async function getConfig(
     config.dataFetcher = dataFetcher;
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
+    config.watchClient = watchClient;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
@@ -186,14 +183,14 @@ export async function getConfig(
  */
 export async function clear(
     config: BotConfig,
-    ordersDetails: any[],
+    bundledOrders: BundledOrders[][],
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> {
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
 
-    if (majorVersion >= 18) return await processOrders(config, ordersDetails, tracer, ctx);
+    if (majorVersion >= 18) return await processOrders(config, bundledOrders, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 }
 

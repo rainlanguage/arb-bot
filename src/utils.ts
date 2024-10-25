@@ -7,8 +7,18 @@ import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, orderbookAbi, OrderV3 } from "./abis";
 import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
-import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails } from "./types";
+import {
+    BotConfig,
+    BundledOrders,
+    OrderbooksOwnersProfileMap,
+    OwnedOrder,
+    Pair,
+    TakeOrder,
+    TokenDetails,
+    ViemClient,
+} from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
+import { SgOrder } from "./query";
 
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -633,6 +643,7 @@ export const bundleOrders = (
                     if (pair && _bundle)
                         pair.takeOrders.push({
                             id: orderDetails.orderHash,
+                            // active: true,
                             takeOrder: {
                                 order: orderStruct,
                                 inputIOIndex: k,
@@ -652,6 +663,7 @@ export const bundleOrders = (
                             takeOrders: [
                                 {
                                     id: orderDetails.orderHash,
+                                    // active: true,
                                     takeOrder: {
                                         order: orderStruct,
                                         inputIOIndex: k,
@@ -1078,7 +1090,7 @@ export const getRpSwap = async (
     }
 };
 
-export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
+export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
     const tokens: TokenDetails[] = [];
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
@@ -1091,12 +1103,12 @@ export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
             const _output = orderStruct.validOutputs[j];
             const _outputSymbol = orderDetails.outputs.find(
                 (v: any) => v.token.address.toLowerCase() === _output.token.toLowerCase(),
-            ).token.symbol;
+            )?.token?.symbol;
             if (!tokens.find((v) => v.address === _output.token.toLowerCase())) {
                 tokens.push({
                     address: _output.token.toLowerCase(),
                     decimals: _output.decimals,
-                    symbol: _outputSymbol,
+                    symbol: _outputSymbol ?? "UnknownSymbol",
                 });
             }
         }
@@ -1104,12 +1116,12 @@ export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
             const _input = orderStruct.validInputs[k];
             const _inputSymbol = orderDetails.inputs.find(
                 (v: any) => v.token.address.toLowerCase() === _input.token.toLowerCase(),
-            ).token.symbol;
+            )?.token?.symbol;
             if (!tokens.find((v) => v.address === _input.token.toLowerCase())) {
                 tokens.push({
                     address: _input.token.toLowerCase(),
                     decimals: _input.decimals,
-                    symbol: _inputSymbol,
+                    symbol: _inputSymbol ?? "UnknownSymbol",
                 });
             }
         }
@@ -1275,5 +1287,103 @@ export function getMarketQuote(
             price: ethers.utils.formatUnits(price),
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
         };
+    }
+}
+
+/**
+ * Get token symbol
+ * @param address - The address of token
+ * @param viemClient - The viem client
+ */
+export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
+    try {
+        return await viemClient.readContract({
+            address: address as `0x${string}`,
+            abi: parseAbi(erc20Abi),
+            functionName: "symbol",
+        });
+    } catch (error) {
+        return "Unknownsymbol";
+    }
+}
+
+export function prepareRoundProcessingOrders(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+): BundledOrders[][] {
+    const result: BundledOrders[][] = [];
+    for (const [orderbook, ownersProfileMap] of orderbooksOwnersProfileMap) {
+        const orderbookBundledOrders: BundledOrders[] = [];
+        for (const [, ownerProfile] of ownersProfileMap) {
+            let consumedLimit = ownerProfile.limit;
+            const activeOrdersProfiles = Array.from(ownerProfile.orders).filter((v) => v[1].active);
+            const remainingOrdersPairs = activeOrdersProfiles.filter(
+                (v) => v[1].takeOrders.length > 0,
+            );
+            if (remainingOrdersPairs.length === 0) {
+                for (const [, orderProfile] of activeOrdersProfiles) {
+                    orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
+                }
+                for (const [orderHash, orderProfile] of activeOrdersProfiles) {
+                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
+                    consumedLimit -= consumingOrderPairs.length;
+                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
+                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
+                }
+            } else {
+                for (const [orderHash, orderProfile] of remainingOrdersPairs) {
+                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
+                    consumedLimit -= consumingOrderPairs.length;
+                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
+                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
+                }
+            }
+        }
+        result.push(orderbookBundledOrders);
+    }
+    return result;
+}
+
+function gatherPairs(
+    orderbook: string,
+    orderHash: string,
+    pairs: Pair[],
+    bundledOrders: BundledOrders[],
+) {
+    for (const pair of pairs) {
+        const bundleOrder = bundledOrders.find(
+            (v) =>
+                v.buyToken.toLowerCase() === pair.buyToken.toLowerCase() &&
+                v.buyTokenDecimals === pair.buyTokenDecimals &&
+                v.buyTokenSymbol === pair.buyTokenSymbol &&
+                v.sellToken.toLowerCase() === pair.sellToken.toLowerCase() &&
+                v.sellTokenDecimals === pair.sellTokenDecimals &&
+                v.sellTokenSymbol === pair.sellTokenSymbol,
+        );
+        if (bundleOrder) {
+            if (
+                !bundleOrder.takeOrders.find((v) => v.id.toLowerCase() === orderHash.toLowerCase())
+            ) {
+                bundleOrder.takeOrders.push({
+                    id: orderHash,
+                    takeOrder: pair.takeOrder,
+                });
+            }
+        } else {
+            bundledOrders.push({
+                orderbook,
+                buyToken: pair.buyToken,
+                buyTokenDecimals: pair.buyTokenDecimals,
+                buyTokenSymbol: pair.buyTokenSymbol,
+                sellToken: pair.sellToken,
+                sellTokenDecimals: pair.sellTokenDecimals,
+                sellTokenSymbol: pair.sellTokenSymbol,
+                takeOrders: [
+                    {
+                        id: orderHash,
+                        takeOrder: pair.takeOrder,
+                    },
+                ],
+            });
+        }
     }
 }

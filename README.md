@@ -83,6 +83,7 @@ Other optional arguments are:
 - `--self-fund-orders`, Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
+- `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -221,6 +222,9 @@ BOT_MIN_BALANCE=
 # Specifies owned order to get funded once their vault goes below the specified threshold
 # example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;...
 SELF_FUND_ORDERS=
+
+# Specifies the owner limit, in form of owner1=limit,owner2=limit,... , example: 0x123456=12,0x3456=44
+OWNER_PROFILE= 
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

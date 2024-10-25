@@ -44,6 +44,7 @@ export type CliOptions = {
     bundle: boolean;
     selfFundOrders?: SelfFundOrder[];
     tokens?: TokenDetails[];
+    ownerProfile?: Record<string, number>;
 };
 
 export type TokenDetails = {
@@ -65,6 +66,7 @@ export type BundledOrders = {
 
 export type TakeOrderDetails = {
     id: string;
+    // active: boolean;
     quote?: {
         maxOutput: BigNumber;
         ratio: BigNumber;
@@ -98,6 +100,29 @@ export type Order = {
     validInputs: IO[];
     validOutputs: IO[];
 };
+
+export type Pair = {
+    buyToken: string;
+    buyTokenDecimals: number;
+    buyTokenSymbol: string;
+    sellToken: string;
+    sellTokenDecimals: number;
+    sellTokenSymbol: string;
+    takeOrder: TakeOrder;
+};
+export type OrderProfile = {
+    active: boolean;
+    order: Order;
+    takeOrders: Pair[];
+    consumedTakeOrders: Pair[];
+};
+export type OwnerProfile = {
+    limit: number;
+    orders: OrdersProfileMap;
+};
+export type OrdersProfileMap = Map<string, OrderProfile>;
+export type OwnersProfileMap = Map<string, OwnerProfile>;
+export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
 
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
     PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
@@ -139,6 +164,7 @@ export type BotConfig = {
     mainAccount: ViemClient;
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
+    watchClient: ViemClient;
 };
 
 export type Report = {

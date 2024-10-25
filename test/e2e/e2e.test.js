@@ -29,6 +29,8 @@ const {
     rainterpreterNPE2Deploy,
     rainterpreterStoreNPE2Deploy,
 } = require("../utils");
+const { getOrderbookOwnersProfileMapFromSg } = require("../../src/sg");
+const { prepareRoundProcessingOrders } = require("../../src/utils");
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {
@@ -74,7 +76,7 @@ for (let i = 0; i < testData.length; i++) {
         for (let j = 0; j < rpVersions.length; j++) {
             const rpVersion = rpVersions[j];
 
-            it.only(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+            it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -149,7 +151,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct = {
                         token: tokens[i].address,
@@ -249,6 +251,9 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                orders = prepareRoundProcessingOrders(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -329,7 +334,7 @@ for (let i = 0; i < testData.length; i++) {
                 testSpan.end();
             });
 
-            it.only("should clear orders successfully using inter-orderbook", async function () {
+            it("should clear orders successfully using inter-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -413,7 +418,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
@@ -579,6 +584,9 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                orders = prepareRoundProcessingOrders(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -754,7 +762,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
@@ -930,6 +938,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                orders = prepareRoundProcessingOrders(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                );
+                console.log(orders);
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders

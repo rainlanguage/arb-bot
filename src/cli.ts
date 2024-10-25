@@ -3,13 +3,13 @@ import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { sleep, getOrdersTokens } from "./utils";
+import { sleep, getOrdersTokens, prepareRoundProcessingOrders } from "./utils";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
-import { BotConfig, CliOptions, ViemClient } from "./types";
+import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
@@ -28,6 +28,9 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
+import { handleNewLogs, watchAllOrderbooks, WatchedOrderbookOrders } from "./watcher";
+import { SgOrder } from "./query";
+import { getOrderbookOwnersProfileMapFromSg } from "./sg";
 
 config();
 
@@ -56,6 +59,9 @@ const ENV_OPTIONS = {
     topupAmount: process?.env?.TOPUP_AMOUNT,
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
+    ownerProfile: process?.env?.OWNER_PROFILE
+        ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
+        : undefined,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
@@ -158,6 +164,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--self-fund-orders <string>",
             "Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables",
         )
+        .option(
+            "--owner-profile <OWNER=LIMIT...>",
+            "Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -193,7 +203,19 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
+    cmdOptions.ownerProfile = cmdOptions.ownerProfile || ENV_OPTIONS.ownerProfile;
     cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    if (cmdOptions.ownerProfile) {
+        const profiles: Record<string, number> = {};
+        cmdOptions.ownerProfile.forEach((v: string) => {
+            const parsed = v.split("=");
+            if (parsed.length !== 2) throw "Invalid owner profile";
+            if (!/^[0-9]+$/.test(parsed[1]))
+                throw "Invalid owner profile limit, must be an integer gte 0";
+            profiles[parsed[0].toLowerCase()] = Number(parsed[1]);
+        });
+        cmdOptions.ownerProfile = profiles;
+    }
     if (cmdOptions.lps) {
         cmdOptions.lps = Array.from((cmdOptions.lps as string).matchAll(/[^,\s]+/g)).map(
             (v) => v[0],
@@ -220,43 +242,45 @@ export const arbRound = async (
     roundCtx: Context,
     options: CliOptions,
     config: BotConfig,
+    bundledOrders: BundledOrders[][],
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
-        let ordersDetails;
+        // let ordersDetails;
+        options;
         try {
-            try {
-                ordersDetails = await getOrderDetails(
-                    options.subgraph,
-                    {
-                        orderHash: options.orderHash,
-                        orderOwner: options.orderOwner,
-                        orderbook: options.orderbookAddress,
-                    },
-                    span,
-                    config.timeout,
-                );
-                if (!ordersDetails.length) {
-                    span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
-                    span.end();
-                    return { txs: [], foundOpp: false, avgGasCost: undefined };
-                }
-            } catch (e: any) {
-                const snapshot = errorSnapshot("", e);
-                span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                span.recordException(e);
-                span.setAttribute("didClear", false);
-                span.setAttribute("foundOpp", false);
-                span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
-            }
+            // try {
+            //     ordersDetails = await getOrderDetails(
+            //         options.subgraph,
+            //         {
+            //             orderHash: options.orderHash,
+            //             orderOwner: options.orderOwner,
+            //             orderbook: options.orderbookAddress,
+            //         },
+            //         span,
+            //         config.timeout,
+            //     );
+            //     if (!ordersDetails.length) {
+            //         span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
+            //         span.end();
+            //         return { txs: [], foundOpp: false, avgGasCost: undefined };
+            //     }
+            // } catch (e: any) {
+            //     const snapshot = errorSnapshot("", e);
+            //     span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            //     span.recordException(e);
+            //     span.setAttribute("didClear", false);
+            //     span.setAttribute("foundOpp", false);
+            //     span.end();
+            //     return { txs: [], foundOpp: false, avgGasCost: undefined };
+            // }
 
             try {
                 let txs;
                 let foundOpp = false;
                 const { reports = [], avgGasCost = undefined } = await clear(
                     config,
-                    ordersDetails,
+                    bundledOrders,
                     tracer,
                     ctx,
                 );
@@ -363,7 +387,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         throw "expected a valid value for --bot-min-balance, it should be an number greater than 0";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
-    let ordersDetails: any[] = [];
+    let ordersDetails: SgOrder[] = [];
     if (!process?.env?.TEST)
         for (let i = 0; i < 20; i++) {
             try {
@@ -378,7 +402,8 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 else throw e;
             }
         }
-    options.tokens = getOrdersTokens(ordersDetails);
+    const tokens = getOrdersTokens(ordersDetails);
+    options.tokens = tokens;
 
     // get config
     const config = await getConfig(
@@ -395,6 +420,13 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         options: options as CliOptions,
         poolUpdateInterval,
         config,
+        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
+            ordersDetails,
+            config.watchClient,
+            tokens,
+            (options as CliOptions).ownerProfile,
+        ),
+        tokens,
     };
 }
 
@@ -433,9 +465,8 @@ export const main = async (argv: any, version?: string) => {
     const tracer = provider.getTracer("arb-bot-tracer");
 
     // parse cli args and startup bot configuration
-    const { roundGap, options, poolUpdateInterval, config } = await tracer.startActiveSpan(
-        "startup",
-        async (startupSpan) => {
+    const { roundGap, options, poolUpdateInterval, config, orderbooksOwnersProfileMap, tokens } =
+        await tracer.startActiveSpan("startup", async (startupSpan) => {
             const ctx = trace.setSpan(context.active(), startupSpan);
             try {
                 const result = await startup(argv, version, tracer, ctx);
@@ -459,8 +490,19 @@ export const main = async (argv: any, version?: string) => {
                 // reject the promise that makes the cli process to exit with error
                 return Promise.reject(e);
             }
-        },
+        });
+
+    const obs: string[] = [];
+    const watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders> = {};
+    orderbooksOwnersProfileMap.forEach((_, ob) => {
+        obs.push(ob.toLowerCase());
+    });
+    const orderbooksUnwatchers = watchAllOrderbooks(
+        obs,
+        config.watchClient,
+        watchedOrderbooksOrders,
     );
+    orderbooksUnwatchers;
 
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
@@ -534,8 +576,22 @@ export const main = async (argv: any, version?: string) => {
                 update = true;
             }
             try {
+                const bundledOrders = prepareRoundProcessingOrders(orderbooksOwnersProfileMap);
+                await handleNewLogs(
+                    orderbooksOwnersProfileMap,
+                    watchedOrderbooksOrders,
+                    config.viemClient as any as ViemClient,
+                    tokens,
+                    (options as CliOptions).ownerProfile,
+                );
                 await rotateProviders(config, update);
-                const roundResult = await arbRound(tracer, roundCtx, options, config);
+                const roundResult = await arbRound(
+                    tracer,
+                    roundCtx,
+                    options,
+                    config,
+                    bundledOrders,
+                );
                 let txs, foundOpp, roundAvgGasCost;
                 if (roundResult) {
                     txs = roundResult.txs;
