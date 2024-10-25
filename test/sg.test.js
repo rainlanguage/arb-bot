@@ -173,7 +173,7 @@ describe("Test read subgraph", async function () {
         assert.deepEqual(result.availableSgs, ["url2"]);
     });
 
-    it.only("should return correct orders details", async function () {
+    it("should return correct orders details", async function () {
         const sgsUrls = ["url1", "url2"];
         const mockSgResultOk = [
             {

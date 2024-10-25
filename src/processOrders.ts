@@ -84,9 +84,6 @@ export const processOrders = async (
         genericArb = new ethers.Contract(config.genericArbAddress, arbAbis);
     }
 
-    // prepare orders
-    // const bundledOrders = bundleOrders(ordersDetails, false, true);
-
     // check owned vaults and top them up if necessary
     await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
         try {

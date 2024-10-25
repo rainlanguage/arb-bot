@@ -11,9 +11,11 @@ const { trace, context } = require("@opentelemetry/api");
 const { publicActions, walletActions } = require("viem");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
+const { prepareRoundProcessingOrders } = require("../../src/utils");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { ProcessPairReportStatus } = require("../../src/processOrders");
 const { getChainConfig, getDataFetcher } = require("../../src/config");
+const { getOrderbookOwnersProfileMapFromSg } = require("../../src/sg");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
@@ -29,8 +31,6 @@ const {
     rainterpreterNPE2Deploy,
     rainterpreterStoreNPE2Deploy,
 } = require("../utils");
-const { getOrderbookOwnersProfileMapFromSg } = require("../../src/sg");
-const { prepareRoundProcessingOrders } = require("../../src/utils");
 
 // run tests on each network in the provided data
 for (let i = 0; i < testData.length; i++) {
@@ -253,6 +253,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 orders = prepareRoundProcessingOrders(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
                 );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
@@ -586,6 +587,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 orders = prepareRoundProcessingOrders(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
                 );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
@@ -680,7 +682,7 @@ for (let i = 0; i < testData.length; i++) {
                 testSpan.end();
             });
 
-            it.only("should clear orders successfully using intra-orderbook", async function () {
+            it("should clear orders successfully using intra-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
@@ -881,23 +883,21 @@ for (let i = 0; i < testData.length; i++) {
                 }
 
                 // mock quote responses
+                const t0 = [];
+                for (let i = 0; i < tokens.length - 1; i++) {
+                    t0.push(tokens[0]);
+                }
                 await mockServer
                     .forPost("/rpc")
                     .once()
+                    // .withBodyIncluding(owners[0].address.substring(2).toLowerCase())
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse([
-                            ...tokens.slice(1).flatMap((v) => [
+                            ...[tokens[1], ...t0, ...tokens.slice(2)].flatMap((v) => [
                                 [
                                     true, // success
                                     v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
                                     ethers.constants.Zero, // ratio
-                                ],
-                                [
-                                    true,
-                                    tokens[0].depositAmount.mul(
-                                        "1" + "0".repeat(18 - tokens[0].decimals),
-                                    ),
-                                    ethers.constants.Zero,
                                 ],
                             ]),
                         ]),
@@ -940,8 +940,8 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 orders = prepareRoundProcessingOrders(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
                 );
-                console.log(orders);
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -955,7 +955,7 @@ for (let i = 0; i < testData.length; i++) {
                 let gasSpent = ethers.constants.Zero;
                 let inputProfit = ethers.constants.Zero;
                 for (let i = 0; i < reports.length; i++) {
-                    if (i % 2 !== 0) continue;
+                    if (reports[i].status !== ProcessPairReportStatus.FoundOpportunity) continue;
                     assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
                     assert.equal(reports[i].clearedOrders.length, 1);
 

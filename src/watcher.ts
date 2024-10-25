@@ -10,6 +10,7 @@ import {
     OrderbooksOwnersProfileMap,
 } from "./types";
 import { hexlify } from "ethers/lib/utils";
+import { Span } from "@opentelemetry/api";
 
 type OrderEventLog = {
     sender: `0x${string}`;
@@ -146,6 +147,7 @@ export async function handleNewLogs(
     viemClient: ViemClient,
     tokens: TokenDetails[],
     ownerLimits?: Record<string, number>,
+    span?: Span,
 ) {
     for (const ob in watchedOrderbooksOrders) {
         const watchedOrderbookLogs = watchedOrderbooksOrders[ob];
@@ -156,11 +158,13 @@ export async function handleNewLogs(
             viemClient,
             tokens,
             ownerLimits,
+            span,
         );
         handleRemoveOrders(
             ob,
             watchedOrderbookLogs.removeOrders.splice(0),
             orderbooksOwnersProfileMap,
+            span,
         );
     }
 }
@@ -176,11 +180,16 @@ export async function handleAddOrders(
     viemClient: ViemClient,
     tokens: TokenDetails[],
     ownerLimits?: Record<string, number>,
+    span?: Span,
 ) {
     orderbook = orderbook.toLowerCase();
+    span?.setAttribute(
+        "details.newOrders",
+        addOrders.map((v) => v.orderHash),
+    );
     for (let i = 0; i < addOrders.length; i++) {
         const addOrderLog = addOrders[i];
-        const orderStruct = addOrderLog.order as any as Order;
+        const orderStruct = addOrderLog.order;
         const orderbookOwnerProfileItem = orderbookOwnersProfileMap.get(orderbook);
         if (orderbookOwnerProfileItem) {
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
@@ -235,120 +244,26 @@ export function handleRemoveOrders(
     orderbook: string,
     removeOrders: OrderArgsLog[],
     orderbookOwnersProfileMap: OrderbooksOwnersProfileMap,
+    span?: Span,
 ) {
     orderbook = orderbook.toLowerCase();
+    span?.setAttribute(
+        "details.removedOrders",
+        removeOrders.map((v) => v.orderHash),
+    );
     for (let i = 0; i < removeOrders.length; i++) {
         const removeOrderLog = removeOrders[i];
-        const orderStruct = removeOrderLog.order as any as Order;
+        const orderStruct = removeOrderLog.order;
         const orderbookOwnerProfileItem = orderbookOwnersProfileMap.get(orderbook);
         if (orderbookOwnerProfileItem) {
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
             if (ownerProfile) {
                 const order = ownerProfile.orders.get(removeOrderLog.orderHash.toLowerCase());
-                if (order) order.active = false;
+                if (order) {
+                    order.active = false;
+                    order.takeOrders.push(...order.consumedTakeOrders.splice(0));
+                }
             }
         }
     }
 }
-
-// /**
-//  * Builds and bundles orders which their details are queried from a orderbook subgraph
-//  * @param ordersDetails - Orders details queried from subgraph
-//  * @param _shuffle - To shuffle the bundled order array at the end
-//  * @param _bundle = If orders should be bundled based on token pair
-//  * @returns Array of bundled take orders
-//  */
-// export const bundleOrders = async(
-//     orderbook: string,
-//     addOrders: WatchOrderArgs[],
-//     viemClient: ViemClient,
-//     orderbooksOwnersOrdersMap: OrderbookOwnerMap,
-// ) => {
-//     orderbook = orderbook.toLowerCase();
-//     const orderbookOwnersOrdersMap = orderbooksOwnersOrdersMap.get(orderbook);
-//     if (orderbookOwnersOrdersMap) {
-//         for (const [k, v] of orderbookOwnersOrdersMap.entries()) {
-//             const addOrder = addOrders.find(e => e.sender.toLowerCase() === k.toLowerCase());
-//             if (addOrder) {
-//                 const orderPair = v.processed.find(e => e.takeOrders[0].id.toLowerCase() === addOrder.orderHash.toLowerCase());
-//                 if () {
-
-//                 }
-//             } else {
-
-//             }
-//         }
-//     }
-//     const tokenAddresses: string[] = [];
-//     for (let i = 0; i < addOrders.length; i++) {
-//         const addOrder = addOrders[i];
-//         for (let j = 0; j < addOrder.order.validOutputs.length; j++) {
-//             const token = addOrder.order.validOutputs[j].token.toLowerCase();
-//             if (!tokenAddresses.includes(token)) tokenAddresses.push(token);
-//         }
-//         for (let j = 0; j < addOrder.order.validInputs.length; j++) {
-//             const token = addOrder.order.validInputs[j].token.toLowerCase();
-//             if (!tokenAddresses.includes(token)) tokenAddresses.push(token);
-//         }
-//     }
-//     const symbols = await getBatchTokenSymbol(tokenAddresses, viemClient);
-//     for (let j = 0; j < addOrder.order.validOutputs.length; j++) {
-//         const _output = addOrder.order.validOutputs[j];
-//         const _outputSymbolIndex = tokenAddresses.findIndex(
-//             (v: any) => v === _output.token.toLowerCase(),
-//         );
-//         const _outputSymbol = _outputSymbolIndex > -1 ? _outputSymbolIndex : "UnknownSymbol"
-
-//         for (let k = 0; k < addOrder.order.validInputs.length; k++) {
-//             const _input = addOrder.order.validInputs[k];
-//             const _inputSymbolIndex = tokenAddresses.findIndex(
-//                 (v: any) => v === _output.token.toLowerCase(),
-//             );
-//             const _inputSymbol = _inputSymbolIndex > -1 ? _inputSymbolIndex : "UnknownSymbol"
-
-//             if (_output.token.toLowerCase() !== _input.token.toLowerCase()) {
-//                 if (!bundledOrders[orderbook]) {
-//                     bundledOrders[orderbook] = [];
-//                 }
-//                 const pair = bundledOrders[orderbook].find(
-//                     (v) =>
-//                         v.sellToken === _output.token.toLowerCase() &&
-//                         v.buyToken === _input.token.toLowerCase(),
-//                 );
-//                 if (pair && _bundle)
-//                     pair.takeOrders.push({
-//                         id: orderDetails.orderHash,
-//                         active: true,
-//                         takeOrder: {
-//                             order: addOrder.order,
-//                             inputIOIndex: k,
-//                             outputIOIndex: j,
-//                             signedContext: [],
-//                         },
-//                     });
-//                 else
-//                     bundledOrders[orderbook].push({
-//                         orderbook,
-//                         buyToken: _input.token.toLowerCase(),
-//                         buyTokenSymbol: _inputSymbol,
-//                         buyTokenDecimals: _input.decimals,
-//                         sellToken: _output.token.toLowerCase(),
-//                         sellTokenSymbol: _outputSymbol,
-//                         sellTokenDecimals: _output.decimals,
-//                         takeOrders: [
-//                             {
-//                                 id: orderDetails.orderHash,
-//                                 active: true,
-//                                 takeOrder: {
-//                                     order: addOrder.order,
-//                                     inputIOIndex: k,
-//                                     outputIOIndex: j,
-//                                     signedContext: [],
-//                                 },
-//                             },
-//                         ],
-//                     });
-//             }
-//         }
-//     }}
-// };

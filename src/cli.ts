@@ -246,85 +246,47 @@ export const arbRound = async (
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
-        // let ordersDetails;
         options;
         try {
-            // try {
-            //     ordersDetails = await getOrderDetails(
-            //         options.subgraph,
-            //         {
-            //             orderHash: options.orderHash,
-            //             orderOwner: options.orderOwner,
-            //             orderbook: options.orderbookAddress,
-            //         },
-            //         span,
-            //         config.timeout,
-            //     );
-            //     if (!ordersDetails.length) {
-            //         span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
-            //         span.end();
-            //         return { txs: [], foundOpp: false, avgGasCost: undefined };
-            //     }
-            // } catch (e: any) {
-            //     const snapshot = errorSnapshot("", e);
-            //     span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-            //     span.recordException(e);
-            //     span.setAttribute("didClear", false);
-            //     span.setAttribute("foundOpp", false);
-            //     span.end();
-            //     return { txs: [], foundOpp: false, avgGasCost: undefined };
-            // }
-
-            try {
-                let txs;
-                let foundOpp = false;
-                const { reports = [], avgGasCost = undefined } = await clear(
-                    config,
-                    bundledOrders,
-                    tracer,
-                    ctx,
-                );
-                if (reports && reports.length) {
-                    txs = reports.map((v) => v.txUrl).filter((v) => !!v);
-                    if (txs.length) {
-                        foundOpp = true;
-                        span.setAttribute("txUrls", txs);
-                        span.setAttribute("didClear", true);
-                        span.setAttribute("foundOpp", true);
-                    } else if (
-                        reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
-                    ) {
-                        foundOpp = true;
-                        span.setAttribute("foundOpp", true);
-                    }
-                } else {
-                    span.setAttribute("didClear", false);
+            let txs;
+            let foundOpp = false;
+            const { reports = [], avgGasCost = undefined } = await clear(
+                config,
+                bundledOrders,
+                tracer,
+                ctx,
+            );
+            if (reports && reports.length) {
+                txs = reports.map((v) => v.txUrl).filter((v) => !!v);
+                if (txs.length) {
+                    foundOpp = true;
+                    span.setAttribute("txUrls", txs);
+                    span.setAttribute("didClear", true);
+                    span.setAttribute("foundOpp", true);
+                } else if (
+                    reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
+                ) {
+                    foundOpp = true;
+                    span.setAttribute("foundOpp", true);
                 }
-                if (avgGasCost) {
-                    span.setAttribute("avgGasCost", avgGasCost.toString());
-                }
-                span.setStatus({ code: SpanStatusCode.OK });
-                span.end();
-                return { txs, foundOpp, avgGasCost };
-            } catch (e: any) {
-                if (e?.startsWith?.("Failed to batch quote orders")) {
-                    span.setAttribute("severity", ErrorSeverity.LOW);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: e });
-                } else {
-                    const snapshot = errorSnapshot("Unexpected error occured", e);
-                    span.setAttribute("severity", ErrorSeverity.HIGH);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                }
-                span.recordException(e);
+            } else {
                 span.setAttribute("didClear", false);
-                span.setAttribute("foundOpp", false);
-                span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
             }
+            if (avgGasCost) {
+                span.setAttribute("avgGasCost", avgGasCost.toString());
+            }
+            span.setStatus({ code: SpanStatusCode.OK });
+            span.end();
+            return { txs, foundOpp, avgGasCost };
         } catch (e: any) {
-            const snapshot = errorSnapshot("Unexpected error occured", e);
-            span.setAttribute("severity", ErrorSeverity.HIGH);
-            span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            if (e?.startsWith?.("Failed to batch quote orders")) {
+                span.setAttribute("severity", ErrorSeverity.LOW);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: e });
+            } else {
+                const snapshot = errorSnapshot("Unexpected error occured", e);
+                span.setAttribute("severity", ErrorSeverity.HIGH);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            }
             span.recordException(e);
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
@@ -403,7 +365,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             }
         }
     const tokens = getOrdersTokens(ordersDetails);
-    options.tokens = tokens;
+    options.tokens = [...tokens];
 
     // get config
     const config = await getConfig(
@@ -497,12 +459,7 @@ export const main = async (argv: any, version?: string) => {
     orderbooksOwnersProfileMap.forEach((_, ob) => {
         obs.push(ob.toLowerCase());
     });
-    const orderbooksUnwatchers = watchAllOrderbooks(
-        obs,
-        config.watchClient,
-        watchedOrderbooksOrders,
-    );
-    orderbooksUnwatchers;
+    watchAllOrderbooks(obs, config.watchClient, watchedOrderbooksOrders);
 
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
@@ -576,13 +533,9 @@ export const main = async (argv: any, version?: string) => {
                 update = true;
             }
             try {
-                const bundledOrders = prepareRoundProcessingOrders(orderbooksOwnersProfileMap);
-                await handleNewLogs(
+                const bundledOrders = prepareRoundProcessingOrders(
                     orderbooksOwnersProfileMap,
-                    watchedOrderbooksOrders,
-                    config.viemClient as any as ViemClient,
-                    tokens,
-                    (options as CliOptions).ownerProfile,
+                    true,
                 );
                 await rotateProviders(config, update);
                 const roundResult = await arbRound(
@@ -703,6 +656,19 @@ export const main = async (argv: any, version?: string) => {
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
+            }
+            try {
+                // check for new orders
+                await handleNewLogs(
+                    orderbooksOwnersProfileMap,
+                    watchedOrderbooksOrders,
+                    config.viemClient as any as ViemClient,
+                    tokens,
+                    options.ownerProfile,
+                    roundSpan,
+                );
+            } catch {
+                /**/
             }
             // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");

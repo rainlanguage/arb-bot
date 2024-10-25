@@ -1309,6 +1309,7 @@ export async function getTokenSymbol(address: string, viemClient: ViemClient): P
 
 export function prepareRoundProcessingOrders(
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+    shuffle = true,
 ): BundledOrders[][] {
     const result: BundledOrders[][] = [];
     for (const [orderbook, ownersProfileMap] of orderbooksOwnersProfileMap) {
@@ -1338,7 +1339,19 @@ export function prepareRoundProcessingOrders(
                 }
             }
         }
+        if (shuffle) {
+            // shuffle orders
+            for (const bundledOrders of orderbookBundledOrders) {
+                shuffleArray(bundledOrders.takeOrders);
+            }
+            // shuffle pairs
+            shuffleArray(orderbookBundledOrders);
+        }
         result.push(orderbookBundledOrders);
+    }
+    if (shuffle) {
+        // shuffle orderbooks
+        shuffleArray(result);
     }
     return result;
 }
@@ -1353,11 +1366,7 @@ function gatherPairs(
         const bundleOrder = bundledOrders.find(
             (v) =>
                 v.buyToken.toLowerCase() === pair.buyToken.toLowerCase() &&
-                v.buyTokenDecimals === pair.buyTokenDecimals &&
-                v.buyTokenSymbol === pair.buyTokenSymbol &&
-                v.sellToken.toLowerCase() === pair.sellToken.toLowerCase() &&
-                v.sellTokenDecimals === pair.sellTokenDecimals &&
-                v.sellTokenSymbol === pair.sellTokenSymbol,
+                v.sellToken.toLowerCase() === pair.sellToken.toLowerCase(),
         );
         if (bundleOrder) {
             if (
