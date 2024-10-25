@@ -5,6 +5,9 @@ const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
 const { deployOrderBookNPE2, encodeQuoteResponse } = require("./utils");
 const { bundleOrders, getVaultBalance, quoteOrders, quoteSingleOrder } = require("../src/utils");
+const { toOrder } = require("../src/watcher");
+const { decodeAbiParameters, parseAbiParameters } = require("viem");
+const { getPairs, getOrderbookOwnersProfileMapFromSg } = require("../src/order");
 
 describe("Test order details", async function () {
     beforeEach(() => mockServer.start(8081));
@@ -544,6 +547,116 @@ describe("Test order details", async function () {
             ratio: ethers.BigNumber.from(2),
         };
         assert.deepEqual(orderDetails.takeOrders[0].quote, expected);
+    });
+
+    it("should get order pairs", async function () {
+        const orderStruct = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
+        );
+        const result = await getPairs(orderStruct, undefined, [], order1);
+        const expected = [
+            {
+                buyToken: orderStruct1.validInputs[0].token,
+                buyTokenSymbol: order1.inputs[0].token.symbol,
+                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
+                sellToken: orderStruct1.validOutputs[0].token,
+                sellTokenSymbol: order1.outputs[0].token.symbol,
+                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                takeOrder: {
+                    order: orderStruct,
+                    inputIOIndex: 0,
+                    outputIOIndex: 0,
+                    signedContext: [],
+                },
+            },
+        ];
+        assert.deepEqual(result, expected);
+    });
+
+    it("should make orderbook owner order map", async function () {
+        const orderStruct1 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
+        );
+        const orderStruct2 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order2.orderBytes)[0],
+        );
+        const result = await getOrderbookOwnersProfileMapFromSg(
+            [order1, order2],
+            undefined,
+            [],
+            {},
+        );
+        const ownerMap = new Map();
+        ownerMap.set(order1.owner.toLowerCase(), {
+            limit: 25,
+            orders: new Map([
+                [
+                    order1.orderHash.toLowerCase(),
+                    {
+                        active: true,
+                        order: orderStruct1,
+                        consumedTakeOrders: [],
+                        takeOrders: [
+                            {
+                                buyToken: orderStruct1.validInputs[0].token,
+                                buyTokenSymbol: order1.inputs[0].token.symbol,
+                                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
+                                sellToken: orderStruct1.validOutputs[0].token,
+                                sellTokenSymbol: order1.outputs[0].token.symbol,
+                                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                                takeOrder: {
+                                    order: orderStruct1,
+                                    inputIOIndex: 0,
+                                    outputIOIndex: 0,
+                                    signedContext: [],
+                                },
+                            },
+                        ],
+                    },
+                ],
+            ]),
+        });
+        ownerMap.set(order2.owner.toLowerCase(), {
+            limit: 25,
+            orders: new Map([
+                [
+                    order2.orderHash.toLowerCase(),
+                    {
+                        active: true,
+                        order: orderStruct2,
+                        consumedTakeOrders: [],
+                        takeOrders: [
+                            {
+                                buyToken: orderStruct2.validInputs[0].token,
+                                buyTokenSymbol: order2.inputs[0].token.symbol,
+                                buyTokenDecimals: orderStruct2.validInputs[0].decimals,
+                                sellToken: orderStruct2.validOutputs[0].token,
+                                sellTokenSymbol: order2.outputs[0].token.symbol,
+                                sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
+                                takeOrder: {
+                                    order: orderStruct2,
+                                    inputIOIndex: 0,
+                                    outputIOIndex: 0,
+                                    signedContext: [],
+                                },
+                            },
+                        ],
+                    },
+                ],
+            ]),
+        });
+        const expected = new Map([]);
+        expected.set(`0x${"2".repeat(40)}`, ownerMap);
+
+        const resultAsArray = Array.from(result).map((v) => [
+            v[0],
+            Array.from(v[1]).map((e) => [e[0], Array.from(e[1])]),
+        ]);
+        const expectedAsArray = Array.from(result).map((v) => [
+            v[0],
+            Array.from(v[1]).map((e) => [e[0], Array.from(e[1])]),
+        ]);
+        assert.deepEqual(resultAsArray, expectedAsArray);
     });
 });
 

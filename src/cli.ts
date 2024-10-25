@@ -1,18 +1,21 @@
 import { config } from "dotenv";
+import { SgOrder } from "./query";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { sleep, getOrdersTokens, prepareRoundProcessingOrders } from "./utils";
+import { sleep, getOrdersTokens } from "./utils";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
-import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
+import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { handleNewLogs, watchAllOrderbooks, WatchedOrderbookOrders } from "./watcher";
+import { getOrderbookOwnersProfileMapFromSg, prepareRoundProcessingOrders } from "./order";
 import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
 import {
     diag,
@@ -28,9 +31,6 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import { handleNewLogs, watchAllOrderbooks, WatchedOrderbookOrders } from "./watcher";
-import { SgOrder } from "./query";
-import { getOrderbookOwnersProfileMapFromSg } from "./sg";
 
 config();
 

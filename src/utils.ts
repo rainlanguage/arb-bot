@@ -1,3 +1,4 @@
+import { SgOrder } from "./query";
 import { ChainId } from "sushi/chain";
 import { RouteLeg } from "sushi/tines";
 import { getDataFetcher } from "./config";
@@ -7,18 +8,8 @@ import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, orderbookAbi, OrderV3 } from "./abis";
 import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
-import {
-    BotConfig,
-    BundledOrders,
-    OrderbooksOwnersProfileMap,
-    OwnedOrder,
-    Pair,
-    TakeOrder,
-    TokenDetails,
-    ViemClient,
-} from "./types";
+import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
-import { SgOrder } from "./query";
 
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -1287,112 +1278,5 @@ export function getMarketQuote(
             price: ethers.utils.formatUnits(price),
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
         };
-    }
-}
-
-/**
- * Get token symbol
- * @param address - The address of token
- * @param viemClient - The viem client
- */
-export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
-    try {
-        return await viemClient.readContract({
-            address: address as `0x${string}`,
-            abi: parseAbi(erc20Abi),
-            functionName: "symbol",
-        });
-    } catch (error) {
-        return "Unknownsymbol";
-    }
-}
-
-export function prepareRoundProcessingOrders(
-    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
-    shuffle = true,
-): BundledOrders[][] {
-    const result: BundledOrders[][] = [];
-    for (const [orderbook, ownersProfileMap] of orderbooksOwnersProfileMap) {
-        const orderbookBundledOrders: BundledOrders[] = [];
-        for (const [, ownerProfile] of ownersProfileMap) {
-            let consumedLimit = ownerProfile.limit;
-            const activeOrdersProfiles = Array.from(ownerProfile.orders).filter((v) => v[1].active);
-            const remainingOrdersPairs = activeOrdersProfiles.filter(
-                (v) => v[1].takeOrders.length > 0,
-            );
-            if (remainingOrdersPairs.length === 0) {
-                for (const [, orderProfile] of activeOrdersProfiles) {
-                    orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
-                }
-                for (const [orderHash, orderProfile] of activeOrdersProfiles) {
-                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
-                    consumedLimit -= consumingOrderPairs.length;
-                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
-                }
-            } else {
-                for (const [orderHash, orderProfile] of remainingOrdersPairs) {
-                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
-                    consumedLimit -= consumingOrderPairs.length;
-                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
-                }
-            }
-        }
-        if (shuffle) {
-            // shuffle orders
-            for (const bundledOrders of orderbookBundledOrders) {
-                shuffleArray(bundledOrders.takeOrders);
-            }
-            // shuffle pairs
-            shuffleArray(orderbookBundledOrders);
-        }
-        result.push(orderbookBundledOrders);
-    }
-    if (shuffle) {
-        // shuffle orderbooks
-        shuffleArray(result);
-    }
-    return result;
-}
-
-function gatherPairs(
-    orderbook: string,
-    orderHash: string,
-    pairs: Pair[],
-    bundledOrders: BundledOrders[],
-) {
-    for (const pair of pairs) {
-        const bundleOrder = bundledOrders.find(
-            (v) =>
-                v.buyToken.toLowerCase() === pair.buyToken.toLowerCase() &&
-                v.sellToken.toLowerCase() === pair.sellToken.toLowerCase(),
-        );
-        if (bundleOrder) {
-            if (
-                !bundleOrder.takeOrders.find((v) => v.id.toLowerCase() === orderHash.toLowerCase())
-            ) {
-                bundleOrder.takeOrders.push({
-                    id: orderHash,
-                    takeOrder: pair.takeOrder,
-                });
-            }
-        } else {
-            bundledOrders.push({
-                orderbook,
-                buyToken: pair.buyToken,
-                buyTokenDecimals: pair.buyTokenDecimals,
-                buyTokenSymbol: pair.buyTokenSymbol,
-                sellToken: pair.sellToken,
-                sellTokenDecimals: pair.sellTokenDecimals,
-                sellTokenSymbol: pair.sellTokenSymbol,
-                takeOrders: [
-                    {
-                        id: orderHash,
-                        takeOrder: pair.takeOrder,
-                    },
-                ],
-            });
-        }
     }
 }

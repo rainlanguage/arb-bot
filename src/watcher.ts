@@ -1,4 +1,6 @@
-import { getPairs } from "./sg";
+import { getPairs } from "./order";
+import { Span } from "@opentelemetry/api";
+import { hexlify } from "ethers/lib/utils";
 import { orderbookAbi as abi } from "./abis";
 import { parseAbi, WatchContractEventReturnType } from "viem";
 import {
@@ -9,8 +11,6 @@ import {
     OwnersProfileMap,
     OrderbooksOwnersProfileMap,
 } from "./types";
-import { hexlify } from "ethers/lib/utils";
-import { Span } from "@opentelemetry/api";
 
 type OrderEventLog = {
     sender: `0x${string}`;
@@ -42,7 +42,7 @@ export type OrderArgsLog = {
 };
 export type WatchedOrderbookOrders = { addOrders: OrderArgsLog[]; removeOrders: OrderArgsLog[] };
 
-function toOrderArgsLog(orderLog: OrderEventLog): OrderArgsLog {
+function logToOrder(orderLog: OrderEventLog): OrderArgsLog {
     return {
         sender: orderLog.sender,
         orderHash: orderLog.orderHash,
@@ -87,11 +87,12 @@ export function watchOrderbook(
         address: orderbook as `0x${string}`,
         abi: orderbookAbi,
         eventName: "AddOrderV2",
+        pollingInterval: 30_000,
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
                     watchedOrderbookOrders.addOrders.push(
-                        toOrderArgsLog(log.args as any as OrderEventLog),
+                        logToOrder(log.args as any as OrderEventLog),
                     );
                 }
             });
@@ -102,11 +103,12 @@ export function watchOrderbook(
         address: orderbook as `0x${string}`,
         abi: orderbookAbi,
         eventName: "RemoveOrderV2",
+        pollingInterval: 30_000,
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
                     watchedOrderbookOrders.removeOrders.push(
-                        toOrderArgsLog(log.args as any as OrderEventLog),
+                        logToOrder(log.args as any as OrderEventLog),
                     );
                 }
             });
