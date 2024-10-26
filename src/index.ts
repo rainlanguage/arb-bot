@@ -95,7 +95,7 @@ export async function getConfig(
     }
 
     let timeout = 30_000;
-    if (options.timeout !== undefined) {
+    if (options.timeout) {
         if (typeof options.timeout === "number") {
             if (!Number.isInteger(options.timeout) || options.timeout == 0)
                 throw "invalid timeout, must be an integer greater than 0";
