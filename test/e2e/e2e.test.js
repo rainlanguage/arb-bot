@@ -11,14 +11,13 @@ const { trace, context } = require("@opentelemetry/api");
 const { publicActions, walletActions } = require("viem");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
-const { prepareRoundProcessingOrders } = require("../../src/utils");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { ProcessPairReportStatus } = require("../../src/processOrders");
 const { getChainConfig, getDataFetcher } = require("../../src/config");
-const { getOrderbookOwnersProfileMapFromSg } = require("../../src/sg");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { prepareOrdersForRound, getOrderbookOwnersProfileMapFromSg } = require("../../src/order");
 const {
     arbDeploy,
     encodeMeta,
@@ -251,7 +250,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
-                orders = prepareRoundProcessingOrders(
+                orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
@@ -585,7 +584,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
-                orders = prepareRoundProcessingOrders(
+                orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
@@ -890,7 +889,6 @@ for (let i = 0; i < testData.length; i++) {
                 await mockServer
                     .forPost("/rpc")
                     .once()
-                    // .withBodyIncluding(owners[0].address.substring(2).toLowerCase())
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse([
                             ...[tokens[1], ...t0, ...tokens.slice(2)].flatMap((v) => [
@@ -938,7 +936,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
-                orders = prepareRoundProcessingOrders(
+                orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );

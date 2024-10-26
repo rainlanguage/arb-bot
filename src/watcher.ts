@@ -1,7 +1,7 @@
-import { getPairs } from "./order";
 import { Span } from "@opentelemetry/api";
 import { hexlify } from "ethers/lib/utils";
 import { orderbookAbi as abi } from "./abis";
+import { DEFAULT_OWNER_LIMIT, getOrderPairs } from "./order";
 import { parseAbi, WatchContractEventReturnType } from "viem";
 import {
     Order,
@@ -40,7 +40,13 @@ export type OrderArgsLog = {
     orderHash: `0x${string}`;
     order: Order;
 };
-export type WatchedOrderbookOrders = { addOrders: OrderArgsLog[]; removeOrders: OrderArgsLog[] };
+export type OrderLog = {
+    type: "add" | "remove";
+    order: OrderArgsLog;
+    block: number;
+    logIndex: number;
+};
+export type WatchedOrderbookOrders = { orderLogs: OrderLog[] };
 
 function logToOrder(orderLog: OrderEventLog): OrderArgsLog {
     return {
@@ -52,12 +58,12 @@ function logToOrder(orderLog: OrderEventLog): OrderArgsLog {
 
 export function toOrder(orderLog: any): Order {
     return {
-        owner: orderLog.owner,
-        nonce: orderLog.nonce,
+        owner: orderLog.owner.toLowerCase(),
+        nonce: orderLog.nonce.toLowerCase(),
         evaluable: {
-            interpreter: orderLog.evaluable.interpreter,
-            store: orderLog.evaluable.store,
-            bytecode: orderLog.evaluable.bytecode,
+            interpreter: orderLog.evaluable.interpreter.toLowerCase(),
+            store: orderLog.evaluable.store.toLowerCase(),
+            bytecode: orderLog.evaluable.bytecode.toLowerCase(),
         },
         validInputs: orderLog.validInputs.map((v: any) => ({
             token: v.token.toLowerCase(),
@@ -78,6 +84,9 @@ export type UnwatchOrderbook = {
     unwatchRemoveOrder: WatchContractEventReturnType;
 };
 
+/**
+ * Applies an event watcher for a specified orderbook
+ */
 export function watchOrderbook(
     orderbook: string,
     viemClient: ViemClient,
@@ -91,9 +100,12 @@ export function watchOrderbook(
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
-                    watchedOrderbookOrders.addOrders.push(
-                        logToOrder(log.args as any as OrderEventLog),
-                    );
+                    watchedOrderbookOrders.orderLogs.push({
+                        type: "add",
+                        logIndex: log.logIndex,
+                        block: Number(log.blockNumber),
+                        order: logToOrder(log.args as any as OrderEventLog),
+                    });
                 }
             });
         },
@@ -107,9 +119,12 @@ export function watchOrderbook(
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
-                    watchedOrderbookOrders.removeOrders.push(
-                        logToOrder(log.args as any as OrderEventLog),
-                    );
+                    watchedOrderbookOrders.orderLogs.push({
+                        type: "remove",
+                        logIndex: log.logIndex,
+                        block: Number(log.blockNumber),
+                        order: logToOrder(log.args as any as OrderEventLog),
+                    });
                 }
             });
         },
@@ -121,29 +136,41 @@ export function watchOrderbook(
     };
 }
 
+/**
+ * Applies event watcher all known orderbooks
+ * @returns Unwatchers for all orderbooks
+ */
 export function watchAllOrderbooks(
     orderbooks: string[],
     viemClient: ViemClient,
     watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders>,
 ): Record<string, UnwatchOrderbook> {
-    const result: Record<string, UnwatchOrderbook> = {};
-    for (const ob of orderbooks) {
-        if (!watchedOrderbooksOrders[ob])
-            watchedOrderbooksOrders[ob] = { addOrders: [], removeOrders: [] };
-        const res = watchOrderbook(ob, viemClient, watchedOrderbooksOrders[ob]);
-        result[ob] = res;
+    const allUnwatchers: Record<string, UnwatchOrderbook> = {};
+    for (const v of orderbooks) {
+        const ob = v.toLowerCase();
+        if (!watchedOrderbooksOrders[ob]) {
+            watchedOrderbooksOrders[ob] = { orderLogs: [] };
+        }
+        const unwatcher = watchOrderbook(ob, viemClient, watchedOrderbooksOrders[ob]);
+        allUnwatchers[ob] = unwatcher;
     }
-    return result;
+    return allUnwatchers;
 }
 
-export function unwatchAll(watchers: Record<string, UnwatchOrderbook>) {
-    for (const ob in watchers) {
-        watchers[ob].unwatchAddOrder();
-        watchers[ob].unwatchRemoveOrder();
+/**
+ * Unwatches all orderbooks event watchers
+ */
+export function unwatchAllOrderbooks(unwatchers: Record<string, UnwatchOrderbook>) {
+    for (const ob in unwatchers) {
+        unwatchers[ob].unwatchAddOrder();
+        unwatchers[ob].unwatchRemoveOrder();
     }
 }
 
-export async function handleNewLogs(
+/**
+ * Hanldes all new order logs of all watched orderbooks
+ */
+export async function handleOrderbooksNewLogs(
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
     watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders>,
     viemClient: ViemClient,
@@ -153,31 +180,30 @@ export async function handleNewLogs(
 ) {
     for (const ob in watchedOrderbooksOrders) {
         const watchedOrderbookLogs = watchedOrderbooksOrders[ob];
-        await handleAddOrders(
+        const logs = watchedOrderbookLogs.orderLogs.splice(0);
+        // make sure logs are sorted before applying them to the map
+        logs.sort((a, b) => {
+            const block = a.block - b.block;
+            return block !== 0 ? block : a.logIndex - b.logIndex;
+        });
+        await handleNewOrderLogs(
             ob,
-            watchedOrderbookLogs.addOrders.splice(0),
+            logs,
             orderbooksOwnersProfileMap,
             viemClient,
             tokens,
             ownerLimits,
             span,
         );
-        handleRemoveOrders(
-            ob,
-            watchedOrderbookLogs.removeOrders.splice(0),
-            orderbooksOwnersProfileMap,
-            span,
-        );
     }
 }
 
 /**
- * Get a map of per owner orders per orderbook
- * @param ordersDetails - Order details queried from subgraph
+ * Handles new order logs for an orderbook
  */
-export async function handleAddOrders(
+export async function handleNewOrderLogs(
     orderbook: string,
-    addOrders: OrderArgsLog[],
+    orderLogs: OrderLog[],
     orderbookOwnersProfileMap: OrderbooksOwnersProfileMap,
     viemClient: ViemClient,
     tokens: TokenDetails[],
@@ -185,85 +211,73 @@ export async function handleAddOrders(
     span?: Span,
 ) {
     orderbook = orderbook.toLowerCase();
-    span?.setAttribute(
-        "details.newOrders",
-        addOrders.map((v) => v.orderHash),
-    );
-    for (let i = 0; i < addOrders.length; i++) {
-        const addOrderLog = addOrders[i];
-        const orderStruct = addOrderLog.order;
+    if (orderLogs.length) {
+        span?.setAttribute(
+            `orderbooksChanges.${orderbook}.addedOrders`,
+            orderLogs.filter((v) => v.type === "add").map((v) => v.order.orderHash),
+        );
+        span?.setAttribute(
+            `orderbooksChanges.${orderbook}.removedOrders`,
+            orderLogs.filter((v) => v.type === "add").map((v) => v.order.orderHash),
+        );
+    }
+    for (let i = 0; i < orderLogs.length; i++) {
+        const orderLog = orderLogs[i].order;
+        const orderStruct = orderLog.order;
         const orderbookOwnerProfileItem = orderbookOwnersProfileMap.get(orderbook);
-        if (orderbookOwnerProfileItem) {
-            const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
-            if (ownerProfile) {
-                const order = ownerProfile.orders.get(addOrderLog.orderHash.toLowerCase());
-                if (!order) {
-                    ownerProfile.orders.set(addOrderLog.orderHash.toLowerCase(), {
+        if (orderLogs[i].type === "add") {
+            if (orderbookOwnerProfileItem) {
+                const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
+                if (ownerProfile) {
+                    const order = ownerProfile.orders.get(orderLog.orderHash.toLowerCase());
+                    if (!order) {
+                        ownerProfile.orders.set(orderLog.orderHash.toLowerCase(), {
+                            active: true,
+                            order: orderStruct,
+                            takeOrders: await getOrderPairs(orderStruct, viemClient, tokens),
+                            consumedTakeOrders: [],
+                        });
+                    } else {
+                        order.active = true;
+                    }
+                } else {
+                    const ordersProfileMap: OrdersProfileMap = new Map();
+                    ordersProfileMap.set(orderLog.orderHash.toLowerCase(), {
                         active: true,
                         order: orderStruct,
-                        takeOrders: await getPairs(orderStruct, viemClient, tokens),
+                        takeOrders: await getOrderPairs(orderStruct, viemClient, tokens),
                         consumedTakeOrders: [],
                     });
-                } else {
-                    order.active = true;
+                    orderbookOwnerProfileItem.set(orderStruct.owner.toLowerCase(), {
+                        limit:
+                            ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
+                        orders: ordersProfileMap,
+                    });
                 }
             } else {
                 const ordersProfileMap: OrdersProfileMap = new Map();
-                ordersProfileMap.set(addOrderLog.orderHash.toLowerCase(), {
+                ordersProfileMap.set(orderLog.orderHash.toLowerCase(), {
                     active: true,
                     order: orderStruct,
-                    takeOrders: await getPairs(orderStruct, viemClient, tokens),
+                    takeOrders: await getOrderPairs(orderStruct, viemClient, tokens),
                     consumedTakeOrders: [],
                 });
-                orderbookOwnerProfileItem.set(orderStruct.owner.toLowerCase(), {
-                    limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? 25,
+                const ownerProfileMap: OwnersProfileMap = new Map();
+                ownerProfileMap.set(orderStruct.owner.toLowerCase(), {
+                    limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                     orders: ordersProfileMap,
                 });
+                orderbookOwnersProfileMap.set(orderbook, ownerProfileMap);
             }
         } else {
-            const ordersProfileMap: OrdersProfileMap = new Map();
-            ordersProfileMap.set(addOrderLog.orderHash.toLowerCase(), {
-                active: true,
-                order: orderStruct,
-                takeOrders: await getPairs(orderStruct, viemClient, tokens),
-                consumedTakeOrders: [],
-            });
-            const ownerProfileMap: OwnersProfileMap = new Map();
-            ownerProfileMap.set(orderStruct.owner.toLowerCase(), {
-                limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? 25,
-                orders: ordersProfileMap,
-            });
-            orderbookOwnersProfileMap.set(orderbook, ownerProfileMap);
-        }
-    }
-}
-
-/**
- * Get a map of per owner orders per orderbook
- * @param ordersDetails - Order details queried from subgraph
- */
-export function handleRemoveOrders(
-    orderbook: string,
-    removeOrders: OrderArgsLog[],
-    orderbookOwnersProfileMap: OrderbooksOwnersProfileMap,
-    span?: Span,
-) {
-    orderbook = orderbook.toLowerCase();
-    span?.setAttribute(
-        "details.removedOrders",
-        removeOrders.map((v) => v.orderHash),
-    );
-    for (let i = 0; i < removeOrders.length; i++) {
-        const removeOrderLog = removeOrders[i];
-        const orderStruct = removeOrderLog.order;
-        const orderbookOwnerProfileItem = orderbookOwnersProfileMap.get(orderbook);
-        if (orderbookOwnerProfileItem) {
-            const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
-            if (ownerProfile) {
-                const order = ownerProfile.orders.get(removeOrderLog.orderHash.toLowerCase());
-                if (order) {
-                    order.active = false;
-                    order.takeOrders.push(...order.consumedTakeOrders.splice(0));
+            if (orderbookOwnerProfileItem) {
+                const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
+                if (ownerProfile) {
+                    const order = ownerProfile.orders.get(orderLog.orderHash.toLowerCase());
+                    if (order) {
+                        order.active = false;
+                        order.takeOrders.push(...order.consumedTakeOrders.splice(0));
+                    }
                 }
             }
         }

@@ -14,9 +14,14 @@ import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { handleNewLogs, watchAllOrderbooks, WatchedOrderbookOrders } from "./watcher";
-import { getOrderbookOwnersProfileMapFromSg, prepareRoundProcessingOrders } from "./order";
+import { getOrderbookOwnersProfileMapFromSg, prepareOrdersForRound } from "./order";
 import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
+import {
+    watchOrderbook,
+    watchAllOrderbooks,
+    WatchedOrderbookOrders,
+    handleOrderbooksNewLogs,
+} from "./watcher";
 import {
     diag,
     trace,
@@ -459,7 +464,7 @@ export const main = async (argv: any, version?: string) => {
     orderbooksOwnersProfileMap.forEach((_, ob) => {
         obs.push(ob.toLowerCase());
     });
-    watchAllOrderbooks(obs, config.watchClient, watchedOrderbooksOrders);
+    const unwatchers = watchAllOrderbooks(obs, config.watchClient, watchedOrderbooksOrders);
 
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
@@ -476,12 +481,32 @@ export const main = async (argv: any, version?: string) => {
     while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
+            const newMeta = await getMetaInfo(config, options.subgraph);
             roundSpan.setAttributes({
-                ...(await getMetaInfo(config, options.subgraph)),
+                ...newMeta,
                 "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
+
+            // watch new obs
+            for (const newOb of newMeta["meta.orderbooks"]) {
+                const ob = newOb.toLowerCase();
+                if (!obs.includes(ob)) {
+                    obs.push(ob);
+                    if (!watchedOrderbooksOrders[ob]) {
+                        watchedOrderbooksOrders[ob] = { orderLogs: [] };
+                    }
+                    if (!unwatchers[ob]) {
+                        unwatchers[ob] = watchOrderbook(
+                            ob,
+                            config.watchClient,
+                            watchedOrderbooksOrders[ob],
+                        );
+                    }
+                }
+            }
+
             await tracer.startActiveSpan(
                 "check-wallet-balance",
                 {},
@@ -533,10 +558,7 @@ export const main = async (argv: any, version?: string) => {
                 update = true;
             }
             try {
-                const bundledOrders = prepareRoundProcessingOrders(
-                    orderbooksOwnersProfileMap,
-                    true,
-                );
+                const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 await rotateProviders(config, update);
                 const roundResult = await arbRound(
                     tracer,
@@ -659,7 +681,7 @@ export const main = async (argv: any, version?: string) => {
             }
             try {
                 // check for new orders
-                await handleNewLogs(
+                await handleOrderbooksNewLogs(
                     orderbooksOwnersProfileMap,
                     watchedOrderbooksOrders,
                     config.viemClient as any as ViemClient,

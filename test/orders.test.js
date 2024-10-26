@@ -1,111 +1,172 @@
 const { assert } = require("chai");
 const { OrderV3 } = require("../src/abis");
+const { toOrder } = require("../src/watcher");
 const mockServer = require("mockttp").getLocal();
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
+const { decodeAbiParameters, parseAbiParameters } = require("viem");
 const { deployOrderBookNPE2, encodeQuoteResponse } = require("./utils");
 const { bundleOrders, getVaultBalance, quoteOrders, quoteSingleOrder } = require("../src/utils");
-const { toOrder } = require("../src/watcher");
-const { decodeAbiParameters, parseAbiParameters } = require("viem");
-const { getPairs, getOrderbookOwnersProfileMapFromSg } = require("../src/order");
+const {
+    utils: { hexlify, randomBytes, keccak256 },
+} = require("ethers");
+const {
+    getOrderPairs,
+    prepareOrdersForRound,
+    getOrderbookOwnersProfileMapFromSg,
+} = require("../src/order");
 
 describe("Test order details", async function () {
     beforeEach(() => mockServer.start(8081));
     afterEach(() => mockServer.stop());
 
-    const order1 = {
-        id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
-        orderHash: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
-        owner: "0x0f47a0c7f86a615606ca315ad83c3e302b474bd6",
-        orderBytes: "",
-        active: true,
-        nonce: `0x${"0".repeat(64)}`,
-        orderbook: {
-            id: `0x${"2".repeat(40)}`,
-        },
-        inputs: [
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                    decimals: 6,
-                    symbol: "USDT",
-                },
+    const getOrders = () => {
+        const order1 = {
+            id: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+            orderHash: "0x004349d76523bce3b6aeec93cf4c2a396b9cb71bc07f214e271cab363a0c89eb",
+            owner: "0x0f47a0c7f86a615606ca315ad83c3e302b474bd6",
+            orderBytes: "",
+            active: true,
+            nonce: `0x${"0".repeat(64)}`,
+            orderbook: {
+                id: `0x${"2".repeat(40)}`,
             },
-        ],
-        outputs: [
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-                    decimals: 18,
-                    symbol: "WMATIC",
+            inputs: [
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                        decimals: 6,
+                        symbol: "USDT",
+                    },
                 },
-            },
-        ],
-    };
-    const orderStruct1 = getOrderStruct(order1);
-    const orderBytes1 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct1]);
-    order1.orderBytes = orderBytes1;
+            ],
+            outputs: [
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                        decimals: 18,
+                        symbol: "WMATIC",
+                    },
+                },
+            ],
+        };
+        const orderStruct1 = getOrderStruct(order1);
+        const orderBytes1 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct1]);
+        order1.orderBytes = orderBytes1;
 
-    const order2 = {
-        id: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
-        orderHash: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
-        owner: "0x0eb840e5acd0125853ad630663d3a62e673c22e6",
-        orderBytes: "",
-        active: true,
-        nonce: `0x${"0".repeat(64)}`,
-        orderbook: {
-            id: `0x${"2".repeat(40)}`,
-        },
-        inputs: [
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                    decimals: 6,
-                    symbol: "USDT",
-                },
+        const order2 = {
+            id: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
+            orderHash: "0x008817a4b6f264326ef14357df54e48b9c064051f54f3877807970bb98096c01",
+            owner: "0x0eb840e5acd0125853ad630663d3a62e673c22e6",
+            orderBytes: "",
+            active: true,
+            nonce: `0x${"0".repeat(64)}`,
+            orderbook: {
+                id: `0x${"2".repeat(40)}`,
             },
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-                    decimals: 18,
-                    symbol: "WMATIC",
+            inputs: [
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                        decimals: 6,
+                        symbol: "USDT",
+                    },
                 },
-            },
-        ],
-        outputs: [
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
-                    decimals: 6,
-                    symbol: "USDT",
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                        decimals: 18,
+                        symbol: "WMATIC",
+                    },
                 },
-            },
-            {
-                balance: "1",
-                vaultId: "1",
-                token: {
-                    address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-                    decimals: 18,
-                    symbol: "WMATIC",
+            ],
+            outputs: [
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                        decimals: 6,
+                        symbol: "USDT",
+                    },
                 },
-            },
-        ],
+                {
+                    balance: "1",
+                    vaultId: "1",
+                    token: {
+                        address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
+                        decimals: 18,
+                        symbol: "WMATIC",
+                    },
+                },
+            ],
+        };
+        const orderStruct2 = getOrderStruct(order2);
+        const orderBytes2 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct2]);
+        order2.orderBytes = orderBytes2;
+
+        return [order1, order2];
     };
-    const orderStruct2 = getOrderStruct(order2);
-    const orderBytes2 = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct2]);
-    order2.orderBytes = orderBytes2;
+
+    const getNewOrder = (orderbook, owner, token1, token2, nonce) => {
+        const order = {
+            id: "",
+            orderHash: "",
+            owner,
+            orderBytes: "",
+            active: true,
+            nonce: `0x${nonce.toString().repeat(64)}`,
+            orderbook: {
+                id: orderbook,
+            },
+            inputs: [
+                {
+                    balance: "1",
+                    vaultId: "0x01",
+                    token: {
+                        address: token1,
+                        decimals: 6,
+                        symbol: "NewToken1",
+                    },
+                },
+            ],
+            outputs: [
+                {
+                    balance: "1",
+                    vaultId: "0x01",
+                    token: {
+                        address: token2,
+                        decimals: 18,
+                        symbol: "NewToken2",
+                    },
+                },
+            ],
+        };
+        const orderStruct = getOrderStruct(order);
+        const orderBytes = ethers.utils.defaultAbiCoder.encode([OrderV3], [orderStruct]);
+        order.orderBytes = orderBytes;
+        order.struct = orderStruct;
+        order.id = keccak256(orderBytes);
+        order.orderHash = keccak256(orderBytes);
+        return order;
+    };
 
     it("should return correct order details", async function () {
+        const [order1, order2] = getOrders();
+        const orderStruct1 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
+        );
+        const orderStruct2 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order2.orderBytes)[0],
+        );
         const unbundledResult = bundleOrders([order1, order2], false, false);
         const unbundledExpected = [
             [
@@ -123,7 +184,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes1,
+                                    order1.orderBytes,
                                 )[0],
                                 inputIOIndex: 0,
                                 outputIOIndex: 0,
@@ -146,7 +207,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes2,
+                                    order2.orderBytes,
                                 )[0],
                                 inputIOIndex: 1,
                                 outputIOIndex: 0,
@@ -169,7 +230,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes2,
+                                    order2.orderBytes,
                                 )[0],
                                 inputIOIndex: 0,
                                 outputIOIndex: 1,
@@ -199,7 +260,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes1,
+                                    order1.orderBytes,
                                 )[0],
                                 inputIOIndex: 0,
                                 outputIOIndex: 0,
@@ -211,7 +272,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes2,
+                                    order2.orderBytes,
                                 )[0],
                                 inputIOIndex: 0,
                                 outputIOIndex: 1,
@@ -234,7 +295,7 @@ describe("Test order details", async function () {
                             takeOrder: {
                                 order: ethers.utils.defaultAbiCoder.decode(
                                     [OrderV3],
-                                    orderBytes2,
+                                    order2.orderBytes,
                                 )[0],
                                 inputIOIndex: 1,
                                 outputIOIndex: 0,
@@ -249,6 +310,7 @@ describe("Test order details", async function () {
     });
 
     it("should get correct vault balance", async function () {
+        const [order1, order2] = getOrders();
         const viemClient = await viem.getPublicClient();
         const usdt = {
             address: order1.inputs[0].token.address,
@@ -267,6 +329,12 @@ describe("Test order details", async function () {
 
         // deploy orderbook
         const orderbook = await deployOrderBookNPE2();
+        const orderStruct1 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
+        );
+        const orderStruct2 = toOrder(
+            decodeAbiParameters(parseAbiParameters(OrderV3), order2.orderBytes)[0],
+        );
 
         // impersonate owners and addresses with large token balances to fund the owner 1 2
         // accounts with some tokens used for topping up their vaults
@@ -550,18 +618,19 @@ describe("Test order details", async function () {
     });
 
     it("should get order pairs", async function () {
+        const [order1] = getOrders();
         const orderStruct = toOrder(
             decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
         );
-        const result = await getPairs(orderStruct, undefined, [], order1);
+        const result = await getOrderPairs(orderStruct, undefined, [], order1);
         const expected = [
             {
-                buyToken: orderStruct1.validInputs[0].token,
+                buyToken: orderStruct.validInputs[0].token,
                 buyTokenSymbol: order1.inputs[0].token.symbol,
-                buyTokenDecimals: orderStruct1.validInputs[0].decimals,
-                sellToken: orderStruct1.validOutputs[0].token,
+                buyTokenDecimals: orderStruct.validInputs[0].decimals,
+                sellToken: orderStruct.validOutputs[0].token,
                 sellTokenSymbol: order1.outputs[0].token.symbol,
-                sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
+                sellTokenDecimals: orderStruct.validOutputs[0].decimals,
                 takeOrder: {
                     order: orderStruct,
                     inputIOIndex: 0,
@@ -574,6 +643,7 @@ describe("Test order details", async function () {
     });
 
     it("should make orderbook owner order map", async function () {
+        const [order1, order2] = getOrders();
         const orderStruct1 = toOrder(
             decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
         );
@@ -657,6 +727,108 @@ describe("Test order details", async function () {
             Array.from(v[1]).map((e) => [e[0], Array.from(e[1])]),
         ]);
         assert.deepEqual(resultAsArray, expectedAsArray);
+    });
+
+    it("should prepare orders for rounds by specified owner limits", async function () {
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = hexlify(randomBytes(20)).toLowerCase();
+        const token2 = hexlify(randomBytes(20)).toLowerCase();
+        const [order1, order2, order3, order4, order5, order6] = [
+            getNewOrder(orderbook, owner, token1, token2, 1),
+            getNewOrder(orderbook, owner, token1, token2, 2),
+            getNewOrder(orderbook, owner, token1, token2, 3),
+            getNewOrder(orderbook, owner, token1, token2, 4),
+            getNewOrder(orderbook, owner, token1, token2, 5),
+            getNewOrder(orderbook, owner, token1, token2, 6),
+        ];
+
+        // build orderbook owner map
+        const allOrders = await getOrderbookOwnersProfileMapFromSg(
+            [order1, order2, order3, order4, order5, order6],
+            undefined,
+            [],
+            { [owner]: 3 }, // set owner limit as 3
+        );
+
+        // prepare orders for first round, ie first 3 orders should get consumed
+        const result1 = prepareOrdersForRound(allOrders, false);
+        const expected1 = [
+            [
+                {
+                    buyToken: token1.toLowerCase(),
+                    buyTokenSymbol: "NewToken1",
+                    buyTokenDecimals: 6,
+                    sellToken: token2.toLowerCase(),
+                    sellTokenSymbol: "NewToken2",
+                    sellTokenDecimals: 18,
+                    orderbook,
+                    takeOrders: [order1, order2, order3].map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+            ],
+        ];
+        assert.deepEqual(result1, expected1);
+
+        // prepare orders for second round, ie second 3 orders should get consumed
+        const result2 = prepareOrdersForRound(allOrders, false);
+        const expected2 = [
+            [
+                {
+                    buyToken: token1.toLowerCase(),
+                    buyTokenSymbol: "NewToken1",
+                    buyTokenDecimals: 6,
+                    sellToken: token2.toLowerCase(),
+                    sellTokenSymbol: "NewToken2",
+                    sellTokenDecimals: 18,
+                    orderbook,
+                    takeOrders: [order4, order5, order6].map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+            ],
+        ];
+        assert.deepEqual(result2, expected2);
+
+        // prepare orders for 3rd round, so should be back to consuming
+        // first 3 order again as 6 total order were consumed by first 2 rounds
+        const result3 = prepareOrdersForRound(allOrders, false);
+        const expected3 = [
+            [
+                {
+                    buyToken: token1.toLowerCase(),
+                    buyTokenSymbol: "NewToken1",
+                    buyTokenDecimals: 6,
+                    sellToken: token2.toLowerCase(),
+                    sellTokenSymbol: "NewToken2",
+                    sellTokenDecimals: 18,
+                    orderbook,
+                    takeOrders: [order1, order2, order3].map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+            ],
+        ];
+        assert.deepEqual(result3, expected3);
     });
 });
 

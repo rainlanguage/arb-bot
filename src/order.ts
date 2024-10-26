@@ -14,7 +14,15 @@ import {
     OrderbooksOwnersProfileMap,
 } from "./types";
 
-export async function getPairs(
+/**
+ * The default owner limit
+ */
+export const DEFAULT_OWNER_LIMIT = 25 as const;
+
+/**
+ * Get all pairs of an order
+ */
+export async function getOrderPairs(
     orderStruct: Order,
     viemClient: ViemClient,
     tokens: TokenDetails[],
@@ -116,7 +124,12 @@ export async function getOrderbookOwnersProfileMapFromSg(
                     ownerProfile.orders.set(orderDetails.orderHash.toLowerCase(), {
                         active: true,
                         order: orderStruct,
-                        takeOrders: await getPairs(orderStruct, viemClient, tokens, orderDetails),
+                        takeOrders: await getOrderPairs(
+                            orderStruct,
+                            viemClient,
+                            tokens,
+                            orderDetails,
+                        ),
                         consumedTakeOrders: [],
                     });
                 }
@@ -125,11 +138,11 @@ export async function getOrderbookOwnersProfileMapFromSg(
                 ordersProfileMap.set(orderDetails.orderHash.toLowerCase(), {
                     active: true,
                     order: orderStruct,
-                    takeOrders: await getPairs(orderStruct, viemClient, tokens, orderDetails),
+                    takeOrders: await getOrderPairs(orderStruct, viemClient, tokens, orderDetails),
                     consumedTakeOrders: [],
                 });
                 orderbookOwnerProfileItem.set(orderStruct.owner.toLowerCase(), {
-                    limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? 25,
+                    limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                     orders: ordersProfileMap,
                 });
             }
@@ -138,12 +151,12 @@ export async function getOrderbookOwnersProfileMapFromSg(
             ordersProfileMap.set(orderDetails.orderHash.toLowerCase(), {
                 active: true,
                 order: orderStruct,
-                takeOrders: await getPairs(orderStruct, viemClient, tokens, orderDetails),
+                takeOrders: await getOrderPairs(orderStruct, viemClient, tokens, orderDetails),
                 consumedTakeOrders: [],
             });
             const ownerProfileMap: OwnersProfileMap = new Map();
             ownerProfileMap.set(orderStruct.owner.toLowerCase(), {
-                limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? 25,
+                limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                 orders: ordersProfileMap,
             });
             orderbookOwnersProfileMap.set(orderbook, ownerProfileMap);
@@ -153,23 +166,11 @@ export async function getOrderbookOwnersProfileMapFromSg(
 }
 
 /**
- * Get token symbol
- * @param address - The address of token
- * @param viemClient - The viem client
+ * Prepares an array of orders for a arb round by following owners limits
+ * @param orderbooksOwnersProfileMap - The orderbooks owners orders map
+ * @param shuffle - (optional) Shuffle the order of items
  */
-export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
-    try {
-        return await viemClient.readContract({
-            address: address as `0x${string}`,
-            abi: parseAbi(erc20Abi),
-            functionName: "symbol",
-        });
-    } catch (error) {
-        return "Unknownsymbol";
-    }
-}
-
-export function prepareRoundProcessingOrders(
+export function prepareOrdersForRound(
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
     shuffle = true,
 ): BundledOrders[][] {
@@ -177,27 +178,45 @@ export function prepareRoundProcessingOrders(
     for (const [orderbook, ownersProfileMap] of orderbooksOwnersProfileMap) {
         const orderbookBundledOrders: BundledOrders[] = [];
         for (const [, ownerProfile] of ownersProfileMap) {
-            let consumedLimit = ownerProfile.limit;
+            let remainingLimit = ownerProfile.limit;
             const activeOrdersProfiles = Array.from(ownerProfile.orders).filter((v) => v[1].active);
             const remainingOrdersPairs = activeOrdersProfiles.filter(
                 (v) => v[1].takeOrders.length > 0,
             );
             if (remainingOrdersPairs.length === 0) {
-                for (const [, orderProfile] of activeOrdersProfiles) {
-                    orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
-                }
                 for (const [orderHash, orderProfile] of activeOrdersProfiles) {
-                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
-                    consumedLimit -= consumingOrderPairs.length;
-                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
+                    orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
+                    if (remainingLimit > 0) {
+                        const consumingOrderPairs = orderProfile.takeOrders.splice(
+                            0,
+                            remainingLimit,
+                        );
+                        remainingLimit -= consumingOrderPairs.length;
+                        orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
+                        gatherPairs(
+                            orderbook,
+                            orderHash,
+                            consumingOrderPairs,
+                            orderbookBundledOrders,
+                        );
+                    }
                 }
             } else {
                 for (const [orderHash, orderProfile] of remainingOrdersPairs) {
-                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, consumedLimit);
-                    consumedLimit -= consumingOrderPairs.length;
-                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
+                    if (remainingLimit > 0) {
+                        const consumingOrderPairs = orderProfile.takeOrders.splice(
+                            0,
+                            remainingLimit,
+                        );
+                        remainingLimit -= consumingOrderPairs.length;
+                        orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
+                        gatherPairs(
+                            orderbook,
+                            orderHash,
+                            consumingOrderPairs,
+                            orderbookBundledOrders,
+                        );
+                    }
                 }
             }
         }
@@ -218,6 +237,9 @@ export function prepareRoundProcessingOrders(
     return result;
 }
 
+/**
+ * Gathers owners orders by token pair
+ */
 function gatherPairs(
     orderbook: string,
     orderHash: string,
@@ -256,5 +278,22 @@ function gatherPairs(
                 ],
             });
         }
+    }
+}
+
+/**
+ * Get token symbol
+ * @param address - The address of token
+ * @param viemClient - The viem client
+ */
+export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
+    try {
+        return await viemClient.readContract({
+            address: address as `0x${string}`,
+            abi: parseAbi(erc20Abi),
+            functionName: "symbol",
+        });
+    } catch (error) {
+        return "Unknownsymbol";
     }
 }
