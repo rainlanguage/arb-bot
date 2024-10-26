@@ -1,6 +1,6 @@
 import { SgOrder } from "./query";
 import { toOrder } from "./watcher";
-import { shuffleArray } from "./utils";
+import { shuffleArray, sleep } from "./utils";
 import { erc20Abi, OrderV3 } from "./abis";
 import { decodeAbiParameters, parseAbi, parseAbiParameters } from "viem";
 import {
@@ -287,13 +287,17 @@ function gatherPairs(
  * @param viemClient - The viem client
  */
 export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
-    try {
-        return await viemClient.readContract({
-            address: address as `0x${string}`,
-            abi: parseAbi(erc20Abi),
-            functionName: "symbol",
-        });
-    } catch (error) {
-        return "Unknownsymbol";
+    // 3 retries
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await viemClient.readContract({
+                address: address as `0x${string}`,
+                abi: parseAbi(erc20Abi),
+                functionName: "symbol",
+            });
+        } catch {
+            await sleep(10_000);
+        }
     }
+    return "UnknownSymbol";
 }
