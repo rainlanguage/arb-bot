@@ -21,7 +21,6 @@ import {
     ProcessPairResult,
 } from "./types";
 import {
-    sleep,
     toNumber,
     getIncome,
     getEthPrice,
@@ -331,7 +330,6 @@ export const processOrders = async (
 
                 // rotate the accounts once they are used once
                 rotateAccounts(accounts);
-                await sleep(2000);
             }
         }
     }
