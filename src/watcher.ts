@@ -45,13 +45,14 @@ export type OrderLog = {
     order: OrderArgsLog;
     block: number;
     logIndex: number;
+    txHash: string;
 };
 export type WatchedOrderbookOrders = { orderLogs: OrderLog[] };
 
 function logToOrder(orderLog: OrderEventLog): OrderArgsLog {
     return {
-        sender: orderLog.sender,
-        orderHash: orderLog.orderHash,
+        sender: orderLog.sender.toLowerCase() as `0x${string}`,
+        orderHash: orderLog.orderHash.toLowerCase() as `0x${string}`,
         order: toOrder(orderLog.order),
     };
 }
@@ -104,6 +105,7 @@ export function watchOrderbook(
                         type: "add",
                         logIndex: log.logIndex,
                         block: Number(log.blockNumber),
+                        txHash: log.transactionHash,
                         order: logToOrder(log.args as any as OrderEventLog),
                     });
                 }
@@ -123,6 +125,7 @@ export function watchOrderbook(
                         type: "remove",
                         logIndex: log.logIndex,
                         block: Number(log.blockNumber),
+                        txHash: log.transactionHash,
                         order: logToOrder(log.args as any as OrderEventLog),
                     });
                 }

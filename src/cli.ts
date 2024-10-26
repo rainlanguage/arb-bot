@@ -4,12 +4,12 @@ import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { sleep, getOrdersTokens } from "./utils";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
+import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
@@ -214,10 +214,23 @@ const getOptions = async (argv: any, version?: string) => {
         const profiles: Record<string, number> = {};
         cmdOptions.ownerProfile.forEach((v: string) => {
             const parsed = v.split("=");
-            if (parsed.length !== 2) throw "Invalid owner profile";
-            if (!/^[0-9]+$/.test(parsed[1]))
+            if (parsed.length !== 2) {
+                throw "Invalid owner profile, must be in form of 'ownerAddress=limitValue'";
+            }
+            if (!ethers.utils.isAddress(parsed[0])) {
+                throw `Invalid owner address: ${parsed[0]}`;
+            }
+            if (!isBigNumberish(parsed[1]) && parsed[1] !== "max") {
                 throw "Invalid owner profile limit, must be an integer gte 0";
-            profiles[parsed[0].toLowerCase()] = Number(parsed[1]);
+            }
+            if (parsed[1] === "max") {
+                profiles[parsed[0].toLowerCase()] = Number.MAX_SAFE_INTEGER;
+            } else {
+                const limit = BigNumber.from(parsed[1]);
+                profiles[parsed[0].toLowerCase()] = limit.gte(Number.MAX_SAFE_INTEGER.toString())
+                    ? Number.MAX_SAFE_INTEGER
+                    : limit.toNumber();
+            }
         });
         cmdOptions.ownerProfile = profiles;
     }

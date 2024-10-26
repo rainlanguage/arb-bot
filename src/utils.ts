@@ -10,6 +10,7 @@ import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
 import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
+import { isBytes, isHexString } from "ethers/lib/utils";
 
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -1279,4 +1280,16 @@ export function getMarketQuote(
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
         };
     }
+}
+
+export function isBigNumberish(value: any): value is BigNumberish {
+    return (
+        value != null &&
+        (BigNumber.isBigNumber(value) ||
+            (typeof value === "number" && value % 1 === 0) ||
+            (typeof value === "string" && !!value.match(/^-?[0-9]+$/)) ||
+            isHexString(value) ||
+            typeof value === "bigint" ||
+            isBytes(value))
+    );
 }
