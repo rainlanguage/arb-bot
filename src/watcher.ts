@@ -79,11 +79,7 @@ export function toOrder(orderLog: any): Order {
     };
 }
 
-export const orderbookAbi = parseAbi(abi);
-export type UnwatchOrderbook = {
-    unwatchAddOrder: WatchContractEventReturnType;
-    unwatchRemoveOrder: WatchContractEventReturnType;
-};
+export const orderbookAbi = parseAbi([abi[0], abi[1]]);
 
 /**
  * Applies an event watcher for a specified orderbook
@@ -92,17 +88,16 @@ export function watchOrderbook(
     orderbook: string,
     viemClient: ViemClient,
     watchedOrderbookOrders: WatchedOrderbookOrders,
-): UnwatchOrderbook {
-    const unwatchAddOrder = viemClient.watchContractEvent({
+): WatchContractEventReturnType {
+    return viemClient.watchContractEvent({
         address: orderbook as `0x${string}`,
         abi: orderbookAbi,
-        eventName: "AddOrderV2",
         pollingInterval: 30_000,
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
                     watchedOrderbookOrders.orderLogs.push({
-                        type: "add",
+                        type: log.eventName === "AddOrderV2" ? "add" : "remove",
                         logIndex: log.logIndex,
                         block: Number(log.blockNumber),
                         txHash: log.transactionHash,
@@ -112,31 +107,6 @@ export function watchOrderbook(
             });
         },
     });
-
-    const unwatchRemoveOrder = viemClient.watchContractEvent({
-        address: orderbook as `0x${string}`,
-        abi: orderbookAbi,
-        eventName: "RemoveOrderV2",
-        pollingInterval: 30_000,
-        onLogs: (logs) => {
-            logs.forEach((log) => {
-                if (log) {
-                    watchedOrderbookOrders.orderLogs.push({
-                        type: "remove",
-                        logIndex: log.logIndex,
-                        block: Number(log.blockNumber),
-                        txHash: log.transactionHash,
-                        order: logToOrder(log.args as any as OrderEventLog),
-                    });
-                }
-            });
-        },
-    });
-
-    return {
-        unwatchAddOrder,
-        unwatchRemoveOrder,
-    };
 }
 
 /**
@@ -147,15 +117,14 @@ export function watchAllOrderbooks(
     orderbooks: string[],
     viemClient: ViemClient,
     watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders>,
-): Record<string, UnwatchOrderbook> {
-    const allUnwatchers: Record<string, UnwatchOrderbook> = {};
+): Record<string, WatchContractEventReturnType> {
+    const allUnwatchers: Record<string, WatchContractEventReturnType> = {};
     for (const v of orderbooks) {
         const ob = v.toLowerCase();
         if (!watchedOrderbooksOrders[ob]) {
             watchedOrderbooksOrders[ob] = { orderLogs: [] };
         }
-        const unwatcher = watchOrderbook(ob, viemClient, watchedOrderbooksOrders[ob]);
-        allUnwatchers[ob] = unwatcher;
+        allUnwatchers[ob] = watchOrderbook(ob, viemClient, watchedOrderbooksOrders[ob]);
     }
     return allUnwatchers;
 }
@@ -163,10 +132,9 @@ export function watchAllOrderbooks(
 /**
  * Unwatches all orderbooks event watchers
  */
-export function unwatchAllOrderbooks(unwatchers: Record<string, UnwatchOrderbook>) {
+export function unwatchAllOrderbooks(unwatchers: Record<string, WatchContractEventReturnType>) {
     for (const ob in unwatchers) {
-        unwatchers[ob].unwatchAddOrder();
-        unwatchers[ob].unwatchRemoveOrder();
+        unwatchers[ob]?.();
     }
 }
 
