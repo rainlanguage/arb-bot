@@ -573,6 +573,7 @@ export const main = async (argv: any, version?: string) => {
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 await rotateProviders(config, update);
+                roundSpan.setAttribute("details.rpc", config.rpc);
                 const roundResult = await arbRound(
                     tracer,
                     roundCtx,
