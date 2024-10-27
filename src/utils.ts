@@ -4,13 +4,13 @@ import { RouteLeg } from "sushi/tines";
 import { getDataFetcher } from "./config";
 import { Token, Type } from "sushi/currency";
 import BlackList from "./pool-blacklist.json";
+import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, orderbookAbi, OrderV3 } from "./abis";
 import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
-import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails } from "./types";
+import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails, ViemClient } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
-import { isBytes, isHexString } from "ethers/lib/utils";
 
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -708,7 +708,7 @@ export async function getVaultBalance(
             address: orderbookAddress as `0x${string}`,
             allowFailure: false,
             chainId: viemClient.chain!.id,
-            abi: parseAbi(orderbookAbi),
+            abi: parseAbi([orderbookAbi[3]]),
             functionName: "vaultBalance",
             args: [
                 // owner
@@ -1210,7 +1210,7 @@ export async function checkOwnedOrders(
                 address: v.orderbook,
                 allowFailure: false,
                 chainId: config.chain.id,
-                abi: parseAbi(orderbookAbi),
+                abi: parseAbi([orderbookAbi[3]]),
                 functionName: "vaultBalance",
                 args: [
                     // owner
@@ -1292,4 +1292,15 @@ export function isBigNumberish(value: any): value is BigNumberish {
             typeof value === "bigint" ||
             isBytes(value))
     );
+}
+
+export async function getblockNumber(viemClient: ViemClient): Promise<bigint | undefined> {
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await viemClient.getBlockNumber();
+        } catch (e) {
+            await sleep(5_000);
+        }
+    }
+    return;
 }

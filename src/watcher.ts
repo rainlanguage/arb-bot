@@ -88,11 +88,13 @@ export function watchOrderbook(
     orderbook: string,
     viemClient: ViemClient,
     watchedOrderbookOrders: WatchedOrderbookOrders,
+    fromBlock?: bigint,
 ): WatchContractEventReturnType {
     return viemClient.watchContractEvent({
         address: orderbook as `0x${string}`,
         abi: orderbookAbi,
         pollingInterval: 30_000,
+        fromBlock,
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {

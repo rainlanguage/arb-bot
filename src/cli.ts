@@ -9,11 +9,11 @@ import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
-import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { sleep, getOrdersTokens, isBigNumberish, getblockNumber } from "./utils";
 import { getOrderbookOwnersProfileMapFromSg, prepareOrdersForRound } from "./order";
 import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
 import {
@@ -368,7 +368,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];
-    if (!process?.env?.TEST)
+    if (!process?.env?.CLI_STARTUP_TEST) {
         for (let i = 0; i < 20; i++) {
             try {
                 ordersDetails = await getOrderDetails(options.subgraph, {
@@ -382,6 +382,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 else throw e;
             }
         }
+    }
     const tokens = getOrdersTokens(ordersDetails);
     options.tokens = [...tokens];
 
@@ -394,6 +395,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         tracer,
         ctx,
     );
+    const blockNumber = (await getblockNumber(config.viemClient as any as ViemClient)) ?? 0n;
 
     return {
         roundGap,
@@ -407,6 +409,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             (options as CliOptions).ownerProfile,
         ),
         tokens,
+        blockNumber,
     };
 }
 
@@ -445,33 +448,41 @@ export const main = async (argv: any, version?: string) => {
     const tracer = provider.getTracer("arb-bot-tracer");
 
     // parse cli args and startup bot configuration
-    const { roundGap, options, poolUpdateInterval, config, orderbooksOwnersProfileMap, tokens } =
-        await tracer.startActiveSpan("startup", async (startupSpan) => {
-            const ctx = trace.setSpan(context.active(), startupSpan);
-            try {
-                const result = await startup(argv, version, tracer, ctx);
-                startupSpan.setStatus({ code: SpanStatusCode.OK });
-                startupSpan.end();
-                return result;
-            } catch (e: any) {
-                const snapshot = errorSnapshot("", e);
-                startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-                startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                startupSpan.recordException(e);
+    const {
+        roundGap,
+        options,
+        poolUpdateInterval,
+        config,
+        orderbooksOwnersProfileMap,
+        tokens,
+        blockNumber: bn,
+    } = await tracer.startActiveSpan("startup", async (startupSpan) => {
+        const ctx = trace.setSpan(context.active(), startupSpan);
+        try {
+            const result = await startup(argv, version, tracer, ctx);
+            startupSpan.setStatus({ code: SpanStatusCode.OK });
+            startupSpan.end();
+            return result;
+        } catch (e: any) {
+            const snapshot = errorSnapshot("", e);
+            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
+            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            startupSpan.recordException(e);
 
-                // end this span and wait for it to finish
-                startupSpan.end();
-                await sleep(20000);
+            // end this span and wait for it to finish
+            startupSpan.end();
+            await sleep(20000);
 
-                // flush and close the otel connection.
-                await exporter.shutdown();
-                await sleep(10000);
+            // flush and close the otel connection.
+            await exporter.shutdown();
+            await sleep(10000);
 
-                // reject the promise that makes the cli process to exit with error
-                return Promise.reject(e);
-            }
-        });
+            // reject the promise that makes the cli process to exit with error
+            return Promise.reject(e);
+        }
+    });
 
+    let blockNumber = bn;
     const obs: string[] = [];
     const watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders> = {};
     orderbooksOwnersProfileMap.forEach((_, ob) => {
@@ -515,10 +526,13 @@ export const main = async (argv: any, version?: string) => {
                             ob,
                             config.watchClient,
                             watchedOrderbooksOrders[ob],
+                            blockNumber,
                         );
                     }
                 }
             }
+            const tempBn = await getblockNumber(config.viemClient as any as ViemClient);
+            if (tempBn !== undefined) blockNumber = (tempBn * 95n) / 100n;
 
             await tracer.startActiveSpan(
                 "check-wallet-balance",

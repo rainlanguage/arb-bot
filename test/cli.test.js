@@ -54,7 +54,7 @@ describe("Test cli", async function () {
     });
 
     it("test cli startup", async function () {
-        process.env.TEST = true;
+        process.env.CLI_STARTUP_TEST = true;
         try {
             await startup(["", ""]);
             assert.fail("expected to fail, but resolved");
