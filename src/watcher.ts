@@ -11,6 +11,7 @@ import {
     OwnersProfileMap,
     OrderbooksOwnersProfileMap,
 } from "./types";
+import { errorSnapshot } from "./error";
 
 type OrderEventLog = {
     sender: `0x${string}`;
@@ -98,16 +99,36 @@ export function watchOrderbook(
         onLogs: (logs) => {
             logs.forEach((log) => {
                 if (log) {
-                    watchedOrderbookOrders.orderLogs.push({
-                        type: log.eventName === "AddOrderV2" ? "add" : "remove",
-                        logIndex: log.logIndex,
-                        block: Number(log.blockNumber),
-                        txHash: log.transactionHash,
-                        order: logToOrder(log.args as any as OrderEventLog),
-                    });
+                    try {
+                        watchedOrderbookOrders.orderLogs.push({
+                            type: log.eventName === "AddOrderV2" ? "add" : "remove",
+                            logIndex: log.logIndex,
+                            block: Number(log.blockNumber),
+                            txHash: log.transactionHash,
+                            order: logToOrder(log.args as any as OrderEventLog),
+                        });
+                    } catch (error) {
+                        // eslint-disable-next-line no-console
+                        console.warn(
+                            errorSnapshot(
+                                `Failed to handle orderbook ${orderbook} new event log`,
+                                error,
+                            ),
+                        );
+                        // eslint-disable-next-line no-console
+                        console.log("\nOriginal log:\n", log);
+                    }
                 }
             });
         },
+        onError: (error) =>
+            // eslint-disable-next-line no-console
+            console.warn(
+                errorSnapshot(
+                    `An error occured during watching new events logs of orderbook ${orderbook}`,
+                    error,
+                ),
+            ),
     });
 }
 

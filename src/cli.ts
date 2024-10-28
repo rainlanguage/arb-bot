@@ -186,30 +186,33 @@ const getOptions = async (argv: any, version?: string) => {
         .opts();
 
     // assigning specified options from cli/env
-    cmdOptions.key = cmdOptions.key || ENV_OPTIONS.key;
-    cmdOptions.mnemonic = cmdOptions.mnemonic || ENV_OPTIONS.mnemonic;
-    cmdOptions.rpc = cmdOptions.rpc || ENV_OPTIONS.rpc;
-    cmdOptions.arbAddress = cmdOptions.arbAddress || ENV_OPTIONS.arbAddress;
-    cmdOptions.genericArbAddress = cmdOptions.genericArbAddress || ENV_OPTIONS.genericArbAddress;
-    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress || ENV_OPTIONS.orderbookAddress;
-    cmdOptions.subgraph = cmdOptions.subgraph || ENV_OPTIONS.subgraph;
-    cmdOptions.lps = cmdOptions.lps || ENV_OPTIONS.lps;
-    cmdOptions.gasCoverage = cmdOptions.gasCoverage || ENV_OPTIONS.gasCoverage;
-    cmdOptions.orderHash = cmdOptions.orderHash || ENV_OPTIONS.orderHash;
-    cmdOptions.orderOwner = cmdOptions.orderOwner || ENV_OPTIONS.orderOwner;
-    cmdOptions.sleep = cmdOptions.sleep || ENV_OPTIONS.sleep;
-    cmdOptions.maxRatio = cmdOptions.maxRatio || ENV_OPTIONS.maxRatio;
-    cmdOptions.flashbotRpc = cmdOptions.flashbotRpc || ENV_OPTIONS.flashbotRpc;
-    cmdOptions.timeout = cmdOptions.timeout || ENV_OPTIONS.timeout;
-    cmdOptions.hops = cmdOptions.hops || ENV_OPTIONS.hops;
-    cmdOptions.retries = cmdOptions.retries || ENV_OPTIONS.retries;
-    cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
-    cmdOptions.walletCount = cmdOptions.walletCount || ENV_OPTIONS.walletCount;
-    cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
-    cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
-    cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
-    cmdOptions.ownerProfile = cmdOptions.ownerProfile || ENV_OPTIONS.ownerProfile;
-    cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.key = cmdOptions.key || getEnv(ENV_OPTIONS.key);
+    cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
+    cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
+    cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
+    cmdOptions.genericArbAddress =
+        cmdOptions.genericArbAddress || getEnv(ENV_OPTIONS.genericArbAddress);
+    cmdOptions.orderbookAddress =
+        cmdOptions.orderbookAddress || getEnv(ENV_OPTIONS.orderbookAddress);
+    cmdOptions.subgraph = cmdOptions.subgraph || getEnv(ENV_OPTIONS.subgraph);
+    cmdOptions.lps = cmdOptions.lps || getEnv(ENV_OPTIONS.lps);
+    cmdOptions.gasCoverage = cmdOptions.gasCoverage || getEnv(ENV_OPTIONS.gasCoverage);
+    cmdOptions.orderHash = cmdOptions.orderHash || getEnv(ENV_OPTIONS.orderHash);
+    cmdOptions.orderOwner = cmdOptions.orderOwner || getEnv(ENV_OPTIONS.orderOwner);
+    cmdOptions.sleep = cmdOptions.sleep || getEnv(ENV_OPTIONS.sleep);
+    cmdOptions.maxRatio = cmdOptions.maxRatio || getEnv(ENV_OPTIONS.maxRatio);
+    cmdOptions.flashbotRpc = cmdOptions.flashbotRpc || getEnv(ENV_OPTIONS.flashbotRpc);
+    cmdOptions.timeout = cmdOptions.timeout || getEnv(ENV_OPTIONS.timeout);
+    cmdOptions.hops = cmdOptions.hops || getEnv(ENV_OPTIONS.hops);
+    cmdOptions.retries = cmdOptions.retries || getEnv(ENV_OPTIONS.retries);
+    cmdOptions.poolUpdateInterval =
+        cmdOptions.poolUpdateInterval || getEnv(ENV_OPTIONS.poolUpdateInterval);
+    cmdOptions.walletCount = cmdOptions.walletCount || getEnv(ENV_OPTIONS.walletCount);
+    cmdOptions.topupAmount = cmdOptions.topupAmount || getEnv(ENV_OPTIONS.topupAmount);
+    cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || getEnv(ENV_OPTIONS.selfFundOrders);
+    cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
+    cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
+    cmdOptions.bundle = cmdOptions.bundle ? getEnv(ENV_OPTIONS.bundle) : false;
     if (cmdOptions.ownerProfile) {
         const profiles: Record<string, number> = {};
         cmdOptions.ownerProfile.forEach((v: string) => {
@@ -735,3 +738,12 @@ export const main = async (argv: any, version?: string) => {
     await exporter.shutdown();
     await sleep(10000);
 };
+
+function getEnv(value: any): any {
+    if (value !== undefined && value !== null) {
+        if (typeof value === "string") {
+            if (value !== "" && !/^\s+$/.test(value)) return value;
+        }
+    }
+    return undefined;
+}
