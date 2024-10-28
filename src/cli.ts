@@ -742,8 +742,9 @@ export const main = async (argv: any, version?: string) => {
 function getEnv(value: any): any {
     if (value !== undefined && value !== null) {
         if (typeof value === "string") {
-            if (value !== "" && !/^\s+$/.test(value)) return value;
-        }
+            if (value !== "" && !/^\s*$/.test(value)) return value;
+            else return undefined;
+        } else return value;
     }
     return undefined;
 }
