@@ -139,6 +139,7 @@ export type BotConfig = {
     mainAccount: ViemClient;
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
+    walletKey: string;
 };
 
 export type Report = {

@@ -166,6 +166,7 @@ export async function getConfig(
     config.dataFetcher = dataFetcher;
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
+    config.walletKey = walletKey;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

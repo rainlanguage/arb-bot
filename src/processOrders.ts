@@ -189,9 +189,11 @@ export const processOrders = async (
                           [config.flashbotRpc],
                           undefined,
                           privateKeyToAccount(
-                              ethers.utils.hexlify(
-                                  ethers.utils.hexlify(signer.account.getHdKey().privateKey!),
-                              ) as `0x${string}`,
+                              signer.account.getHdKey
+                                  ? (ethers.utils.hexlify(
+                                        signer.account.getHdKey().privateKey!,
+                                    ) as `0x${string}`)
+                                  : (config.walletKey as `0x${string}`),
                           ),
                           config.timeout,
                       )
