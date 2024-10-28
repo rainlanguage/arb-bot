@@ -193,7 +193,9 @@ export const processOrders = async (
                                   ? (ethers.utils.hexlify(
                                         signer.account.getHdKey().privateKey!,
                                     ) as `0x${string}`)
-                                  : (config.walletKey as `0x${string}`),
+                                  : ((config.walletKey.startsWith("0x")
+                                        ? config.walletKey
+                                        : "0x" + config.walletKey) as `0x${string}`),
                           ),
                           config.timeout,
                       )
