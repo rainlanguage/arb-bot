@@ -176,10 +176,7 @@ export async function handleOrderbooksNewLogs(
         const watchedOrderbookLogs = watchedOrderbooksOrders[ob];
         const logs = watchedOrderbookLogs.orderLogs.splice(0);
         // make sure logs are sorted before applying them to the map
-        logs.sort((a, b) => {
-            const block = a.block - b.block;
-            return block !== 0 ? block : a.logIndex - b.logIndex;
-        });
+        logs.sort((a, b) => a.block - b.block || a.logIndex - b.logIndex);
         await handleNewOrderLogs(
             ob,
             logs,
