@@ -23,6 +23,7 @@ export type CliOptions = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
     orderbookAddress?: string;
@@ -33,7 +34,6 @@ export type CliOptions = {
     orderOwner?: string;
     sleep: number;
     maxRatio: boolean;
-    flashbotRpc?: string;
     timeout?: number;
     hops: number;
     retries: number;
@@ -41,10 +41,10 @@ export type CliOptions = {
     walletCount?: number;
     topupAmount?: string;
     botMinBalance: string;
-    bundle: boolean;
     selfFundOrders?: SelfFundOrder[];
     tokens?: TokenDetails[];
     ownerProfile?: Record<string, number>;
+    publicRpc: boolean;
 };
 
 export type TokenDetails = {
@@ -148,15 +148,14 @@ export type BotConfig = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
     lps: LiquidityProviders[];
     maxRatio: boolean;
-    flashbotRpc?: string;
     timeout?: number;
     hops: number;
     retries: number;
-    bundle: boolean;
     gasCoveragePercentage: string;
     watchedTokens?: TokenDetails[];
     viemClient: PublicClient;
@@ -165,6 +164,8 @@ export type BotConfig = {
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
     watchClient: ViemClient;
+    publicRpc: boolean;
+    walletKey: string;
 };
 
 export type Report = {

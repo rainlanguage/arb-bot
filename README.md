@@ -84,6 +84,7 @@ Other optional arguments are:
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
 - `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
+- `--public-rpc`, Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -155,8 +156,8 @@ MNEMONIC=""
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
 
-# Option to submit transactions using the flashbot RPC. 
-FLASHBOT_RPC=""
+# Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
+WRITE_RPC=""
 
 # arb contract address
 ARB_ADDRESS="0x123..."
@@ -225,6 +226,9 @@ SELF_FUND_ORDERS=
 
 # Specifies the owner limit, in form of owner1=limit,owner2=limit,... , example: 0x123456=12,0x3456=44
 OWNER_PROFILE= 
+
+# Allows to use public RPCs as fallbacks, default is false
+PUBLIC_RPC=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

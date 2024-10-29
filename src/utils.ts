@@ -848,6 +848,9 @@ export async function quoteSingleOrder(
     }
 }
 
+/**
+ * Get a TakeOrder type consumable by orderbook Quote lib for quoting orders
+ */
 export function getQuoteConfig(orderDetails: any): TakeOrder {
     return {
         order: {
@@ -1082,6 +1085,11 @@ export const getRpSwap = async (
     }
 };
 
+/**
+ * Gets all distinct tokens of all the orders' IOs from a subgraph query,
+ * used to to keep a cache of known tokens at runtime to not fetch their
+ * details everytime with onchain calls
+ */
 export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
     const tokens: TokenDetails[] = [];
     for (let i = 0; i < ordersDetails.length; i++) {
@@ -1121,6 +1129,9 @@ export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
     return tokens;
 }
 
+/**
+ * Checks if a route exists between 2 tokens using sushi router
+ */
 export async function routeExists(
     config: BotConfig,
     fromToken: Token,
@@ -1144,6 +1155,9 @@ export async function routeExists(
     }
 }
 
+/**
+ * Json serializer function for handling bigint type
+ */
 export function withBigintSerializer(_k: string, v: any) {
     if (typeof v == "bigint") {
         return v.toString();
@@ -1244,11 +1258,17 @@ export async function checkOwnedOrders(
     return result;
 }
 
+/**
+ * Converts to a float number
+ */
 export function toNumber(value: BigNumberish): number {
     const valueString = ethers.utils.formatUnits(value);
     return Number.parseFloat(valueString.substring(0, valueString.includes(".") ? 18 : 17));
 }
 
+/**
+ * Get market quote (price) for a token pair using sushi router
+ */
 export function getMarketQuote(
     config: BotConfig,
     fromToken: Token,
@@ -1282,6 +1302,9 @@ export function getMarketQuote(
     }
 }
 
+/**
+ * Checks if an a value is a big numberish, from ethers
+ */
 export function isBigNumberish(value: any): value is BigNumberish {
     return (
         value != null &&
@@ -1294,6 +1317,9 @@ export function isBigNumberish(value: any): value is BigNumberish {
     );
 }
 
+/**
+ * Get block number with retries, using viem client
+ */
 export async function getblockNumber(viemClient: ViemClient): Promise<bigint | undefined> {
     for (let i = 0; i < 3; i++) {
         try {
@@ -1303,4 +1329,25 @@ export async function getblockNumber(viemClient: ViemClient): Promise<bigint | u
         }
     }
     return;
+}
+
+/**
+ * Get token symbol
+ * @param address - The address of token
+ * @param viemClient - The viem client
+ */
+export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
+    // 3 retries
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await viemClient.readContract({
+                address: address as `0x${string}`,
+                abi: parseAbi(erc20Abi),
+                functionName: "symbol",
+            });
+        } catch {
+            await sleep(5_000);
+        }
+    }
+    return "UnknownSymbol";
 }

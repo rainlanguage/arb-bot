@@ -69,18 +69,17 @@ export async function createViemClient(
     timeout?: number,
     testClient?: any,
 ): Promise<ViemClient> {
-    const transport =
-        !rpcs || rpcs?.length === 0
-            ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 6 })
-            : useFallbacks
-              ? fallback(
-                    [...rpcs.map((v) => http(v, { timeout })), ...fallbacks[chainId].transport],
-                    { rank: false, retryCount: 6 },
-                )
-              : fallback(
-                    rpcs.map((v) => http(v, { timeout })),
-                    { rank: false, retryCount: 6 },
-                );
+    const configuration = { rank: false, retryCount: 6 };
+    const urls = rpcs?.filter((v) => typeof v === "string") ?? [];
+    const topRpcs = urls.map((v) => http(v, { timeout }));
+    const fallbacks = (fallbackRpcs[chainId] ?? [])
+        .filter((v) => !urls.includes(v))
+        .map((v) => http(v, { timeout }));
+    const transport = !topRpcs.length
+        ? fallback(fallbacks, configuration)
+        : useFallbacks
+          ? fallback([...topRpcs, ...fallbacks], configuration)
+          : fallback(topRpcs, configuration);
 
     return testClient
         ? ((await testClient({ account }))
@@ -227,197 +226,116 @@ export async function getMetaInfo(config: BotConfig, sg: string[]): Promise<Reco
 /**
  * Chain specific fallback data
  */
-export const fallbacks: Record<number, any> = {
-    [ChainId.ARBITRUM_NOVA]: {
-        transport: http("https://nova.arbitrum.io/rpc"),
-        liquidityProviders: ["sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.ARBITRUM]: {
-        transport: [
-            http(
-                "https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-            ),
-            http("https://rpc.ankr.com/arbitrum"),
-            http("https://arbitrum-one.public.blastapi.io"),
-            http("https://endpoints.omniatech.io/v1/arbitrum/one/public"),
-            http("https://arb1.croswap.com/rpc"),
-            http("https://1rpc.io/arb"),
-            http("https://arbitrum.blockpi.network/v1/rpc/public"),
-            http("https://arb-mainnet-public.unifra.io"),
-        ],
-        liquidityProviders: ["dfyn", "elk", "sushiswapv3", "uniswapv3", "sushiswapv2", "camelot"],
-    },
-    [ChainId.AVALANCHE]: {
-        transport: [
-            http("https://api.avax.network/ext/bc/C/rpc"),
-            http("https://rpc.ankr.com/avalanche"),
-        ],
-        liquidityProviders: ["elk", "traderjoe", "sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.BOBA]: {
-        transport: [
-            http("https://mainnet.boba.network"),
-            http("https://lightning-replica.boba.network"),
-        ],
-        liquidityProviders: ["sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.BOBA_AVAX]: {
-        transport: [http("https://avax.boba.network"), http("https://replica.avax.boba.network")],
-        liquidityProviders: ["sushiswapv2"],
-    },
-    [ChainId.BOBA_BNB]: {
-        transport: [http("https://bnb.boba.network"), http("https://replica.bnb.boba.network")],
-        liquidityProviders: ["sushiswapv2"],
-    },
-    [ChainId.BSC]: {
-        transport: [
-            http("https://rpc.ankr.com/bsc"),
-            http(
-                "https://lb.drpc.org/ogrpc?network=bsc&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-            ),
-            http("https://bsc-dataseed.binance.org"),
-            http("https://bsc-dataseed1.binance.org"),
-            http("https://bsc-dataseed2.binance.org"),
-        ],
-        liquidityProviders: [
-            "apeswap",
-            "biswap",
-            "elk",
-            "jetswap",
-            "pancakeswap",
-            "sushiswapv3",
-            "sushiswapv2",
-            "uniswapv3",
-        ],
-    },
-    [ChainId.BTTC]: {
-        transport: http("https://rpc.bittorrentchain.io"),
-    },
-    [ChainId.CELO]: {
-        transport: http("https://forno.celo.org"),
-        liquidityProviders: ["ubeswap", "sushiswapv2"],
-    },
-    [ChainId.ETHEREUM]: {
-        transport: [
-            http(
-                "https://lb.drpc.org/ogrpc?network=ethereum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-            ),
-            http("https://eth.llamarpc.com"),
-            // http('https://eth.rpc.blxrbdn.com'),
-            // http('https://virginia.rpc.blxrbdn.com'),
-            // http('https://singapore.rpc.blxrbdn.com'),
-            // http('https://uk.rpc.blxrbdn.com'),
-            http("https://1rpc.io/eth"),
-            http("https://ethereum.publicnode.com"),
-            http("https://cloudflare-eth.com"),
-        ],
-        liquidityProviders: [
-            "apeswap",
-            "curveswap",
-            "elk",
-            "pancakeswap",
-            "sushiswapv3",
-            "sushiswapv2",
-            "uniswapv2",
-            "uniswapv3",
-        ],
-    },
-    [ChainId.FANTOM]: {
-        transport: [
-            http("https://rpc.ankr.com/fantom"),
-            http("https://rpc.fantom.network"),
-            http("https://rpc2.fantom.network"),
-        ],
-        liquidityProviders: ["dfyn", "elk", "jetswap", "spookyswap", "sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.FUSE]: {
-        transport: http("https://rpc.fuse.io"),
-        liquidityProviders: ["elk", "sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.GNOSIS]: {
-        transport: http("https://rpc.ankr.com/gnosis"),
-        liquidityProviders: ["elk", "honeyswap", "sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.HARMONY]: {
-        transport: [http("https://api.harmony.one"), http("https://rpc.ankr.com/harmony")],
-        liquidityProviders: ["sushiswapv2"],
-    },
-    [ChainId.KAVA]: {
-        transport: [http("https://evm.kava.io"), http("https://evm2.kava.io")],
-        liquidityProviders: ["elk"],
-    },
-    [ChainId.MOONBEAM]: {
-        transport: [
-            http("https://rpc.api.moonbeam.network"),
-            http("https://rpc.ankr.com/moonbeam"),
-        ],
-        liquidityProviders: ["sushiswapv2"],
-    },
-    [ChainId.MOONRIVER]: {
-        transport: http("https://rpc.api.moonriver.moonbeam.network"),
-        liquidityProviders: ["elk", "sushiswapv3", "sushiswapv2"],
-    },
-    [ChainId.OPTIMISM]: {
-        transport: [
-            http(
-                "https://lb.drpc.org/ogrpc?network=optimism&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-            ),
-            http("https://rpc.ankr.com/optimism"),
-            http("https://optimism-mainnet.public.blastapi.io"),
-            http("https://1rpc.io/op"),
-            http("https://optimism.blockpi.network/v1/rpc/public"),
-            http("https://mainnet.optimism.io"),
-        ],
-        liquidityProviders: ["elk", "sushiswapv3", "uniswapv3"],
-    },
-    [ChainId.POLYGON]: {
-        transport: [
-            http("https://polygon.llamarpc.com"),
-            // http('https://polygon.rpc.blxrbdn.com'),
-            http("https://polygon-mainnet.public.blastapi.io"),
-            http("https://polygon.blockpi.network/v1/rpc/public"),
-            http("https://polygon-rpc.com"),
-            http("https://rpc.ankr.com/polygon"),
-            http("https://matic-mainnet.chainstacklabs.com"),
-            http("https://polygon-bor.publicnode.com"),
-            http("https://rpc-mainnet.matic.quiknode.pro"),
-            http("https://rpc-mainnet.maticvigil.com"),
-            // ...polygon.rpcUrls.default.http.map((url) => http(url)),
-        ],
-        liquidityProviders: [
-            "apeswap",
-            "dfyn",
-            "elk",
-            "jetswap",
-            "quickswap",
-            "sushiswapv3",
-            "sushiswapv2",
-            "uniswapv3",
-        ],
-    },
-    [ChainId.POLYGON_ZKEVM]: {
-        transport: [
-            http("https://zkevm-rpc.com"),
-            http("https://rpc.ankr.com/polygon_zkevm"),
-            http("https://rpc.polygon-zkevm.gateway.fm"),
-        ],
-        liquidityProviders: ["dovishv3", "sushiswapv3"],
-    },
-    [ChainId.THUNDERCORE]: {
-        transport: [
-            http("https://mainnet-rpc.thundercore.com"),
-            http("https://mainnet-rpc.thundercore.io"),
-            http("https://mainnet-rpc.thundertoken.net"),
-        ],
-        liquidityProviders: ["laserswap", "sushiswapv3"],
-    },
-    // flare
-    14: {
-        transport: [
-            http("https://rpc.ankr.com/flare"),
-            http("https://flare-api.flare.network/ext/C/rpc"),
-            http("https://flare.rpc.thirdweb.com"),
-        ],
-        liquidityProviders: ["enosys", "blazeswap"],
-    },
+export const fallbackRpcs: Record<number, readonly string[]> = {
+    [ChainId.ARBITRUM_NOVA]: ["https://nova.arbitrum.io/rpc"],
+    [ChainId.ARBITRUM]: [
+        "https://arbitrum.drpc.org",
+        "https://arb-pokt.nodies.app",
+        "https://1rpc.io/arb",
+        "https://rpc.ankr.com/arbitrum",
+        "https://arbitrum-one.public.blastapi.io",
+        "https://endpoints.omniatech.io/v1/arbitrum/one/public",
+        "https://arb1.croswap.com/rpc",
+        "https://arbitrum.blockpi.network/v1/rpc/public",
+        "https://arb-mainnet-public.unifra.io",
+        "https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
+    ],
+    [ChainId.AVALANCHE]: [
+        "https://api.avax.network/ext/bc/C/rpc",
+        "https://rpc.ankr.com/avalanche",
+    ],
+    [ChainId.BOBA]: ["https://mainnet.boba.network", "https://lightning-replica.boba.network"],
+    [ChainId.BOBA_AVAX]: ["https://avax.boba.network", "https://replica.avax.boba.network"],
+    [ChainId.BOBA_BNB]: ["https://bnb.boba.network", "https://replica.bnb.boba.network"],
+    [ChainId.BSC]: [
+        "https://rpc.ankr.com/bsc",
+        "https://bsc.blockpi.network/v1/rpc/public",
+        "https://bsc-pokt.nodies.app",
+        "https://bscrpc.com",
+        "https://1rpc.io/bnb",
+        "https://bsc.drpc.org",
+        "https://bsc.meowrpc.com",
+        "https://binance.llamarpc.com",
+        "https://bsc-dataseed.binance.org",
+        "https://bsc-dataseed1.binance.org",
+        "https://bsc-dataseed2.binance.org",
+        "https://lb.drpc.org/ogrpc?network=bsc&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
+    ],
+    [ChainId.BTTC]: ["https://rpc.bittorrentchain.io"],
+    [ChainId.CELO]: ["https://forno.celo.org"],
+    [ChainId.ETHEREUM]: [
+        "https://eth-pokt.nodies.app",
+        "https://eth.drpc.org",
+        "https://ethereum-rpc.publicnode.com",
+        "https://eth.llamarpc.com",
+        "https://1rpc.io/eth",
+        "https://ethereum.publicnode.com",
+        "https://cloudflare-eth.com",
+        "https://lb.drpc.org/ogrpc?network=ethereum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
+    ],
+    [ChainId.FANTOM]: [
+        "https://rpc.ankr.com/fantom",
+        "https://rpc.fantom.network",
+        "https://rpc2.fantom.network",
+    ],
+    [ChainId.FUSE]: ["https://rpc.fuse.io"],
+    [ChainId.GNOSIS]: ["https://rpc.ankr.com/gnosis"],
+    [ChainId.HARMONY]: ["https://api.harmony.one", "https://rpc.ankr.com/harmony"],
+    [ChainId.KAVA]: ["https://evm.kava.io", "https://evm2.kava.io"],
+    [ChainId.MOONBEAM]: ["https://rpc.api.moonbeam.network", "https://rpc.ankr.com/moonbeam"],
+    [ChainId.MOONRIVER]: ["https://rpc.api.moonriver.moonbeam.network"],
+    [ChainId.OPTIMISM]: [
+        "https://rpc.ankr.com/optimism",
+        "https://optimism-mainnet.public.blastapi.io",
+        "https://1rpc.io/op",
+        "https://optimism.blockpi.network/v1/rpc/public",
+        "https://mainnet.optimism.io",
+        "https://lb.drpc.org/ogrpc?network=optimism&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
+    ],
+    [ChainId.POLYGON]: [
+        "https://polygon.meowrpc.com",
+        "https://polygon-rpc.com",
+        "https://polygon-pokt.nodies.app",
+        "https://polygon-bor-rpc.publicnode.com",
+        "https://1rpc.io/matic",
+        "https://polygon-mainnet.public.blastapi.io",
+        "https://polygon.blockpi.network/v1/rpc/public",
+        "https://polygon.llamarpc.com",
+        "https://polygon-rpc.com",
+        "https://rpc.ankr.com/polygon",
+        "https://matic-mainnet.chainstacklabs.com",
+        "https://polygon-bor.publicnode.com",
+        "https://rpc-mainnet.matic.quiknode.pro",
+        "https://rpc-mainnet.maticvigil.com",
+    ],
+    [ChainId.POLYGON_ZKEVM]: [
+        "https://zkevm-rpc.com",
+        "https://rpc.ankr.com/polygon_zkevm",
+        "https://rpc.polygon-zkevm.gateway.fm",
+    ],
+    [ChainId.THUNDERCORE]: [
+        "https://mainnet-rpc.thundercore.com",
+        "https://mainnet-rpc.thundercore.io",
+        "https://mainnet-rpc.thundertoken.net",
+    ],
+    [ChainId.FLARE]: [
+        "https://rpc.ankr.com/flare",
+        "https://flare-api.flare.network/ext/C/rpc",
+        "https://flare.rpc.thirdweb.com",
+    ],
+    [ChainId.LINEA]: [
+        "https://linea.blockpi.network/v1/rpc/public",
+        "https://rpc.linea.build",
+        "https://linea-rpc.publicnode.com",
+        "https://1rpc.io/linea",
+        "https://linea.drpc.org",
+    ],
+    [ChainId.BASE]: [
+        "https://base-rpc.publicnode.com",
+        "https://base.blockpi.network/v1/rpc/public",
+        "https://1rpc.io/base",
+        "https://base-pokt.nodies.app",
+        "https://mainnet.base.org",
+        "https://base.meowrpc.com",
+    ],
 } as const;

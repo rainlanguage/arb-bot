@@ -20,7 +20,6 @@ describe("Test app options", async function () {
         assert.equal(config.maxRatio, false);
         assert.equal(config.hops, 1);
         assert.equal(config.retries, 1);
-        assert.equal(config.bundle, true);
         assert.equal(config.chain.id, 137);
         assert.equal(config.gasCoveragePercentage, "100");
         assert.deepEqual(config.rpc, rpcs);

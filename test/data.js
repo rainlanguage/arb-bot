@@ -49,7 +49,6 @@ const toToken = new Token({
 const scannerUrl = "https://scanner.com";
 const config = {
     hops: 3,
-    bundle: false,
     retries: 2,
     maxRatio: true,
     concurrency: "max",

@@ -88,13 +88,12 @@ export async function getConfig(
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
-    const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
-    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
-    if (options.genericArbAddress && !AddressPattern.test(options.genericArbAddress)) {
+    if (!ethers.utils.isAddress(arbAddress)) throw "invalid arb contract address";
+    if (options.genericArbAddress && !ethers.utils.isAddress(options.genericArbAddress)) {
         throw "invalid generic arb contract address";
     }
 
-    let timeout = 30_000;
+    let timeout = 15_000;
     if (options.timeout) {
         if (typeof options.timeout === "number") {
             if (!Number.isInteger(options.timeout) || options.timeout == 0)
@@ -140,19 +139,32 @@ export async function getConfig(
     const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
     const lps = processLps(options.lps);
-    const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
-    const watchClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
-    const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
+    const viemClient = await createViemClient(
+        chainId,
+        rpcUrls,
+        options.publicRpc,
+        undefined,
+        options.timeout,
+    );
+    const watchClient = await createViemClient(
+        chainId,
+        rpcUrls,
+        options.publicRpc,
+        undefined,
+        options.timeout,
+    );
+    const dataFetcher = await getDataFetcher(
+        viemClient as any as PublicClient,
+        lps,
+        options.publicRpc,
+    );
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
-
-    config.bundle = true;
-    if (options.bundle !== undefined) config.bundle = !!options.bundle;
 
     config.rpc = rpcUrls;
     config.arbAddress = arbAddress;
     config.genericArbAddress = options.genericArbAddress;
     config.timeout = timeout;
-    config.flashbotRpc = options.flashbotRpc;
+    config.writeRpc = options.writeRpc;
     config.maxRatio = !!options.maxRatio;
     config.hops = hops;
     config.retries = retries;
@@ -163,6 +175,8 @@ export async function getConfig(
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
     config.watchClient = watchClient;
+    config.publicRpc = options.publicRpc;
+    config.walletKey = walletKey;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

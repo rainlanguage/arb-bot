@@ -36,7 +36,7 @@ export async function initAccounts(
     const mainAccount = await createViemClient(
         config.chain.id as ChainId,
         config.rpc,
-        undefined,
+        config.publicRpc,
         isMnemonic
             ? mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex: MainAccountDerivationIndex })
             : privateKeyToAccount(
@@ -56,7 +56,7 @@ export async function initAccounts(
                 await createViemClient(
                     config.chain.id as ChainId,
                     config.rpc,
-                    undefined,
+                    config.publicRpc,
                     mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex }),
                     config.timeout,
                     (config as any).testClientViem,
@@ -203,7 +203,7 @@ export async function manageAccounts(
                 const acc = await createViemClient(
                     config.chain.id as ChainId,
                     config.rpc,
-                    undefined,
+                    config.publicRpc,
                     mnemonicToAccount(options.mnemonic!, { addressIndex: ++lastIndex }),
                     config.timeout,
                     (config as any).testClientViem,
@@ -326,7 +326,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         const viemClient = await createViemClient(
             config.chain.id as ChainId,
             config.rpc,
-            false,
+            config.publicRpc,
             undefined,
             config.timeout,
         );
@@ -335,7 +335,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             config.dataFetcher = await getDataFetcher(
                 viemClient as any as PublicClient,
                 config.lps,
-                false,
+                config.publicRpc,
             );
         } else {
             config.dataFetcher.web3Client = viemClient as any as PublicClient;
@@ -348,7 +348,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         const mainAcc = await createViemClient(
             config.chain.id as ChainId,
             config.rpc,
-            false,
+            config.publicRpc,
             config.mainAccount.account,
             config.timeout,
         );
@@ -364,7 +364,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             const acc = await createViemClient(
                 config.chain.id as ChainId,
                 config.rpc,
-                false,
+                config.publicRpc,
                 config.accounts[i].account,
                 config.timeout,
             );
@@ -374,7 +374,11 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         }
     } else {
         if (resetDataFetcher) {
-            config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
+            config.dataFetcher = await getDataFetcher(
+                config.viemClient,
+                config.lps,
+                config.publicRpc,
+            );
         }
     }
 }

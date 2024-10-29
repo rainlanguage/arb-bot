@@ -131,22 +131,14 @@ describe("Test order details", async function () {
                 {
                     balance: "1",
                     vaultId: "0x01",
-                    token: {
-                        address: token1,
-                        decimals: 6,
-                        symbol: "NewToken1",
-                    },
+                    token: token1,
                 },
             ],
             outputs: [
                 {
                     balance: "1",
                     vaultId: "0x01",
-                    token: {
-                        address: token2,
-                        decimals: 18,
-                        symbol: "NewToken2",
-                    },
+                    token: token2,
                 },
             ],
         };
@@ -731,39 +723,72 @@ describe("Test order details", async function () {
 
     it("should prepare orders for rounds by specified owner limits", async function () {
         const orderbook = hexlify(randomBytes(20)).toLowerCase();
-        const owner = hexlify(randomBytes(20)).toLowerCase();
-        const token1 = hexlify(randomBytes(20)).toLowerCase();
-        const token2 = hexlify(randomBytes(20)).toLowerCase();
-        const [order1, order2, order3, order4, order5, order6] = [
-            getNewOrder(orderbook, owner, token1, token2, 1),
-            getNewOrder(orderbook, owner, token1, token2, 2),
-            getNewOrder(orderbook, owner, token1, token2, 3),
-            getNewOrder(orderbook, owner, token1, token2, 4),
-            getNewOrder(orderbook, owner, token1, token2, 5),
-            getNewOrder(orderbook, owner, token1, token2, 6),
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [order1, order2, order3, order4, order5, order6, order7, order8] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1), // owner 1
+            getNewOrder(orderbook, owner1, token1, token2, 2), // //
+            getNewOrder(orderbook, owner1, token1, token2, 3), // //
+            getNewOrder(orderbook, owner1, token1, token2, 4), // //
+            getNewOrder(orderbook, owner1, token1, token2, 5), // //
+            getNewOrder(orderbook, owner1, token1, token2, 6), // //
+            getNewOrder(orderbook, owner2, token2, token1, 1), // owner 2
+            getNewOrder(orderbook, owner2, token2, token1, 2), // //
         ];
+        const owner1Orders = [order1, order2, order3, order4, order5, order6];
+        const owner2Orders = [order7, order8];
 
         // build orderbook owner map
         const allOrders = await getOrderbookOwnersProfileMapFromSg(
-            [order1, order2, order3, order4, order5, order6],
+            [order1, order2, order3, order4, order5, order6, order7, order8],
             undefined,
             [],
-            { [owner]: 3 }, // set owner limit as 3
+            { [owner1]: 3, [owner2]: 1 }, // set owner1 limit as 3, owner2 to 1
         );
 
-        // prepare orders for first round, ie first 3 orders should get consumed
+        // prepare orders for first round
         const result1 = prepareOrdersForRound(allOrders, false);
         const expected1 = [
             [
                 {
-                    buyToken: token1.toLowerCase(),
-                    buyTokenSymbol: "NewToken1",
-                    buyTokenDecimals: 6,
-                    sellToken: token2.toLowerCase(),
-                    sellTokenSymbol: "NewToken2",
-                    sellTokenDecimals: 18,
+                    buyToken: token1.address,
+                    buyTokenSymbol: token1.symbol,
+                    buyTokenDecimals: token1.decimals,
+                    sellToken: token2.address,
+                    sellTokenSymbol: token2.symbol,
+                    sellTokenDecimals: token2.decimals,
                     orderbook,
-                    takeOrders: [order1, order2, order3].map((v) => ({
+                    // first 3 owner1 orders for round1, owner1 limit is 3
+                    takeOrders: owner1Orders.slice(0, 3).map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+                {
+                    buyToken: token2.address,
+                    buyTokenSymbol: token2.symbol,
+                    buyTokenDecimals: token2.decimals,
+                    sellToken: token1.address,
+                    sellTokenSymbol: token1.symbol,
+                    sellTokenDecimals: token1.decimals,
+                    orderbook,
+                    // first 1 owner2 orders for round1, owner2 limit is 1
+                    takeOrders: owner2Orders.slice(0, 1).map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,
@@ -777,19 +802,39 @@ describe("Test order details", async function () {
         ];
         assert.deepEqual(result1, expected1);
 
-        // prepare orders for second round, ie second 3 orders should get consumed
+        // prepare orders for second round
         const result2 = prepareOrdersForRound(allOrders, false);
         const expected2 = [
             [
                 {
-                    buyToken: token1.toLowerCase(),
-                    buyTokenSymbol: "NewToken1",
-                    buyTokenDecimals: 6,
-                    sellToken: token2.toLowerCase(),
-                    sellTokenSymbol: "NewToken2",
-                    sellTokenDecimals: 18,
+                    buyToken: token1.address,
+                    buyTokenSymbol: token1.symbol,
+                    buyTokenDecimals: token1.decimals,
+                    sellToken: token2.address,
+                    sellTokenSymbol: token2.symbol,
+                    sellTokenDecimals: token2.decimals,
                     orderbook,
-                    takeOrders: [order4, order5, order6].map((v) => ({
+                    // second 3 owner1 orders for round2, owner1 limit is 3
+                    takeOrders: owner1Orders.slice(3, owner1Orders.length).map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+                {
+                    buyToken: token2.address,
+                    buyTokenSymbol: token2.symbol,
+                    buyTokenDecimals: token2.decimals,
+                    sellToken: token1.address,
+                    sellTokenSymbol: token1.symbol,
+                    sellTokenDecimals: token1.decimals,
+                    orderbook,
+                    // second 1 owner2 orders for round2, owner2 limit is 1
+                    takeOrders: owner2Orders.slice(1, owner2Orders.length).map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,
@@ -804,19 +849,39 @@ describe("Test order details", async function () {
         assert.deepEqual(result2, expected2);
 
         // prepare orders for 3rd round, so should be back to consuming
-        // first 3 order again as 6 total order were consumed by first 2 rounds
+        // orders of onwer1 and 2 just like round 1
         const result3 = prepareOrdersForRound(allOrders, false);
         const expected3 = [
             [
                 {
-                    buyToken: token1.toLowerCase(),
-                    buyTokenSymbol: "NewToken1",
-                    buyTokenDecimals: 6,
-                    sellToken: token2.toLowerCase(),
-                    sellTokenSymbol: "NewToken2",
-                    sellTokenDecimals: 18,
+                    buyToken: token1.address,
+                    buyTokenSymbol: token1.symbol,
+                    buyTokenDecimals: token1.decimals,
+                    sellToken: token2.address,
+                    sellTokenSymbol: token2.symbol,
+                    sellTokenDecimals: token2.decimals,
                     orderbook,
-                    takeOrders: [order1, order2, order3].map((v) => ({
+                    // first 3 owner1 orders again for round3, owner1 limit is 3
+                    takeOrders: owner1Orders.slice(0, 3).map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+                {
+                    buyToken: token2.address,
+                    buyTokenSymbol: token2.symbol,
+                    buyTokenDecimals: token2.decimals,
+                    sellToken: token1.address,
+                    sellTokenSymbol: token1.symbol,
+                    sellTokenDecimals: token1.decimals,
+                    orderbook,
+                    // first 1 owner2 orders again for round3, owner2 limit is 1
+                    takeOrders: owner2Orders.slice(0, 1).map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,

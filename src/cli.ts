@@ -55,8 +55,8 @@ const ENV_OPTIONS = {
     sleep: process?.env?.SLEEP,
     maxRatio: process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     bundle: process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
+    publicRpc: process?.env?.PUBLIC_RPC?.toLowerCase() === "true" ? true : false,
     timeout: process?.env?.TIMEOUT,
-    flashbotRpc: process?.env?.FLASHBOT_RPC,
     hops: process?.env?.HOPS,
     retries: process?.env?.RETRIES,
     poolUpdateInterval: process?.env?.POOL_UPDATE_INTERVAL || "15",
@@ -69,6 +69,9 @@ const ENV_OPTIONS = {
         : undefined,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
+        : undefined,
+    writeRpc: process?.env?.WRITE_RPC
+        ? Array.from(process?.env?.WRITE_RPC.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
     subgraph: process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -126,8 +129,8 @@ const getOptions = async (argv: any, version?: string) => {
             "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables",
         )
         .option(
-            "--flashbot-rpc <url>",
-            "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables",
+            "--write-rpc <url...>",
+            "Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables",
         )
         .option(
             "--timeout <integer>",
@@ -173,6 +176,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--owner-profile <OWNER=LIMIT...>",
             "Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables",
         )
+        .option(
+            "--public-rpc",
+            "Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -189,6 +196,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.key = cmdOptions.key || getEnv(ENV_OPTIONS.key);
     cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
     cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
+    cmdOptions.writeRpc = cmdOptions.writeRpc || getEnv(ENV_OPTIONS.writeRpc);
     cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
     cmdOptions.genericArbAddress =
         cmdOptions.genericArbAddress || getEnv(ENV_OPTIONS.genericArbAddress);
@@ -201,7 +209,6 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.orderOwner = cmdOptions.orderOwner || getEnv(ENV_OPTIONS.orderOwner);
     cmdOptions.sleep = cmdOptions.sleep || getEnv(ENV_OPTIONS.sleep);
     cmdOptions.maxRatio = cmdOptions.maxRatio || getEnv(ENV_OPTIONS.maxRatio);
-    cmdOptions.flashbotRpc = cmdOptions.flashbotRpc || getEnv(ENV_OPTIONS.flashbotRpc);
     cmdOptions.timeout = cmdOptions.timeout || getEnv(ENV_OPTIONS.timeout);
     cmdOptions.hops = cmdOptions.hops || getEnv(ENV_OPTIONS.hops);
     cmdOptions.retries = cmdOptions.retries || getEnv(ENV_OPTIONS.retries);
@@ -213,6 +220,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
     cmdOptions.bundle = cmdOptions.bundle ? getEnv(ENV_OPTIONS.bundle) : false;
+    cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
     if (cmdOptions.ownerProfile) {
         const profiles: Record<string, number> = {};
         cmdOptions.ownerProfile.forEach((v: string) => {
@@ -347,6 +355,14 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     }
     if (!options.rpc) throw "undefined RPC URL";
+    if (options.writeRpc) {
+        if (
+            !Array.isArray(options.writeRpc) ||
+            options.writeRpc.some((v) => typeof v !== "string")
+        ) {
+            throw `Invalid write rpcs: ${options.writeRpc}`;
+        }
+    }
     if (!options.arbAddress) throw "undefined arb contract address";
     if (options.sleep) {
         if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
@@ -398,7 +414,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         tracer,
         ctx,
     );
-    const blockNumber = (await getblockNumber(config.viemClient as any as ViemClient)) ?? 0n;
+    const blockNumber = (await getblockNumber(config.viemClient as any as ViemClient)) ?? 1n;
 
     return {
         roundGap,

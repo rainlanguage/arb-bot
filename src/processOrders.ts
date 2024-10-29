@@ -178,15 +178,19 @@ export const processOrders = async (
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
-                const flashbotSigner = config.flashbotRpc
+                const writeSigner = config.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
-                          [config.flashbotRpc],
-                          undefined,
+                          config.writeRpc,
+                          false,
                           privateKeyToAccount(
-                              ethers.utils.hexlify(
-                                  signer.account.getHdKey().privateKey!,
-                              ) as `0x${string}`,
+                              signer.account.getHdKey
+                                  ? (ethers.utils.hexlify(
+                                        signer.account.getHdKey().privateKey!,
+                                    ) as `0x${string}`)
+                                  : ((config.walletKey.startsWith("0x")
+                                        ? config.walletKey
+                                        : "0x" + config.walletKey) as `0x${string}`),
                           ),
                           config.timeout,
                       )
@@ -205,7 +209,7 @@ export const processOrders = async (
                         viemClient,
                         dataFetcher,
                         signer,
-                        flashbotSigner,
+                        flashbotSigner: writeSigner,
                         arb,
                         genericArb,
                         orderbook,
