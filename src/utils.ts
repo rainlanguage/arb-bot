@@ -1351,3 +1351,14 @@ export async function getTokenSymbol(address: string, viemClient: ViemClient): P
     }
     return "UnknownSymbol";
 }
+
+export function memory(msg: string) {
+    // eslint-disable-next-line no-console
+    console.log(msg);
+    for (const [key, value] of Object.entries(process.memoryUsage())) {
+        // eslint-disable-next-line no-console
+        console.log(`Memory usage by ${key}, ${value / 1_000_000}MB `);
+    }
+    // eslint-disable-next-line no-console
+    console.log("\n---\n");
+}
