@@ -148,8 +148,8 @@ export async function getConfig(
     );
     const watchClient = await createViemClient(
         chainId,
-        rpcUrls,
-        options.publicRpc,
+        options.watchRpc,
+        false,
         undefined,
         options.timeout,
     );
@@ -177,6 +177,7 @@ export async function getConfig(
     config.watchClient = watchClient;
     config.publicRpc = options.publicRpc;
     config.walletKey = walletKey;
+    config.watchRpc = options.watchRpc;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

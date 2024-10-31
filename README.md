@@ -75,7 +75,8 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-- `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
+- `--write-rpc`, Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables"
+- `--watch-rpc`, RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables"
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
@@ -158,6 +159,9 @@ RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.co
 
 # Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""
+
+# RPC URLs to watch for new orders, should support required RPC methods
+WATCH_RPC=""
 
 # arb contract address
 ARB_ADDRESS="0x123..."

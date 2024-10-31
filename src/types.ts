@@ -23,6 +23,7 @@ export type CliOptions = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    watchRpc: string[];
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
@@ -148,6 +149,7 @@ export type BotConfig = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    watchRpc: string[];
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;

@@ -13,6 +13,7 @@ import {
     publicActions,
     PublicClient,
     walletActions,
+    webSocket,
 } from "viem";
 import {
     STABLES,
@@ -71,10 +72,18 @@ export async function createViemClient(
 ): Promise<ViemClient> {
     const configuration = { rank: false, retryCount: 6 };
     const urls = rpcs?.filter((v) => typeof v === "string") ?? [];
-    const topRpcs = urls.map((v) => http(v, { timeout }));
+    const topRpcs = urls.map((v) =>
+        v.startsWith("http")
+            ? http(v, { timeout })
+            : webSocket(v, { timeout, keepAlive: true, reconnect: true }),
+    );
     const fallbacks = (fallbackRpcs[chainId] ?? [])
         .filter((v) => !urls.includes(v))
-        .map((v) => http(v, { timeout }));
+        .map((v) =>
+            v.startsWith("http")
+                ? http(v, { timeout })
+                : webSocket(v, { timeout, keepAlive: true, reconnect: true }),
+        );
     const transport = !topRpcs.length
         ? fallback(fallbacks, configuration)
         : useFallbacks
