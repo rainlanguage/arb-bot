@@ -659,9 +659,9 @@ export const main = async (argv: any, version?: string) => {
             for (const rpc in config.rpcRecords) {
                 const record = config.rpcRecords[rpc];
                 roundSpan.setAttributes({
-                    [`rpcRecords.${rpc}.req`]: record.req,
-                    [`rpcRecords.${rpc}.success`]: record.success,
-                    [`rpcRecords.${rpc}.failure`]: record.failure,
+                    [`rpcRecords."${rpc}".request`]: record.req,
+                    [`rpcRecords."${rpc}".success`]: record.success,
+                    [`rpcRecords."${rpc}".failure`]: record.failure,
                 });
                 record.req = 0;
                 record.success = 0;
