@@ -704,7 +704,7 @@ export async function getVaultBalance(
             address: orderbookAddress as `0x${string}`,
             allowFailure: false,
             chainId: viemClient.chain!.id,
-            abi: parseAbi(orderbookAbi),
+            abi: parseAbi([orderbookAbi[2]]),
             functionName: "vaultBalance",
             args: [
                 // owner
@@ -719,7 +719,7 @@ export async function getVaultBalance(
 
     let result = ethers.BigNumber.from(0);
     for (let i = 0; i < multicallResult.length; i++) {
-        result = result.add(multicallResult[i]);
+        result = result.add(multicallResult[i]!);
     }
     return result;
 }
@@ -1206,7 +1206,7 @@ export async function checkOwnedOrders(
                 address: v.orderbook,
                 allowFailure: false,
                 chainId: config.chain.id,
-                abi: parseAbi(orderbookAbi),
+                abi: parseAbi([orderbookAbi[2]]),
                 functionName: "vaultBalance",
                 args: [
                     // owner
