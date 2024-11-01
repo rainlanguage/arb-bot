@@ -46,7 +46,7 @@ export async function initAccounts(
               ),
         config.timeout,
         (config as any).testClientViem,
-        config.rpcRecords,
+        config,
     );
 
     // if the provided key is mnemonic, generate new accounts
@@ -61,7 +61,7 @@ export async function initAccounts(
                     mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex }),
                     config.timeout,
                     (config as any).testClientViem,
-                    config.rpcRecords,
+                    config,
                 ),
             );
         }
@@ -209,7 +209,7 @@ export async function manageAccounts(
                     mnemonicToAccount(options.mnemonic!, { addressIndex: ++lastIndex }),
                     config.timeout,
                     (config as any).testClientViem,
-                    config.rpcRecords,
+                    config,
                 );
                 span?.setAttribute("details.wallet", acc.account.address);
                 const balance = ethers.BigNumber.from(
@@ -333,7 +333,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             undefined,
             config.timeout,
             undefined,
-            config.rpcRecords,
+            config,
         );
 
         if (resetDataFetcher) {
@@ -357,7 +357,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             config.mainAccount.account,
             config.timeout,
             undefined,
-            config.rpcRecords,
+            config,
         );
         // config.mainAccount.connect(provider);
         mainAcc.BALANCE = mainAccBalance;
@@ -375,7 +375,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
                 config.accounts[i].account,
                 config.timeout,
                 undefined,
-                config.rpcRecords,
+                config,
             );
             acc.BALANCE = balance;
             acc.BOUNTY = bounty;

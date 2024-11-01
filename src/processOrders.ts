@@ -199,7 +199,7 @@ export const processOrders = async (
                           ),
                           config.timeout,
                           undefined,
-                          config.rpcRecords,
+                          config,
                       )
                     : undefined;
 

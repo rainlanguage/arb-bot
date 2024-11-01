@@ -143,6 +143,8 @@ export type BotConfig = {
     walletKey: string;
     route?: "multi" | "single";
     rpcRecords: Record<string, RpcRecord>;
+    onFetchRequest?: (request: Request) => void;
+    onFetchResponse?: (request: Response) => void;
 };
 
 export type Report = {

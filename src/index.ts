@@ -156,6 +156,37 @@ export async function getConfig(
 
     const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
+    config.onFetchRequest =
+        rpcRecords !== undefined
+            ? (request: Request) => {
+                  const record = rpcRecords[request.url];
+                  if (record) record.req++;
+                  else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
+              }
+            : undefined;
+    config.onFetchResponse =
+        rpcRecords !== undefined
+            ? (response: Response) => {
+                  const record = rpcRecords[response.url];
+                  if (response.status === 200) {
+                      if (record) record.success++;
+                      else
+                          rpcRecords[response.url] = {
+                              req: 1,
+                              success: 1,
+                              failure: 0,
+                          };
+                  } else {
+                      if (record) record.failure++;
+                      else
+                          rpcRecords[response.url] = {
+                              req: 1,
+                              success: 0,
+                              failure: 1,
+                          };
+                  }
+              }
+            : undefined;
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(
         chainId,
@@ -164,7 +195,7 @@ export async function getConfig(
         undefined,
         options.timeout,
         undefined,
-        rpcRecords,
+        config,
     );
     const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
