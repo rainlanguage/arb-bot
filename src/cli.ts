@@ -133,7 +133,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--write-rpc <url...>",
-            "Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables",
+            "Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables",
         )
         .option(
             "--watch-rpc <url...>",

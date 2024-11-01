@@ -59,6 +59,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
+- `--watch-rpc`, RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
 -- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
@@ -75,8 +76,7 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-- `--write-rpc`, Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables"
-- `--watch-rpc`, RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables"
+- `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables"
 - `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
@@ -133,7 +133,6 @@ Other optional arguments are:
 `HyperBlast`,
 `KinetixV2`,
 `KinetixV3`,
-`Camelot`,
 `Enosys`,
 `BlazeSwap`,
 
@@ -157,7 +156,7 @@ MNEMONIC=""
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
 
-# Option to explicitly use these rpc for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
+# Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""
 
 # RPC URLs to watch for new orders, should support required RPC methods
