@@ -143,9 +143,10 @@ export async function getConfig(
         } else throw "invalid retries value, must be an integer between 1 - 3";
     }
 
-    let route: "single" | "multi" | undefined;
+    let route: "single" | "multi" | undefined = "single";
     if (options.route) {
         const temp = options.route.toLowerCase();
+        if (temp === "full") route = undefined;
         if (temp === "multi") route = "multi";
         if (temp === "single") route = "single";
     }

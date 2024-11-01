@@ -161,7 +161,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--route <string>",
-            "Specifies the routing mode 'multi' or 'single'. Will override the 'ROUTE' in env variables",
+            "Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables",
         )
         .description(
             [
