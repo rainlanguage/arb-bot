@@ -660,9 +660,9 @@ export const main = async (argv: any, version?: string) => {
                 const record = config.rpcRecords[rpc];
                 const rpcKey = rpc.replaceAll(".", "_");
                 roundSpan.setAttributes({
-                    [`rpcRecords."${rpcKey}".request`]: record.req,
-                    [`rpcRecords."${rpcKey}".success`]: record.success,
-                    [`rpcRecords."${rpcKey}".failure`]: record.failure,
+                    [`rpcRecords.${rpcKey}.request`]: record.req,
+                    [`rpcRecords.${rpcKey}.success`]: record.success,
+                    [`rpcRecords.${rpcKey}.failure`]: record.failure,
                 });
                 record.req = 0;
                 record.success = 0;
