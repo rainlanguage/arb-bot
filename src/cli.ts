@@ -658,10 +658,11 @@ export const main = async (argv: any, version?: string) => {
             // report rpcs performance for round
             for (const rpc in config.rpcRecords) {
                 const record = config.rpcRecords[rpc];
+                const rpcKey = rpc.replaceAll(".", "_");
                 roundSpan.setAttributes({
-                    [`rpcRecords."${rpc}".request`]: record.req,
-                    [`rpcRecords."${rpc}".success`]: record.success,
-                    [`rpcRecords."${rpc}".failure`]: record.failure,
+                    [`rpcRecords."${rpcKey}".request`]: record.req,
+                    [`rpcRecords."${rpcKey}".success`]: record.success,
+                    [`rpcRecords."${rpcKey}".failure`]: record.failure,
                 });
                 record.req = 0;
                 record.success = 0;
