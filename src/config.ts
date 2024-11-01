@@ -3,7 +3,7 @@ import { getSgOrderbooks } from "./sg";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
-import { BotConfig, BotDataFetcher, ChainConfig, ViemClient } from "./types";
+import { BotConfig, BotDataFetcher, ChainConfig, RpcRecord, ViemClient } from "./types";
 import {
     createWalletClient,
     fallback,
@@ -68,17 +68,58 @@ export async function createViemClient(
     account?: HDAccount | PrivateKeyAccount,
     timeout?: number,
     testClient?: any,
+    rpcRecords?: Record<string, RpcRecord>,
 ): Promise<ViemClient> {
+    const onFetchRequest =
+        rpcRecords !== undefined
+            ? (request: Request) => {
+                  const record = rpcRecords[request.url];
+                  if (record) record.req++;
+                  else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
+              }
+            : undefined;
+    const onFetchResponse =
+        rpcRecords !== undefined
+            ? (response: Response) => {
+                  const record = rpcRecords[response.url];
+                  if (response.status === 200) {
+                      if (record) record.success++;
+                      else
+                          rpcRecords[response.url] = {
+                              req: 1,
+                              success: 1,
+                              failure: 0,
+                          };
+                  } else {
+                      if (record) record.failure++;
+                      else
+                          rpcRecords[response.url] = {
+                              req: 1,
+                              success: 0,
+                              failure: 1,
+                          };
+                  }
+              }
+            : undefined;
     const transport =
         !rpcs || rpcs?.length === 0
             ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 6 })
             : useFallbacks
               ? fallback(
-                    [...rpcs.map((v) => http(v, { timeout })), ...fallbacks[chainId].transport],
+                    [
+                        ...rpcs.map((v) => http(v, { timeout, onFetchRequest, onFetchResponse })),
+                        ...fallbacks[chainId].transport,
+                    ],
                     { rank: false, retryCount: 6 },
                 )
               : fallback(
-                    rpcs.map((v) => http(v, { timeout })),
+                    rpcs.map((v) =>
+                        http(v, {
+                            timeout,
+                            onFetchRequest,
+                            onFetchResponse,
+                        }),
+                    ),
                     { rank: false, retryCount: 6 },
                 );
 

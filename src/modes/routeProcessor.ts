@@ -78,6 +78,8 @@ export async function dryrun({
         Number(gasPrice),
         undefined,
         RPoolFilter,
+        undefined,
+        config.route,
     );
     if (route.status == "NoWay") {
         spanAttributes["route"] = "no-way";

@@ -56,6 +56,7 @@ const ENV_OPTIONS = {
     topupAmount: process?.env?.TOPUP_AMOUNT,
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
+    route: process?.env?.ROUTE,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
@@ -158,6 +159,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--self-fund-orders <string>",
             "Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables",
         )
+        .option(
+            "--route <string>",
+            "Specifies the routing mode 'multi' or 'single'. Will override the 'ROUTE' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -193,6 +198,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
+    cmdOptions.route = cmdOptions.route || ENV_OPTIONS.route;
     cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
     if (cmdOptions.lps) {
         cmdOptions.lps = Array.from((cmdOptions.lps as string).matchAll(/[^,\s]+/g)).map(
@@ -648,6 +654,20 @@ export const main = async (argv: any, version?: string) => {
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
+
+            // report rpcs performance for round
+            for (const rpc in config.rpcRecords) {
+                const record = config.rpcRecords[rpc];
+                roundSpan.setAttributes({
+                    [`rpcRecords.${rpc}.req`]: record.req,
+                    [`rpcRecords.${rpc}.success`]: record.success,
+                    [`rpcRecords.${rpc}.failure`]: record.failure,
+                });
+                record.req = 0;
+                record.success = 0;
+                record.failure = 0;
+            }
+
             // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();

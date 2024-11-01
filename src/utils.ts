@@ -233,7 +233,10 @@ export const processLps = (liquidityProviders?: string[]) => {
         !liquidityProviders.every((v) => typeof v === "string")
     ) {
         // exclude curve since it is currently in audit, unless it is explicitly specified
-        return LP.filter((v) => v !== LiquidityProviders.CurveSwap);
+        // exclude camelot
+        return LP.filter(
+            (v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot,
+        );
     }
     const _lps: LiquidityProviders[] = [];
     for (let i = 0; i < liquidityProviders.length; i++) {
@@ -242,7 +245,9 @@ export const processLps = (liquidityProviders?: string[]) => {
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
-    return _lps.length ? _lps : LP.filter((v) => v !== LiquidityProviders.CurveSwap);
+    return _lps.length
+        ? _lps
+        : LP.filter((v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot);
 };
 
 /**
