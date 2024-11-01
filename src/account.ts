@@ -3,10 +3,10 @@ import { parseAbi, PublicClient } from "viem";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
+import { getRpSwap, PoolBlackList, sleep } from "./utils";
 import { createViemClient, getDataFetcher } from "./config";
 import { ChainId, LiquidityProviders, RPParams } from "sushi";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import { getRpSwap, PoolBlackList, shuffleArray, sleep } from "./utils";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
@@ -325,7 +325,7 @@ export async function manageAccounts(
  */
 export async function rotateProviders(config: BotConfig, resetDataFetcher = true) {
     if (config.rpc?.length > 1) {
-        shuffleArray(config.rpc);
+        config.rpc.push(config.rpc.shift()!);
         const viemClient = await createViemClient(
             config.chain.id as ChainId,
             config.rpc,

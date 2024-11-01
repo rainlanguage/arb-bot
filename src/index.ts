@@ -151,42 +151,37 @@ export async function getConfig(
         if (temp === "single") route = "single";
     }
 
+    const chainId = (await getChainId(rpcUrls)) as ChainId;
+    const config = getChainConfig(chainId) as any as BotConfig;
+
     const rpcRecords: Record<string, RpcRecord> = {};
     rpcUrls.forEach((v) => (rpcRecords[v] = { req: 0, success: 0, failure: 0 }));
 
-    const chainId = (await getChainId(rpcUrls)) as ChainId;
-    const config = getChainConfig(chainId) as any as BotConfig;
-    config.onFetchRequest =
-        rpcRecords !== undefined
-            ? (request: Request) => {
-                  const record = rpcRecords[request.url];
-                  if (record) record.req++;
-                  else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
-              }
-            : undefined;
-    config.onFetchResponse =
-        rpcRecords !== undefined
-            ? (response: Response) => {
-                  const record = rpcRecords[response.url];
-                  if (response.status === 200) {
-                      if (record) record.success++;
-                      else
-                          rpcRecords[response.url] = {
-                              req: 1,
-                              success: 1,
-                              failure: 0,
-                          };
-                  } else {
-                      if (record) record.failure++;
-                      else
-                          rpcRecords[response.url] = {
-                              req: 1,
-                              success: 0,
-                              failure: 1,
-                          };
-                  }
-              }
-            : undefined;
+    config.onFetchRequest = (request: Request) => {
+        const record = rpcRecords[request.url];
+        if (record) record.req++;
+        else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
+    };
+    config.onFetchResponse = (response: Response) => {
+        const record = rpcRecords[response.url];
+        if (response.status === 200) {
+            if (record) record.success++;
+            else
+                rpcRecords[response.url] = {
+                    req: 1,
+                    success: 1,
+                    failure: 0,
+                };
+        } else {
+            if (record) record.failure++;
+            else
+                rpcRecords[response.url] = {
+                    req: 1,
+                    success: 0,
+                    failure: 1,
+                };
+        }
+    };
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(
         chainId,
