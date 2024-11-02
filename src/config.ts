@@ -5,15 +5,15 @@ import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, BotDataFetcher, ChainConfig, ViemClient } from "./types";
 import {
-    createWalletClient,
+    http,
     fallback,
     HDAccount,
-    http,
-    PrivateKeyAccount,
-    publicActions,
-    PublicClient,
-    walletActions,
     webSocket,
+    PublicClient,
+    publicActions,
+    walletActions,
+    PrivateKeyAccount,
+    createWalletClient,
 } from "viem";
 import {
     STABLES,
@@ -75,15 +75,31 @@ export async function createViemClient(
     const urls = rpcs?.filter((v) => typeof v === "string") ?? [];
     const topRpcs = urls.map((v) =>
         v.startsWith("http")
-            ? http(v, { timeout, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse })
-            : webSocket(v, { timeout, keepAlive: true, reconnect: true, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse }),
+            ? http(v, {
+                  timeout,
+                  onFetchRequest: config?.onFetchRequest,
+                  onFetchResponse: config?.onFetchResponse,
+              })
+            : webSocket(v, {
+                  timeout,
+                  keepAlive: true,
+                  reconnect: true,
+              }),
     );
     const fallbacks = (fallbackRpcs[chainId] ?? [])
         .filter((v) => !urls.includes(v))
         .map((v) =>
             v.startsWith("http")
-                ? http(v, { timeout, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse })
-                : webSocket(v, { timeout, keepAlive: true, reconnect: true, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse }),
+                ? http(v, {
+                      timeout,
+                      onFetchRequest: config?.onFetchRequest,
+                      onFetchResponse: config?.onFetchResponse,
+                  })
+                : webSocket(v, {
+                      timeout,
+                      keepAlive: true,
+                      reconnect: true,
+                  }),
         );
     const transport = !topRpcs.length
         ? fallback(fallbacks, configuration)

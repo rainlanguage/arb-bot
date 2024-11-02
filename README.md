@@ -76,8 +76,7 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-- `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables"
-- `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
+- `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
@@ -197,9 +196,6 @@ MAX_RATIO="true"
 # Optional seconds to wait for the transaction to mine before disregarding it
 TIMEOUT=""
 
-# Flag for not bundling orders based on pairs and clear each order individually
-NO_BUNDLE="false"
-
 # number of hops of binary search, if left unspecified will be 7 by default
 HOPS=11
 
@@ -257,8 +253,7 @@ const RainArbBot = require("@rainprotocol/arb-bot");
 const configOptions = {
   maxRatio              : true,    // option to maximize the maxIORatio
   flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
-  timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  bundle                : true,    // if orders should be bundled based on token pair or be handled individually
+  timeout               : 300,     // seconds to wait for tx to mine before disregarding it
   hops                  : 6,       // The amount of hops of binary search
   retries               : 1,       // The amount of retries for the same order
   liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)

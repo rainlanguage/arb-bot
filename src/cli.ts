@@ -26,9 +26,9 @@ import {
     diag,
     trace,
     context,
+    DiagLogLevel,
     SpanStatusCode,
     DiagConsoleLogger,
-    DiagLogLevel,
 } from "@opentelemetry/api";
 import {
     BasicTracerProvider,
@@ -54,7 +54,6 @@ const ENV_OPTIONS = {
     orderOwner: process?.env?.ORDER_OWNER,
     sleep: process?.env?.SLEEP,
     maxRatio: process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
-    bundle: process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     publicRpc: process?.env?.PUBLIC_RPC?.toLowerCase() === "true" ? true : false,
     timeout: process?.env?.TIMEOUT,
     hops: process?.env?.HOPS,
@@ -149,10 +148,6 @@ const getOptions = async (argv: any, version?: string) => {
             "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables",
         )
         .option(
-            "--no-bundle",
-            "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables",
-        )
-        .option(
             "--hops <integer>",
             "Option to specify how many hops the binary search should do, default is 1 if left unspecified, Will override the 'HOPS' in env variables",
         )
@@ -233,7 +228,6 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
     cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
-    cmdOptions.bundle = cmdOptions.bundle ? getEnv(ENV_OPTIONS.bundle) : false;
     cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
     if (cmdOptions.ownerProfile) {
         const profiles: Record<string, number> = {};
