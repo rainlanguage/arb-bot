@@ -657,16 +657,19 @@ export const main = async (argv: any, version?: string) => {
 
             // report rpcs performance for round
             for (const rpc in config.rpcRecords) {
-                const record = config.rpcRecords[rpc];
-                const rpcKey = rpc.replaceAll(".", "_");
-                roundSpan.setAttributes({
-                    [`rpcRecords.${rpcKey}.request`]: record.req,
-                    [`rpcRecords.${rpcKey}.success`]: record.success,
-                    [`rpcRecords.${rpcKey}.failure`]: record.failure,
+                await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
+                    const record = config.rpcRecords[rpc];
+                    span.setAttributes({
+                        "rpc-url": rpc,
+                        "request-count": record.req,
+                        "success-count": record.success,
+                        "failure-count": record.failure,
+                    });
+                    record.req = 0;
+                    record.success = 0;
+                    record.failure = 0;
+                    span.end();
                 });
-                record.req = 0;
-                record.success = 0;
-                record.failure = 0;
             }
 
             // eslint-disable-next-line no-console
