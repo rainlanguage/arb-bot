@@ -216,6 +216,14 @@ describe("Test cli", async function () {
                 rpc: ["https://rpc.ankr.com/polygon"],
                 orderbookAddress: `0x${"2".repeat(40)}`,
                 arbAddress: `0x${"1".repeat(40)}`,
+                route: "single",
+                rpcRecords: {
+                    "https://rpc.ankr.com/polygon": {
+                        req: 1,
+                        success: 1,
+                        failure: 0,
+                    },
+                },
             },
             options: {
                 botMinBalance: "0.123",
@@ -226,6 +234,8 @@ describe("Test cli", async function () {
         assert.equal(result.config.chain.id, expected.config.chain.id);
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
+        assert.equal(result.config.route, expected.config.route);
+        assert.deepEqual(result.config.rpcRecords, expected.config.rpcRecords);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
     });
 });

@@ -64,6 +64,7 @@ const ENV_OPTIONS = {
     topupAmount: process?.env?.TOPUP_AMOUNT,
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
+    route: process?.env?.ROUTE,
     ownerProfile: process?.env?.OWNER_PROFILE
         ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
@@ -187,6 +188,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--public-rpc",
             "Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables",
         )
+        .option(
+            "--route <string>",
+            "Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -227,6 +232,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || getEnv(ENV_OPTIONS.selfFundOrders);
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
+    cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
     cmdOptions.bundle = cmdOptions.bundle ? getEnv(ENV_OPTIONS.bundle) : false;
     cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
     if (cmdOptions.ownerProfile) {
@@ -737,6 +743,7 @@ export const main = async (argv: any, version?: string) => {
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
+
             try {
                 // check for new orders
                 await handleOrderbooksNewLogs(
@@ -750,6 +757,21 @@ export const main = async (argv: any, version?: string) => {
             } catch {
                 /**/
             }
+
+            // report rpcs performance for round
+            for (const rpc in config.rpcRecords) {
+                const record = config.rpcRecords[rpc];
+                const rpcKey = rpc.replaceAll(".", "_");
+                roundSpan.setAttributes({
+                    [`rpcRecords.${rpcKey}.request`]: record.req,
+                    [`rpcRecords.${rpcKey}.success`]: record.success,
+                    [`rpcRecords.${rpcKey}.failure`]: record.failure,
+                });
+                record.req = 0;
+                record.success = 0;
+                record.failure = 0;
+            }
+
             // eslint-disable-next-line no-console
             console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
             roundSpan.end();

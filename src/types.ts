@@ -46,6 +46,7 @@ export type CliOptions = {
     tokens?: TokenDetails[];
     ownerProfile?: Record<string, number>;
     publicRpc: boolean;
+    route?: string;
 };
 
 export type TokenDetails = {
@@ -168,6 +169,10 @@ export type BotConfig = {
     watchClient: ViemClient;
     publicRpc: boolean;
     walletKey: string;
+    route?: "multi" | "single";
+    rpcRecords: Record<string, RpcRecord>;
+    onFetchRequest?: (request: Request) => void;
+    onFetchResponse?: (request: Response) => void;
 };
 
 export type Report = {
@@ -245,3 +250,5 @@ export type SgFilter = {
     orderOwner?: string;
     orderbook?: string;
 };
+
+export type RpcRecord = { req: number; success: number; failure: number };

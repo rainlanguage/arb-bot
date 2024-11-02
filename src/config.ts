@@ -69,20 +69,21 @@ export async function createViemClient(
     account?: HDAccount | PrivateKeyAccount,
     timeout?: number,
     testClient?: any,
+    config?: BotConfig,
 ): Promise<ViemClient> {
     const configuration = { rank: false, retryCount: 6 };
     const urls = rpcs?.filter((v) => typeof v === "string") ?? [];
     const topRpcs = urls.map((v) =>
         v.startsWith("http")
-            ? http(v, { timeout })
-            : webSocket(v, { timeout, keepAlive: true, reconnect: true }),
+            ? http(v, { timeout, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse })
+            : webSocket(v, { timeout, keepAlive: true, reconnect: true, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse }),
     );
     const fallbacks = (fallbackRpcs[chainId] ?? [])
         .filter((v) => !urls.includes(v))
         .map((v) =>
             v.startsWith("http")
-                ? http(v, { timeout })
-                : webSocket(v, { timeout, keepAlive: true, reconnect: true }),
+                ? http(v, { timeout, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse })
+                : webSocket(v, { timeout, keepAlive: true, reconnect: true, onFetchRequest: config?.onFetchRequest, onFetchResponse: config?.onFetchResponse }),
         );
     const transport = !topRpcs.length
         ? fallback(fallbacks, configuration)
