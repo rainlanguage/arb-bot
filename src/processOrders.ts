@@ -211,7 +211,7 @@ export const processOrders = async (
                         viemClient,
                         dataFetcher,
                         signer,
-                        flashbotSigner: writeSigner,
+                        writeSigner,
                         arb,
                         genericArb,
                         orderbook,
@@ -351,7 +351,7 @@ export async function processPair(args: {
     viemClient: PublicClient;
     dataFetcher: BotDataFetcher;
     signer: ViemClient;
-    flashbotSigner: ViemClient | undefined;
+    writeSigner: ViemClient | undefined;
     arb: Contract;
     genericArb: Contract | undefined;
     orderbook: Contract;
@@ -364,7 +364,7 @@ export async function processPair(args: {
         viemClient,
         dataFetcher,
         signer,
-        flashbotSigner,
+        writeSigner,
         arb,
         genericArb,
         orderbook,
@@ -602,8 +602,8 @@ export async function processPair(args: {
     let txhash, txUrl;
     try {
         txhash =
-            flashbotSigner !== undefined
-                ? await flashbotSigner.sendTransaction(rawtx)
+            writeSigner !== undefined
+                ? await writeSigner.sendTransaction(rawtx)
                 : await signer.sendTransaction(rawtx);
 
         txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;

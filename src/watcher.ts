@@ -209,7 +209,7 @@ export async function handleNewOrderLogs(
         );
         span?.setAttribute(
             `orderbooksChanges.${orderbook}.removedOrders`,
-            orderLogs.filter((v) => v.type === "add").map((v) => v.order.orderHash),
+            orderLogs.filter((v) => v.type === "remove").map((v) => v.order.orderHash),
         );
     }
     for (let i = 0; i < orderLogs.length; i++) {
