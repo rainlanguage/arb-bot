@@ -68,17 +68,33 @@ export async function createViemClient(
     account?: HDAccount | PrivateKeyAccount,
     timeout?: number,
     testClient?: any,
+    config?: BotConfig,
 ): Promise<ViemClient> {
     const transport =
         !rpcs || rpcs?.length === 0
             ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 6 })
             : useFallbacks
               ? fallback(
-                    [...rpcs.map((v) => http(v, { timeout })), ...fallbacks[chainId].transport],
+                    [
+                        ...rpcs.map((v) =>
+                            http(v, {
+                                timeout,
+                                onFetchRequest: config?.onFetchRequest,
+                                onFetchResponse: config?.onFetchResponse,
+                            }),
+                        ),
+                        ...fallbacks[chainId].transport,
+                    ],
                     { rank: false, retryCount: 6 },
                 )
               : fallback(
-                    rpcs.map((v) => http(v, { timeout })),
+                    rpcs.map((v) =>
+                        http(v, {
+                            timeout,
+                            onFetchRequest: config?.onFetchRequest,
+                            onFetchResponse: config?.onFetchResponse,
+                        }),
+                    ),
                     { rank: false, retryCount: 6 },
                 );
 

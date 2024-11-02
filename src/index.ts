@@ -10,7 +10,7 @@ import { Context, Span } from "@opentelemetry/api";
 import { getQuery, statusCheckQuery } from "./query";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { BotConfig, CliOptions, RoundReport, SgFilter } from "./types";
+import { BotConfig, CliOptions, RoundReport, RpcRecord, SgFilter } from "./types";
 import { createViemClient, getChainConfig, getDataFetcher } from "./config";
 
 /**
@@ -142,10 +142,56 @@ export async function getConfig(
                 throw "invalid retries value, must be an integer between 1 - 3";
         } else throw "invalid retries value, must be an integer between 1 - 3";
     }
+
+    let route: "single" | "multi" | undefined = "single";
+    if (options.route) {
+        const temp = options.route.toLowerCase();
+        if (temp === "full") route = undefined;
+        if (temp === "multi") route = "multi";
+        if (temp === "single") route = "single";
+    }
+
     const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
+
+    const rpcRecords: Record<string, RpcRecord> = {};
+    rpcUrls.forEach((v) => (rpcRecords[v] = { req: 0, success: 0, failure: 0 }));
+
+    config.onFetchRequest = (request: Request) => {
+        const record = rpcRecords[request.url];
+        if (record) record.req++;
+        else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
+    };
+    config.onFetchResponse = (response: Response) => {
+        const record = rpcRecords[response.url];
+        if (response.status === 200) {
+            if (record) record.success++;
+            else
+                rpcRecords[response.url] = {
+                    req: 1,
+                    success: 1,
+                    failure: 0,
+                };
+        } else {
+            if (record) record.failure++;
+            else
+                rpcRecords[response.url] = {
+                    req: 1,
+                    success: 0,
+                    failure: 1,
+                };
+        }
+    };
     const lps = processLps(options.lps);
-    const viemClient = await createViemClient(chainId, rpcUrls, false, undefined, options.timeout);
+    const viemClient = await createViemClient(
+        chainId,
+        rpcUrls,
+        false,
+        undefined,
+        options.timeout,
+        undefined,
+        config,
+    );
     const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
@@ -167,6 +213,8 @@ export async function getConfig(
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
     config.walletKey = walletKey;
+    config.route = route;
+    config.rpcRecords = rpcRecords;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

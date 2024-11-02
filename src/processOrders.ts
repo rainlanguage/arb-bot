@@ -198,6 +198,8 @@ export const processOrders = async (
                                         : "0x" + config.walletKey) as `0x${string}`),
                           ),
                           config.timeout,
+                          undefined,
+                          config,
                       )
                     : undefined;
 

@@ -233,7 +233,10 @@ export const processLps = (liquidityProviders?: string[]) => {
         !liquidityProviders.every((v) => typeof v === "string")
     ) {
         // exclude curve since it is currently in audit, unless it is explicitly specified
-        return LP.filter((v) => v !== LiquidityProviders.CurveSwap);
+        // exclude camelot
+        return LP.filter(
+            (v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot,
+        );
     }
     const _lps: LiquidityProviders[] = [];
     for (let i = 0; i < liquidityProviders.length; i++) {
@@ -242,7 +245,9 @@ export const processLps = (liquidityProviders?: string[]) => {
         );
         if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
     }
-    return _lps.length ? _lps : LP.filter((v) => v !== LiquidityProviders.CurveSwap);
+    return _lps.length
+        ? _lps
+        : LP.filter((v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot);
 };
 
 /**
@@ -704,7 +709,7 @@ export async function getVaultBalance(
             address: orderbookAddress as `0x${string}`,
             allowFailure: false,
             chainId: viemClient.chain!.id,
-            abi: parseAbi(orderbookAbi),
+            abi: parseAbi([orderbookAbi[2]]),
             functionName: "vaultBalance",
             args: [
                 // owner
@@ -719,7 +724,7 @@ export async function getVaultBalance(
 
     let result = ethers.BigNumber.from(0);
     for (let i = 0; i < multicallResult.length; i++) {
-        result = result.add(multicallResult[i]);
+        result = result.add(multicallResult[i]!);
     }
     return result;
 }
@@ -1206,7 +1211,7 @@ export async function checkOwnedOrders(
                 address: v.orderbook,
                 allowFailure: false,
                 chainId: config.chain.id,
-                abi: parseAbi(orderbookAbi),
+                abi: parseAbi([orderbookAbi[2]]),
                 functionName: "vaultBalance",
                 args: [
                     // owner

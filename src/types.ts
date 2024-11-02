@@ -44,6 +44,7 @@ export type CliOptions = {
     bundle: boolean;
     selfFundOrders?: SelfFundOrder[];
     tokens?: TokenDetails[];
+    route?: string;
 };
 
 export type TokenDetails = {
@@ -140,6 +141,10 @@ export type BotConfig = {
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
     walletKey: string;
+    route?: "multi" | "single";
+    rpcRecords: Record<string, RpcRecord>;
+    onFetchRequest?: (request: Request) => void;
+    onFetchResponse?: (request: Response) => void;
 };
 
 export type Report = {
@@ -217,3 +222,5 @@ export type SgFilter = {
     orderOwner?: string;
     orderbook?: string;
 };
+
+export type RpcRecord = { req: number; success: number; failure: number };
