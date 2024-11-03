@@ -664,10 +664,12 @@ export const main = async (argv: any, version?: string) => {
                         "request-count": record.req,
                         "success-count": record.success,
                         "failure-count": record.failure,
+                        "timeout-count": Object.keys(record.cache).length,
                     });
                     record.req = 0;
                     record.success = 0;
                     record.failure = 0;
+                    record.cache = {};
                     span.end();
                 });
             }

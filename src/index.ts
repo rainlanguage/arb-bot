@@ -11,7 +11,13 @@ import { getQuery, statusCheckQuery } from "./query";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { BotConfig, CliOptions, RoundReport, RpcRecord, SgFilter } from "./types";
-import { createViemClient, getChainConfig, getDataFetcher } from "./config";
+import {
+    getChainConfig,
+    getDataFetcher,
+    onFetchRequest,
+    onFetchResponse,
+    createViemClient,
+} from "./config";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -155,33 +161,22 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
 
     const rpcRecords: Record<string, RpcRecord> = {};
-    rpcUrls.forEach((v) => (rpcRecords[v] = { req: 0, success: 0, failure: 0 }));
-
+    rpcUrls.forEach(
+        (v) =>
+            (rpcRecords[v.endsWith("/") ? v : v + "/"] = {
+                req: 0,
+                success: 0,
+                failure: 0,
+                cache: {},
+            }),
+    );
     config.onFetchRequest = (request: Request) => {
-        const record = rpcRecords[request.url];
-        if (record) record.req++;
-        else rpcRecords[request.url] = { req: 1, success: 0, failure: 0 };
+        onFetchRequest(request, rpcRecords);
     };
     config.onFetchResponse = (response: Response) => {
-        const record = rpcRecords[response.url];
-        if (response.status === 200) {
-            if (record) record.success++;
-            else
-                rpcRecords[response.url] = {
-                    req: 1,
-                    success: 1,
-                    failure: 0,
-                };
-        } else {
-            if (record) record.failure++;
-            else
-                rpcRecords[response.url] = {
-                    req: 1,
-                    success: 0,
-                    failure: 1,
-                };
-        }
+        onFetchResponse(response.clone(), rpcRecords);
     };
+
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(
         chainId,
