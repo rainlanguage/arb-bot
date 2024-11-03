@@ -3,16 +3,25 @@ import { getSgOrderbooks } from "./sg";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
-import { BotConfig, BotDataFetcher, ChainConfig, ViemClient } from "./types";
 import {
-    createWalletClient,
+    BotConfig,
+    RpcRecord,
+    ViemClient,
+    ChainConfig,
+    isOkRpcError,
+    isRpcRequest,
+    isRpcResponse,
+    BotDataFetcher,
+} from "./types";
+import {
+    http,
     fallback,
     HDAccount,
-    http,
-    PrivateKeyAccount,
-    publicActions,
     PublicClient,
+    publicActions,
     walletActions,
+    PrivateKeyAccount,
+    createWalletClient,
 } from "viem";
 import {
     STABLES,
@@ -107,6 +116,68 @@ export async function createViemClient(
               chain: publicClientConfig[chainId]?.chain,
               transport,
           }).extend(publicActions) as any as ViemClient);
+}
+
+/**
+ * Keeps record of http fetch requests for a http viem client
+ */
+export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcRecord>) {
+    let url = request.url;
+    if (!request.url.endsWith("/")) url = url + "/";
+    let record = rpcRecords[url];
+    if (!record)
+        record = rpcRecords[url] = {
+            req: 0,
+            success: 0,
+            failure: 0,
+            cache: [],
+        };
+    record.req++;
+    request
+        .json()
+        .then((v) => {
+            if (isRpcRequest(v)) record.cache[v.id] = {};
+            else record.req--;
+        })
+        .catch(() => {});
+}
+
+/**
+ * Keeps record of http fetch responses for a http viem client
+ */
+export function onFetchResponse(response: Response, rpcRecords: Record<string, RpcRecord>) {
+    let url = response.url;
+    if (!response.url.endsWith("/")) url = url + "/";
+    let record = rpcRecords[url];
+    if (!record)
+        record = rpcRecords[url] = {
+            req: 0,
+            success: 0,
+            failure: 0,
+            cache: [],
+        };
+    if (response.status !== 200) record.failure++;
+
+    // for clearing the cache we need to explicitly parse the results even
+    // if response status was not 200 but still can hold valid rpc obj id
+    response
+        .json()
+        .then((v) => {
+            if (isRpcResponse(v)) {
+                delete record.cache[v.id];
+                if (response.status === 200) {
+                    if ("error" in v) {
+                        if (isOkRpcError(v)) record.success++;
+                        else record.failure++;
+                    } else {
+                        record.success++;
+                    }
+                }
+            } else if (response.status === 200) record.failure++;
+        })
+        .catch(() => {
+            if (response.status === 200) record.failure++;
+        });
 }
 
 /**

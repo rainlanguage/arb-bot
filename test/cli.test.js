@@ -6,6 +6,7 @@ const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { sleep } = require("../src/utils");
 
 describe("Test cli", async function () {
     beforeEach(() => mockServer.start(8080));
@@ -193,10 +194,11 @@ describe("Test cli", async function () {
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
                 rpcRecords: {
-                    "https://rpc.ankr.com/polygon": {
+                    "https://rpc.ankr.com/polygon/": {
                         req: 1,
                         success: 1,
                         failure: 0,
+                        cache: {},
                     },
                 },
             },
@@ -204,6 +206,7 @@ describe("Test cli", async function () {
                 botMinBalance: "0.123",
             },
         };
+        await sleep(1000);
         assert.equal(result.roundGap, expected.roundGap);
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
         assert.equal(result.config.chain.id, expected.config.chain.id);
