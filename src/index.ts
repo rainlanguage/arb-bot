@@ -37,7 +37,7 @@ export async function getOrderDetails(
     const ordersDetails: any[] = [];
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
-    if (isInvalidSg) throw "type of provided sources are invalid";
+    if (isInvalidSg) throw "type of provided sources for reading orders are invalid";
     else {
         let availableSgs: string[] = [];
         const promises: Promise<any>[] = [];

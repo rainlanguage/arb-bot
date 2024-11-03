@@ -371,7 +371,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: any[] = [];
     if (!process?.env?.TEST)
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 3; i++) {
             try {
                 ordersDetails = await getOrderDetails(options.subgraph, {
                     orderHash: options.orderHash,
@@ -380,7 +380,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 });
                 break;
             } catch (e) {
-                if (i != 19) await sleep(10000 * (i + 1));
+                if (i != 2) await sleep(10000 * (i + 1));
                 else throw e;
             }
         }
@@ -457,10 +457,6 @@ export const main = async (argv: any, version?: string) => {
                 // end this span and wait for it to finish
                 startupSpan.end();
                 await sleep(20000);
-
-                // flush and close the otel connection.
-                await exporter.shutdown();
-                await sleep(10000);
 
                 // reject the promise that makes the cli process to exit with error
                 return Promise.reject(e);
