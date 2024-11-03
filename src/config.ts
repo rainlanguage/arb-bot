@@ -129,7 +129,7 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
             req: 0,
             success: 0,
             failure: 0,
-            cache: [],
+            cache: {},
         };
     record.req++;
     request
@@ -153,7 +153,7 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             req: 0,
             success: 0,
             failure: 0,
-            cache: [],
+            cache: {},
         };
     if (response.status !== 200) record.failure++;
 
