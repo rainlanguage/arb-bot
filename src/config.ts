@@ -8,7 +8,6 @@ import {
     RpcRecord,
     ViemClient,
     ChainConfig,
-    isOkRpcError,
     isRpcRequest,
     isRpcResponse,
     BotDataFetcher,
@@ -166,12 +165,8 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             if (isRpcResponse(v)) {
                 delete record.cache[v.id];
                 if (response.status === 200) {
-                    if ("error" in v) {
-                        if (isOkRpcError(v)) record.success++;
-                        else record.failure++;
-                    } else {
-                        record.success++;
-                    }
+                    if ("result" in v) record.success++;
+                    else record.failure++;
                 }
             } else if (response.status === 200) record.failure++;
         })
