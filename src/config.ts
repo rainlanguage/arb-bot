@@ -8,7 +8,6 @@ import {
     RpcRecord,
     ViemClient,
     ChainConfig,
-    isRpcRequest,
     isRpcResponse,
     BotDataFetcher,
 } from "./types";
@@ -132,13 +131,6 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
             cache: {},
         };
     record.req++;
-    request
-        .json()
-        .then((v) => {
-            if (isRpcRequest(v)) record.cache[v.id] = {};
-            else record.req--;
-        })
-        .catch(() => {});
 }
 
 /**
@@ -163,7 +155,6 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         .json()
         .then((v) => {
             if (isRpcResponse(v)) {
-                delete record.cache[v.id];
                 if (response.status === 200) {
                     if ("result" in v) record.success++;
                     else record.failure++;

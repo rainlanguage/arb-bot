@@ -664,7 +664,7 @@ export const main = async (argv: any, version?: string) => {
                         "request-count": record.req,
                         "success-count": record.success,
                         "failure-count": record.failure,
-                        "timeout-count": Object.keys(record.cache).length,
+                        "timeout-count": record.req - record.success - record.failure,
                     });
                     record.req = 0;
                     record.success = 0;
