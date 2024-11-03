@@ -123,13 +123,14 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
     let url = request.url;
     if (!request.url.endsWith("/")) url = url + "/";
     let record = rpcRecords[url];
-    if (!record)
+    if (!record) {
         record = rpcRecords[url] = {
             req: 0,
             success: 0,
             failure: 0,
             cache: {},
         };
+    }
     record.req++;
 }
 
@@ -140,13 +141,14 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
     let url = response.url;
     if (!response.url.endsWith("/")) url = url + "/";
     let record = rpcRecords[url];
-    if (!record)
+    if (!record) {
         record = rpcRecords[url] = {
             req: 0,
             success: 0,
             failure: 0,
             cache: {},
         };
+    }
     if (response.status !== 200) record.failure++;
 
     // for clearing the cache we need to explicitly parse the results even
