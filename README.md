@@ -28,10 +28,12 @@ nix develop
   and then
 ```bash
 npm install
+npm run build
 ```
   or
 ```bash
 nix develop -c npm install
+nix develop -c npm run build
 ```
 
 <br>
@@ -47,6 +49,7 @@ pnpm exec turbo run build --filter=./packages/sushi
 and then install the dependencies, requires `>= nodejs v18`:
 ```bash
 npm install
+npm run build
 ```
 <br>
 
