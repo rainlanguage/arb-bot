@@ -116,7 +116,7 @@ Other optional arguments are:
 
 <br>
 
-### List of available liquidity providers (decentralized exchanges)
+### List of available supported dexes (decentralized exchanges)
 - all of the below names are case INSENSITIVE:
 `SushiSwapV2`,
 `SushiSwapV3`,
@@ -257,49 +257,7 @@ If both env variables and CLI argument are set, the CLI arguments will be priori
 
 If you install this app as a dependency for your project you can run it by (All the above arguments apply here as well):
 ```bash
-arb-bot [arguments]
-```
-<br>
-
-### API
-The app can be executed through API:
-```javascript
-// to import
-const RainArbBot = require("@rainprotocol/arb-bot");
-
-// to run the app:
-// options (all properties are optional)
-const configOptions = {
-  maxRatio              : true,    // option to maximize the maxIORatio
-  flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
-  timeout               : 300,     // seconds to wait for tx to mine before disregarding it  
-  bundle                : true,    // if orders should be bundled based on token pair or be handled individually
-  hops                  : 6,       // The amount of hops of binary search
-  retries               : 1,       // The amount of retries for the same order
-  liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
-    "sushiswapv2",
-    "uniswapv2"
-  ],
-  gasCoveragePercentage : "500"    // percentage of the transaction gas cost denominated in receiving ERC20 to be earned from the transaction in order for it to be successfull, as an example a value of 500 means atleast 5x the amount of transaction gas cost needs to be earned for the transaction to be successfull
-}
-
-// to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, arbAddress, ...[configOptions]);
-
-// to get the order details, one or both of subgraph and json file can be used simultaneously
-const ordersJson    = "/home/orders.json"                                 // path to a local json file 
-const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
-const sgFilters     = {                                                   // filters for subgraph query (each filter is optional)
-  orderHash         : "0x1234...",
-  orderOwner        : "0x1234...",
-  orderbook         : "0x1234..."
-}
-
-// get the order details from the sources
-const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
-
-// to run the clearing process and get the report object which holds the report of cleared orders
-const reports = await RainArbBot.clear(config, orderDetails)
+arb-bot <OPTIONS>
 ```
 <br>
 
