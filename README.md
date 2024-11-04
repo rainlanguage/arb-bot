@@ -30,7 +30,7 @@ nix develop
 npm install
 npm run build
 ```
-  or
+  or without entering the nix shell
 ```bash
 nix develop -c npm install
 nix develop -c npm run build
