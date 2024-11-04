@@ -424,7 +424,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
 }
 
 /**
- * Calculates the opps count standard deviation from the avg of the given length of previous rounds records
+ * Calculates the opps count standard deviation from the given length of previous rounds records
  */
 export const handleOppsRecord = (
     recordSize: number,
@@ -432,11 +432,15 @@ export const handleOppsRecord = (
     oppCount: number,
 ): number => {
     const avg = Math.floor(previousRecords.reduce((a, b) => a + b, 0) / previousRecords.length);
+    const sumOfSquaresAvg =
+        previousRecords.map((v) => (avg - v) ** 2).reduce((a, b) => a + b, 0) /
+        previousRecords.length;
+    const stdvsRounup = Math.round(Math.sqrt(sumOfSquaresAvg)); // roundup
     previousRecords.push(oppCount);
     if (previousRecords.length > recordSize) {
         previousRecords.splice(0, previousRecords.length - recordSize);
     }
-    return oppCount - avg;
+    return oppCount - stdvsRounup;
 };
 
 export const main = async (argv: any, version?: string) => {

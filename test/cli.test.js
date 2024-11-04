@@ -218,11 +218,11 @@ describe("Test cli", async function () {
     });
 
     it("test handleOppsRecord()", async function () {
-        const record = [3, 4, 5, 3, 3, 7, 4];
-        const size = 7;
+        const record = [6, 2, 3, 1];
+        const size = 4;
         const currentOppCount = 1;
         const result = handleOppsRecord(size, record, currentOppCount);
-        const expected = -3;
+        const expected = -1;
         assert.equal(result, expected);
     });
 });
