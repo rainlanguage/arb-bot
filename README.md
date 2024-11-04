@@ -210,7 +210,7 @@ ORDER_HASH=""
 # Option to filter the subgraph query results with a specific order owner address
 ORDER_OWNER=""
 
-# Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
+# Seconds to wait between each arb round, default is 10
 SLEEP=10
 
 # Option to maximize maxIORatio
