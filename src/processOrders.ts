@@ -690,6 +690,7 @@ export async function processPair(args: {
                 sellToken: orderPairObject.sellToken,
                 clearedAmount: clearActualAmount?.toString(),
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
+                successfull: true,
                 income,
                 inputTokenIncome: inputTokenIncome
                     ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
@@ -735,6 +736,7 @@ export async function processPair(args: {
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
+                successfull: false,
             };
             result.reason = ProcessPairHaltReason.TxMineFailed;
             return Promise.reject(result);
@@ -756,6 +758,7 @@ export async function processPair(args: {
             tokenPair: pair,
             buyToken: orderPairObject.buyToken,
             sellToken: orderPairObject.sellToken,
+            successfull: false,
         };
         if (actualGasCost) {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);

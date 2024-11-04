@@ -48,6 +48,7 @@ const ENV_OPTIONS = {
     maxRatio: process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     bundle: process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
     timeout: process?.env?.TIMEOUT,
+    execRecordSize: process?.env?.EXEC_RECORD_SIZE,
     flashbotRpc: process?.env?.FLASHBOT_RPC,
     hops: process?.env?.HOPS,
     retries: process?.env?.RETRIES,
@@ -163,6 +164,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--route <string>",
             "Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables",
         )
+        .option(
+            "--exec-record-size <integer>",
+            "Option for specifying the count of latest rounds reports are used for calculating avg execution performance, default is 50, Will override the 'EXEC_RECORD_SIZE' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -191,6 +196,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.maxRatio = cmdOptions.maxRatio || ENV_OPTIONS.maxRatio;
     cmdOptions.flashbotRpc = cmdOptions.flashbotRpc || ENV_OPTIONS.flashbotRpc;
     cmdOptions.timeout = cmdOptions.timeout || ENV_OPTIONS.timeout;
+    cmdOptions.execRecordSize = cmdOptions.execRecordSize || ENV_OPTIONS.execRecordSize || 50;
     cmdOptions.hops = cmdOptions.hops || ENV_OPTIONS.hops;
     cmdOptions.retries = cmdOptions.retries || ENV_OPTIONS.retries;
     cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
@@ -245,7 +251,7 @@ export const arbRound = async (
                 if (!ordersDetails.length) {
                     span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                     span.end();
-                    return { txs: [], foundOpp: false, avgGasCost: undefined };
+                    return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
                 }
             } catch (e: any) {
                 const snapshot = errorSnapshot("", e);
@@ -254,12 +260,13 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
+                return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
             }
 
             try {
-                let txs;
-                let foundOpp = false;
+                let oppCount = 0;
+                let successCount = 0;
+                const txs: string[] = [];
                 const { reports = [], avgGasCost = undefined } = await clear(
                     config,
                     ordersDetails,
@@ -267,27 +274,30 @@ export const arbRound = async (
                     ctx,
                 );
                 if (reports && reports.length) {
-                    txs = reports.map((v) => v.txUrl).filter((v) => !!v);
+                    reports.forEach((v) => {
+                        if (v.txUrl) txs.push(v.txUrl);
+                        if (v?.successfull) successCount++;
+                        if (v.status === ProcessPairReportStatus.FoundOpportunity) oppCount++;
+                    });
                     if (txs.length) {
-                        foundOpp = true;
                         span.setAttribute("txUrls", txs);
+                    }
+                    if (successCount) {
                         span.setAttribute("didClear", true);
-                        span.setAttribute("foundOpp", true);
-                    } else if (
-                        reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
-                    ) {
-                        foundOpp = true;
+                    }
+                    if (oppCount) {
                         span.setAttribute("foundOpp", true);
                     }
                 } else {
                     span.setAttribute("didClear", false);
+                    span.setAttribute("foundOpp", false);
                 }
                 if (avgGasCost) {
                     span.setAttribute("avgGasCost", avgGasCost.toString());
                 }
                 span.setStatus({ code: SpanStatusCode.OK });
                 span.end();
-                return { txs, foundOpp, avgGasCost };
+                return { txs, oppCount, successCount, avgGasCost };
             } catch (e: any) {
                 if (e?.startsWith?.("Failed to batch quote orders")) {
                     span.setAttribute("severity", ErrorSeverity.LOW);
@@ -301,7 +311,7 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
+                return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
             }
         } catch (e: any) {
             const snapshot = errorSnapshot("Unexpected error occured", e);
@@ -311,7 +321,7 @@ export const arbRound = async (
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
             span.end();
-            return { txs: [], foundOpp: false, avgGasCost: undefined };
+            return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
         }
     });
 };
@@ -350,6 +360,15 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     if (options.sleep) {
         if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
         else throw "invalid sleep value, must be an integer greater than equal 0";
+    }
+    if (options.execRecordSize) {
+        if (typeof options.execRecordSize === "string") {
+            if (/^[0-9]+$/.test(options.sleep))
+                options.execRecordSize = Number(options.execRecordSize);
+            else throw "invalid Execution Record Size value, must be an integer greater than 0";
+        } else if (typeof options.execRecordSize !== "number") {
+            throw "invalid Execution Record Size value, must be an integer greater than 0";
+        }
     }
     if (options.poolUpdateInterval) {
         if (typeof options.poolUpdateInterval === "number") {
@@ -403,6 +422,22 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         config,
     };
 }
+
+/**
+ * Calculates the opps count standard deviation from the avg of the given length of previous rounds records
+ */
+export const handleOppsRecord = (
+    recordSize: number,
+    previousRecords: number[],
+    oppCount: number,
+): number => {
+    const avg = Math.floor(previousRecords.reduce((a, b) => a + b, 0) / previousRecords.length);
+    previousRecords.push(oppCount);
+    if (previousRecords.length > recordSize) {
+        previousRecords.splice(0, previousRecords.length - recordSize);
+    }
+    return oppCount - avg;
+};
 
 export const main = async (argv: any, version?: string) => {
     // startup otel to collect span, logs, etc
@@ -473,6 +508,7 @@ export const main = async (argv: any, version?: string) => {
     const wgc: ViemClient[] = [];
     const wgcBuffer: { address: string; count: number }[] = [];
     const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
+    const previousRoundsRecords: number[] = [];
 
     // run bot's processing orders in a loop
     // eslint-disable-next-line no-constant-condition
@@ -538,23 +574,36 @@ export const main = async (argv: any, version?: string) => {
             try {
                 await rotateProviders(config, update);
                 const roundResult = await arbRound(tracer, roundCtx, options, config);
-                let txs, foundOpp, roundAvgGasCost;
+                let txs, roundAvgGasCost;
+                let oppCount = 0;
+                let successCount = 0;
                 if (roundResult) {
                     txs = roundResult.txs;
-                    foundOpp = roundResult.foundOpp;
+                    oppCount = roundResult.oppCount;
+                    successCount = roundResult.successCount;
                     roundAvgGasCost = roundResult.avgGasCost;
                 }
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
+                }
+                if (oppCount) {
                     roundSpan.setAttribute("foundOpp", true);
-                } else if (foundOpp) {
-                    roundSpan.setAttribute("foundOpp", true);
-                    roundSpan.setAttribute("didClear", false);
                 } else {
                     roundSpan.setAttribute("foundOpp", false);
+                }
+                if (successCount) {
+                    roundSpan.setAttribute("didClear", true);
+                } else {
                     roundSpan.setAttribute("didClear", false);
                 }
+
+                // record opps stdvs
+                const oppsCountStdvs = handleOppsRecord(
+                    options.execRecordSize,
+                    previousRoundsRecords,
+                    oppCount,
+                );
+                roundSpan.setAttribute("opps-stdvs", oppsCountStdvs);
 
                 // keep avg gas cost
                 if (roundAvgGasCost) {

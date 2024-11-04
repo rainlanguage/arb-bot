@@ -45,6 +45,7 @@ export type CliOptions = {
     selfFundOrders?: SelfFundOrder[];
     tokens?: TokenDetails[];
     route?: string;
+    execRecordSize: number;
 };
 
 export type TokenDetails = {
@@ -160,6 +161,7 @@ export type Report = {
     clearedOrders?: string[];
     income?: BigNumber;
     netProfit?: BigNumber;
+    successfull?: boolean;
 };
 
 export type RoundReport = {

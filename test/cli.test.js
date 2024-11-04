@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { assert } = require("chai");
 const mockServer = require("mockttp").getLocal();
-const { arbRound, startup } = require("../src/cli");
+const { arbRound, startup, handleOppsRecord } = require("../src/cli");
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
@@ -48,7 +48,7 @@ describe("Test cli", async function () {
         };
 
         const response = await arbRound(tracer, ctx, options, { mainAccount: {} });
-        const expected = { txs: [], foundOpp: false, avgGasCost: undefined };
+        const expected = { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
         assert.deepEqual(response, expected);
 
         testSpan.end();
@@ -215,5 +215,14 @@ describe("Test cli", async function () {
         assert.equal(result.config.route, expected.config.route);
         assert.deepEqual(result.config.rpcRecords, expected.config.rpcRecords);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
+    });
+
+    it("test handleOppsRecord()", async function () {
+        const record = [3, 4, 5, 3, 3, 7, 4];
+        const size = 7;
+        const currentOppCount = 1;
+        const result = handleOppsRecord(size, record, currentOppCount);
+        const expected = -3;
+        assert.equal(result, expected);
     });
 });

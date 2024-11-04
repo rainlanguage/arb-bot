@@ -109,6 +109,7 @@ Other optional arguments are:
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
 - `--self-fund-orders`, Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables
 - `--route`, Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables
+- `--exec-record-size`, Option for specifying the count of latest rounds reports are used for calculating avg execution performance, default is 50, Will override the 'EXEC_RECORD_SIZE' in env variables
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
 - `-V` or `--version`, output the version number
@@ -252,6 +253,9 @@ SELF_FUND_ORDERS=
 
 # Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
 ROUTE="single"
+
+# Option for specifying the count of latest rounds reports are used for calculating avg execution performance, default is 50
+EXEC_RECORD_SIZE=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
