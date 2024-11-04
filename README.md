@@ -21,11 +21,11 @@ first you need to run `./prep-sushi.sh` which would need nix package manager ins
 ```bash
 ./prep-sushi.sh
 ```
-  next enter nix shell or just run from shell:
+next enter nix shell:
 ```bash
 nix develop
 ```
-  and then
+and then:
 ```bash
 npm install
 npm run build
@@ -45,6 +45,7 @@ git submodule update --init --recursive
 cd lib/sushiswap
 pnpm install --frozen-lockfile
 pnpm exec turbo run build --filter=./packages/sushi
+cd ../..
 ```
 and then install the dependencies, requires `>= nodejs v18`:
 ```bash
@@ -55,21 +56,44 @@ npm run build
 
 ### CLI
 For starting the app:
+- with nix package manager (recommended way):
+
+from nix shell:
+if you are not already in nix shell, enter by following command:
 ```bash
-node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
+nix develop
 ```
+and then:
+```bash
+node arb-bot <OPTIONS>
+```
+
+out of nix shell:
+
+run the following if you don't want to enter nix shell
+```bash
+nix develop -c node arb-bot <OPTIONS>
+```
+<br>
+
+- without nix package manager (requires `>= nodejs v18`):
+
+```bash
+node arb-bot <OPTIONS>
+```
+
+<br>
+
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
-- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified. Will override the 'MNEMONIC' in env variables
+- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
--- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
-
-as well as at least one or both of below arguments:
+- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 
 Other optional arguments are:
+- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--orderbook-address`, Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
