@@ -113,7 +113,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--sleep <integer>",
-            "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables",
+            "Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables",
         )
         .option(
             "--flashbot-rpc <url>",

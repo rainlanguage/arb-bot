@@ -99,7 +99,7 @@ Other optional arguments are:
 - `--orderbook-address`, Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
-- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
@@ -210,7 +210,7 @@ ORDER_HASH=""
 # Option to filter the subgraph query results with a specific order owner address
 ORDER_OWNER=""
 
-# Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+# Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
 SLEEP=10
 
 # Option to maximize maxIORatio
