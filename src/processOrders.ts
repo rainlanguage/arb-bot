@@ -271,7 +271,6 @@ export const processOrders = async (
                             error: e.error,
                             reason: e.reason,
                         });
-                        span.setAttribute("severity", ErrorSeverity.MEDIUM);
 
                         // set the otel span status based on returned reason
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
