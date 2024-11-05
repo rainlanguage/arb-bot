@@ -458,7 +458,7 @@ export const handleOppsRecord = (
     // round down to nearest int to be more conservative and avoid float
     const stdvsRoundown = Math.floor(Math.sqrt(sumOfSquaresAvg));
     // hitting upper bound is totally fine, we only care about hitting lower bound
-    const stdvsLowerBound = avg - stdvsRoundown;
+    const stdvsLowerBound = avg - stdvsRoundown < 0 ? 0 : avg - stdvsRoundown;
     previousRecords.push(oppCount);
     if (previousRecords.length > recordSize) {
         previousRecords.splice(0, previousRecords.length - recordSize);
