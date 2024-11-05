@@ -435,12 +435,16 @@ export const handleOppsRecord = (
     const sumOfSquaresAvg =
         previousRecords.map((v) => (avg - v) ** 2).reduce((a, b) => a + b, 0) /
         previousRecords.length;
-    const stdvsRounup = Math.round(Math.sqrt(sumOfSquaresAvg)); // roundup
+    // round down to nearest int to be more conservative and avoid float
+    const stdvsRoundown = Math.floor(Math.sqrt(sumOfSquaresAvg));
+    // hitting upper bound is totally fine, we only care about hitting lower bound
+    const stdvsLowerBound = avg - stdvsRoundown;
     previousRecords.push(oppCount);
     if (previousRecords.length > recordSize) {
         previousRecords.splice(0, previousRecords.length - recordSize);
     }
-    return oppCount - stdvsRounup;
+    // any value <= 0 means the lower bounds were hit
+    return oppCount - stdvsLowerBound;
 };
 
 export const main = async (argv: any, version?: string) => {
