@@ -166,7 +166,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--exec-record-size <integer>",
-            "Option for specifying the count of latest rounds reports are used for calculating avg execution performance, default is 50, Will override the 'EXEC_RECORD_SIZE' in env variables",
+            "Option for specifying the count of latest rounds reports used for calculating avg execution performances, default is 50, Will override the 'EXEC_RECORD_SIZE' in env variables",
         )
         .description(
             [
@@ -251,7 +251,12 @@ export const arbRound = async (
                 if (!ordersDetails.length) {
                     span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                     span.end();
-                    return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
+                    return {
+                        txs: [],
+                        oppCount: 0,
+                        successCount: 0,
+                        avgGasCost: undefined,
+                    };
                 }
             } catch (e: any) {
                 const snapshot = errorSnapshot("", e);
@@ -260,7 +265,12 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
+                return {
+                    txs: [],
+                    oppCount: 0,
+                    successCount: 0,
+                    avgGasCost: undefined,
+                };
             }
 
             try {
@@ -311,7 +321,12 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
+                return {
+                    txs: [],
+                    oppCount: 0,
+                    successCount: 0,
+                    avgGasCost: undefined,
+                };
             }
         } catch (e: any) {
             const snapshot = errorSnapshot("Unexpected error occured", e);
@@ -321,7 +336,12 @@ export const arbRound = async (
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
             span.end();
-            return { txs: [], oppCount: 0, successCount: 0, avgGasCost: undefined };
+            return {
+                txs: [],
+                oppCount: 0,
+                successCount: 0,
+                avgGasCost: undefined,
+            };
         }
     });
 };
@@ -605,7 +625,7 @@ export const main = async (argv: any, version?: string) => {
                     roundSpan.setAttribute("didClear", false);
                 }
 
-                // record opps stdvs
+                // record round's opps difference from stdvs lower bound
                 const oppsCountStdvs = handleOppsRecord(
                     options.execRecordSize,
                     previousRoundsRecords,

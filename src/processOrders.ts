@@ -736,6 +736,7 @@ export async function processPair(args: {
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
+                clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
                 successfull: false,
             };
             result.reason = ProcessPairHaltReason.TxMineFailed;
@@ -758,6 +759,7 @@ export async function processPair(args: {
             tokenPair: pair,
             buyToken: orderPairObject.buyToken,
             sellToken: orderPairObject.sellToken,
+            clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
             successfull: false,
         };
         if (actualGasCost) {

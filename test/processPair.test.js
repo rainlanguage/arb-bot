@@ -603,6 +603,7 @@ describe("Test process pair", async function () {
                     sellToken: orderPairObject.sellToken,
                     txUrl: scannerUrl + "/tx/" + txHash,
                     actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
+                    clearedOrders: [orderPairObject.takeOrders[0].id],
                     successfull: false,
                 },
                 reason: ProcessPairHaltReason.TxMineFailed,
