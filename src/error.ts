@@ -4,16 +4,16 @@ import {
     InvalidInputRpcError,
     ExecutionRevertedError,
     TransactionRejectedRpcError,
-    TipAboveFeeCapError,
-    TransactionTypeNotSupportedError,
-    IntrinsicGasTooLowError,
-    IntrinsicGasTooHighError,
-    InsufficientFundsError,
-    NonceMaxValueError,
-    NonceTooLowError,
-    NonceTooHighError,
-    FeeCapTooLowError,
-    FeeCapTooHighError,
+    // TipAboveFeeCapError,
+    // TransactionTypeNotSupportedError,
+    // IntrinsicGasTooLowError,
+    // IntrinsicGasTooHighError,
+    // InsufficientFundsError,
+    // NonceMaxValueError,
+    // NonceTooLowError,
+    // NonceTooHighError,
+    // FeeCapTooLowError,
+    // FeeCapTooHighError,
 } from "viem";
 
 /**
@@ -58,18 +58,17 @@ export function containsNodeError(err: BaseError): boolean {
         err instanceof TransactionRejectedRpcError ||
         err instanceof InvalidInputRpcError ||
         err instanceof ExecutionRevertedError ||
-        err instanceof FeeCapTooHighError ||
-        err instanceof FeeCapTooLowError ||
-        err instanceof NonceTooHighError ||
-        err instanceof NonceTooLowError ||
-        err instanceof NonceMaxValueError ||
-        err instanceof InsufficientFundsError ||
-        err instanceof IntrinsicGasTooHighError ||
-        err instanceof IntrinsicGasTooLowError ||
-        err instanceof TransactionTypeNotSupportedError ||
-        err instanceof TipAboveFeeCapError ||
+        // err instanceof FeeCapTooHighError ||
+        // err instanceof FeeCapTooLowError ||
+        // err instanceof NonceTooHighError ||
+        // err instanceof NonceTooLowError ||
+        // err instanceof NonceMaxValueError ||
+        // err instanceof InsufficientFundsError ||
+        // err instanceof IntrinsicGasTooHighError ||
+        // err instanceof IntrinsicGasTooLowError ||
+        // err instanceof TransactionTypeNotSupportedError ||
+        // err instanceof TipAboveFeeCapError ||
         (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
         ("cause" in err && containsNodeError(err.cause as any))
-        // ("code" in err && err.code === ExecutionRevertedError.code)
     );
 }
