@@ -577,7 +577,10 @@ export async function processPair(args: {
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
-        result.error = e?.noneNodeError;
+        if (e?.noneNodeError) {
+            spanAttributes["details.noneNoneError"] = true;
+            result.error = e.noneNodeError;
+        }
         result.report = {
             status: ProcessPairReportStatus.NoOpportunity,
             tokenPair: pair,
