@@ -92,8 +92,10 @@ export async function dryrun({
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
-        spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
-        spanAttributes["error"] = errorSnapshot("", e);
+        const isNodeError = containsNodeError(e as BaseError);
+        const errMsg = errorSnapshot("", e);
+        spanAttributes["isNodeError"] = isNodeError;
+        spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
             {
                 ...rawtx,
@@ -101,6 +103,12 @@ export async function dryrun({
             },
             withBigintSerializer,
         );
+        if (!isNodeError) {
+            result.value = {
+                noneNodeError: errMsg,
+                estimatedProfit: ethers.constants.Zero,
+            };
+        }
         return Promise.reject(result);
     }
     let gasCost = gasLimit.mul(gasPrice);
@@ -163,8 +171,10 @@ export async function dryrun({
                 [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
             ]);
         } catch (e) {
-            spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
-            spanAttributes["error"] = errorSnapshot("", e);
+            const isNodeError = containsNodeError(e as BaseError);
+            const errMsg = errorSnapshot("", e);
+            spanAttributes["isNodeError"] = isNodeError;
+            spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
                 {
                     ...rawtx,
@@ -172,6 +182,12 @@ export async function dryrun({
                 },
                 withBigintSerializer,
             );
+            if (!isNodeError) {
+                result.value = {
+                    noneNodeError: errMsg,
+                    estimatedProfit: ethers.constants.Zero,
+                };
+            }
             return Promise.reject(result);
         }
     }

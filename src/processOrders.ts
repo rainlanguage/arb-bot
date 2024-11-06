@@ -242,7 +242,11 @@ export const processOrders = async (
                     if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
                     } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                        if (result.error && typeof result.error === "string") {
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
+                        } else {
+                            span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                        }
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
                     } else {
@@ -573,6 +577,7 @@ export async function processPair(args: {
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
+        result.error = e?.noneNodeError;
         result.report = {
             status: ProcessPairReportStatus.NoOpportunity,
             tokenPair: pair,

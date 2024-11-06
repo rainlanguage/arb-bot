@@ -170,8 +170,10 @@ export async function dryrun({
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
-            spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
-            spanAttributes["error"] = errorSnapshot("", e);
+            const isNodeError = containsNodeError(e as BaseError);
+            const errMsg = errorSnapshot("", e);
+            spanAttributes["isNodeError"] = isNodeError;
+            spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
                 {
                     ...rawtx,
@@ -180,6 +182,12 @@ export async function dryrun({
                 withBigintSerializer,
             );
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+            if (!isNodeError) {
+                result.value = {
+                    noneNodeError: errMsg,
+                    estimatedProfit: ethers.constants.Zero,
+                };
+            }
             return Promise.reject(result);
         }
         let gasCost = gasLimit.mul(gasPrice);
@@ -217,8 +225,10 @@ export async function dryrun({
                     task,
                 ]);
             } catch (e) {
-                spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
-                spanAttributes["error"] = errorSnapshot("", e);
+                const isNodeError = containsNodeError(e as BaseError);
+                const errMsg = errorSnapshot("", e);
+                spanAttributes["isNodeError"] = isNodeError;
+                spanAttributes["error"] = errMsg;
                 spanAttributes["rawtx"] = JSON.stringify(
                     {
                         ...rawtx,
@@ -227,6 +237,12 @@ export async function dryrun({
                     withBigintSerializer,
                 );
                 result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+                if (!isNodeError) {
+                    result.value = {
+                        noneNodeError: errMsg,
+                        estimatedProfit: ethers.constants.Zero,
+                    };
+                }
                 return Promise.reject(result);
             }
         }
@@ -338,6 +354,7 @@ export async function findOpp({
             if (i !== 1) {
                 delete e.spanAttributes["error"];
                 delete e.spanAttributes["rawtx"];
+                delete e.spanAttributes["isNodeError"];
             }
             allHopsAttributes.push(JSON.stringify(e.spanAttributes));
 

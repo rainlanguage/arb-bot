@@ -192,6 +192,7 @@ export type DryrunValue = {
     routeVisual?: string[];
     oppBlockNumber?: number;
     estimatedProfit: BigNumber;
+    noneNodeError?: string;
 };
 
 export type DryrunResult = {
