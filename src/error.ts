@@ -53,7 +53,7 @@ export function errorSnapshot(header: string, err: any): string {
  * Checks if a viem BaseError is from eth node, copied from
  * "viem/_types/utils/errors/getNodeError" since not a default export
  */
-export function containsNodeError(err: BaseError) {
+export function containsNodeError(err: BaseError): boolean {
     return (
         err instanceof TransactionRejectedRpcError ||
         err instanceof InvalidInputRpcError ||
@@ -68,7 +68,8 @@ export function containsNodeError(err: BaseError) {
         err instanceof IntrinsicGasTooLowError ||
         err instanceof TransactionTypeNotSupportedError ||
         err instanceof TipAboveFeeCapError ||
-        (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code)
+        (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
+        ("cause" in err && containsNodeError(err.cause as any))
         // ("code" in err && err.code === ExecutionRevertedError.code)
     );
 }
