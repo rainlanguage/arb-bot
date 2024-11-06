@@ -1,9 +1,9 @@
-import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
-import { errorSnapshot } from "../error";
+import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
+import { containsNodeError, errorSnapshot } from "../error";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import { estimateProfit, RPoolFilter, visualizeRoute, withBigintSerializer } from "../utils";
 
@@ -170,6 +170,7 @@ export async function dryrun({
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
+            spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
             spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(
                 {
@@ -216,6 +217,7 @@ export async function dryrun({
                     task,
                 ]);
             } catch (e) {
+                spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
                 spanAttributes["error"] = errorSnapshot("", e);
                 spanAttributes["rawtx"] = JSON.stringify(
                     {

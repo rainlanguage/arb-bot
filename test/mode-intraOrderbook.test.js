@@ -308,6 +308,7 @@ describe("Test intra-orderbook find opp", async function () {
                     intraOrderbook: [
                         JSON.stringify({
                             blockNumber: oppBlockNumber,
+                            isNodeError: false,
                             error: errorSnapshot("", err),
                             rawtx: JSON.stringify(rawtx),
                         }),

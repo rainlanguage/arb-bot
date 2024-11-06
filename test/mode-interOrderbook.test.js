@@ -423,6 +423,7 @@ describe("Test inter-orderbook find opp", async function () {
                         [opposingOrderbookAddress]: {
                             maxInput: vaultBalance.toString(),
                             blockNumber: oppBlockNumber,
+                            isNodeError: false,
                             error: errorSnapshot("", err),
                             rawtx: JSON.stringify(rawtx),
                         },

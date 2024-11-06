@@ -1,15 +1,15 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
-import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
+import { BaseError, PublicClient } from "viem";
 import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { ErrorSeverity, errorSnapshot } from "./error";
 import { fundOwnedOrders, rotateAccounts } from "./account";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { containsNodeError, ErrorSeverity, errorSnapshot } from "./error";
 import {
     Report,
     BotConfig,
@@ -624,6 +624,7 @@ export async function processPair(args: {
             },
             withBigintSerializer,
         );
+        spanAttributes["details.isNodeError"] = containsNodeError(e as BaseError);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -761,6 +762,7 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
+        spanAttributes["details.isNodeError"] = containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
     }

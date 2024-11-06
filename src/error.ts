@@ -1,4 +1,10 @@
-import { BaseError } from "viem";
+import {
+    BaseError,
+    RpcRequestError,
+    InvalidInputRpcError,
+    ExecutionRevertedError,
+    TransactionRejectedRpcError,
+} from "viem";
 
 /**
  * Specifies error severity
@@ -31,4 +37,16 @@ export function errorSnapshot(header: string, err: any): string {
         }
     }
     return message.join("\n");
+}
+
+/**
+ * Checks if a viem BaseError is from eth node, copied from
+ * "viem/_types/utils/errors/getNodeError" since not a default export
+ */
+export function containsNodeError(err: BaseError) {
+    return (
+        err instanceof TransactionRejectedRpcError ||
+        err instanceof InvalidInputRpcError ||
+        (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code)
+    );
 }

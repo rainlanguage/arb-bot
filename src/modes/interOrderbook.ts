@@ -1,8 +1,8 @@
-import { PublicClient } from "viem";
 import { orderbookAbi } from "../abis";
-import { errorSnapshot } from "../error";
+import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
+import { containsNodeError, errorSnapshot } from "../error";
 import { estimateProfit, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
@@ -104,6 +104,7 @@ export async function dryrun({
         spanAttributes["blockNumber"] = blockNumber;
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     } catch (e) {
+        spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
         spanAttributes["error"] = errorSnapshot("", e);
         spanAttributes["rawtx"] = JSON.stringify(
             {
@@ -149,6 +150,7 @@ export async function dryrun({
                 task,
             ]);
         } catch (e) {
+            spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
             spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(
                 {

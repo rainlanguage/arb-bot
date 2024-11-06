@@ -1,8 +1,8 @@
-import { PublicClient } from "viem";
-import { errorSnapshot } from "../error";
 import { BigNumber, ethers } from "ethers";
+import { BaseError, PublicClient } from "viem";
 import { erc20Abi, orderbookAbi } from "../abis";
 import { getWithdrawEnsureBytecode } from "../config";
+import { containsNodeError, errorSnapshot } from "../error";
 import { estimateProfit, withBigintSerializer } from "../utils";
 import {
     BotConfig,
@@ -92,6 +92,7 @@ export async function dryrun({
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
+        spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
         spanAttributes["error"] = errorSnapshot("", e);
         spanAttributes["rawtx"] = JSON.stringify(
             {
@@ -162,6 +163,7 @@ export async function dryrun({
                 [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
             ]);
         } catch (e) {
+            spanAttributes["isNodeError"] = containsNodeError(e as BaseError);
             spanAttributes["error"] = errorSnapshot("", e);
             spanAttributes["rawtx"] = JSON.stringify(
                 {

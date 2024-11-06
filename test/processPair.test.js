@@ -543,6 +543,7 @@ describe("Test process pair", async function () {
                     "details.outputToEthPrice": "1",
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
+                    "details.isNodeError": false,
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
