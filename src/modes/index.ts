@@ -115,27 +115,16 @@ export async function findOpp({
                 (allResults[2] as any).reason.spanAttributes,
             );
         }
-        if (
-            (allResults[0] as any)?.reason !== undefined &&
-            "value" in (allResults[0] as any).reason &&
-            (allResults[0] as any)?.reason?.value !== undefined &&
-            "noneNodeError" in (allResults[0] as any).reason.value
-        ) {
+        if ((allResults[0] as any)?.reason?.value?.noneNodeError) {
             result.noneNodeError = (allResults[0] as any).reason.value.noneNodeError;
         } else if (
             result.noneNodeError === undefined &&
-            (allResults[1] as any)?.reason !== undefined &&
-            "value" in (allResults[1] as any).reason &&
-            (allResults[1] as any)?.reason?.value !== undefined &&
-            "noneNodeError" in (allResults[1] as any).reason.value
+            (allResults[1] as any)?.reason?.value?.noneNodeError
         ) {
             result.noneNodeError = (allResults[1] as any).reason.value.noneNodeError;
         } else if (
             result.noneNodeError === undefined &&
-            (allResults[2] as any)?.reason !== undefined &&
-            "value" in (allResults[2] as any).reason &&
-            (allResults[2] as any)?.reason?.value !== undefined &&
-            "noneNodeError" in (allResults[2] as any).reason.value
+            (allResults[2] as any)?.reason?.value?.noneNodeError
         ) {
             result.noneNodeError = (allResults[2] as any).reason.value.noneNodeError;
         }

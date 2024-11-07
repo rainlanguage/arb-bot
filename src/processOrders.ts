@@ -243,6 +243,7 @@ export const processOrders = async (
                         span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
                     } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         if (result.error && typeof result.error === "string") {
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
                             span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
                         } else {
                             span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
@@ -313,12 +314,17 @@ export const processOrders = async (
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
+                            let code = SpanStatusCode.OK;
                             let message = "transaction failed";
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            span.setStatus({ code: SpanStatusCode.OK, message });
+                            if (e.spanAttributes["txNoneNodeError"]) {
+                                code = SpanStatusCode.ERROR;
+                                span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            }
+                            span.setStatus({ code, message });
                             span.setAttribute("unsuccessfullClear", true);
                         }
                     } else {
@@ -577,8 +583,8 @@ export async function processPair(args: {
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
-        if (e?.noneNodeError) {
-            spanAttributes["details.noneNoneError"] = true;
+        if (e.noneNodeError) {
+            spanAttributes["details.noneNodeError"] = true;
             result.error = e.noneNodeError;
         }
         result.report = {
@@ -632,7 +638,7 @@ export async function processPair(args: {
             },
             withBigintSerializer,
         );
-        spanAttributes["details.isNodeError"] = containsNodeError(e as BaseError);
+        spanAttributes["txNoneNodeError"] = containsNodeError(e as BaseError);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -770,7 +776,7 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
-        spanAttributes["details.isNodeError"] = containsNodeError(e);
+        spanAttributes["txNoneNodeError"] = containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
     }
