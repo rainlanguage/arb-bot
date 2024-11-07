@@ -5,6 +5,8 @@ import {Script} from "../lib/forge-std/src/Script.sol";
 
 contract DiagOrder is Script {
     function run() external {
+        vm.createSelectFork("https://rpc.ankr.com/eth");
+        vm.rollFork(21132266);
         address to = 0xee873E21F8a6A256cb9f53BE491E569eA6cdd63E; // put arb contract address
         address from = 0x7177b9d00bB5dbcaaF069CC63190902763783b09;
         vm.startPrank(from);
