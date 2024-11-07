@@ -7,6 +7,7 @@ import { createViemClient, getDataFetcher } from "./config";
 import { ChainId, LiquidityProviders, RPParams } from "sushi";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
+import { getTransactionCount } from "viem/_types/actions/public/getTransactionCount";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
 import { createNonceManager, NonceManagerSource, parseAbi, PublicClient } from "viem";
@@ -1091,7 +1092,7 @@ export function noneSource(): NonceManagerSource {
     return {
         async get(parameters) {
             const { address, client } = parameters;
-            return (client as ViemClient).getTransactionCount({
+            return getTransactionCount(client as any, {
                 address,
                 blockTag: "latest",
             });
