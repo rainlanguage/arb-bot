@@ -1,5 +1,4 @@
 import { BigNumber, ethers } from "ethers";
-import { parseAbi, PublicClient } from "viem";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
@@ -10,6 +9,7 @@ import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
+import { createNonceManager, NonceManagerSource, parseAbi, PublicClient } from "viem";
 
 /** Standard base path for eth accounts */
 export const BasePath = "m/44'/60'/0'/0/" as const;
@@ -38,11 +38,21 @@ export async function initAccounts(
         config.rpc,
         undefined,
         isMnemonic
-            ? mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex: MainAccountDerivationIndex })
+            ? mnemonicToAccount(mnemonicOrPrivateKey, {
+                  addressIndex: MainAccountDerivationIndex,
+                  nonceManager: createNonceManager({
+                      source: noneSource(),
+                  }),
+              })
             : privateKeyToAccount(
                   (mnemonicOrPrivateKey.startsWith("0x")
                       ? mnemonicOrPrivateKey
                       : "0x" + mnemonicOrPrivateKey) as `0x${string}`,
+                  {
+                      nonceManager: createNonceManager({
+                          source: noneSource(),
+                      }),
+                  },
               ),
         config.timeout,
         (config as any).testClientViem,
@@ -58,7 +68,12 @@ export async function initAccounts(
                     config.chain.id as ChainId,
                     config.rpc,
                     undefined,
-                    mnemonicToAccount(mnemonicOrPrivateKey, { addressIndex }),
+                    mnemonicToAccount(mnemonicOrPrivateKey, {
+                        addressIndex,
+                        nonceManager: createNonceManager({
+                            source: noneSource(),
+                        }),
+                    }),
                     config.timeout,
                     (config as any).testClientViem,
                     config,
@@ -206,7 +221,12 @@ export async function manageAccounts(
                     config.chain.id as ChainId,
                     config.rpc,
                     undefined,
-                    mnemonicToAccount(options.mnemonic!, { addressIndex: ++lastIndex }),
+                    mnemonicToAccount(options.mnemonic!, {
+                        addressIndex: ++lastIndex,
+                        nonceManager: createNonceManager({
+                            source: noneSource(),
+                        }),
+                    }),
                     config.timeout,
                     (config as any).testClientViem,
                     config,
@@ -1061,4 +1081,21 @@ export async function fundOwnedOrders(
         }
     }
     return failedFundings;
+}
+
+/**
+ * Creates a viem account nonce source of truth with "latest" block tag used for reading,
+ * viem's default nonce manager uses "pending" block tag to read the nonce of an account
+ */
+export function noneSource(): NonceManagerSource {
+    return {
+        async get(parameters) {
+            const { address, client } = parameters;
+            return (client as ViemClient).getTransactionCount({
+                address,
+                blockTag: "latest",
+            });
+        },
+        set() {},
+    };
 }
