@@ -419,7 +419,10 @@ describe("Test inter-orderbook find opp", async function () {
                 from: signer.account.address,
             };
             const expected = {
-                value: undefined,
+                value: {
+                    estimatedProfit: ethers.constants.Zero,
+                    noneNodeError: `\nReason: ${ethers.errors.UNPREDICTABLE_GAS_LIMIT}`,
+                },
                 reason: undefined,
                 spanAttributes: {
                     againstOrderbooks: JSON.stringify({

@@ -318,6 +318,7 @@ export async function findOpp({
 
     const allSuccessHops: DryrunResult[] = [];
     const allHopsAttributes: string[] = [];
+    const allNoneNodeErrors: (string | undefined)[] = [];
     for (let i = 1; i < config.hops + 1; i++) {
         try {
             const dryrunResult = await dryrun({
@@ -354,8 +355,8 @@ export async function findOpp({
             if (i !== 1) {
                 delete e.spanAttributes["error"];
                 delete e.spanAttributes["rawtx"];
-                delete e.spanAttributes["isNodeError"];
             }
+            allNoneNodeErrors.push(e?.value?.noneNodeError);
             allHopsAttributes.push(JSON.stringify(e.spanAttributes));
 
             // set the maxInput for next hop by decreasing
@@ -370,7 +371,19 @@ export async function findOpp({
         spanAttributes["hops"] = allHopsAttributes;
 
         if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
-        else result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+        else {
+            const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+            if (
+                allNoneNodeErrors.length &&
+                noneNodeErrors.length / allNoneNodeErrors.length > 0.5
+            ) {
+                result.value = {
+                    noneNodeError: noneNodeErrors[0],
+                    estimatedProfit: ethers.constants.Zero,
+                };
+            }
+            result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+        }
 
         return Promise.reject(result);
     }
@@ -457,6 +470,12 @@ export async function findOppWithRetries({
         // record all retries span attributes in case neither of above errors were present
         for (const attrKey in (allPromises[0] as any).reason.spanAttributes) {
             spanAttributes[attrKey] = (allPromises[0] as any).reason.spanAttributes[attrKey];
+        }
+        if ((allPromises[0] as any)?.reason?.value?.noneNodeError) {
+            result.value = {
+                noneNodeError: (allPromises[0] as any).reason.value.noneNodeError,
+                estimatedProfit: ethers.constants.Zero,
+            };
         }
         result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
         throw result;

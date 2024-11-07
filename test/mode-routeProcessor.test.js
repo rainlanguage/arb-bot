@@ -455,13 +455,16 @@ describe("Test route processor find opp", async function () {
                 from: signer.account.address,
             });
             const expected = {
-                value: undefined,
+                value: {
+                    estimatedProfit: ethers.constants.Zero,
+                    noneNodeError: `\nReason: ${ethers.errors.UNPREDICTABLE_GAS_LIMIT}`,
+                },
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
+                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
                     ],
                 },
             };
@@ -650,13 +653,16 @@ describe("Test find opp with retries", async function () {
                 from: signer.account.address,
             });
             const expected = {
-                value: undefined,
+                value: {
+                    estimatedProfit: ethers.constants.Zero,
+                    noneNodeError: `\nReason: ${ethers.errors.UNPREDICTABLE_GAS_LIMIT}`,
+                },
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber}}`,
+                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
+                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
                     ],
                 },
             };

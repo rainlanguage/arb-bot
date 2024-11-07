@@ -266,6 +266,7 @@ export async function findOpp({
     if (!opposingOrders || !opposingOrders.length) throw undefined;
 
     const allErrorAttributes: string[] = [];
+    const allNoneNodeErrors: (string | undefined)[] = [];
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const inputBalance = ethers.BigNumber.from(
         (
@@ -302,9 +303,17 @@ export async function findOpp({
                 outputBalance,
             });
         } catch (e: any) {
+            allNoneNodeErrors.push(e?.value?.noneNodeError);
             allErrorAttributes.push(JSON.stringify(e.spanAttributes));
         }
     }
     spanAttributes["intraOrderbook"] = allErrorAttributes;
+    const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+    if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
+        result.value = {
+            noneNodeError: noneNodeErrors[0],
+            estimatedProfit: ethers.constants.Zero,
+        };
+    }
     return Promise.reject(result);
 }

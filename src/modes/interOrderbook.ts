@@ -231,6 +231,7 @@ export async function findOpp({
         reason: undefined,
         spanAttributes,
     };
+    const allNoneNodeErrors: (string | undefined)[] = [];
 
     const opposingOrderbookOrders = orderbooksOrders
         .map((v) => {
@@ -284,6 +285,9 @@ export async function findOpp({
             }),
         );
     } catch (e: any) {
+        for (const err of (e as AggregateError).errors) {
+            allNoneNodeErrors.push(err?.value?.noneNodeError);
+        }
         maximumInput = maximumInput.div(2);
         try {
             // try to find the first resolving binary search
@@ -321,6 +325,13 @@ export async function findOpp({
                 e.errors[i].spanAttributes;
         }
         spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
+        const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+        if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
+            result.value = {
+                noneNodeError: noneNodeErrors[0],
+                estimatedProfit: ethers.constants.Zero,
+            };
+        }
         return Promise.reject(result);
     }
 }
