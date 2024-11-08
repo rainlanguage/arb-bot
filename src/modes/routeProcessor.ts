@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { Token } from "sushi/currency";
 import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
@@ -167,8 +168,11 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
+            console.log("dryrun1");
             gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            console.log("end-dryrun1");
         } catch (e) {
+            console.log("end-dryrun1-err");
             // reason, code, method, transaction, error, stack, message
             const isNodeError = containsNodeError(e as BaseError);
             const errMsg = errorSnapshot("", e);
@@ -211,7 +215,9 @@ export async function dryrun({
             try {
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
+                console.log("dryrun2");
                 gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+                console.log("end-dryrun2");
                 rawtx.gas = gasLimit.toBigInt();
                 gasCost = gasLimit.mul(gasPrice);
                 task.evaluable.bytecode = getBountyEnsureBytecode(
@@ -225,6 +231,7 @@ export async function dryrun({
                     task,
                 ]);
             } catch (e) {
+                console.log("end-dryrun2-err");
                 const isNodeError = containsNodeError(e as BaseError);
                 const errMsg = errorSnapshot("", e);
                 spanAttributes["isNodeError"] = isNodeError;
