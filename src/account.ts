@@ -9,7 +9,14 @@ import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
-import { createNonceManager, NonceManagerSource, parseAbi, PublicClient } from "viem";
+import {
+    parseAbi,
+    hexToNumber,
+    numberToHex,
+    PublicClient,
+    createNonceManager,
+    NonceManagerSource,
+} from "viem";
 
 /** Standard base path for eth accounts */
 export const BasePath = "m/44'/60'/0'/0/" as const;
@@ -1091,11 +1098,28 @@ export function noneSource(): NonceManagerSource {
     return {
         async get(parameters) {
             const { address, client } = parameters;
-            return (client as ViemClient).getTransactionCount({
+            return getTransactionCount(client as any, {
                 address,
                 blockTag: "latest",
             });
         },
         set() {},
     };
+}
+
+/**
+ * Perfomrs a eth_getTransactionCount rpc request
+ */
+async function getTransactionCount(
+    client: any,
+    { address, blockTag = "latest", blockNumber }: any,
+): Promise<number> {
+    const count = await client.request(
+        {
+            method: "eth_getTransactionCount",
+            params: [address, blockNumber ? numberToHex(blockNumber) : blockTag],
+        },
+        { dedupe: Boolean(blockNumber) },
+    );
+    return hexToNumber(count);
 }
