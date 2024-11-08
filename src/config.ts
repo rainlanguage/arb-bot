@@ -122,6 +122,8 @@ export async function createViemClient(
 export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcRecord>) {
     let url = request.url;
     if (!request.url.endsWith("/")) url = url + "/";
+    // eslint-disable-next-line no-console
+    console.log("req", url);
     let record = rpcRecords[url];
     if (!record) {
         record = rpcRecords[url] = {
@@ -140,6 +142,8 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
 export function onFetchResponse(response: Response, rpcRecords: Record<string, RpcRecord>) {
     let url = response.url;
     if (!response.url.endsWith("/")) url = url + "/";
+    // eslint-disable-next-line no-console
+    console.log("res", url);
     let record = rpcRecords[url];
     if (!record) {
         record = rpcRecords[url] = {
