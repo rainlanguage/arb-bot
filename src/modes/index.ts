@@ -2,8 +2,8 @@ import { Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
-// import { findOpp as findInterObOpp } from "./interOrderbook";
-// import { findOpp as findIntraObOpp } from "./intraOrderbook";
+import { findOpp as findInterObOpp } from "./interOrderbook";
+import { findOpp as findIntraObOpp } from "./intraOrderbook";
 import { findOppWithRetries as findRpOpp } from "./routeProcessor";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
@@ -18,7 +18,7 @@ export async function findOpp({
     orderPairObject,
     dataFetcher,
     arb,
-    // genericArb,
+    genericArb,
     fromToken,
     toToken,
     signer,
@@ -26,8 +26,8 @@ export async function findOpp({
     config,
     viemClient,
     inputToEthPrice,
-    // outputToEthPrice,
-    // orderbooksOrders,
+    outputToEthPrice,
+    orderbooksOrders,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -56,27 +56,27 @@ export async function findOpp({
             config,
             viemClient,
         }),
-        // findIntraObOpp({
-        //     orderPairObject,
-        //     signer,
-        //     gasPrice,
-        //     inputToEthPrice,
-        //     outputToEthPrice,
-        //     config,
-        //     viemClient,
-        //     orderbooksOrders,
-        // }),
-        // findInterObOpp({
-        //     orderPairObject,
-        //     signer,
-        //     gasPrice,
-        //     arb: genericArb!,
-        //     inputToEthPrice,
-        //     outputToEthPrice,
-        //     config,
-        //     viemClient,
-        //     orderbooksOrders,
-        // }),
+        findIntraObOpp({
+            orderPairObject,
+            signer,
+            gasPrice,
+            inputToEthPrice,
+            outputToEthPrice,
+            config,
+            viemClient,
+            orderbooksOrders,
+        }),
+        findInterObOpp({
+            orderPairObject,
+            signer,
+            gasPrice,
+            arb: genericArb!,
+            inputToEthPrice,
+            outputToEthPrice,
+            config,
+            viemClient,
+            orderbooksOrders,
+        }),
     ];
     const allResults = await Promise.allSettled(promises);
 
