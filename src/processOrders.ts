@@ -243,7 +243,7 @@ export const processOrders = async (
                         span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
                     } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
                         if (result.error && typeof result.error === "string") {
-                            span.setStatus({ code: SpanStatusCode.OK, message: result.error });
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
                         } else {
                             span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
                         }
