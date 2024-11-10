@@ -79,7 +79,7 @@ export async function createViemClient(
 ): Promise<ViemClient> {
     const transport =
         !rpcs || rpcs?.length === 0
-            ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 6 })
+            ? fallback(fallbacks[chainId].transport, { rank: false, retryCount: 3 })
             : useFallbacks
               ? fallback(
                     [
@@ -92,7 +92,7 @@ export async function createViemClient(
                         ),
                         ...fallbacks[chainId].transport,
                     ],
-                    { rank: false, retryCount: 6 },
+                    { rank: false, retryCount: 3 },
                 )
               : fallback(
                     rpcs.map((v) =>
@@ -102,7 +102,7 @@ export async function createViemClient(
                             onFetchResponse: config?.onFetchResponse,
                         }),
                     ),
-                    { rank: false, retryCount: 6 },
+                    { rank: false, retryCount: 3 },
                 );
 
     return testClient
