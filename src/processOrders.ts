@@ -1,15 +1,15 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
-import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
+import { BaseError, PublicClient } from "viem";
 import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { ErrorSeverity, errorSnapshot } from "./error";
 import { fundOwnedOrders, rotateAccounts } from "./account";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { containsNodeError, ErrorSeverity, errorSnapshot } from "./error";
 import {
     Report,
     BotConfig,
@@ -237,7 +237,11 @@ export const processOrders = async (
                     if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
                     } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                        if (result.error && typeof result.error === "string") {
+                            span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
+                        } else {
+                            span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                        }
                     } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
                         span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
                     } else {
@@ -266,7 +270,6 @@ export const processOrders = async (
                             error: e.error,
                             reason: e.reason,
                         });
-                        span.setAttribute("severity", ErrorSeverity.MEDIUM);
 
                         // set the otel span status based on returned reason
                         if (e.reason === ProcessPairHaltReason.FailedToQuote) {
@@ -305,12 +308,17 @@ export const processOrders = async (
                         } else {
                             // set the otel span status as OK as an unsuccessfull clear, this can happen for example
                             // because of mev front running or false positive opportunities, etc
+                            let code = SpanStatusCode.OK;
                             let message = "transaction failed";
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            span.setStatus({ code: SpanStatusCode.OK, message });
+                            if (e.spanAttributes["txNoneNodeError"]) {
+                                code = SpanStatusCode.ERROR;
+                                span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            }
+                            span.setStatus({ code, message });
                             span.setAttribute("unsuccessfullClear", true);
                         }
                     } else {
@@ -568,6 +576,10 @@ export async function processPair(args: {
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
+        if (e.noneNodeError) {
+            spanAttributes["details.noneNodeError"] = true;
+            result.error = e.noneNodeError;
+        }
         result.report = {
             status: ProcessPairReportStatus.NoOpportunity,
             tokenPair: pair,
@@ -619,6 +631,7 @@ export async function processPair(args: {
             },
             withBigintSerializer,
         );
+        spanAttributes["txNoneNodeError"] = containsNodeError(e as BaseError);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -756,6 +769,7 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
+        spanAttributes["txNoneNodeError"] = containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
     }

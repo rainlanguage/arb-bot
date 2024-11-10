@@ -129,7 +129,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--sleep <integer>",
-            "Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables",
+            "Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables",
         )
         .option(
             "--write-rpc <url...>",
@@ -399,7 +399,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];
     if (!process?.env?.CLI_STARTUP_TEST) {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 3; i++) {
             try {
                 ordersDetails = await getOrderDetails(options.subgraph, {
                     orderHash: options.orderHash,
@@ -408,7 +408,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 });
                 break;
             } catch (e) {
-                if (i != 19) await sleep(10000 * (i + 1));
+                if (i != 2) await sleep(10000 * (i + 1));
                 else throw e;
             }
         }
@@ -502,10 +502,6 @@ export const main = async (argv: any, version?: string) => {
             // end this span and wait for it to finish
             startupSpan.end();
             await sleep(20000);
-
-            // flush and close the otel connection.
-            await exporter.shutdown();
-            await sleep(10000);
 
             // reject the promise that makes the cli process to exit with error
             return Promise.reject(e);
@@ -754,16 +750,21 @@ export const main = async (argv: any, version?: string) => {
 
             // report rpcs performance for round
             for (const rpc in config.rpcRecords) {
-                const record = config.rpcRecords[rpc];
-                const rpcKey = rpc.replaceAll(".", "_");
-                roundSpan.setAttributes({
-                    [`rpcRecords.${rpcKey}.request`]: record.req,
-                    [`rpcRecords.${rpcKey}.success`]: record.success,
-                    [`rpcRecords.${rpcKey}.failure`]: record.failure,
+                await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
+                    const record = config.rpcRecords[rpc];
+                    span.setAttributes({
+                        "rpc-url": rpc,
+                        "request-count": record.req,
+                        "success-count": record.success,
+                        "failure-count": record.failure,
+                        "timeout-count": record.req - (record.success + record.failure),
+                    });
+                    record.req = 0;
+                    record.success = 0;
+                    record.failure = 0;
+                    record.cache = {};
+                    span.end();
                 });
-                record.req = 0;
-                record.success = 0;
-                record.failure = 0;
             }
 
             // eslint-disable-next-line no-console

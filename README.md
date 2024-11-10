@@ -21,17 +21,19 @@ first you need to run `./prep-sushi.sh` which would need nix package manager ins
 ```bash
 ./prep-sushi.sh
 ```
-  next enter nix shell or just run from shell:
+next enter nix shell:
 ```bash
 nix develop
 ```
-  and then
+and then:
 ```bash
 npm install
+npm run build
 ```
-  or
+  or without entering the nix shell
 ```bash
 nix develop -c npm install
+nix develop -c npm run build
 ```
 
 <br>
@@ -43,37 +45,62 @@ git submodule update --init --recursive
 cd lib/sushiswap
 pnpm install --frozen-lockfile
 pnpm exec turbo run build --filter=./packages/sushi
+cd ../..
 ```
 and then install the dependencies, requires `>= nodejs v18`:
 ```bash
 npm install
+npm run build
 ```
 <br>
 
 ### CLI
 For starting the app:
+- with nix package manager (recommended way):
+
+from nix shell:
+if you are not already in nix shell, enter by following command:
 ```bash
-node arb-bot -k 12ab... -r https://... --orderbook-address 0x1a2b... --arb-address 0xab12... [other optional arguments]
+nix develop
 ```
+and then:
+```bash
+node arb-bot <OPTIONS>
+```
+
+out of nix shell:
+
+run the following if you don't want to enter nix shell
+```bash
+nix develop -c node arb-bot <OPTIONS>
+```
+<br>
+
+- without nix package manager (requires `>= nodejs v18`):
+
+```bash
+node arb-bot <OPTIONS>
+```
+
+<br>
+
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
-- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified. Will override the 'MNEMONIC' in env variables
+- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
+- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
 - `--watch-rpc`, RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
--- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
-
-as well as at least one or both of below arguments:
+- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
 
 Other optional arguments are:
+- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
 - `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--orderbook-address`, Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables
 - `--order-hash`, Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables
 - `--order-owner`, Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables
-- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
 - `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables
@@ -89,9 +116,9 @@ Other optional arguments are:
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
-<br>
+<br> 
 
-### List of available liquidity providers (decentralized exchanges)
+### List of available supported dexes (decentralized exchanges)
 - all of the below names are case INSENSITIVE:
 `SushiSwapV2`,
 `SushiSwapV3`,
@@ -187,7 +214,7 @@ ORDER_HASH=""
 # Option to filter the subgraph query results with a specific order owner address
 ORDER_OWNER=""
 
-# Seconds to wait between each arb round, default is 10, Will override the 'SLEPP' in env variables
+# Seconds to wait between each arb round, default is 10
 SLEEP=10
 
 # Option to maximize maxIORatio
@@ -237,50 +264,11 @@ ROUTE="single"
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
 If you install this app as a dependency for your project you can run it by (All the above arguments apply here as well):
+
 ```bash
-arb-bot [arguments]
+arb-bot <OPTIONS>
 ```
-<br>
 
-### API
-The app can be executed through API:
-```javascript
-// to import
-const RainArbBot = require("@rainprotocol/arb-bot");
-
-// to run the app:
-// options (all properties are optional)
-const configOptions = {
-  maxRatio              : true,    // option to maximize the maxIORatio
-  flashbotRpc           : "https://flashbot-rpc-url",  // Optional Flashbot RPC URL
-  timeout               : 300,     // seconds to wait for tx to mine before disregarding it
-  hops                  : 6,       // The amount of hops of binary search
-  retries               : 1,       // The amount of retries for the same order
-  liquidityProviders    : [        // list of liquidity providers to get quotes from (optional)
-    "sushiswapv2",
-    "uniswapv2"
-  ],
-  gasCoveragePercentage : "500"    // percentage of the transaction gas cost denominated in receiving ERC20 to be earned from the transaction in order for it to be successfull, as an example a value of 500 means atleast 5x the amount of transaction gas cost needs to be earned for the transaction to be successfull
-}
-
-// to get the configuration object
-const config = await RainArbBot.getConfig(rpcUrl, arbAddress, ...[configOptions]);
-
-// to get the order details, one or both of subgraph and json file can be used simultaneously
-const ordersJson    = "/home/orders.json"                                 // path to a local json file 
-const subgraphs     = ["https://api.thegraph.com/subgraphs/name/xxx/yyy"] // array of subgraph URLs
-const sgFilters     = {                                                   // filters for subgraph query (each filter is optional)
-  orderHash         : "0x1234...",
-  orderOwner        : "0x1234...",
-  orderbook         : "0x1234..."
-}
-
-// get the order details from the sources
-const orderDetails = await RainArbBot.getOrderDetails(subgraphs, ordersJson, config.signer, sgFilters);
-
-// to run the clearing process and get the report object which holds the report of cleared orders
-const reports = await RainArbBot.clear(config, orderDetails)
-```
 <br>
 
 ## Running On Github Actions

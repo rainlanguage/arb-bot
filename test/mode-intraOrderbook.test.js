@@ -142,7 +142,10 @@ describe("Test intra-orderbook dryrun", async function () {
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
-                value: undefined,
+                value: {
+                    estimatedProfit: ethers.constants.Zero,
+                    noneNodeError: `\nReason: ${ethers.errors.UNPREDICTABLE_GAS_LIMIT}`,
+                },
                 reason: undefined,
                 spanAttributes: {
                     blockNumber: oppBlockNumber,
@@ -302,12 +305,16 @@ describe("Test intra-orderbook find opp", async function () {
                 from: signer.account.address,
             };
             const expected = {
-                value: undefined,
+                value: {
+                    estimatedProfit: ethers.constants.Zero,
+                    noneNodeError: `\nReason: ${ethers.errors.UNPREDICTABLE_GAS_LIMIT}`,
+                },
                 reason: undefined,
                 spanAttributes: {
                     intraOrderbook: [
                         JSON.stringify({
                             blockNumber: oppBlockNumber,
+                            isNodeError: false,
                             error: errorSnapshot("", err),
                             rawtx: JSON.stringify(rawtx),
                         }),

@@ -98,6 +98,7 @@ export async function findOpp({
             spanAttributes,
             rawtx: undefined,
             oppBlockNumber: undefined,
+            noneNodeError: undefined,
         };
         if ((allResults[0] as any)?.reason?.spanAttributes) {
             spanAttributes["route-processor"] = JSON.stringify(
@@ -113,6 +114,19 @@ export async function findOpp({
             spanAttributes["inter-orderbook"] = JSON.stringify(
                 (allResults[2] as any).reason.spanAttributes,
             );
+        }
+        if ((allResults[0] as any)?.reason?.value?.noneNodeError) {
+            result.noneNodeError = (allResults[0] as any).reason.value.noneNodeError;
+        } else if (
+            result.noneNodeError === undefined &&
+            (allResults[1] as any)?.reason?.value?.noneNodeError
+        ) {
+            result.noneNodeError = (allResults[1] as any).reason.value.noneNodeError;
+        } else if (
+            result.noneNodeError === undefined &&
+            (allResults[2] as any)?.reason?.value?.noneNodeError
+        ) {
+            result.noneNodeError = (allResults[2] as any).reason.value.noneNodeError;
         }
         throw result;
     }
