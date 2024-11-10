@@ -114,7 +114,7 @@ Other optional arguments are:
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
-<br>
+<br> 
 
 ### List of available supported dexes (decentralized exchanges)
 - all of the below names are case INSENSITIVE:

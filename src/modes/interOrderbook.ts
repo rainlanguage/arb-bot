@@ -1,8 +1,8 @@
-import { PublicClient } from "viem";
 import { orderbookAbi } from "../abis";
-import { errorSnapshot } from "../error";
+import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
+import { containsNodeError, errorSnapshot } from "../error";
 import { estimateProfit, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
@@ -104,7 +104,10 @@ export async function dryrun({
         spanAttributes["blockNumber"] = blockNumber;
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     } catch (e) {
-        spanAttributes["error"] = errorSnapshot("", e);
+        const isNodeError = containsNodeError(e as BaseError);
+        const errMsg = errorSnapshot("", e);
+        spanAttributes["isNodeError"] = isNodeError;
+        spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
             {
                 ...rawtx,
@@ -112,6 +115,12 @@ export async function dryrun({
             },
             withBigintSerializer,
         );
+        if (!isNodeError) {
+            result.value = {
+                noneNodeError: errMsg,
+                estimatedProfit: ethers.constants.Zero,
+            };
+        }
         return Promise.reject(result);
     }
     let gasCost = gasLimit.mul(gasPrice);
@@ -149,7 +158,10 @@ export async function dryrun({
                 task,
             ]);
         } catch (e) {
-            spanAttributes["error"] = errorSnapshot("", e);
+            const isNodeError = containsNodeError(e as BaseError);
+            const errMsg = errorSnapshot("", e);
+            spanAttributes["isNodeError"] = isNodeError;
+            spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
                 {
                     ...rawtx,
@@ -157,6 +169,12 @@ export async function dryrun({
                 },
                 withBigintSerializer,
             );
+            if (!isNodeError) {
+                result.value = {
+                    noneNodeError: errMsg,
+                    estimatedProfit: ethers.constants.Zero,
+                };
+            }
             return Promise.reject(result);
         }
     }
@@ -213,6 +231,7 @@ export async function findOpp({
         reason: undefined,
         spanAttributes,
     };
+    const allNoneNodeErrors: (string | undefined)[] = [];
 
     const opposingOrderbookOrders = orderbooksOrders
         .map((v) => {
@@ -266,6 +285,9 @@ export async function findOpp({
             }),
         );
     } catch (e: any) {
+        for (const err of (e as AggregateError).errors) {
+            allNoneNodeErrors.push(err?.value?.noneNodeError);
+        }
         maximumInput = maximumInput.div(2);
         try {
             // try to find the first resolving binary search
@@ -303,6 +325,13 @@ export async function findOpp({
                 e.errors[i].spanAttributes;
         }
         spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
+        const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+        if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
+            result.value = {
+                noneNodeError: noneNodeErrors[0],
+                estimatedProfit: ethers.constants.Zero,
+            };
+        }
         return Promise.reject(result);
     }
 }

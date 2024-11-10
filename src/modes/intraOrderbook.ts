@@ -1,8 +1,8 @@
-import { PublicClient } from "viem";
-import { errorSnapshot } from "../error";
 import { BigNumber, ethers } from "ethers";
+import { BaseError, PublicClient } from "viem";
 import { erc20Abi, orderbookAbi } from "../abis";
 import { getWithdrawEnsureBytecode } from "../config";
+import { containsNodeError, errorSnapshot } from "../error";
 import { estimateProfit, withBigintSerializer } from "../utils";
 import {
     BotConfig,
@@ -92,7 +92,10 @@ export async function dryrun({
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
-        spanAttributes["error"] = errorSnapshot("", e);
+        const isNodeError = containsNodeError(e as BaseError);
+        const errMsg = errorSnapshot("", e);
+        spanAttributes["isNodeError"] = isNodeError;
+        spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
             {
                 ...rawtx,
@@ -100,6 +103,12 @@ export async function dryrun({
             },
             withBigintSerializer,
         );
+        if (!isNodeError) {
+            result.value = {
+                noneNodeError: errMsg,
+                estimatedProfit: ethers.constants.Zero,
+            };
+        }
         return Promise.reject(result);
     }
     let gasCost = gasLimit.mul(gasPrice);
@@ -162,7 +171,10 @@ export async function dryrun({
                 [clear2Calldata, withdrawInputCalldata, withdrawOutputCalldata],
             ]);
         } catch (e) {
-            spanAttributes["error"] = errorSnapshot("", e);
+            const isNodeError = containsNodeError(e as BaseError);
+            const errMsg = errorSnapshot("", e);
+            spanAttributes["isNodeError"] = isNodeError;
+            spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
                 {
                     ...rawtx,
@@ -170,6 +182,12 @@ export async function dryrun({
                 },
                 withBigintSerializer,
             );
+            if (!isNodeError) {
+                result.value = {
+                    noneNodeError: errMsg,
+                    estimatedProfit: ethers.constants.Zero,
+                };
+            }
             return Promise.reject(result);
         }
     }
@@ -248,6 +266,7 @@ export async function findOpp({
     if (!opposingOrders || !opposingOrders.length) throw undefined;
 
     const allErrorAttributes: string[] = [];
+    const allNoneNodeErrors: (string | undefined)[] = [];
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const inputBalance = ethers.BigNumber.from(
         (
@@ -284,9 +303,17 @@ export async function findOpp({
                 outputBalance,
             });
         } catch (e: any) {
+            allNoneNodeErrors.push(e?.value?.noneNodeError);
             allErrorAttributes.push(JSON.stringify(e.spanAttributes));
         }
     }
     spanAttributes["intraOrderbook"] = allErrorAttributes;
+    const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+    if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
+        result.value = {
+            noneNodeError: noneNodeErrors[0],
+            estimatedProfit: ethers.constants.Zero,
+        };
+    }
     return Promise.reject(result);
 }
