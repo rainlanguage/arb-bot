@@ -1325,7 +1325,7 @@ export function isBigNumberish(value: any): value is BigNumberish {
 /**
  * Get block number with retries, using viem client
  */
-export async function getblockNumber(viemClient: ViemClient): Promise<bigint | undefined> {
+export async function getBlockNumber(viemClient: ViemClient): Promise<bigint | undefined> {
     for (let i = 0; i < 3; i++) {
         try {
             return await viemClient.getBlockNumber();

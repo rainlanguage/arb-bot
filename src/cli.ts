@@ -1,27 +1,26 @@
 import { config } from "dotenv";
-import { SgOrder } from "./query";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
+import { getAddOrders, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
+import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { sleep, getOrdersTokens, isBigNumberish, getblockNumber } from "./utils";
-import { getOrderbookOwnersProfileMapFromSg, prepareOrdersForRound } from "./order";
 import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
 import {
-    watchOrderbook,
-    watchAllOrderbooks,
-    WatchedOrderbookOrders,
-    handleOrderbooksNewLogs,
-} from "./watcher";
+    prepareOrdersForRound,
+    getOrderbookOwnersProfileMapFromSg,
+    handleAddOrderbookOwnersProfileMap,
+    handleRemoveOrderbookOwnersProfileMap,
+} from "./order";
 import {
     diag,
     trace,
@@ -413,6 +412,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             }
         }
     }
+    const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
     const tokens = getOrdersTokens(ordersDetails);
     options.tokens = [...tokens];
 
@@ -425,7 +425,6 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         tracer,
         ctx,
     );
-    const blockNumber = (await getblockNumber(config.viemClient as any as ViemClient)) ?? 1n;
 
     return {
         roundGap,
@@ -439,7 +438,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             (options as CliOptions).ownerProfile,
         ),
         tokens,
-        blockNumber,
+        lastReadOrdersTimestamp,
     };
 }
 
@@ -485,7 +484,7 @@ export const main = async (argv: any, version?: string) => {
         config,
         orderbooksOwnersProfileMap,
         tokens,
-        blockNumber: bn,
+        lastReadOrdersTimestamp,
     } = await tracer.startActiveSpan("startup", async (startupSpan) => {
         const ctx = trace.setSpan(context.active(), startupSpan);
         try {
@@ -508,14 +507,11 @@ export const main = async (argv: any, version?: string) => {
         }
     });
 
-    let blockNumber = bn;
-    const obs: string[] = [];
-    const watchedOrderbooksOrders: Record<string, WatchedOrderbookOrders> = {};
-    orderbooksOwnersProfileMap.forEach((_, ob) => {
-        obs.push(ob.toLowerCase());
-    });
-    const unwatchers = watchAllOrderbooks(obs, config.watchClient, watchedOrderbooksOrders);
-
+    const lastReadOrdersTimestampMap = options.subgraph.map((v) => ({
+        sg: v,
+        lastReadTimestampAdd: lastReadOrdersTimestamp,
+        lastReadTimestampRemove: lastReadOrdersTimestamp,
+    }));
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
     let lastInterval = Date.now() + poolUpdateInterval;
@@ -538,27 +534,6 @@ export const main = async (argv: any, version?: string) => {
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
-
-            // watch new obs
-            for (const newOb of newMeta["meta.orderbooks"]) {
-                const ob = newOb.toLowerCase();
-                if (!obs.includes(ob)) {
-                    obs.push(ob);
-                    if (!watchedOrderbooksOrders[ob]) {
-                        watchedOrderbooksOrders[ob] = { orderLogs: [] };
-                    }
-                    if (!unwatchers[ob]) {
-                        unwatchers[ob] = watchOrderbook(
-                            ob,
-                            config.watchClient,
-                            watchedOrderbooksOrders[ob],
-                            blockNumber,
-                        );
-                    }
-                }
-            }
-            const tempBn = await getblockNumber(config.viemClient as any as ViemClient);
-            if (tempBn !== undefined) blockNumber = (tempBn * 95n) / 100n;
 
             await tracer.startActiveSpan(
                 "check-wallet-balance",
@@ -735,15 +710,49 @@ export const main = async (argv: any, version?: string) => {
             }
 
             try {
-                // check for new orders
-                await handleOrderbooksNewLogs(
-                    orderbooksOwnersProfileMap,
-                    watchedOrderbooksOrders,
-                    config.viemClient as any as ViemClient,
-                    tokens,
-                    options.ownerProfile,
-                    roundSpan,
+                // check for new orders changes
+                const now = Math.floor(Date.now() / 1000);
+                const addOrdersResult = await Promise.allSettled(
+                    lastReadOrdersTimestampMap.map((v) =>
+                        getAddOrders(v.sg, v.lastReadTimestampAdd, now, options.timeout, roundSpan),
+                    ),
                 );
+                for (let i = 0; i < addOrdersResult.length; i++) {
+                    const res = addOrdersResult[i];
+                    if (res.status === "fulfilled") {
+                        lastReadOrdersTimestampMap[i].lastReadTimestampAdd = now;
+                        await handleAddOrderbookOwnersProfileMap(
+                            orderbooksOwnersProfileMap,
+                            res.value.map((v) => v.order),
+                            config.viemClient as any as ViemClient,
+                            tokens,
+                            options.ownerProfile,
+                            roundSpan,
+                        );
+                    }
+                }
+                const rmOrdersResult = await Promise.allSettled(
+                    lastReadOrdersTimestampMap.map((v) =>
+                        getAddOrders(
+                            v.sg,
+                            v.lastReadTimestampRemove,
+                            now,
+                            options.timeout,
+                            roundSpan,
+                        ),
+                    ),
+                );
+                for (let i = 0; i < rmOrdersResult.length; i++) {
+                    const res = rmOrdersResult[i];
+                    if (res.status === "fulfilled") {
+                        lastReadOrdersTimestampMap[i].lastReadTimestampRemove = now;
+                        await handleRemoveOrderbookOwnersProfileMap(
+                            orderbooksOwnersProfileMap,
+                            res.value.map((v) => v.order),
+                            roundSpan,
+                        );
+                    }
+                }
             } catch {
                 /**/
             }

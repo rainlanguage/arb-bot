@@ -1,6 +1,7 @@
 import { OrderV3 } from "./abis";
 import { SgOrder } from "./query";
-import { toOrder } from "./watcher";
+import { Span } from "@opentelemetry/api";
+import { hexlify } from "ethers/lib/utils";
 import { getTokenSymbol, shuffleArray } from "./utils";
 import { decodeAbiParameters, parseAbiParameters } from "viem";
 import {
@@ -18,6 +19,28 @@ import {
  * The default owner limit
  */
 export const DEFAULT_OWNER_LIMIT = 25 as const;
+
+export function toOrder(orderLog: any): Order {
+    return {
+        owner: orderLog.owner.toLowerCase(),
+        nonce: orderLog.nonce.toLowerCase(),
+        evaluable: {
+            interpreter: orderLog.evaluable.interpreter.toLowerCase(),
+            store: orderLog.evaluable.store.toLowerCase(),
+            bytecode: orderLog.evaluable.bytecode.toLowerCase(),
+        },
+        validInputs: orderLog.validInputs.map((v: any) => ({
+            token: v.token.toLowerCase(),
+            decimals: v.decimals,
+            vaultId: hexlify(v.vaultId),
+        })),
+        validOutputs: orderLog.validOutputs.map((v: any) => ({
+            token: v.token.toLowerCase(),
+            decimals: v.decimals,
+            vaultId: hexlify(v.vaultId),
+        })),
+    };
+}
 
 /**
  * Get all pairs of an order
@@ -96,17 +119,19 @@ export async function getOrderPairs(
     }
     return pairs;
 }
+
 /**
- * Get a map of per owner orders per orderbook
- * @param ordersDetails - Order details queried from subgraph
+ * Handles new orders fetched from sg to the owner profile map
  */
-export async function getOrderbookOwnersProfileMapFromSg(
+export async function handleAddOrderbookOwnersProfileMap(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
     ordersDetails: SgOrder[],
     viemClient: ViemClient,
     tokens: TokenDetails[],
     ownerLimits?: Record<string, number>,
-): Promise<OrderbooksOwnersProfileMap> {
-    const orderbookOwnersProfileMap: OrderbooksOwnersProfileMap = new Map();
+    span?: Span,
+) {
+    const changes: Record<string, string[]> = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
         const orderbook = orderDetails.orderbook.id.toLowerCase();
@@ -116,11 +141,18 @@ export async function getOrderbookOwnersProfileMapFromSg(
                 orderDetails.orderBytes as `0x${string}`,
             )[0],
         );
-        const orderbookOwnerProfileItem = orderbookOwnersProfileMap.get(orderbook);
+        if (span) {
+            if (!changes[orderbook]) changes[orderbook] = [];
+            if (!changes[orderbook].includes(orderDetails.orderHash.toLowerCase())) {
+                changes[orderbook].push(orderDetails.orderHash.toLowerCase());
+            }
+        }
+        const orderbookOwnerProfileItem = orderbooksOwnersProfileMap.get(orderbook);
         if (orderbookOwnerProfileItem) {
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
             if (ownerProfile) {
-                if (!ownerProfile.orders.has(orderDetails.orderHash.toLowerCase())) {
+                const order = ownerProfile.orders.get(orderDetails.orderHash.toLowerCase());
+                if (!order) {
                     ownerProfile.orders.set(orderDetails.orderHash.toLowerCase(), {
                         active: true,
                         order: orderStruct,
@@ -132,6 +164,8 @@ export async function getOrderbookOwnersProfileMapFromSg(
                         ),
                         consumedTakeOrders: [],
                     });
+                } else {
+                    if (!order.active) order.active = true;
                 }
             } else {
                 const ordersProfileMap: OrdersProfileMap = new Map();
@@ -159,10 +193,74 @@ export async function getOrderbookOwnersProfileMapFromSg(
                 limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                 orders: ordersProfileMap,
             });
-            orderbookOwnersProfileMap.set(orderbook, ownerProfileMap);
+            orderbooksOwnersProfileMap.set(orderbook, ownerProfileMap);
         }
     }
-    return orderbookOwnersProfileMap;
+    if (span) {
+        for (const orderbook in changes) {
+            span.setAttribute(`orderbooksChanges.${orderbook}.addedOrders`, changes[orderbook]);
+        }
+    }
+}
+
+/**
+ * Handles new removed orders fetched from sg to the owner profile map
+ */
+export async function handleRemoveOrderbookOwnersProfileMap(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+    ordersDetails: SgOrder[],
+    span?: Span,
+) {
+    const changes: Record<string, string[]> = {};
+    for (let i = 0; i < ordersDetails.length; i++) {
+        const orderDetails = ordersDetails[i];
+        const orderbook = orderDetails.orderbook.id.toLowerCase();
+        const orderStruct = toOrder(
+            decodeAbiParameters(
+                parseAbiParameters(OrderV3),
+                orderDetails.orderBytes as `0x${string}`,
+            )[0],
+        );
+        if (span) {
+            if (!changes[orderbook]) changes[orderbook] = [];
+            if (!changes[orderbook].includes(orderDetails.orderHash.toLowerCase())) {
+                changes[orderbook].push(orderDetails.orderHash.toLowerCase());
+            }
+        }
+        const orderbookOwnerProfileItem = orderbooksOwnersProfileMap.get(orderbook);
+        if (orderbookOwnerProfileItem) {
+            const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
+            if (ownerProfile) {
+                ownerProfile.orders.delete(orderDetails.orderHash.toLowerCase());
+            }
+        }
+    }
+    if (span) {
+        for (const orderbook in changes) {
+            span.setAttribute(`orderbooksChanges.${orderbook}.removedOrders`, changes[orderbook]);
+        }
+    }
+}
+
+/**
+ * Get a map of per owner orders per orderbook
+ * @param ordersDetails - Order details queried from subgraph
+ */
+export async function getOrderbookOwnersProfileMapFromSg(
+    ordersDetails: SgOrder[],
+    viemClient: ViemClient,
+    tokens: TokenDetails[],
+    ownerLimits?: Record<string, number>,
+): Promise<OrderbooksOwnersProfileMap> {
+    const orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap = new Map();
+    await handleAddOrderbookOwnersProfileMap(
+        orderbooksOwnersProfileMap,
+        ordersDetails,
+        viemClient,
+        tokens,
+        ownerLimits,
+    );
+    return orderbooksOwnersProfileMap;
 }
 
 /**
