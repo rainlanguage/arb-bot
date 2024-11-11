@@ -101,23 +101,6 @@ describe("Test cli", async function () {
             await startup(["", "", "--key", `0x${"0".repeat(64)}`, "--rpc", "some-rpc"]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "undefined watch RPC URL";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "some-rpc",
-                "--watch-rpc",
-                "some-rpc",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
             const expected = "undefined arb contract address";
             assert.equal(error, expected);
         }
@@ -129,8 +112,6 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
-                "--watch-rpc",
                 "some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
@@ -152,8 +133,6 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
-                "--watch-rpc",
                 "some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
@@ -177,8 +156,6 @@ describe("Test cli", async function () {
                 `0x${"0".repeat(64)}`,
                 "--rpc",
                 "some-rpc",
-                "--watch-rpc",
-                "some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
                 "--orderbook-address",
@@ -200,8 +177,6 @@ describe("Test cli", async function () {
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
             "--rpc",
             "https://rpc.ankr.com/polygon",
-            "--watch-rpc",
-            "some-rpc",
             "--arb-address",
             `0x${"1".repeat(40)}`,
             "--orderbook-address",

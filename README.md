@@ -88,7 +88,6 @@ The app requires these arguments (all arguments can be set in env variables alte
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
 - `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `--watch-rpc`, RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
@@ -185,9 +184,6 @@ RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.co
 
 # Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""
-
-# RPC URLs to watch for new orders, should support required RPC methods
-WATCH_RPC=""
 
 # arb contract address
 ARB_ADDRESS="0x123..."

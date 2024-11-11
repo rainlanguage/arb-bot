@@ -1,6 +1,5 @@
 const { assert } = require("chai");
 const { OrderV3 } = require("../src/abis");
-const { toOrder } = require("../src/watcher");
 const mockServer = require("mockttp").getLocal();
 const { ethers, viem, network } = require("hardhat");
 const ERC20Artifact = require("./abis/ERC20Upgradeable.json");
@@ -11,6 +10,7 @@ const {
     utils: { hexlify, randomBytes, keccak256 },
 } = require("ethers");
 const {
+    toOrder,
     getOrderPairs,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,

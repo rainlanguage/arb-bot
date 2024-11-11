@@ -182,15 +182,6 @@ export async function getConfig(
         undefined,
         config,
     );
-    const watchClient = await createViemClient(
-        chainId,
-        options.watchRpc,
-        false,
-        undefined,
-        options.timeout,
-        undefined,
-        config,
-    );
     const dataFetcher = await getDataFetcher(
         viemClient as any as PublicClient,
         lps,
@@ -211,10 +202,8 @@ export async function getConfig(
     config.dataFetcher = dataFetcher;
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
-    config.watchClient = watchClient;
     config.publicRpc = options.publicRpc;
     config.walletKey = walletKey;
-    config.watchRpc = options.watchRpc;
     config.route = route;
     config.rpcRecords = rpcRecords;
 

@@ -23,7 +23,6 @@ export type CliOptions = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
-    watchRpc: string[];
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
@@ -150,7 +149,6 @@ export type BotConfig = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
-    watchRpc: string[];
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
@@ -166,7 +164,6 @@ export type BotConfig = {
     mainAccount: ViemClient;
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
-    watchClient: ViemClient;
     publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";

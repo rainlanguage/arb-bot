@@ -72,9 +72,6 @@ const ENV_OPTIONS = {
     writeRpc: process?.env?.WRITE_RPC
         ? Array.from(process?.env?.WRITE_RPC.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
-    watchRpc: process?.env?.WATCH_RPC
-        ? Array.from(process?.env?.WATCH_RPC.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
     subgraph: process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
@@ -133,10 +130,6 @@ const getOptions = async (argv: any, version?: string) => {
         .option(
             "--write-rpc <url...>",
             "Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables",
-        )
-        .option(
-            "--watch-rpc <url...>",
-            "RPC URLs to watch for new orders, should support required RPC methods, Will override the 'WATCH_RPC' in env variables",
         )
         .option(
             "--timeout <integer>",
@@ -203,7 +196,6 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
     cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
     cmdOptions.writeRpc = cmdOptions.writeRpc || getEnv(ENV_OPTIONS.writeRpc);
-    cmdOptions.watchRpc = cmdOptions.watchRpc || getEnv(ENV_OPTIONS.watchRpc);
     cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
     cmdOptions.genericArbAddress =
         cmdOptions.genericArbAddress || getEnv(ENV_OPTIONS.genericArbAddress);
@@ -362,9 +354,6 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     }
     if (!options.rpc) throw "undefined RPC URL";
-    if (!options.watchRpc || !Array.isArray(options.watchRpc) || !options.watchRpc.length) {
-        throw "undefined watch RPC URL";
-    }
     if (options.writeRpc) {
         if (
             !Array.isArray(options.writeRpc) ||
@@ -433,7 +422,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         config,
         orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
             ordersDetails,
-            config.watchClient,
+            config.viemClient as any as ViemClient,
             tokens,
             (options as CliOptions).ownerProfile,
         ),
