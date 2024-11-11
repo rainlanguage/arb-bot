@@ -94,7 +94,7 @@ export function getQueryPaginated(
  * @param orderbook - orderbook filter
  * @param timeout - timeout
  */
-export async function getQuery(
+export async function querySgOrders(
     subgraph: string,
     orderHash?: string,
     owner?: string,
@@ -142,7 +142,7 @@ export const statusCheckQuery = `{
 }`;
 
 export const getRemoveOrdersQuery = (start: number, end: number) => {
-    return `removeOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
+    return `{removeOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
     order {
         id
         owner
@@ -175,11 +175,11 @@ export const getRemoveOrdersQuery = (start: number, end: number) => {
     transaction {
       timestamp
     }
-}`;
+}}`;
 };
 
 export const getAddOrdersQuery = (start: number, end: number) => {
-    return `addOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_gt: "${end.toString()}" } }) {
+    return `{addOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
     order {
         id
         owner
@@ -212,7 +212,7 @@ export const getAddOrdersQuery = (start: number, end: number) => {
     transaction {
       timestamp
     }
-}`;
+}}`;
 };
 
 /**

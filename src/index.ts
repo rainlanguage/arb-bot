@@ -9,7 +9,7 @@ import { processOrders } from "./processOrders";
 import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { getQuery, SgOrder, statusCheckQuery } from "./query";
+import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
 import { BotConfig, BundledOrders, CliOptions, RoundReport, SgFilter, RpcRecord } from "./types";
 import {
     getChainConfig,
@@ -62,7 +62,7 @@ export async function getOrderDetails(
             availableSgs.forEach((v) => {
                 if (v && typeof v === "string")
                     promises.push(
-                        getQuery(
+                        querySgOrders(
                             v,
                             sgFilters?.orderHash,
                             sgFilters?.orderOwner,
