@@ -1121,5 +1121,5 @@ async function getTransactionCount(
         },
         { dedupe: Boolean(blockNumber) },
     );
-    return hexToNumber(count);
+    return hexToNumber(count) - 1;
 }
