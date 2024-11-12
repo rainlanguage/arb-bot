@@ -3,12 +3,12 @@ import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { getAddOrders, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
+import { getAddOrders, getRemoveOrders, SgOrder } from "./query";
 import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
@@ -699,8 +699,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             try {
-                // check for new orders changes
                 const now = Math.floor(Date.now() / 1000);
+
+                // handle added orders
                 const addOrdersResult = await Promise.allSettled(
                     lastReadOrdersTimestampMap.map((v) =>
                         getAddOrders(v.sg, v.lastReadTimestampAdd, now, options.timeout, roundSpan),
@@ -720,9 +721,11 @@ export const main = async (argv: any, version?: string) => {
                         );
                     }
                 }
+
+                // handle removed orders
                 const rmOrdersResult = await Promise.allSettled(
                     lastReadOrdersTimestampMap.map((v) =>
-                        getAddOrders(
+                        getRemoveOrders(
                             v.sg,
                             v.lastReadTimestampRemove,
                             now,

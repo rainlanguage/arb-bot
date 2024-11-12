@@ -1,16 +1,14 @@
 - you need foundry installed on your machine for this process, as well as having `forge-std` lib for contract dependencies, or if you have nix package manager installed you can enter the default shell where all the deps are available.
 - go to the `./diag/DiagOrder.sol` file and modify the data with the ones you want ot diag:
+- add the rpc url of the evm network
+- add the block number at which the debugging should take place.
+- replace the `from` address with the transaction sender address, ie msg.sender.
 - replace the `to` address with the arb contract address on the desired network.
 - replace the `data` with the calldata without leading 0x taken from otel (hyperdx).
 - save the file and now you can run the following command to get the traces:
 ```bash
-forge script diag/DiagOrder.sol:DiagOrder -vvvvv --fork-url <url> --fork-block-number <blocknumber> --sender <addres>
+forge script diag/DiagOrder.sol:DiagOrder -vvvvv
 ```
-- replace the `path` with the location of the saved file in previous step,
-- replace the `<url>` with the network rpc url,
-- replace the `<blocknumber>` with the block number taken from otel spans,
-- replace the `<address>` with the bot's sender address, can be taken from otel spans
-- click enter and wait to get the traces
 
 after the traces are printed, the desired data can be extraced.
 here are some examples to explain the steps required to get the desired data:

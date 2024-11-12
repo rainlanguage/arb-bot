@@ -141,8 +141,8 @@ export const statusCheckQuery = `{
     }
 }`;
 
-export const getRemoveOrdersQuery = (start: number, end: number) => {
-    return `{removeOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
+export const getRemoveOrdersQuery = (start: number, end: number, skip: number) => {
+    return `{removeOrders(first: 100, skip: ${skip}, where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
     order {
         id
         owner
@@ -178,8 +178,8 @@ export const getRemoveOrdersQuery = (start: number, end: number) => {
 }}`;
 };
 
-export const getAddOrdersQuery = (start: number, end: number) => {
-    return `{addOrders(where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
+export const getAddOrdersQuery = (start: number, end: number, skip: number) => {
+    return `{addOrders(first: 100, skip: ${skip}, where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
     order {
         id
         owner
@@ -229,31 +229,42 @@ export async function getRemoveOrders(
     timeout?: number,
     span?: Span,
 ) {
+    let skip = 0;
+    const allResults: any[] = [];
     const removeOrders: NewSgOrder[] = [];
-    try {
-        const res = await axios.post(
-            subgraph,
-            { query: getRemoveOrdersQuery(startTimestamp, endTimestamp) },
-            { headers: { "Content-Type": "application/json" }, timeout },
-        );
-        if (typeof res?.data?.data?.removeOrders !== "undefined") {
-            res.data.data.removeOrders.forEach((v: any) => {
-                if (typeof v?.order?.active === "boolean" && !v.order.active) {
-                    if (!removeOrders.find((e) => e.order.id === v.order.id)) {
-                        removeOrders.push({
-                            order: v.order as SgOrder,
-                            timestamp: Number(v.transaction.timestamp),
-                        });
-                    }
+    for (;;) {
+        try {
+            const res = await axios.post(
+                subgraph,
+                { query: getRemoveOrdersQuery(startTimestamp, endTimestamp, skip) },
+                { headers: { "Content-Type": "application/json" }, timeout },
+            );
+            if (typeof res?.data?.data?.removeOrders !== "undefined") {
+                const orders = res.data.data.removeOrders;
+                allResults.push(...orders);
+                if (orders.length < 100) {
+                    break;
+                } else {
+                    skip += 100;
                 }
-            });
-        } else {
-            span?.addEvent(`Failed to get new removed orders ${subgraph}: invalid response`);
-            throw "invalid response";
+            } else {
+                break;
+            }
+        } catch (error) {
+            span?.addEvent(errorSnapshot(`Failed to get new removed orders ${subgraph}`, error));
+            throw error;
         }
-    } catch (error) {
-        span?.addEvent(errorSnapshot(`Failed to get new removed orders ${subgraph}`, error));
     }
+    allResults.forEach((v) => {
+        if (typeof v?.order?.active === "boolean" && !v.order.active) {
+            if (!removeOrders.find((e) => e.order.id === v.order.id)) {
+                removeOrders.push({
+                    order: v.order as SgOrder,
+                    timestamp: Number(v.transaction.timestamp),
+                });
+            }
+        }
+    });
 
     removeOrders.sort((a, b) => b.timestamp - a.timestamp);
     return removeOrders;
@@ -273,32 +284,42 @@ export async function getAddOrders(
     timeout?: number,
     span?: Span,
 ) {
+    let skip = 0;
+    const allResults: any[] = [];
     const addOrders: NewSgOrder[] = [];
-    try {
-        const res = await axios.post(
-            subgraph,
-            { query: getAddOrdersQuery(startTimestamp, endTimestamp) },
-            { headers: { "Content-Type": "application/json" }, timeout },
-        );
-        if (typeof res?.data?.data?.addOrders !== "undefined") {
-            res.data.data.addOrders.forEach((v: any) => {
-                if (typeof v?.order?.active === "boolean" && v.order.active) {
-                    if (!addOrders.find((e) => e.order.id === v.order.id)) {
-                        addOrders.push({
-                            order: v.order as SgOrder,
-                            timestamp: Number(v.transaction.timestamp),
-                        });
-                    }
+    for (;;) {
+        try {
+            const res = await axios.post(
+                subgraph,
+                { query: getAddOrdersQuery(startTimestamp, endTimestamp, skip) },
+                { headers: { "Content-Type": "application/json" }, timeout },
+            );
+            if (typeof res?.data?.data?.addOrders !== "undefined") {
+                const orders = res.data.data.addOrders;
+                allResults.push(...orders);
+                if (orders.length < 100) {
+                    break;
+                } else {
+                    skip += 100;
                 }
-            });
-        } else {
-            span?.addEvent(`Failed to get new orders ${subgraph}: invalid response`);
-            throw "invalid response";
+            } else {
+                break;
+            }
+        } catch (error) {
+            span?.addEvent(errorSnapshot(`Failed to get new added orders ${subgraph}`, error));
+            throw error;
         }
-    } catch (error) {
-        span?.addEvent(errorSnapshot(`Failed to get new orders from subgraph ${subgraph}`, error));
-        throw error;
     }
+    allResults.forEach((v) => {
+        if (typeof v?.order?.active === "boolean" && v.order.active) {
+            if (!addOrders.find((e) => e.order.id === v.order.id)) {
+                addOrders.push({
+                    order: v.order as SgOrder,
+                    timestamp: Number(v.transaction.timestamp),
+                });
+            }
+        }
+    });
 
     addOrders.sort((a, b) => b.timestamp - a.timestamp);
     return addOrders;
