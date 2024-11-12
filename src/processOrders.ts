@@ -7,8 +7,8 @@ import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { fundOwnedOrders, rotateAccounts } from "./account";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
 import { containsNodeError, ErrorSeverity, errorSnapshot } from "./error";
 import {
     Report,
@@ -619,19 +619,10 @@ export async function processPair(args: {
     // submit the tx
     let txhash, txUrl;
     try {
-        // const gasPriceBigInt = await viemClient.getGasPrice();
-        // const nonce = await viemClient.getTransactionCount({
-        //     blockTag: "latest",
-        //     address:
-        //         flashbotSigner !== undefined
-        //             ? flashbotSigner.account.address
-        //             : signer.account.address,
-        // });
-        // rawtx.gasPrice = (gasPriceBigInt * 107n) / 100n;
-        // if (flashbotSigner) {
-        //     rawtx.gas = await flashbotSigner.estimateGas(rawtx);
-        // }
-        // rawtx.nonce = nonce;
+        rawtx.nonce = await getNonce(flashbotSigner ? flashbotSigner : signer);
+        if (flashbotSigner) {
+            rawtx.gas = undefined;
+        }
         txhash =
             flashbotSigner !== undefined
                 ? await flashbotSigner.sendTransaction(rawtx)
