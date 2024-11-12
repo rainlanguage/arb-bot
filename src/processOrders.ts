@@ -619,6 +619,19 @@ export async function processPair(args: {
     // submit the tx
     let txhash, txUrl;
     try {
+        // const gasPriceBigInt = await viemClient.getGasPrice();
+        // const nonce = await viemClient.getTransactionCount({
+        //     blockTag: "latest",
+        //     address:
+        //         flashbotSigner !== undefined
+        //             ? flashbotSigner.account.address
+        //             : signer.account.address,
+        // });
+        // rawtx.gasPrice = (gasPriceBigInt * 107n) / 100n;
+        // if (flashbotSigner) {
+        //     rawtx.gas = await flashbotSigner.estimateGas(rawtx);
+        // }
+        // rawtx.nonce = nonce;
         txhash =
             flashbotSigner !== undefined
                 ? await flashbotSigner.sendTransaction(rawtx)
@@ -637,7 +650,7 @@ export async function processPair(args: {
             },
             withBigintSerializer,
         );
-        spanAttributes["txNoneNodeError"] = containsNodeError(e as BaseError);
+        spanAttributes["txNoneNodeError"] = !containsNodeError(e as BaseError);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -775,7 +788,7 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
-        spanAttributes["txNoneNodeError"] = containsNodeError(e);
+        spanAttributes["txNoneNodeError"] = !containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
     }

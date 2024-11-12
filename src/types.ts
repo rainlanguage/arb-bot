@@ -183,6 +183,7 @@ export type RawTx = {
     data: `0x${string}`;
     gasPrice?: bigint;
     gas?: bigint;
+    nonce?: number;
 };
 
 export type DryrunValue = {
