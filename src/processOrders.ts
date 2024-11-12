@@ -619,8 +619,8 @@ export async function processPair(args: {
     // submit the tx
     let txhash, txUrl;
     try {
-        rawtx.nonce = await getNonce(flashbotSigner ? flashbotSigner : signer);
-        if (flashbotSigner) {
+        rawtx.nonce = await getNonce(flashbotSigner !== undefined ? flashbotSigner : signer);
+        if (flashbotSigner !== undefined) {
             rawtx.gas = undefined;
         }
         txhash =
