@@ -7,8 +7,8 @@ import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { fundOwnedOrders, rotateAccounts } from "./account";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
 import { containsNodeError, ErrorSeverity, errorSnapshot } from "./error";
 import {
     Report,
@@ -619,6 +619,10 @@ export async function processPair(args: {
     // submit the tx
     let txhash, txUrl;
     try {
+        rawtx.nonce = await getNonce(flashbotSigner !== undefined ? flashbotSigner : signer);
+        if (flashbotSigner !== undefined) {
+            rawtx.gas = undefined;
+        }
         txhash =
             flashbotSigner !== undefined
                 ? await flashbotSigner.sendTransaction(rawtx)
@@ -637,7 +641,7 @@ export async function processPair(args: {
             },
             withBigintSerializer,
         );
-        spanAttributes["txNoneNodeError"] = containsNodeError(e as BaseError);
+        spanAttributes["txNoneNodeError"] = !containsNodeError(e as BaseError);
         result.error = e;
         result.reason = ProcessPairHaltReason.TxFailed;
         throw result;
@@ -775,7 +779,7 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
-        spanAttributes["txNoneNodeError"] = containsNodeError(e);
+        spanAttributes["txNoneNodeError"] = !containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
     }

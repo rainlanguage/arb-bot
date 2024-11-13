@@ -56,6 +56,7 @@ describe("Test process pair", async function () {
             getGasPrice: async () => gasPrice,
             estimateGas: async () => gasLimitEstimation,
             sendTransaction: async () => txHash,
+            getTransactionCount: async () => 0,
             waitForTransactionReceipt: async () => {
                 return {
                     status: "success",
@@ -75,6 +76,7 @@ describe("Test process pair", async function () {
             multicall: async () => [vaultBalance.toBigInt()],
             getGasPrice: async () => gasPrice.toBigInt(),
             getBlockNumber: async () => 123456n,
+            getTransactionCount: async () => 0,
             waitForTransactionReceipt: async () => {
                 return {
                     status: "success",
@@ -514,6 +516,7 @@ describe("Test process pair", async function () {
                 to: arb.address,
                 gasPrice: gasPrice.mul(107).div(100).toString(),
                 gas: gasLimitEstimation.toString(),
+                nonce: 0,
                 from: signer.account.address,
             };
             const expected = {
@@ -543,7 +546,7 @@ describe("Test process pair", async function () {
                     "details.outputToEthPrice": "1",
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
-                    txNoneNodeError: false,
+                    txNoneNodeError: true,
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),

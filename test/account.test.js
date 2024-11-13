@@ -275,6 +275,7 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
+                getTransactionCount: async () => 0,
                 waitForTransactionReceipt: async () => ({
                     status: "success",
                     effectiveGasPrice: ethers.BigNumber.from(5),
@@ -292,6 +293,7 @@ describe("Test accounts", async function () {
             viemClient: {
                 chain: { id: chainId },
                 call: async () => ({ data: `0x${"1" + "0".repeat(18)}` }),
+                getTransactionCount: async () => 0,
             },
         };
 
@@ -356,6 +358,7 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
+                getTransactionCount: async () => 0,
                 call: async () => ({ data: "0x00" }),
                 waitForTransactionReceipt: async () => ({
                     status: "success",
