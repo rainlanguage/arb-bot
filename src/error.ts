@@ -1,9 +1,9 @@
 import {
     BaseError,
     RpcRequestError,
-    InvalidInputRpcError,
     ExecutionRevertedError,
-    TransactionRejectedRpcError,
+    // InvalidInputRpcError,
+    // TransactionRejectedRpcError,
 } from "viem";
 
 /**
@@ -46,8 +46,8 @@ export function errorSnapshot(header: string, err: any): string {
 export function containsNodeError(err: BaseError): boolean {
     try {
         return (
-            err instanceof TransactionRejectedRpcError ||
-            err instanceof InvalidInputRpcError ||
+            // err instanceof TransactionRejectedRpcError ||
+            // err instanceof InvalidInputRpcError ||
             err instanceof ExecutionRevertedError ||
             (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
             ("cause" in err && containsNodeError(err.cause as any))

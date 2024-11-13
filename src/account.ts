@@ -9,14 +9,7 @@ import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { BotConfig, CliOptions, ViemClient, TokenDetails, OwnedOrder } from "./types";
-import {
-    parseAbi,
-    hexToNumber,
-    numberToHex,
-    PublicClient,
-    createNonceManager,
-    NonceManagerSource,
-} from "viem";
+import { parseAbi, hexToNumber, numberToHex, PublicClient, NonceManagerSource } from "viem";
 
 /** Standard base path for eth accounts */
 export const BasePath = "m/44'/60'/0'/0/" as const;
@@ -47,19 +40,11 @@ export async function initAccounts(
         isMnemonic
             ? mnemonicToAccount(mnemonicOrPrivateKey, {
                   addressIndex: MainAccountDerivationIndex,
-                  nonceManager: createNonceManager({
-                      source: noneSource(),
-                  }),
               })
             : privateKeyToAccount(
                   (mnemonicOrPrivateKey.startsWith("0x")
                       ? mnemonicOrPrivateKey
                       : "0x" + mnemonicOrPrivateKey) as `0x${string}`,
-                  {
-                      nonceManager: createNonceManager({
-                          source: noneSource(),
-                      }),
-                  },
               ),
         config.timeout,
         (config as any).testClientViem,
@@ -77,9 +62,6 @@ export async function initAccounts(
                     config.publicRpc,
                     mnemonicToAccount(mnemonicOrPrivateKey, {
                         addressIndex,
-                        nonceManager: createNonceManager({
-                            source: noneSource(),
-                        }),
                     }),
                     config.timeout,
                     (config as any).testClientViem,
@@ -124,6 +106,7 @@ export async function initAccounts(
                         const hash = await mainAccount.sendTransaction({
                             to: accounts[i].account.address,
                             value: transferAmount.toBigInt(),
+                            nonce: await getNonce(mainAccount),
                         });
                         const receipt = await mainAccount.waitForTransactionReceipt({
                             hash,
@@ -230,9 +213,6 @@ export async function manageAccounts(
                     config.publicRpc,
                     mnemonicToAccount(options.mnemonic!, {
                         addressIndex: ++lastIndex,
-                        nonceManager: createNonceManager({
-                            source: noneSource(),
-                        }),
                     }),
                     config.timeout,
                     (config as any).testClientViem,
@@ -271,6 +251,7 @@ export async function manageAccounts(
                         const hash = await config.mainAccount.sendTransaction({
                             to: acc.account.address,
                             value: transferAmount.toBigInt(),
+                            nonce: await getNonce(config.mainAccount),
                         });
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
                             hash,
@@ -561,10 +542,11 @@ export async function sweepToMainWallet(
             const hash = await toWallet.sendTransaction({
                 to: fromWallet.account.address,
                 value: transferAmount.toBigInt(),
+                nonce: await getNonce(fromWallet),
             });
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
-                confirmations: 2,
+                confirmations: 4,
                 timeout: 100_000,
             });
             const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
@@ -603,10 +585,12 @@ export async function sweepToMainWallet(
         span?.setAttribute("details.tokenAddress", txs[i].bounty.address);
         span?.setAttribute("details.balance", txs[i].balance);
         try {
+            const nonce = await getNonce(fromWallet);
+            (txs[i].tx as any).nonce = nonce;
             const hash = await fromWallet.sendTransaction(txs[i].tx);
             const receipt = await fromWallet.waitForTransactionReceipt({
                 hash,
-                confirmations: 2,
+                confirmations: 4,
                 timeout: 100_000,
             });
             const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
@@ -659,10 +643,11 @@ export async function sweepToMainWallet(
                     to: toWallet.account.address,
                     value: transferAmount.toBigInt(),
                     gas: gasLimit.toBigInt(),
+                    nonce: await getNonce(fromWallet),
                 });
                 const receipt = await fromWallet.waitForTransactionReceipt({
                     hash,
-                    confirmations: 2,
+                    confirmations: 4,
                     timeout: 100_000,
                 });
                 const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
@@ -807,10 +792,11 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                         rp4Address,
                         balance.mul(100),
                     ]) as `0x${string}`,
+                    nonce: await getNonce(config.mainAccount),
                 });
                 await config.mainAccount.waitForTransactionReceipt({
                     hash,
-                    confirmations: 2,
+                    confirmations: 4,
                     timeout: 100_000,
                 });
             }
@@ -847,11 +833,13 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 span?.end();
                 continue;
             } else {
+                const nonce = await getNonce(config.mainAccount);
+                (rawtx as any).nonce = nonce;
                 const hash = await config.mainAccount.sendTransaction(rawtx);
                 span?.setAttribute("txHash", hash);
                 const receipt = await config.mainAccount.waitForTransactionReceipt({
                     hash,
-                    confirmations: 2,
+                    confirmations: 4,
                     timeout: 100_000,
                 });
                 if (receipt.status === "success") {
@@ -1008,10 +996,11 @@ export async function fundOwnedOrders(
                                 to: rp4Address,
                                 value: sellAmount!.toBigInt(),
                                 data,
+                                nonce: await getNonce(config.mainAccount),
                             });
                             const swapReceipt = await config.mainAccount.waitForTransactionReceipt({
                                 hash: swapHash,
-                                confirmations: 2,
+                                confirmations: 4,
                                 timeout: 100_000,
                             });
                             const swapTxCost = ethers.BigNumber.from(
@@ -1043,11 +1032,12 @@ export async function fundOwnedOrders(
                                     ownedOrder.orderbook,
                                     topupAmount.mul(20),
                                 ]) as `0x${string}`,
+                                nonce: await getNonce(config.mainAccount),
                             });
                             const approveReceipt =
                                 await config.mainAccount.waitForTransactionReceipt({
                                     hash: approveHash,
-                                    confirmations: 2,
+                                    confirmations: 4,
                                     timeout: 100_000,
                                 });
                             const approveTxCost = ethers.BigNumber.from(
@@ -1068,10 +1058,11 @@ export async function fundOwnedOrders(
                                 topupAmount,
                                 [],
                             ]) as `0x${string}`,
+                            nonce: await getNonce(config.mainAccount),
                         });
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
                             hash,
-                            confirmations: 2,
+                            confirmations: 4,
                             timeout: 100_000,
                         });
                         const txCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(
@@ -1126,4 +1117,24 @@ async function getTransactionCount(
         { dedupe: Boolean(blockNumber) },
     );
     return hexToNumber(count);
+}
+
+/**
+ * Get an account's nonce
+ * @param client - The viem client
+ * @param address - account address
+ */
+export async function getNonce(client: ViemClient): Promise<number> {
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await client.getTransactionCount({
+                address: client.account.address,
+                blockTag: "latest",
+            });
+        } catch (error) {
+            if (i === 2) throw error;
+            else await sleep((i + 1) * 5000);
+        }
+    }
+    throw "Failed to get account's nonce";
 }
