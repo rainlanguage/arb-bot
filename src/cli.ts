@@ -56,6 +56,7 @@ const ENV_OPTIONS = {
     topupAmount: process?.env?.TOPUP_AMOUNT,
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
+    gasPriceMultiplier: process?.env?.GAS_PRICE_MULTIPLIER,
     route: process?.env?.ROUTE,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -163,6 +164,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--route <string>",
             "Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables",
         )
+        .option(
+            "--gas-price-multiplier <integer>",
+            "Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -197,6 +202,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.walletCount = cmdOptions.walletCount || ENV_OPTIONS.walletCount;
     cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
+    cmdOptions.gasPriceMultiplier = cmdOptions.gasPriceMultiplier || ENV_OPTIONS.gasPriceMultiplier;
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
     cmdOptions.route = cmdOptions.route || ENV_OPTIONS.route;
     cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
@@ -367,6 +373,21 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     }
     if (!options.botMinBalance || !/^[0-9]+(.[0-9]+)?$/.test(options.botMinBalance)) {
         throw "expected a valid value for --bot-min-balance, it should be an number greater than 0";
+    }
+    if (options.gasPriceMultiplier) {
+        if (typeof options.gasPriceMultiplier === "number") {
+            if (options.gasPriceMultiplier <= 0 || !Number.isInteger(options.gasPriceMultiplier))
+                throw "invalid gasPriceMultiplier value, must be an integer greater than zero";
+        } else if (
+            typeof options.gasPriceMultiplier === "string" &&
+            /^[0-9]+$/.test(options.gasPriceMultiplier)
+        ) {
+            options.gasPriceMultiplier = Number(options.gasPriceMultiplier);
+            if (options.gasPriceMultiplier <= 0)
+                throw "invalid gasPriceMultiplier value, must be an integer greater than zero";
+        } else throw "invalid gasPriceMultiplier value, must be an integer greater than zero";
+    } else {
+        options.gasPriceMultiplier = 107;
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: any[] = [];

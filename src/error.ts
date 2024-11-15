@@ -2,6 +2,7 @@ import {
     BaseError,
     RpcRequestError,
     ExecutionRevertedError,
+    InsufficientFundsError,
     // InvalidInputRpcError,
     // TransactionRejectedRpcError,
 } from "viem";
@@ -49,6 +50,7 @@ export function containsNodeError(err: BaseError): boolean {
             // err instanceof TransactionRejectedRpcError ||
             // err instanceof InvalidInputRpcError ||
             err instanceof ExecutionRevertedError ||
+            err instanceof InsufficientFundsError ||
             (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
             ("cause" in err && containsNodeError(err.cause as any))
         );

@@ -445,7 +445,7 @@ export async function processPair(args: {
     let gasPrice;
     try {
         const gasPriceBigInt = await viemClient.getGasPrice();
-        gasPrice = ethers.BigNumber.from(gasPriceBigInt).mul("107").div("100");
+        gasPrice = ethers.BigNumber.from(gasPriceBigInt).mul(config.gasPriceMultiplier).div("100");
         spanAttributes["details.gasPrice"] = gasPrice.toString();
     } catch (e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;

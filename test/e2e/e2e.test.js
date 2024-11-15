@@ -249,6 +249,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                config.gasPriceMultiplier = 107;
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -579,6 +580,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                config.gasPriceMultiplier = 107;
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -930,6 +932,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.accounts = [];
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
+                config.gasPriceMultiplier = 107;
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
