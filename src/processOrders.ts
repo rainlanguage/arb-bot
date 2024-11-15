@@ -585,6 +585,8 @@ export async function processPair(args: {
         if (e.noneNodeError) {
             spanAttributes["details.noneNodeError"] = true;
             result.error = e.noneNodeError;
+        } else {
+            spanAttributes["details.noneNodeError"] = false;
         }
         result.report = {
             status: ProcessPairReportStatus.NoOpportunity,
