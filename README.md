@@ -112,6 +112,7 @@ Other optional arguments are:
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
 - `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
 - `--public-rpc`, Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables
+- `--gas-price-multiplier`, Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -256,6 +257,8 @@ PUBLIC_RPC=
 # Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
 ROUTE="single"
 
+# Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
+GAS_PRICE_MULTIPLIER=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

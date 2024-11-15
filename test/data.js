@@ -65,6 +65,7 @@ const config = {
         decimals: token2.decimals,
         symbol: token2.symbol,
     },
+    gasPriceMultiplier: 107,
 };
 
 const vaultBalance1 = BigNumber.from("10000000000000000000");

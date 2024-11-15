@@ -46,6 +46,7 @@ export type CliOptions = {
     ownerProfile?: Record<string, number>;
     publicRpc: boolean;
     route?: string;
+    gasPriceMultiplier: number;
 };
 
 export type TokenDetails = {
@@ -168,6 +169,7 @@ export type BotConfig = {
     walletKey: string;
     route?: "multi" | "single";
     rpcRecords: Record<string, RpcRecord>;
+    gasPriceMultiplier: number;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };
