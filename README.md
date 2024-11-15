@@ -111,6 +111,7 @@ Other optional arguments are:
 - `--route`, Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
+- `--gas-price-multiplier`, Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -252,6 +253,9 @@ SELF_FUND_ORDERS=
 
 # Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
 ROUTE="single"
+
+# Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
+GAS_PRICE_MULTIPLIER=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

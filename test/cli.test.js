@@ -183,6 +183,8 @@ describe("Test cli", async function () {
             `0x${"2".repeat(40)}`,
             "--bot-min-balance",
             "0.123",
+            "--gas-price-multiplier",
+            "120",
         ]);
         const expected = {
             roundGap: 10000,
@@ -201,9 +203,11 @@ describe("Test cli", async function () {
                         cache: {},
                     },
                 },
+                gasPriceMultiplier: 120,
             },
             options: {
                 botMinBalance: "0.123",
+                gasPriceMultiplier: 120,
             },
         };
         await sleep(1000);
@@ -215,5 +219,7 @@ describe("Test cli", async function () {
         assert.equal(result.config.route, expected.config.route);
         assert.deepEqual(result.config.rpcRecords, expected.config.rpcRecords);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
+        assert.equal(result.options.gasPriceMultiplier, expected.options.gasPriceMultiplier);
+        assert.equal(result.config.gasPriceMultiplier, expected.config.gasPriceMultiplier);
     });
 });
