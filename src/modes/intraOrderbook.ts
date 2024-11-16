@@ -49,6 +49,23 @@ export async function dryrun({
     const inputBountyVaultId = "1";
     const outputBountyVaultId = "1";
     const obInterface = new ethers.utils.Interface(orderbookAbi);
+    const task = {
+        evaluable: {
+            interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+            store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+            bytecode: getWithdrawEnsureBytecode(
+                signer.account.address,
+                orderPairObject.buyToken,
+                orderPairObject.sellToken,
+                inputBalance,
+                outputBalance,
+                ethers.utils.parseUnits(inputToEthPrice),
+                ethers.utils.parseUnits(outputToEthPrice),
+                ethers.constants.Zero,
+            ),
+        },
+        signedContext: [],
+    };
     const withdrawInputCalldata = obInterface.encodeFunctionData("withdraw2", [
         orderPairObject.buyToken,
         inputBountyVaultId,
@@ -59,7 +76,7 @@ export async function dryrun({
         orderPairObject.sellToken,
         outputBountyVaultId,
         ethers.constants.MaxUint256,
-        [],
+        config.gasCoveragePercentage === "0" ? [] : [task],
     ]);
     const clear2Calldata = obInterface.encodeFunctionData("clear2", [
         orderPairObject.takeOrders[0].takeOrder.order,
@@ -89,7 +106,9 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            .mul(config.gasLimitMultiplier)
+            .div(100);
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
         const isNodeError = containsNodeError(e as BaseError);
@@ -118,23 +137,16 @@ export async function dryrun({
     // sender output which is already called above
     if (config.gasCoveragePercentage !== "0") {
         const headroom = (Number(config.gasCoveragePercentage) * 1.03).toFixed();
-        const task = {
-            evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getWithdrawEnsureBytecode(
-                    signer.account.address,
-                    orderPairObject.buyToken,
-                    orderPairObject.sellToken,
-                    inputBalance,
-                    outputBalance,
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    gasCost.mul(headroom).div("100"),
-                ),
-            },
-            signedContext: [],
-        };
+        task.evaluable.bytecode = getWithdrawEnsureBytecode(
+            signer.account.address,
+            orderPairObject.buyToken,
+            orderPairObject.sellToken,
+            inputBalance,
+            outputBalance,
+            ethers.utils.parseUnits(inputToEthPrice),
+            ethers.utils.parseUnits(outputToEthPrice),
+            gasCost.mul(headroom).div("100"),
+        );
         withdrawOutputCalldata = obInterface.encodeFunctionData("withdraw2", [
             orderPairObject.sellToken,
             outputBountyVaultId,
@@ -148,7 +160,9 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                .mul(config.gasLimitMultiplier)
+                .div(100);
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getWithdrawEnsureBytecode(
@@ -192,6 +206,9 @@ export async function dryrun({
         }
     }
     rawtx.gas = gasLimit.toBigInt();
+    if (typeof config.txGas === "bigint") {
+        rawtx.gas = config.txGas;
+    }
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;

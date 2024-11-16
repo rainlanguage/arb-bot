@@ -82,7 +82,14 @@ export async function dryrun({
         evaluable: {
             interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
             store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-            bytecode: "0x",
+            bytecode:
+                config.gasCoveragePercentage === "0"
+                    ? "0x"
+                    : getBountyEnsureBytecode(
+                          ethers.utils.parseUnits(inputToEthPrice),
+                          ethers.utils.parseUnits(outputToEthPrice),
+                          ethers.constants.Zero,
+                      ),
         },
         signedContext: [],
     };
@@ -102,7 +109,9 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            .mul(config.gasLimitMultiplier)
+            .div(100);
     } catch (e) {
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
@@ -144,7 +153,9 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                .mul(config.gasLimitMultiplier)
+                .div(100);
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getBountyEnsureBytecode(
@@ -179,6 +190,9 @@ export async function dryrun({
         }
     }
     rawtx.gas = gasLimit.toBigInt();
+    if (typeof config.txGas === "bigint") {
+        rawtx.gas = config.txGas;
+    }
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;

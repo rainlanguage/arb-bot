@@ -211,6 +211,7 @@ export async function getConfig(
     config.route = route;
     config.rpcRecords = rpcRecords;
     config.gasPriceMultiplier = options.gasPriceMultiplier;
+    config.gasLimitMultiplier = options.gasLimitMultiplier;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

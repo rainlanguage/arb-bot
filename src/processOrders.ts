@@ -47,7 +47,8 @@ export enum ProcessPairHaltReason {
     FailedToGetPools = 4,
     TxFailed = 5,
     TxMineFailed = 6,
-    UnexpectedError = 7,
+    TxReverted = 7,
+    UnexpectedError = 8,
 }
 
 /**
@@ -310,21 +311,49 @@ export const processOrders = async (
                                 span.setAttribute("errorDetails", message);
                             }
                             span.setStatus({ code: SpanStatusCode.OK, message });
-                        } else {
-                            // set the otel span status as OK as an unsuccessfull clear, this can happen for example
+                        } else if (e.reason === ProcessPairHaltReason.TxFailed) {
+                            // failed to submit the tx to mempool, this can happen for example when rpc rejects
+                            // the tx for example because of low gas or invalid parameters, etc
+                            let message = "failed to submit the transaction";
+                            if (e.error) {
+                                message = errorSnapshot(message, e.error);
+                                span.setAttribute("errorDetails", message);
+                            }
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            span.setAttribute("unsuccessfulClear", true);
+                            span.setAttribute("txSendFailed", true);
+                        } else if (e.reason === ProcessPairHaltReason.TxReverted) {
+                            // set the severity to LOW, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            let code = SpanStatusCode.OK;
+                            span.setAttribute("severity", ErrorSeverity.LOW);
+                            span.setStatus({
+                                code: SpanStatusCode.ERROR,
+                                message: "transaction reverted onchain",
+                            });
+                            span.setAttribute("unsuccessfulClear", true);
+                            span.setAttribute("txReverted", true);
+                        } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
+                            // tx failed to get included onchain, this can happen as result of timeout, rpc dropping the tx, etc
                             let message = "transaction failed";
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            if (e.spanAttributes["txNoneNodeError"]) {
-                                code = SpanStatusCode.ERROR;
-                                span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            span.setAttribute("unsuccessfulClear", true);
+                            span.setAttribute("txMineFailed", true);
+                        } else {
+                            // record the error for the span
+                            let message = pair + "unexpected error";
+                            if (e.error) {
+                                message = errorSnapshot(message, e.error);
+                                span.recordException(e.error);
                             }
-                            span.setStatus({ code, message });
-                            span.setAttribute("unsuccessfullClear", true);
+                            // set the span status to unexpected error
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
                         }
                     } else {
                         // record the error for the span
@@ -756,7 +785,7 @@ export async function processPair(args: {
                 sellToken: orderPairObject.sellToken,
                 actualGasCost: ethers.utils.formatUnits(actualGasCost),
             };
-            result.reason = ProcessPairHaltReason.TxMineFailed;
+            result.reason = ProcessPairHaltReason.TxReverted;
             return Promise.reject(result);
         }
     } catch (e: any) {
@@ -781,6 +810,13 @@ export async function processPair(args: {
             result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
         }
         result.error = e;
+        spanAttributes["details.rawTx"] = JSON.stringify(
+            {
+                ...rawtx,
+                from: signer.account.address,
+            },
+            withBigintSerializer,
+        );
         spanAttributes["txNoneNodeError"] = !containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;

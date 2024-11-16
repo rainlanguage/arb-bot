@@ -150,6 +150,7 @@ describe("Test process pair", async function () {
                 didClear: true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.clearModePick": "rp4",
                 "details.quote": JSON.stringify({
                     maxOutput: formatUnits(vaultBalance),
                     ratio: formatUnits(ethers.constants.Zero),
@@ -226,6 +227,7 @@ describe("Test process pair", async function () {
                 "details.marketQuote.str": "0.99699",
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
                 "details.outputToEthPrice": "1",
+                "details.clearModePick": "inter",
                 "details.quote": JSON.stringify({
                     maxOutput: formatUnits(vaultBalance),
                     ratio: formatUnits(ethers.constants.Zero),
@@ -546,6 +548,7 @@ describe("Test process pair", async function () {
                     "details.outputToEthPrice": "1",
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
+                    "details.clearModePick": "rp4",
                     txNoneNodeError: true,
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
@@ -567,7 +570,7 @@ describe("Test process pair", async function () {
         }
     });
 
-    it("should fail to mine tx", async function () {
+    it("should revert tx", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
         const errorReceipt = {
             status: "reverted",
@@ -606,7 +609,7 @@ describe("Test process pair", async function () {
                     txUrl: scannerUrl + "/tx/" + txHash,
                     actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
-                reason: ProcessPairHaltReason.TxMineFailed,
+                reason: ProcessPairHaltReason.TxReverted,
                 error: undefined,
                 gasCost: undefined,
                 spanAttributes: {
@@ -626,6 +629,111 @@ describe("Test process pair", async function () {
                     "details.outputToEthPrice": "1",
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
+                    "details.clearModePick": "rp4",
+                    "details.quote": JSON.stringify({
+                        maxOutput: formatUnits(vaultBalance),
+                        ratio: formatUnits(ethers.constants.Zero),
+                    }),
+                    "details.estimatedProfit": formatUnits(
+                        estimateProfit(
+                            orderPairObject,
+                            getCurrentInputToEthPrice(),
+                            ethers.utils.parseUnits("1"),
+                            undefined,
+                            getCurrentPrice(vaultBalance),
+                            vaultBalance,
+                        ),
+                    ),
+                },
+            };
+            assert.deepEqual(error, expected);
+        }
+    });
+
+    it("should fail to mine tx", async function () {
+        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
+        const errorRejection = new Error("timeout");
+        dataFetcher.getCurrentPoolCodeMap = () => {
+            return poolCodeMap;
+        };
+        signer.sendTransaction = async () => txHash;
+        viemClient.waitForTransactionReceipt = async () => Promise.reject(errorRejection);
+        try {
+            await processPair({
+                config,
+                orderPairObject,
+                viemClient,
+                dataFetcher,
+                signer,
+                flashbotSigner: undefined,
+                arb,
+                orderbook,
+                pair,
+                mainAccount: signer,
+                accounts: [signer],
+                fetchedPairPools: [],
+            });
+            assert.fail("expected to reject, but resolved");
+        } catch (error) {
+            const expectedTakeOrdersConfigStruct = {
+                minimumInput: ethers.constants.One,
+                maximumInput: vaultBalance,
+                maximumIORatio: ethers.constants.MaxUint256,
+                orders: [orderPairObject.takeOrders[0].takeOrder],
+                data: expectedRouteData,
+            };
+            const task = {
+                evaluable: {
+                    interpreter:
+                        orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                    store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                    bytecode: "0x",
+                },
+                signedContext: [],
+            };
+            const rawtx = {
+                data: arb.interface.encodeFunctionData("arb3", [
+                    orderPairObject.orderbook,
+                    expectedTakeOrdersConfigStruct,
+                    task,
+                ]),
+                to: arb.address,
+                gasPrice: gasPrice.mul(107).div(100).toString(),
+                gas: gasLimitEstimation.toString(),
+                nonce: 0,
+                from: signer.account.address,
+            };
+            const expected = {
+                report: {
+                    status: ProcessPairReportStatus.FoundOpportunity,
+                    tokenPair: pair,
+                    buyToken: orderPairObject.buyToken,
+                    sellToken: orderPairObject.sellToken,
+                    txUrl: scannerUrl + "/tx/" + txHash,
+                },
+                reason: ProcessPairHaltReason.TxMineFailed,
+                error: errorRejection,
+                gasCost: undefined,
+                spanAttributes: {
+                    "details.pair": pair,
+                    "details.orders": [orderPairObject.takeOrders[0].id],
+                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
+                    "details.blockNumber": 123456,
+                    "details.blockNumberDiff": 0,
+                    "details.marketPrice": formatUnits(getCurrentPrice(vaultBalance)),
+                    "details.amountIn": formatUnits(vaultBalance),
+                    "details.amountOut": formatUnits(getAmountOut(vaultBalance), 6),
+                    oppBlockNumber: 123456,
+                    "details.route": expectedRouteVisual,
+                    foundOpp: true,
+                    "details.rawTx": JSON.stringify(rawtx),
+                    "details.txUrl": scannerUrl + "/tx/" + txHash,
+                    "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
+                    "details.outputToEthPrice": "1",
+                    "details.marketQuote.num": 0.99699,
+                    "details.marketQuote.str": "0.99699",
+                    "details.clearModePick": "rp4",
+                    txNoneNodeError: true,
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
