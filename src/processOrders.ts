@@ -319,15 +319,14 @@ export const processOrders = async (
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txSendFailed", true);
                         } else if (e.reason === ProcessPairHaltReason.TxReverted) {
                             // Tx reverted onchain, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            // set the severity to LOW
-                            span.setAttribute("severity", ErrorSeverity.LOW);
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
                             span.setStatus({
                                 code: SpanStatusCode.ERROR,
                                 message: "transaction reverted onchain",
@@ -341,7 +340,7 @@ export const processOrders = async (
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txMineFailed", true);
