@@ -187,6 +187,8 @@ describe("Test cli", async function () {
             "120",
             "--gas-limit-multiplier",
             "110",
+            "--tx-gas",
+            "123456789",
         ]);
         const expected = {
             roundGap: 10000,
@@ -207,11 +209,13 @@ describe("Test cli", async function () {
                 },
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
+                txGas: 123456789n,
             },
             options: {
                 botMinBalance: "0.123",
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
+                txGas: 123456789n,
             },
         };
         await sleep(1000);
@@ -227,5 +231,7 @@ describe("Test cli", async function () {
         assert.equal(result.config.gasPriceMultiplier, expected.config.gasPriceMultiplier);
         assert.equal(result.options.gasLimitMultiplier, expected.options.gasLimitMultiplier);
         assert.equal(result.config.gasLimitMultiplier, expected.config.gasLimitMultiplier);
+        assert.equal(result.options.txGas, expected.options.txGas);
+        assert.equal(result.config.txGas, expected.config.txGas);
     });
 });

@@ -324,8 +324,9 @@ export const processOrders = async (
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txSendFailed", true);
                         } else if (e.reason === ProcessPairHaltReason.TxReverted) {
-                            // set the severity to LOW, this can happen for example
+                            // Tx reverted onchain, this can happen for example
                             // because of mev front running or false positive opportunities, etc
+                            // set the severity to LOW
                             span.setAttribute("severity", ErrorSeverity.LOW);
                             span.setStatus({
                                 code: SpanStatusCode.ERROR,
