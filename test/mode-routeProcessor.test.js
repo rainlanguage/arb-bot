@@ -199,7 +199,11 @@ describe("Test route processor dryrun", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -440,7 +444,11 @@ describe("Test route processor find opp", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -638,7 +646,11 @@ describe("Test find opp with retries", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };

@@ -270,6 +270,7 @@ describe("Test intra-orderbook find opp", async function () {
             });
             assert.fail("expected to reject, but resolved");
         } catch (error) {
+            const balance = ethers.BigNumber.from("1000000000000000000");
             const withdrawInputCalldata = orderbook.interface.encodeFunctionData("withdraw2", [
                 orderPairObject.buyToken,
                 "1",
@@ -280,7 +281,26 @@ describe("Test intra-orderbook find opp", async function () {
                 orderPairObject.sellToken,
                 "1",
                 ethers.constants.MaxUint256,
-                [],
+                [
+                    {
+                        evaluable: {
+                            interpreter:
+                                orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
+                            store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                            bytecode: getWithdrawEnsureBytecode(
+                                signer.account.address,
+                                orderPairObject.buyToken,
+                                orderPairObject.sellToken,
+                                balance,
+                                balance,
+                                ethers.utils.parseUnits(inputToEthPrice),
+                                ethers.utils.parseUnits(outputToEthPrice),
+                                ethers.constants.Zero,
+                            ),
+                        },
+                        signedContext: [],
+                    },
+                ],
             ]);
             const clear2Calldata = orderbook.interface.encodeFunctionData("clear2", [
                 orderPairObject.takeOrders[0].takeOrder.order,

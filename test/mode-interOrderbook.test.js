@@ -404,7 +404,11 @@ describe("Test inter-orderbook find opp", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(inputToEthPrice),
+                        ethers.utils.parseUnits(outputToEthPrice),
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };

@@ -57,6 +57,8 @@ const ENV_OPTIONS = {
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
     gasPriceMultiplier: process?.env?.GAS_PRICE_MULTIPLIER,
+    gasLimitMultiplier: process?.env?.GAS_LIMIT_MULTIPLIER,
+    txGas: process?.env?.TX_GAS,
     route: process?.env?.ROUTE,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -168,6 +170,14 @@ const getOptions = async (argv: any, version?: string) => {
             "--gas-price-multiplier <integer>",
             "Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables",
         )
+        .option(
+            "--gas-limit-multiplier <integer>",
+            "Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
+        )
+        .option(
+            "--tx-gas <integer>",
+            "Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -203,6 +213,8 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
     cmdOptions.gasPriceMultiplier = cmdOptions.gasPriceMultiplier || ENV_OPTIONS.gasPriceMultiplier;
+    cmdOptions.gasLimitMultiplier = cmdOptions.gasLimitMultiplier || ENV_OPTIONS.gasLimitMultiplier;
+    cmdOptions.txGas = cmdOptions.txGas || ENV_OPTIONS.txGas;
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
     cmdOptions.route = cmdOptions.route || ENV_OPTIONS.route;
     cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
@@ -251,7 +263,7 @@ export const arbRound = async (
                 if (!ordersDetails.length) {
                     span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
                     span.end();
-                    return { txs: [], foundOpp: false, avgGasCost: undefined };
+                    return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
                 }
             } catch (e: any) {
                 const snapshot = errorSnapshot("", e);
@@ -260,12 +272,13 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
+                return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
             }
 
             try {
                 let txs;
                 let foundOpp = false;
+                let didClear = false;
                 const { reports = [], avgGasCost = undefined } = await clear(
                     config,
                     ordersDetails,
@@ -277,13 +290,21 @@ export const arbRound = async (
                     if (txs.length) {
                         foundOpp = true;
                         span.setAttribute("txUrls", txs);
-                        span.setAttribute("didClear", true);
                         span.setAttribute("foundOpp", true);
                     } else if (
                         reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
                     ) {
                         foundOpp = true;
                         span.setAttribute("foundOpp", true);
+                    }
+                    if (
+                        reports.some(
+                            (v) =>
+                                v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
+                        )
+                    ) {
+                        didClear = true;
+                        span.setAttribute("didClear", true);
                     }
                 } else {
                     span.setAttribute("didClear", false);
@@ -293,7 +314,7 @@ export const arbRound = async (
                 }
                 span.setStatus({ code: SpanStatusCode.OK });
                 span.end();
-                return { txs, foundOpp, avgGasCost };
+                return { txs, foundOpp, didClear, avgGasCost };
             } catch (e: any) {
                 if (e?.startsWith?.("Failed to batch quote orders")) {
                     span.setAttribute("severity", ErrorSeverity.LOW);
@@ -307,7 +328,7 @@ export const arbRound = async (
                 span.setAttribute("didClear", false);
                 span.setAttribute("foundOpp", false);
                 span.end();
-                return { txs: [], foundOpp: false, avgGasCost: undefined };
+                return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
             }
         } catch (e: any) {
             const snapshot = errorSnapshot("Unexpected error occured", e);
@@ -317,7 +338,7 @@ export const arbRound = async (
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
             span.end();
-            return { txs: [], foundOpp: false, avgGasCost: undefined };
+            return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
         }
     });
 };
@@ -388,6 +409,32 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         } else throw "invalid gasPriceMultiplier value, must be an integer greater than zero";
     } else {
         options.gasPriceMultiplier = 107;
+    }
+    if (options.gasLimitMultiplier) {
+        if (typeof options.gasLimitMultiplier === "number") {
+            if (options.gasLimitMultiplier <= 0 || !Number.isInteger(options.gasLimitMultiplier))
+                throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+        } else if (
+            typeof options.gasLimitMultiplier === "string" &&
+            /^[0-9]+$/.test(options.gasLimitMultiplier)
+        ) {
+            options.gasLimitMultiplier = Number(options.gasLimitMultiplier);
+            if (options.gasLimitMultiplier <= 0)
+                throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+        } else throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+    } else {
+        options.gasLimitMultiplier = 105;
+    }
+    if (options.txGas) {
+        if (typeof options.txGas === "number") {
+            if (options.txGas <= 0 || !Number.isInteger(options.txGas))
+                throw "invalid txGas value, must be an integer greater than zero";
+            else options.txGas = BigInt(options.txGas);
+        } else if (typeof options.txGas === "string" && /^[0-9]+$/.test(options.txGas)) {
+            options.txGas = BigInt(options.txGas);
+            if (options.txGas <= 0n)
+                throw "invalid txGas value, must be an integer greater than zero";
+        } else throw "invalid txGas value, must be an integer greater than zero";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: any[] = [];
@@ -559,16 +606,19 @@ export const main = async (argv: any, version?: string) => {
             try {
                 await rotateProviders(config, update);
                 const roundResult = await arbRound(tracer, roundCtx, options, config);
-                let txs, foundOpp, roundAvgGasCost;
+                let txs, foundOpp, didClear, roundAvgGasCost;
                 if (roundResult) {
                     txs = roundResult.txs;
                     foundOpp = roundResult.foundOpp;
+                    didClear = roundResult.didClear;
                     roundAvgGasCost = roundResult.avgGasCost;
                 }
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
+                } else if (didClear) {
+                    roundSpan.setAttribute("foundOpp", true);
+                    roundSpan.setAttribute("didClear", true);
                 } else if (foundOpp) {
                     roundSpan.setAttribute("foundOpp", true);
                     roundSpan.setAttribute("didClear", false);

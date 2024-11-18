@@ -147,7 +147,14 @@ export async function dryrun({
             evaluable: {
                 interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                 store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: "0x",
+                bytecode:
+                    config.gasCoveragePercentage === "0"
+                        ? "0x"
+                        : getBountyEnsureBytecode(
+                              ethers.utils.parseUnits(ethPrice),
+                              ethers.constants.Zero,
+                              ethers.constants.Zero,
+                          ),
             },
             signedContext: [],
         };
@@ -167,7 +174,9 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                .mul(config.gasLimitMultiplier)
+                .div(100);
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
             const isNodeError = containsNodeError(e as BaseError);
@@ -211,7 +220,9 @@ export async function dryrun({
             try {
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
-                gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+                gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                    .mul(config.gasLimitMultiplier)
+                    .div(100);
                 rawtx.gas = gasLimit.toBigInt();
                 gasCost = gasLimit.mul(gasPrice);
                 task.evaluable.bytecode = getBountyEnsureBytecode(
@@ -247,6 +258,9 @@ export async function dryrun({
             }
         }
         rawtx.gas = gasLimit.toBigInt();
+        if (typeof config.txGas === "bigint") {
+            rawtx.gas = config.txGas;
+        }
 
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
