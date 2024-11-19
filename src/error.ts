@@ -56,7 +56,11 @@ export function errorSnapshot(header: string, err: any): string {
         if (err.name) message.push("Error: " + err.name);
         if (err.details) {
             message.push("Details: " + err.details);
-            if (err.details.includes("unknown reason")) {
+            if (
+                err.name.includes("unknown reason") ||
+                err.details.includes("unknown reason") ||
+                err.shortMessage.includes("unknown reason")
+            ) {
                 const { raw, decoded } = parseRevertError(err);
                 if (decoded) {
                     message.push("Error Name: " + decoded.name);
