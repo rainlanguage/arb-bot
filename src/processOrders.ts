@@ -331,8 +331,12 @@ export const processOrders = async (
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
                             }
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            if (e.spanAttributes["txNoneNodeError"]) {
+                                span.setAttribute("severity", ErrorSeverity.HIGH);
+                                span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            } else {
+                                span.setStatus({ code: SpanStatusCode.OK, message });
+                            }
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txReverted", true);
                         } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
@@ -779,7 +783,7 @@ export async function processPair(args: {
             return result;
         } else {
             // keep track of gas consumption of the account
-            const simulation = await handleRevert(config.viemClient as any, txhash);
+            const simulation = await handleRevert(viemClient as any, txhash);
             if (simulation) {
                 result.error = simulation.err;
                 spanAttributes["txNoneNodeError"] = !simulation.nodeError;

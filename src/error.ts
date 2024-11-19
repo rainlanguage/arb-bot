@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { BigNumber } from "ethers";
 import { ViemClient } from "./types";
 // @ts-ignore
 import { abi as obAbi } from "../test/abis/OrderBook.json";
@@ -12,7 +11,6 @@ import { abi as genericArbAbi } from "../test/abis/GenericPoolOrderBookV4ArbOrde
 import {
     isHex,
     BaseError,
-    isAddress,
     RpcRequestError,
     decodeErrorResult,
     ExecutionRevertedError,
@@ -30,17 +28,26 @@ export enum ErrorSeverity {
     HIGH = "HIGH",
 }
 
+/**
+ * Specifies a decoded contract error
+ */
 export type DecodedError = {
     name: string;
     args: string[];
 };
 
+/**
+ * Raw error returned from rpc call
+ */
 export type RawError = {
     code: number;
     message: string;
     data?: string;
 };
 
+/**
+ * Represents a revert error that happened for a transaction
+ */
 export type TxRevertError = {
     raw: RawError;
     decoded?: DecodedError;
@@ -106,6 +113,9 @@ export function containsNodeError(err: BaseError): boolean {
     }
 }
 
+/**
+ * Handles a reverted transaction by simulating it and returning the revert error
+ */
 export async function handleRevert(
     viemClient: ViemClient,
     hash: `0x${string}`,
@@ -130,6 +140,9 @@ export async function handleRevert(
     }
 }
 
+/**
+ * Parses a revert error to TxRevertError type
+ */
 export function parseRevertError(error: BaseError): TxRevertError {
     if ("cause" in error) {
         return parseRevertError(error.cause as any);
@@ -147,28 +160,21 @@ export function parseRevertError(error: BaseError): TxRevertError {
     }
 }
 
+/**
+ * Tries to decode an error data with known contract error selectors
+ */
 export function tryDecodeError(data: `0x${string}`): DecodedError | undefined {
     const handleArgs = (args: readonly unknown[]): string[] => {
         return (
             args?.map((arg) => {
                 if (typeof arg === "string") {
                     return arg;
-                }
-                if (typeof arg === "bigint") {
-                    const str = BigNumber.from(arg).toHexString();
-                    if (isAddress(str)) {
-                        return str;
-                    } else {
-                        return arg.toString();
+                } else {
+                    try {
+                        return arg!.toString();
+                    } catch (error) {
+                        return "";
                     }
-                }
-                if (typeof arg === "number") {
-                    return arg.toString();
-                }
-                try {
-                    return arg!.toString();
-                } catch (error) {
-                    return "";
                 }
             }) ?? []
         );
