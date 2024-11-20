@@ -1,4 +1,4 @@
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
@@ -43,6 +43,14 @@ export async function findOpp({
     toToken: Token;
     fromToken: Token;
 }): Promise<DryrunResult> {
+    try {
+        gasPrice = BigNumber.from(await viemClient.getGasPrice())
+            .mul(config.gasPriceMultiplier)
+            .div("100")
+            .toBigInt();
+    } catch {
+        /**/
+    }
     const promises = [
         findRpOpp({
             orderPairObject,

@@ -333,8 +333,6 @@ export const processOrders = async (
                             }
                             if (e.spanAttributes["txNoneNodeError"]) {
                                 span.setAttribute("severity", ErrorSeverity.HIGH);
-                            } else {
-                                span.setAttribute("severity", ErrorSeverity.LOW);
                             }
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
