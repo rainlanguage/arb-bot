@@ -583,6 +583,8 @@ describe("Test process pair", async function () {
         };
         signer.sendTransaction = async () => txHash;
         viemClient.waitForTransactionReceipt = async () => errorReceipt;
+        viemClient.getTransaction = async () => ({});
+        viemClient.call = async () => Promise.reject("out of gas");
         try {
             await processPair({
                 config,
@@ -610,7 +612,7 @@ describe("Test process pair", async function () {
                     actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
                 reason: ProcessPairHaltReason.TxReverted,
-                error: undefined,
+                error: "out of gas",
                 gasCost: undefined,
                 spanAttributes: {
                     "details.pair": pair,
@@ -630,6 +632,7 @@ describe("Test process pair", async function () {
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.clearModePick": "rp4",
+                    txNoneNodeError: true,
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),

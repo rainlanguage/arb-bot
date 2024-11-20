@@ -9,7 +9,7 @@ import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
-import { containsNodeError, ErrorSeverity, errorSnapshot } from "./error";
+import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert } from "./error";
 import {
     Report,
     BotConfig,
@@ -326,11 +326,17 @@ export const processOrders = async (
                         } else if (e.reason === ProcessPairHaltReason.TxReverted) {
                             // Tx reverted onchain, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
-                            span.setStatus({
-                                code: SpanStatusCode.ERROR,
-                                message: "transaction reverted onchain",
-                            });
+                            let message = "transaction reverted onchain";
+                            if (e.error) {
+                                message = errorSnapshot(message, e.error);
+                                span.setAttribute("errorDetails", message);
+                            }
+                            if (e.spanAttributes["txNoneNodeError"]) {
+                                span.setAttribute("severity", ErrorSeverity.HIGH);
+                                span.setStatus({ code: SpanStatusCode.ERROR, message });
+                            } else {
+                                span.setStatus({ code: SpanStatusCode.OK, message });
+                            }
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txReverted", true);
                         } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
@@ -777,6 +783,11 @@ export async function processPair(args: {
             return result;
         } else {
             // keep track of gas consumption of the account
+            const simulation = await handleRevert(viemClient as any, txhash);
+            if (simulation) {
+                result.error = simulation.err;
+                spanAttributes["txNoneNodeError"] = !simulation.nodeError;
+            }
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
