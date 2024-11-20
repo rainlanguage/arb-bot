@@ -529,20 +529,20 @@ export async function sweepToMainWallet(
         }
     }
 
-    if (cumulativeGasLimit.mul(gasPrice).mul(120).div(100).gt(fromWallet.BALANCE)) {
+    if (cumulativeGasLimit.mul(gasPrice).mul(125).div(100).gt(fromWallet.BALANCE)) {
         const span = tracer?.startSpan("fund-wallet-to-sweep", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
             const transferAmount = cumulativeGasLimit
                 .mul(gasPrice)
-                .mul(120)
+                .mul(125)
                 .div(100)
                 .sub(fromWallet.BALANCE);
             span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
             const hash = await toWallet.sendTransaction({
                 to: fromWallet.account.address,
                 value: transferAmount.toBigInt(),
-                nonce: await getNonce(fromWallet),
+                nonce: await getNonce(toWallet),
             });
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
@@ -640,6 +640,7 @@ export async function sweepToMainWallet(
             if (transferAmount.gt(0)) {
                 span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
                 const hash = await fromWallet.sendTransaction({
+                    gasPrice,
                     to: toWallet.account.address,
                     value: transferAmount.toBigInt(),
                     gas: gasLimit.toBigInt(),
