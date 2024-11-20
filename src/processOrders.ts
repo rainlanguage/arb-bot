@@ -333,10 +333,10 @@ export const processOrders = async (
                             }
                             if (e.spanAttributes["txNoneNodeError"]) {
                                 span.setAttribute("severity", ErrorSeverity.HIGH);
-                                span.setStatus({ code: SpanStatusCode.ERROR, message });
                             } else {
-                                span.setStatus({ code: SpanStatusCode.OK, message });
+                                span.setAttribute("severity", ErrorSeverity.LOW);
                             }
+                            span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txReverted", true);
                         } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
