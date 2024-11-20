@@ -124,6 +124,7 @@ export async function dryrun({
     } catch (e) {
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
+        spanAttributes["stage"] = 1;
         spanAttributes["isNodeError"] = isNodeError;
         spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
@@ -180,6 +181,7 @@ export async function dryrun({
         } catch (e) {
             const isNodeError = containsNodeError(e as BaseError);
             const errMsg = errorSnapshot("", e);
+            spanAttributes["stage"] = 2;
             spanAttributes["isNodeError"] = isNodeError;
             spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
