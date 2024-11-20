@@ -13,7 +13,13 @@ import { BotConfig, CliOptions, ViemClient } from "./types";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
+import {
+    sweepToEth,
+    manageAccounts,
+    rotateProviders,
+    sweepToMainWallet,
+    getBatchEthBalance,
+} from "./account";
 import {
     diag,
     trace,
@@ -625,6 +631,19 @@ export const main = async (argv: any, version?: string) => {
                 } else {
                     roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
+                }
+
+                // fecth account's balances
+                if (foundOpp && config.accounts.length) {
+                    try {
+                        const balances = await getBatchEthBalance(
+                            config.accounts.map((v) => v.account.address),
+                            config.viemClient as any as ViemClient,
+                        );
+                        config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
+                    } catch {
+                        /**/
+                    }
                 }
 
                 // keep avg gas cost

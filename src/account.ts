@@ -157,15 +157,6 @@ export async function manageAccounts(
 ) {
     const removedWallets: ViemClient[] = [];
     let accountsToAdd = 0;
-    try {
-        const balances = await getBatchEthBalance(
-            config.accounts.map((v) => v.account.address),
-            config.viemClient as any as ViemClient,
-        );
-        config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
-    } catch {
-        /**/
-    }
     for (let i = config.accounts.length - 1; i >= 0; i--) {
         if (config.accounts[i].BALANCE.lt(avgGasCost.mul(4))) {
             try {
