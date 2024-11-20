@@ -310,7 +310,7 @@ export const arbRound = async (
                     span.setAttribute("didClear", false);
                 }
                 if (avgGasCost) {
-                    span.setAttribute("avgGasCost", avgGasCost.toString());
+                    span.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
                 }
                 span.setStatus({ code: SpanStatusCode.OK });
                 span.end();
@@ -713,10 +713,14 @@ export const main = async (argv: any, version?: string) => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
             if (config.accounts.length) {
-                roundSpan.setAttribute(
-                    "circulatingAccounts",
-                    config.accounts.map((v) => v.account.address),
+                const accountsWithBalance: Record<string, string> = {};
+                config.accounts.forEach(
+                    (v) =>
+                        (accountsWithBalance[v.account.address] = ethers.utils.formatUnits(
+                            v.BALANCE,
+                        )),
                 );
+                roundSpan.setAttribute("circulatingAccounts", JSON.stringify(accountsWithBalance));
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));

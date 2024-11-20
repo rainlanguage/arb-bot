@@ -109,15 +109,6 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        try {
-            gasPrice = ethers.BigNumber.from(await viemClient.getGasPrice())
-                .mul(config.gasPriceMultiplier)
-                .div("100")
-                .toBigInt();
-            rawtx.gasPrice = gasPrice;
-        } catch {
-            /**/
-        }
         gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
             .mul(config.gasLimitMultiplier)
             .div(100);

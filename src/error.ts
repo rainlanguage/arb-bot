@@ -15,6 +15,7 @@ import {
     decodeErrorResult,
     ExecutionRevertedError,
     InsufficientFundsError,
+    FeeCapTooLowError,
     // InvalidInputRpcError,
     // TransactionRejectedRpcError,
 } from "viem";
@@ -100,12 +101,15 @@ export function errorSnapshot(header: string, err: any): string {
  */
 export function containsNodeError(err: BaseError): boolean {
     try {
+        const snapshot = errorSnapshot("", err);
         return (
             // err instanceof TransactionRejectedRpcError ||
             // err instanceof InvalidInputRpcError ||
+            err instanceof FeeCapTooLowError ||
             err instanceof ExecutionRevertedError ||
             err instanceof InsufficientFundsError ||
             (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
+            (snapshot.includes("exceeds allowance") && !snapshot.includes("out of gas")) ||
             ("cause" in err && containsNodeError(err.cause as any))
         );
     } catch (error) {

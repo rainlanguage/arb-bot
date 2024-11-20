@@ -157,10 +157,19 @@ export async function manageAccounts(
 ) {
     const removedWallets: ViemClient[] = [];
     let accountsToAdd = 0;
-    const gasPrice = await config.viemClient.getGasPrice();
+    try {
+        const balances = await getBatchEthBalance(
+            config.accounts.map((v) => v.account.address),
+            config.viemClient as any as ViemClient,
+        );
+        config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
+    } catch {
+        /**/
+    }
     for (let i = config.accounts.length - 1; i >= 0; i--) {
         if (config.accounts[i].BALANCE.lt(avgGasCost.mul(4))) {
             try {
+                const gasPrice = await config.viemClient.getGasPrice();
                 await sweepToMainWallet(
                     config.accounts[i],
                     config.mainAccount,
@@ -529,11 +538,15 @@ export async function sweepToMainWallet(
         }
     }
 
-    if (cumulativeGasLimit.mul(gasPrice).gt(fromWallet.BALANCE)) {
+    if (cumulativeGasLimit.mul(gasPrice).mul(120).div(100).gt(fromWallet.BALANCE)) {
         const span = tracer?.startSpan("fund-wallet-to-sweep", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
-            const transferAmount = cumulativeGasLimit.mul(gasPrice).sub(fromWallet.BALANCE);
+            const transferAmount = cumulativeGasLimit
+                .mul(gasPrice)
+                .mul(120)
+                .div(100)
+                .sub(fromWallet.BALANCE);
             span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
             const hash = await toWallet.sendTransaction({
                 to: fromWallet.account.address,
