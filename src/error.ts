@@ -11,11 +11,12 @@ import { abi as genericArbAbi } from "../test/abis/GenericPoolOrderBookV4ArbOrde
 import {
     isHex,
     BaseError,
+    TimeoutError,
     RpcRequestError,
+    FeeCapTooLowError,
     decodeErrorResult,
     ExecutionRevertedError,
     InsufficientFundsError,
-    FeeCapTooLowError,
     // InvalidInputRpcError,
     // TransactionRejectedRpcError,
 } from "viem";
@@ -108,6 +109,17 @@ export function containsNodeError(err: BaseError): boolean {
             (snapshot.includes("exceeds allowance") && !snapshot.includes("out of gas")) ||
             ("cause" in err && containsNodeError(err.cause as any))
         );
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Checks if a viem BaseError is timeout error
+ */
+export function isTimeout(err: BaseError): boolean {
+    try {
+        return err instanceof TimeoutError || ("cause" in err && isTimeout(err.cause as any));
     } catch (error) {
         return false;
     }

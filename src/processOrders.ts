@@ -9,7 +9,7 @@ import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
-import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert } from "./error";
+import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert, isTimeout } from "./error";
 import {
     Report,
     BotConfig,
@@ -318,8 +318,14 @@ export const processOrders = async (
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
+                                if (isTimeout(e.error)) {
+                                    span.setAttribute("severity", ErrorSeverity.LOW);
+                                } else {
+                                    span.setAttribute("severity", ErrorSeverity.HIGH);
+                                }
+                            } else {
+                                span.setAttribute("severity", ErrorSeverity.HIGH);
                             }
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txSendFailed", true);
@@ -343,14 +349,20 @@ export const processOrders = async (
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.setAttribute("errorDetails", message);
+                                if (isTimeout(e.error)) {
+                                    span.setAttribute("severity", ErrorSeverity.LOW);
+                                } else {
+                                    span.setAttribute("severity", ErrorSeverity.HIGH);
+                                }
+                            } else {
+                                span.setAttribute("severity", ErrorSeverity.HIGH);
                             }
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
                             span.setStatus({ code: SpanStatusCode.ERROR, message });
                             span.setAttribute("unsuccessfulClear", true);
                             span.setAttribute("txMineFailed", true);
                         } else {
                             // record the error for the span
-                            let message = pair + "unexpected error";
+                            let message = "unexpected error";
                             if (e.error) {
                                 message = errorSnapshot(message, e.error);
                                 span.recordException(e.error);
@@ -361,7 +373,7 @@ export const processOrders = async (
                         }
                     } else {
                         // record the error for the span
-                        let message = pair + ": unexpected error";
+                        let message = "unexpected error";
                         if (e.error) {
                             message = errorSnapshot(message, e.error);
                             span.recordException(e.error);
