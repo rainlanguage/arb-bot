@@ -355,7 +355,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(3).div(4),
+            maximumInput: ethers.utils.parseUnits("9.999999701976776119"),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -384,8 +384,8 @@ describe("Test route processor find opp", async function () {
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
                 },
-                maximumInput: vaultBalance.mul(3).div(4),
-                price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
+                maximumInput: ethers.utils.parseUnits("9.999999701976776119"),
+                price: getCurrentPrice(ethers.utils.parseUnits("9.999999701976776119")),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
@@ -393,17 +393,17 @@ describe("Test route processor find opp", async function () {
                     ethers.utils.parseUnits(ethPrice),
                     undefined,
                     undefined,
-                    getCurrentPrice(vaultBalance.mul(3).div(4)),
-                    vaultBalance.mul(3).div(4),
+                    ethers.utils.parseUnits("0.996900529709950975"),
+                    ethers.utils.parseUnits("9.999999701976776119"),
                 ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-                amountIn: formatUnits(vaultBalance.mul(3).div(4)),
-                amountOut: formatUnits(getAmountOut(vaultBalance.mul(3).div(4)), 6),
-                marketPrice: formatUnits(getCurrentPrice(vaultBalance.sub(vaultBalance.div(4)))),
+                amountIn: "9.999999701976776119",
+                amountOut: "9.969005",
+                marketPrice: "0.996900529709950975",
                 route: expectedRouteVisual,
             },
         };
@@ -472,8 +472,7 @@ describe("Test route processor find opp", async function () {
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
+                        `{"amountIn":"9.999999701976776119","amountOut":"9.969005","marketPrice":"0.996900529709950975","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
                     ],
                 },
             };
@@ -505,11 +504,7 @@ describe("Test route processor find opp", async function () {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {
-                    hops: [
-                        `{"amountIn":"${formatUnits(vaultBalance)}","route":"no-way"}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","route":"no-way"}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","route":"no-way"}`,
-                    ],
+                    hops: [`{"amountIn":"${formatUnits(vaultBalance)}","route":"no-way"}`],
                 },
             };
             assert.deepEqual(error, expected);
@@ -674,8 +669,7 @@ describe("Test find opp with retries", async function () {
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
+                        `{"amountIn":"9.999999701976776119","amountOut":"9.969005","marketPrice":"0.996900529709950975","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
                     ],
                 },
             };

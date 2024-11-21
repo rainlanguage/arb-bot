@@ -106,7 +106,7 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
             .mul(config.gasLimitMultiplier)
             .div(100);
     } catch (e) {
@@ -161,7 +161,7 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
                 .mul(config.gasLimitMultiplier)
                 .div(100);
             rawtx.gas = gasLimit.toBigInt();

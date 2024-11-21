@@ -740,6 +740,7 @@ export const main = async (argv: any, version?: string) => {
                         )),
                 );
                 roundSpan.setAttribute("circulatingAccounts", JSON.stringify(accountsWithBalance));
+                roundSpan.setAttribute("lastAccountIndex", lastUsedAccountIndex);
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));

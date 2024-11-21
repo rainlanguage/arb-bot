@@ -1282,3 +1282,27 @@ export function getMarketQuote(
         };
     }
 }
+
+/**
+ * Scales a given value and its decimals to 18 fixed point decimals
+ */
+export function scale18(value: BigNumberish, decimals: BigNumberish): BigNumber {
+    const d = BigNumber.from(decimals).toNumber();
+    if (d > 18) {
+        return BigNumber.from(value).div("1" + "0".repeat(d - 18));
+    } else {
+        return BigNumber.from(value).mul("1" + "0".repeat(18 - d));
+    }
+}
+
+/**
+ * Scales a given 18 fixed point decimals value to the given decimals point value
+ */
+export function scale18To(value: BigNumberish, targetDecimals: BigNumberish): BigNumber {
+    const decimals = BigNumber.from(targetDecimals).toNumber();
+    if (decimals > 18) {
+        return BigNumber.from(value).mul("1" + "0".repeat(decimals - 18));
+    } else {
+        return BigNumber.from(value).div("1" + "0".repeat(18 - decimals));
+    }
+}

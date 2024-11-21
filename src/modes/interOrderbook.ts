@@ -109,7 +109,7 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
             .mul(config.gasLimitMultiplier)
             .div(100);
     } catch (e) {
@@ -154,7 +154,7 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
                 .mul(config.gasLimitMultiplier)
                 .div(100);
             rawtx.gas = gasLimit.toBigInt();
@@ -269,7 +269,7 @@ export async function findOpp({
         .filter((v) => v !== undefined) as BundledOrders[];
 
     if (!opposingOrderbookOrders || !opposingOrderbookOrders.length) throw undefined;
-    let maximumInput = orderPairObject.takeOrders.reduce(
+    const maximumInput = orderPairObject.takeOrders.reduce(
         (a, b) => a.add(b.quote!.maxOutput),
         ethers.constants.Zero,
     );
@@ -304,37 +304,37 @@ export async function findOpp({
         for (const err of (e as AggregateError).errors) {
             allNoneNodeErrors.push(err?.value?.noneNodeError);
         }
-        maximumInput = maximumInput.div(2);
-        try {
-            // try to find the first resolving binary search
-            return await Promise.any(
-                opposingOrderbookOrders.map((v) => {
-                    // filter out the same owner orders
-                    const opposingOrders = {
-                        ...v,
-                        takeOrders: v.takeOrders.filter(
-                            (e) =>
-                                e.takeOrder.order.owner.toLowerCase() !==
-                                orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase(),
-                        ),
-                    };
-                    return binarySearch({
-                        orderPairObject,
-                        opposingOrders,
-                        signer,
-                        maximumInput,
-                        gasPrice,
-                        arb,
-                        inputToEthPrice,
-                        outputToEthPrice,
-                        config,
-                        viemClient,
-                    });
-                }),
-            );
-        } catch {
-            /**/
-        }
+        // maximumInput = maximumInput.div(2);
+        // try {
+        //     // try to find the first resolving binary search
+        //     return await Promise.any(
+        //         opposingOrderbookOrders.map((v) => {
+        //             // filter out the same owner orders
+        //             const opposingOrders = {
+        //                 ...v,
+        //                 takeOrders: v.takeOrders.filter(
+        //                     (e) =>
+        //                         e.takeOrder.order.owner.toLowerCase() !==
+        //                         orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase(),
+        //                 ),
+        //             };
+        //             return binarySearch({
+        //                 orderPairObject,
+        //                 opposingOrders,
+        //                 signer,
+        //                 maximumInput,
+        //                 gasPrice,
+        //                 arb,
+        //                 inputToEthPrice,
+        //                 outputToEthPrice,
+        //                 config,
+        //                 viemClient,
+        //             });
+        //         }),
+        //     );
+        // } catch {
+        //     /**/
+        // }
         const allOrderbooksAttributes: any = {};
         for (let i = 0; i < e.errors.length; i++) {
             allOrderbooksAttributes[opposingOrderbookOrders[i].orderbook] =

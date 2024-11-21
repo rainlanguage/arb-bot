@@ -5,7 +5,14 @@ import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
-import { estimateProfit, RPoolFilter, visualizeRoute, withBigintSerializer } from "../utils";
+import {
+    scale18,
+    scale18To,
+    RPoolFilter,
+    estimateProfit,
+    visualizeRoute,
+    withBigintSerializer,
+} from "../utils";
 
 /**
  * Specifies the reason that dryrun failed
@@ -174,7 +181,7 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas({ ...rawtx, type: "legacy" }))
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
                 .mul(config.gasLimitMultiplier)
                 .div(100);
         } catch (e) {
@@ -221,9 +228,7 @@ export async function dryrun({
             try {
                 blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
-                gasLimit = ethers.BigNumber.from(
-                    await signer.estimateGas({ ...rawtx, type: "legacy" }),
-                )
+                gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
                     .mul(config.gasLimitMultiplier)
                     .div(100);
                 rawtx.gas = gasLimit.toBigInt();
@@ -332,79 +337,81 @@ export async function findOpp({
         (a, b) => a.add(b.quote!.maxOutput),
         ethers.constants.Zero,
     );
-    let maximumInput = BigNumber.from(initAmount.toString());
+    const maximumInput = BigNumber.from(initAmount.toString());
 
-    const allSuccessHops: DryrunResult[] = [];
     const allHopsAttributes: string[] = [];
     const allNoneNodeErrors: (string | undefined)[] = [];
-    for (let i = 1; i < config.hops + 1; i++) {
+    try {
+        return await dryrun({
+            mode,
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            signer,
+            maximumInput,
+            gasPrice,
+            arb,
+            ethPrice,
+            config,
+            viemClient,
+        });
+    } catch (e: any) {
+        // the fail reason can only be no route in case all hops fail reasons are no route
+        if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
+        allNoneNodeErrors.push(e?.value?.noneNodeError);
+        allHopsAttributes.push(JSON.stringify(e.spanAttributes));
+    }
+    const maxTradeSize = findMaxInput({
+        orderPairObject,
+        dataFetcher,
+        fromToken,
+        toToken,
+        maximumInput,
+        gasPrice,
+        config,
+    });
+    if (maxTradeSize) {
         try {
-            const dryrunResult = await dryrun({
+            return await dryrun({
                 mode,
                 orderPairObject,
                 dataFetcher,
                 fromToken,
                 toToken,
                 signer,
-                maximumInput,
+                maximumInput: maxTradeSize,
                 gasPrice,
                 arb,
                 ethPrice,
                 config,
                 viemClient,
             });
-
-            // return early if there was success on first attempt (ie full vault balance)
-            // else record the success result
-            if (i == 1) {
-                return dryrunResult;
-            } else {
-                allSuccessHops.push(dryrunResult);
-            }
-            // set the maxInput for next hop by increasing
-            maximumInput = maximumInput.add(initAmount.div(2 ** i));
         } catch (e: any) {
             // the fail reason can only be no route in case all hops fail reasons are no route
             if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
-
-            // record this hop attributes
-            // error attr is only recorded for first hop,
-            // since it is repeated and consumes lots of data
-            if (i !== 1) {
-                delete e.spanAttributes["error"];
-                delete e.spanAttributes["rawtx"];
-            }
+            delete e.spanAttributes["error"];
+            delete e.spanAttributes["rawtx"];
             allNoneNodeErrors.push(e?.value?.noneNodeError);
             allHopsAttributes.push(JSON.stringify(e.spanAttributes));
-
-            // set the maxInput for next hop by decreasing
-            maximumInput = maximumInput.sub(initAmount.div(2 ** i));
         }
     }
+    // in case of no successfull hop, allHopsAttributes will be included
+    spanAttributes["hops"] = allHopsAttributes;
 
-    if (allSuccessHops.length) {
-        return allSuccessHops[allSuccessHops.length - 1];
-    } else {
-        // in case of no successfull hop, allHopsAttributes will be included
-        spanAttributes["hops"] = allHopsAttributes;
-
-        if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
-        else {
-            const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
-            if (
-                allNoneNodeErrors.length &&
-                noneNodeErrors.length / allNoneNodeErrors.length > 0.5
-            ) {
-                result.value = {
-                    noneNodeError: noneNodeErrors[0],
-                    estimatedProfit: ethers.constants.Zero,
-                };
-            }
-            result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
+    if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
+    else {
+        const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
+        if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
+            result.value = {
+                noneNodeError: noneNodeErrors[0],
+                estimatedProfit: ethers.constants.Zero,
+            };
         }
-
-        return Promise.reject(result);
+        result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
     }
+
+    return Promise.reject(result);
 }
 
 /**
@@ -497,5 +504,68 @@ export async function findOppWithRetries({
         }
         result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
         throw result;
+    }
+}
+
+/**
+ * Calculates the largest possible trade size, returns undefined if not possible,
+ * because price difference is larger to be covered by reducing the trade size
+ */
+export function findMaxInput({
+    orderPairObject,
+    dataFetcher,
+    fromToken,
+    toToken,
+    maximumInput: maximumInputFixed,
+    gasPrice,
+    config,
+}: {
+    config: BotConfig;
+    orderPairObject: BundledOrders;
+    dataFetcher: DataFetcher;
+    gasPrice: bigint;
+    toToken: Token;
+    fromToken: Token;
+    maximumInput: BigNumber;
+}): BigNumber | undefined {
+    const result: BigNumber[] = [];
+    const ratio = orderPairObject.takeOrders[0].quote!.ratio;
+    const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    const initAmount = scale18To(maximumInputFixed, fromToken.decimals).div(2);
+    let maximumInput = BigNumber.from(initAmount.toString());
+    for (let i = 1; i < 26; i++) {
+        const maxInput18 = scale18(maximumInput, fromToken.decimals);
+        const maxOutput18 = ratio.mul(maxInput18).div("1" + "0".repeat(18));
+        const maximumOutput = scale18To(maxOutput18, toToken.decimals);
+
+        const route = Router.findBestRoute(
+            pcMap,
+            config.chain.id as ChainId,
+            fromToken,
+            maximumInput.toBigInt(),
+            toToken,
+            Number(gasPrice),
+            undefined,
+            RPoolFilter,
+            undefined,
+            config.route,
+        );
+        if (route.status == "NoWay") {
+            maximumInput = maximumInput.sub(initAmount.div(2 ** i));
+        } else {
+            const amountOut = scale18(route.amountOutBI, toToken.decimals);
+            if (amountOut.gte(maximumOutput)) {
+                result.unshift(maximumInput);
+                maximumInput = maximumInput.add(initAmount.div(2 ** i));
+            } else {
+                maximumInput = maximumInput.sub(initAmount.div(2 ** i));
+            }
+        }
+    }
+
+    if (result.length) {
+        return result[0];
+    } else {
+        return undefined;
     }
 }

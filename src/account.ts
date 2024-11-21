@@ -1,10 +1,10 @@
+import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { getRpSwap, PoolBlackList, sleep } from "./utils";
 import { createViemClient, getDataFetcher } from "./config";
-import { ChainId, LiquidityProviders, RPParams } from "sushi";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
@@ -747,7 +747,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 rp4Address,
                 config.dataFetcher,
                 gasPrice,
-                Object.values(LiquidityProviders).filter((v) => v !== LiquidityProviders.CurveSwap),
+                config.lps,
             );
             let routeText = "";
             route.legs.forEach((v, i) => {
@@ -804,7 +804,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const rawtx = { to: rp4Address, data: "0x" as `0x${string}` };
             let gas = 0n;
             let amountOutMin = ethers.constants.Zero;
-            for (let j = 50; j > 0; j--) {
+            for (let j = 50; j > 39; j--) {
                 amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin)
                     .mul(2 * j)
                     .div(100);
@@ -820,7 +820,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                     gas = await config.mainAccount.estimateGas(rawtx);
                     break;
                 } catch (error) {
-                    if (j === 1) throw error;
+                    if (j === 40) throw error;
                 }
             }
             const gasCost = gasPrice.mul(gas).mul(15).div(10);
