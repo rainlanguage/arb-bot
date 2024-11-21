@@ -48,6 +48,7 @@ export async function dryrun({
     ethPrice,
     config,
     viemClient,
+    hasPriceMatch,
 }: {
     mode: number;
     config: BotConfig;
@@ -61,6 +62,7 @@ export async function dryrun({
     toToken: Token;
     fromToken: Token;
     maximumInput: BigNumber;
+    hasPriceMatch?: { value: boolean };
 }) {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -112,6 +114,7 @@ export async function dryrun({
 
         // exit early if market price is lower than order quote ratio
         if (price.lt(orderPairObject.takeOrders[0].quote!.ratio)) {
+            if (hasPriceMatch) hasPriceMatch.value = false;
             result.reason = RouteProcessorDryrunHaltReason.NoOpportunity;
             spanAttributes["error"] = "Order's ratio greater than market price";
             return Promise.reject(result);
@@ -333,6 +336,9 @@ export async function findOpp({
     };
 
     let noRoute = true;
+    const hasPriceMatch = {
+        value: true,
+    };
     const initAmount = orderPairObject.takeOrders.reduce(
         (a, b) => a.add(b.quote!.maxOutput),
         ethers.constants.Zero,
@@ -355,6 +361,7 @@ export async function findOpp({
             ethPrice,
             config,
             viemClient,
+            hasPriceMatch,
         });
     } catch (e: any) {
         // the fail reason can only be no route in case all hops fail reasons are no route
@@ -362,38 +369,39 @@ export async function findOpp({
         allNoneNodeErrors.push(e?.value?.noneNodeError);
         allHopsAttributes.push(JSON.stringify(e.spanAttributes));
     }
-    const maxTradeSize = findMaxInput({
-        orderPairObject,
-        dataFetcher,
-        fromToken,
-        toToken,
-        maximumInput,
-        gasPrice,
-        config,
-    });
-    if (maxTradeSize) {
-        try {
-            return await dryrun({
-                mode,
-                orderPairObject,
-                dataFetcher,
-                fromToken,
-                toToken,
-                signer,
-                maximumInput: maxTradeSize,
-                gasPrice,
-                arb,
-                ethPrice,
-                config,
-                viemClient,
-            });
-        } catch (e: any) {
-            // the fail reason can only be no route in case all hops fail reasons are no route
-            if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
-            delete e.spanAttributes["error"];
-            delete e.spanAttributes["rawtx"];
-            allNoneNodeErrors.push(e?.value?.noneNodeError);
-            allHopsAttributes.push(JSON.stringify(e.spanAttributes));
+    if (!hasPriceMatch.value) {
+        const maxTradeSize = findMaxInput({
+            orderPairObject,
+            dataFetcher,
+            fromToken,
+            toToken,
+            maximumInput,
+            gasPrice,
+            config,
+        });
+        if (maxTradeSize) {
+            try {
+                return await dryrun({
+                    mode,
+                    orderPairObject,
+                    dataFetcher,
+                    fromToken,
+                    toToken,
+                    signer,
+                    maximumInput: maxTradeSize,
+                    gasPrice,
+                    arb,
+                    ethPrice,
+                    config,
+                    viemClient,
+                });
+            } catch (e: any) {
+                // the fail reason can only be no route in case all hops fail reasons are no route
+                if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
+                delete e.spanAttributes["rawtx"];
+                allNoneNodeErrors.push(e?.value?.noneNodeError);
+                allHopsAttributes.push(JSON.stringify(e.spanAttributes));
+            }
         }
     }
     // in case of no successfull hop, allHopsAttributes will be included
@@ -555,7 +563,7 @@ export function findMaxInput({
         } else {
             const amountOut = scale18(route.amountOutBI, toToken.decimals);
             if (amountOut.gte(maximumOutput)) {
-                result.unshift(maximumInput);
+                result.unshift(scale18(maximumInput, fromToken.decimals));
                 maximumInput = maximumInput.add(initAmount.div(2 ** i));
             } else {
                 maximumInput = maximumInput.sub(initAmount.div(2 ** i));

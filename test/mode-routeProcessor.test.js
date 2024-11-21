@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const testData = require("./data");
 const { errorSnapshot } = require("../src/error");
-const { estimateProfit } = require("../src/utils");
+const { estimateProfit, clone } = require("../src/utils");
 const {
     ethers,
     utils: { formatUnits },
@@ -331,18 +331,17 @@ describe("Test route processor find opp", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        // mock the signer to reject the first attempt on gas estimation
-        // so the dryrun goes into binary search
-        let rejectFirst = true;
         signer.estimateGas = async () => {
-            if (rejectFirst) {
-                rejectFirst = false;
-                return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
-            } else return gasLimitEstimation;
+            return gasLimitEstimation;
         };
+        const orderPairObjectCopy = clone(orderPairObject);
+        orderPairObjectCopy.takeOrders[0].quote.ratio = ethers.utils.parseUnits("0.009900695135");
+        orderPairObjectCopy.takeOrders[0].quote.maxOutput = ethers.BigNumber.from(
+            "1" + "0".repeat(25),
+        );
         const result = await findOpp({
             mode: 0,
-            orderPairObject,
+            orderPairObject: orderPairObjectCopy,
             dataFetcher,
             fromToken,
             toToken,
@@ -355,7 +354,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: ethers.utils.parseUnits("9.999999701976776119"),
+            maximumInput: ethers.utils.parseUnits("9999999.701976776123046875"),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -384,26 +383,28 @@ describe("Test route processor find opp", async function () {
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
                 },
-                maximumInput: ethers.utils.parseUnits("9.999999701976776119"),
-                price: getCurrentPrice(ethers.utils.parseUnits("9.999999701976776119")),
+                maximumInput: ethers.utils.parseUnits("9999999.701976776123046875"),
+                price: getCurrentPrice(ethers.utils.parseUnits("9999999.701976776123046875")),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
-                    orderPairObject,
+                    orderPairObjectCopy,
                     ethers.utils.parseUnits(ethPrice),
                     undefined,
                     undefined,
-                    ethers.utils.parseUnits("0.996900529709950975"),
-                    ethers.utils.parseUnits("9.999999701976776119"),
+                    ethers.utils.parseUnits("0.009900695426163716"),
+                    ethers.utils.parseUnits("9999999.701976776123046875"),
                 ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-                amountIn: "9.999999701976776119",
-                amountOut: "9.969005",
-                marketPrice: "0.996900529709950975",
+                amountIn: "9999999.701976776123046875",
+                amountOut: "99006.951311",
+                marketPrice: ethers.utils.formatUnits(
+                    getCurrentPrice(ethers.utils.parseUnits("9999999.701976776123046875")),
+                ),
                 route: expectedRouteVisual,
             },
         };
@@ -472,7 +473,6 @@ describe("Test route processor find opp", async function () {
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"9.999999701976776119","amountOut":"9.969005","marketPrice":"0.996900529709950975","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
                     ],
                 },
             };
@@ -669,7 +669,6 @@ describe("Test find opp with retries", async function () {
                 spanAttributes: {
                     hops: [
                         `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"9.999999701976776119","amountOut":"9.969005","marketPrice":"0.996900529709950975","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false}`,
                     ],
                 },
             };
