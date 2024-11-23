@@ -106,15 +106,6 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        try {
-            gasPrice = ethers.BigNumber.from(await viemClient.getGasPrice())
-                .mul(config.gasPriceMultiplier)
-                .div("100")
-                .toBigInt();
-            rawtx.gasPrice = gasPrice;
-        } catch {
-            /**/
-        }
         gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
             .mul(config.gasLimitMultiplier)
             .div(100);
@@ -122,6 +113,7 @@ export async function dryrun({
         // reason, code, method, transaction, error, stack, message
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
+        spanAttributes["stage"] = 1;
         spanAttributes["isNodeError"] = isNodeError;
         spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
@@ -196,6 +188,7 @@ export async function dryrun({
         } catch (e) {
             const isNodeError = containsNodeError(e as BaseError);
             const errMsg = errorSnapshot("", e);
+            spanAttributes["stage"] = 2;
             spanAttributes["isNodeError"] = isNodeError;
             spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(

@@ -1,10 +1,10 @@
+import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { getRpSwap, PoolBlackList, sleep } from "./utils";
 import { createViemClient, getDataFetcher } from "./config";
-import { ChainId, LiquidityProviders, RPParams } from "sushi";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { erc20Abi, multicall3Abi, orderbookAbi, routeProcessor3Abi } from "./abis";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
@@ -157,10 +157,10 @@ export async function manageAccounts(
 ) {
     const removedWallets: ViemClient[] = [];
     let accountsToAdd = 0;
-    const gasPrice = await config.viemClient.getGasPrice();
     for (let i = config.accounts.length - 1; i >= 0; i--) {
         if (config.accounts[i].BALANCE.lt(avgGasCost.mul(4))) {
             try {
+                const gasPrice = await config.viemClient.getGasPrice();
                 await sweepToMainWallet(
                     config.accounts[i],
                     config.mainAccount,
@@ -529,16 +529,20 @@ export async function sweepToMainWallet(
         }
     }
 
-    if (cumulativeGasLimit.mul(gasPrice).gt(fromWallet.BALANCE)) {
+    if (cumulativeGasLimit.mul(gasPrice).mul(125).div(100).gt(fromWallet.BALANCE)) {
         const span = tracer?.startSpan("fund-wallet-to-sweep", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
-            const transferAmount = cumulativeGasLimit.mul(gasPrice).sub(fromWallet.BALANCE);
+            const transferAmount = cumulativeGasLimit
+                .mul(gasPrice)
+                .mul(125)
+                .div(100)
+                .sub(fromWallet.BALANCE);
             span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
             const hash = await toWallet.sendTransaction({
                 to: fromWallet.account.address,
                 value: transferAmount.toBigInt(),
-                nonce: await getNonce(fromWallet),
+                nonce: await getNonce(toWallet),
             });
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
@@ -636,6 +640,7 @@ export async function sweepToMainWallet(
             if (transferAmount.gt(0)) {
                 span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
                 const hash = await fromWallet.sendTransaction({
+                    gasPrice,
                     to: toWallet.account.address,
                     value: transferAmount.toBigInt(),
                     gas: gasLimit.toBigInt(),
@@ -742,7 +747,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 rp4Address,
                 config.dataFetcher,
                 gasPrice,
-                Object.values(LiquidityProviders).filter((v) => v !== LiquidityProviders.CurveSwap),
+                config.lps,
             );
             let routeText = "";
             route.legs.forEach((v, i) => {
@@ -799,7 +804,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             const rawtx = { to: rp4Address, data: "0x" as `0x${string}` };
             let gas = 0n;
             let amountOutMin = ethers.constants.Zero;
-            for (let j = 50; j > 0; j--) {
+            for (let j = 50; j > 39; j--) {
                 amountOutMin = ethers.BigNumber.from(rpParams.amountOutMin)
                     .mul(2 * j)
                     .div(100);
@@ -815,7 +820,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                     gas = await config.mainAccount.estimateGas(rawtx);
                     break;
                 } catch (error) {
-                    if (j === 1) throw error;
+                    if (j === 40) throw error;
                 }
             }
             const gasCost = gasPrice.mul(gas).mul(15).div(10);

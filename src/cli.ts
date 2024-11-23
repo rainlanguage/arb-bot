@@ -13,7 +13,13 @@ import { BotConfig, CliOptions, ViemClient } from "./types";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
+import {
+    sweepToEth,
+    manageAccounts,
+    rotateProviders,
+    sweepToMainWallet,
+    getBatchEthBalance,
+} from "./account";
 import {
     diag,
     trace,
@@ -310,7 +316,7 @@ export const arbRound = async (
                     span.setAttribute("didClear", false);
                 }
                 if (avgGasCost) {
-                    span.setAttribute("avgGasCost", avgGasCost.toString());
+                    span.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
                 }
                 span.setStatus({ code: SpanStatusCode.OK });
                 span.end();
@@ -627,6 +633,19 @@ export const main = async (argv: any, version?: string) => {
                     roundSpan.setAttribute("didClear", false);
                 }
 
+                // fecth account's balances
+                if (foundOpp && config.accounts.length) {
+                    try {
+                        const balances = await getBatchEthBalance(
+                            config.accounts.map((v) => v.account.address),
+                            config.viemClient as any as ViemClient,
+                        );
+                        config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
+                    } catch {
+                        /**/
+                    }
+                }
+
                 // keep avg gas cost
                 if (roundAvgGasCost) {
                     const _now = Date.now();
@@ -713,10 +732,15 @@ export const main = async (argv: any, version?: string) => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
             if (config.accounts.length) {
-                roundSpan.setAttribute(
-                    "circulatingAccounts",
-                    config.accounts.map((v) => v.account.address),
+                const accountsWithBalance: Record<string, string> = {};
+                config.accounts.forEach(
+                    (v) =>
+                        (accountsWithBalance[v.account.address] = ethers.utils.formatUnits(
+                            v.BALANCE,
+                        )),
                 );
+                roundSpan.setAttribute("circulatingAccounts", JSON.stringify(accountsWithBalance));
+                roundSpan.setAttribute("lastAccountIndex", lastUsedAccountIndex);
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));

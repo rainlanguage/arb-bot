@@ -11,7 +11,9 @@ import { abi as genericArbAbi } from "../test/abis/GenericPoolOrderBookV4ArbOrde
 import {
     isHex,
     BaseError,
+    TimeoutError,
     RpcRequestError,
+    FeeCapTooLowError,
     decodeErrorResult,
     ExecutionRevertedError,
     InsufficientFundsError,
@@ -63,11 +65,7 @@ export function errorSnapshot(header: string, err: any): string {
         if (err.name) message.push("Error: " + err.name);
         if (err.details) {
             message.push("Details: " + err.details);
-            if (
-                err.name.includes("unknown reason") ||
-                err.details.includes("unknown reason") ||
-                err.shortMessage.includes("unknown reason")
-            ) {
+            if (message.some((v) => v.includes("unknown reason"))) {
                 const { raw, decoded } = parseRevertError(err);
                 if (decoded) {
                     message.push("Error Name: " + decoded.name);
@@ -100,14 +98,28 @@ export function errorSnapshot(header: string, err: any): string {
  */
 export function containsNodeError(err: BaseError): boolean {
     try {
+        const snapshot = errorSnapshot("", err);
         return (
             // err instanceof TransactionRejectedRpcError ||
             // err instanceof InvalidInputRpcError ||
+            err instanceof FeeCapTooLowError ||
             err instanceof ExecutionRevertedError ||
             err instanceof InsufficientFundsError ||
             (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
+            (snapshot.includes("exceeds allowance") && !snapshot.includes("out of gas")) ||
             ("cause" in err && containsNodeError(err.cause as any))
         );
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Checks if a viem BaseError is timeout error
+ */
+export function isTimeout(err: BaseError): boolean {
+    try {
+        return err instanceof TimeoutError || ("cause" in err && isTimeout(err.cause as any));
     } catch (error) {
         return false;
     }
