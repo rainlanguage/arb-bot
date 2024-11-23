@@ -113,6 +113,8 @@ Other optional arguments are:
 - `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
 - `--public-rpc`, Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables
 - `--gas-price-multiplier`, Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables
+- `--gas-limit-multiplier`, Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables
+- `--tx-gas`, Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
@@ -259,6 +261,12 @@ ROUTE="single"
 
 # Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
 GAS_PRICE_MULTIPLIER=
+
+# Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%
+GAS_LIMIT_MULTIPLIER=
+
+# Option to set a static gas limit for all submitting txs
+TX_GAS=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

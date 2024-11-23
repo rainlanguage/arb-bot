@@ -14,7 +14,13 @@ import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import { manageAccounts, rotateProviders, sweepToMainWallet, sweepToEth } from "./account";
+import {
+    sweepToEth,
+    manageAccounts,
+    rotateProviders,
+    sweepToMainWallet,
+    getBatchEthBalance,
+} from "./account";
 import {
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
@@ -63,6 +69,8 @@ const ENV_OPTIONS = {
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
     selfFundOrders: process?.env?.SELF_FUND_ORDERS,
     gasPriceMultiplier: process?.env?.GAS_PRICE_MULTIPLIER,
+    gasLimitMultiplier: process?.env?.GAS_LIMIT_MULTIPLIER,
+    txGas: process?.env?.TX_GAS,
     route: process?.env?.ROUTE,
     ownerProfile: process?.env?.OWNER_PROFILE
         ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -184,6 +192,14 @@ const getOptions = async (argv: any, version?: string) => {
             "--gas-price-multiplier <integer>",
             "Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables",
         )
+        .option(
+            "--gas-limit-multiplier <integer>",
+            "Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
+        )
+        .option(
+            "--tx-gas <integer>",
+            "Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -223,6 +239,9 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || getEnv(ENV_OPTIONS.selfFundOrders);
     cmdOptions.gasPriceMultiplier =
         cmdOptions.gasPriceMultiplier || getEnv(ENV_OPTIONS.gasPriceMultiplier);
+    cmdOptions.gasLimitMultiplier =
+        cmdOptions.gasLimitMultiplier || getEnv(ENV_OPTIONS.gasLimitMultiplier);
+    cmdOptions.txGas = cmdOptions.txGas || getEnv(ENV_OPTIONS.txGas);
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
     cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
@@ -285,9 +304,10 @@ export const arbRound = async (
         try {
             let txs;
             let foundOpp = false;
+            let didClear = false;
             const { reports = [], avgGasCost = undefined } = await clear(
                 config,
-                bundledOrders,
+                ordersDetails,
                 tracer,
                 ctx,
             );
@@ -296,7 +316,6 @@ export const arbRound = async (
                 if (txs.length) {
                     foundOpp = true;
                     span.setAttribute("txUrls", txs);
-                    span.setAttribute("didClear", true);
                     span.setAttribute("foundOpp", true);
                 } else if (
                     reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
@@ -304,15 +323,24 @@ export const arbRound = async (
                     foundOpp = true;
                     span.setAttribute("foundOpp", true);
                 }
+                if (
+                    reports.some(
+                        (v) =>
+                            v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
+                    )
+                ) {
+                    didClear = true;
+                    span.setAttribute("didClear", true);
+                }
             } else {
                 span.setAttribute("didClear", false);
             }
             if (avgGasCost) {
-                span.setAttribute("avgGasCost", avgGasCost.toString());
+                span.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
             span.setStatus({ code: SpanStatusCode.OK });
             span.end();
-            return { txs, foundOpp, avgGasCost };
+            return { txs, foundOpp, didClear, avgGasCost };
         } catch (e: any) {
             if (e?.startsWith?.("Failed to batch quote orders")) {
                 span.setAttribute("severity", ErrorSeverity.LOW);
@@ -326,7 +354,7 @@ export const arbRound = async (
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
             span.end();
-            return { txs: [], foundOpp: false, avgGasCost: undefined };
+            return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
         }
     });
 };
@@ -405,6 +433,32 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         } else throw "invalid gasPriceMultiplier value, must be an integer greater than zero";
     } else {
         options.gasPriceMultiplier = 107;
+    }
+    if (options.gasLimitMultiplier) {
+        if (typeof options.gasLimitMultiplier === "number") {
+            if (options.gasLimitMultiplier <= 0 || !Number.isInteger(options.gasLimitMultiplier))
+                throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+        } else if (
+            typeof options.gasLimitMultiplier === "string" &&
+            /^[0-9]+$/.test(options.gasLimitMultiplier)
+        ) {
+            options.gasLimitMultiplier = Number(options.gasLimitMultiplier);
+            if (options.gasLimitMultiplier <= 0)
+                throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+        } else throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
+    } else {
+        options.gasLimitMultiplier = 105;
+    }
+    if (options.txGas) {
+        if (typeof options.txGas === "number") {
+            if (options.txGas <= 0 || !Number.isInteger(options.txGas))
+                throw "invalid txGas value, must be an integer greater than zero";
+            else options.txGas = BigInt(options.txGas);
+        } else if (typeof options.txGas === "string" && /^[0-9]+$/.test(options.txGas)) {
+            options.txGas = BigInt(options.txGas);
+            if (options.txGas <= 0n)
+                throw "invalid txGas value, must be an integer greater than zero";
+        } else throw "invalid txGas value, must be an integer greater than zero";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];
@@ -607,22 +661,38 @@ export const main = async (argv: any, version?: string) => {
                     config,
                     bundledOrders,
                 );
-                let txs, foundOpp, roundAvgGasCost;
+                let txs, foundOpp, didClear, roundAvgGasCost;
                 if (roundResult) {
                     txs = roundResult.txs;
                     foundOpp = roundResult.foundOpp;
+                    didClear = roundResult.didClear;
                     roundAvgGasCost = roundResult.avgGasCost;
                 }
                 if (txs && txs.length) {
                     roundSpan.setAttribute("txUrls", txs);
-                    roundSpan.setAttribute("didClear", true);
                     roundSpan.setAttribute("foundOpp", true);
+                } else if (didClear) {
+                    roundSpan.setAttribute("foundOpp", true);
+                    roundSpan.setAttribute("didClear", true);
                 } else if (foundOpp) {
                     roundSpan.setAttribute("foundOpp", true);
                     roundSpan.setAttribute("didClear", false);
                 } else {
                     roundSpan.setAttribute("foundOpp", false);
                     roundSpan.setAttribute("didClear", false);
+                }
+
+                // fecth account's balances
+                if (foundOpp && config.accounts.length) {
+                    try {
+                        const balances = await getBatchEthBalance(
+                            config.accounts.map((v) => v.account.address),
+                            config.viemClient as any as ViemClient,
+                        );
+                        config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
+                    } catch {
+                        /**/
+                    }
                 }
 
                 // keep avg gas cost
@@ -711,10 +781,15 @@ export const main = async (argv: any, version?: string) => {
                 roundSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
             }
             if (config.accounts.length) {
-                roundSpan.setAttribute(
-                    "circulatingAccounts",
-                    config.accounts.map((v) => v.account.address),
+                const accountsWithBalance: Record<string, string> = {};
+                config.accounts.forEach(
+                    (v) =>
+                        (accountsWithBalance[v.account.address] = ethers.utils.formatUnits(
+                            v.BALANCE,
+                        )),
                 );
+                roundSpan.setAttribute("circulatingAccounts", JSON.stringify(accountsWithBalance));
+                roundSpan.setAttribute("lastAccountIndex", lastUsedAccountIndex);
             }
             if (avgGasCost) {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));

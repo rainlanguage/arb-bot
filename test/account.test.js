@@ -105,7 +105,7 @@ describe("Test accounts", async function () {
     it("should manage accounts successfully", async function () {
         const viemClient = {
             chain: { id: 137 },
-            multicall: async () => [10000n, 0n, 0n],
+            multicall: async () => [10n, 0n],
             getGasPrice: async () => 3000000n,
         };
         const mnemonic = "test test test test test test test test test test test junk";

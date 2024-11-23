@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const testData = require("./data");
 const { errorSnapshot } = require("../src/error");
-const { estimateProfit } = require("../src/utils");
+const { estimateProfit, clone } = require("../src/utils");
 const {
     ethers,
     utils: { formatUnits },
@@ -199,7 +199,11 @@ describe("Test route processor dryrun", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -226,6 +230,7 @@ describe("Test route processor dryrun", async function () {
                     blockNumber: oppBlockNumber,
                     error: errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT),
                     route: expectedRouteVisual,
+                    stage: 1,
                     rawtx: JSON.stringify(rawtx),
                     isNodeError: false,
                 },
@@ -326,18 +331,17 @@ describe("Test route processor find opp", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        // mock the signer to reject the first attempt on gas estimation
-        // so the dryrun goes into binary search
-        let rejectFirst = true;
         signer.estimateGas = async () => {
-            if (rejectFirst) {
-                rejectFirst = false;
-                return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
-            } else return gasLimitEstimation;
+            return gasLimitEstimation;
         };
+        const orderPairObjectCopy = clone(orderPairObject);
+        orderPairObjectCopy.takeOrders[0].quote.ratio = ethers.utils.parseUnits("0.009900695135");
+        orderPairObjectCopy.takeOrders[0].quote.maxOutput = ethers.BigNumber.from(
+            "1" + "0".repeat(25),
+        );
         const result = await findOpp({
             mode: 0,
-            orderPairObject,
+            orderPairObject: orderPairObjectCopy,
             dataFetcher,
             fromToken,
             toToken,
@@ -350,7 +354,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(3).div(4),
+            maximumInput: ethers.utils.parseUnits("9999999.701976776123046875"),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -379,26 +383,28 @@ describe("Test route processor find opp", async function () {
                     gasPrice,
                     gas: gasLimitEstimation.toBigInt(),
                 },
-                maximumInput: vaultBalance.mul(3).div(4),
-                price: getCurrentPrice(vaultBalance.sub(vaultBalance.div(4))),
+                maximumInput: ethers.utils.parseUnits("9999999.701976776123046875"),
+                price: getCurrentPrice(ethers.utils.parseUnits("9999999.701976776123046875")),
                 routeVisual: expectedRouteVisual,
                 oppBlockNumber,
                 estimatedProfit: estimateProfit(
-                    orderPairObject,
+                    orderPairObjectCopy,
                     ethers.utils.parseUnits(ethPrice),
                     undefined,
                     undefined,
-                    getCurrentPrice(vaultBalance.mul(3).div(4)),
-                    vaultBalance.mul(3).div(4),
+                    ethers.utils.parseUnits("0.009900695426163716"),
+                    ethers.utils.parseUnits("9999999.701976776123046875"),
                 ),
             },
             reason: undefined,
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
-                amountIn: formatUnits(vaultBalance.mul(3).div(4)),
-                amountOut: formatUnits(getAmountOut(vaultBalance.mul(3).div(4)), 6),
-                marketPrice: formatUnits(getCurrentPrice(vaultBalance.sub(vaultBalance.div(4)))),
+                amountIn: "9999999.701976776123046875",
+                amountOut: "99006.951311",
+                marketPrice: ethers.utils.formatUnits(
+                    getCurrentPrice(ethers.utils.parseUnits("9999999.701976776123046875")),
+                ),
                 route: expectedRouteVisual,
             },
         };
@@ -440,7 +446,11 @@ describe("Test route processor find opp", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -462,9 +472,7 @@ describe("Test route processor find opp", async function () {
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
+                        `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                     ],
                 },
             };
@@ -496,11 +504,7 @@ describe("Test route processor find opp", async function () {
                 value: undefined,
                 reason: RouteProcessorDryrunHaltReason.NoRoute,
                 spanAttributes: {
-                    hops: [
-                        `{"amountIn":"${formatUnits(vaultBalance)}","route":"no-way"}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","route":"no-way"}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","route":"no-way"}`,
-                    ],
+                    hops: [`{"amountIn":"${formatUnits(vaultBalance)}","route":"no-way"}`],
                 },
             };
             assert.deepEqual(error, expected);
@@ -638,7 +642,11 @@ describe("Test find opp with retries", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -660,9 +668,7 @@ describe("Test find opp with retries", async function () {
                 reason: RouteProcessorDryrunHaltReason.NoOpportunity,
                 spanAttributes: {
                     hops: [
-                        `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(2))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(2)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(2)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
-                        `{"amountIn":"${formatUnits(vaultBalance.div(4))}","amountOut":"${formatUnits(getAmountOut(vaultBalance.div(4)), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance.div(4)))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"isNodeError":false}`,
+                        `{"amountIn":"${formatUnits(vaultBalance)}","amountOut":"${formatUnits(getAmountOut(vaultBalance), 6)}","marketPrice":"${formatUnits(getCurrentPrice(vaultBalance))}","route":${JSON.stringify(expectedRouteVisual)},"blockNumber":${oppBlockNumber},"stage":1,"isNodeError":false,"error":${JSON.stringify(errorSnapshot("", ethers.errors.UNPREDICTABLE_GAS_LIMIT))},"rawtx":${JSON.stringify(rawtx)}}`,
                     ],
                 },
             };

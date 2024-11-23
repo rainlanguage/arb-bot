@@ -82,7 +82,14 @@ export async function dryrun({
         evaluable: {
             interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
             store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-            bytecode: "0x",
+            bytecode:
+                config.gasCoveragePercentage === "0"
+                    ? "0x"
+                    : getBountyEnsureBytecode(
+                          ethers.utils.parseUnits(inputToEthPrice),
+                          ethers.utils.parseUnits(outputToEthPrice),
+                          ethers.constants.Zero,
+                      ),
         },
         signedContext: [],
     };
@@ -102,10 +109,13 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            .mul(config.gasLimitMultiplier)
+            .div(100);
     } catch (e) {
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
+        spanAttributes["stage"] = 1;
         spanAttributes["isNodeError"] = isNodeError;
         spanAttributes["error"] = errMsg;
         spanAttributes["rawtx"] = JSON.stringify(
@@ -144,7 +154,9 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx));
+            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                .mul(config.gasLimitMultiplier)
+                .div(100);
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice);
             task.evaluable.bytecode = getBountyEnsureBytecode(
@@ -160,6 +172,7 @@ export async function dryrun({
         } catch (e) {
             const isNodeError = containsNodeError(e as BaseError);
             const errMsg = errorSnapshot("", e);
+            spanAttributes["stage"] = 2;
             spanAttributes["isNodeError"] = isNodeError;
             spanAttributes["error"] = errMsg;
             spanAttributes["rawtx"] = JSON.stringify(
@@ -179,6 +192,9 @@ export async function dryrun({
         }
     }
     rawtx.gas = gasLimit.toBigInt();
+    if (typeof config.txGas === "bigint") {
+        rawtx.gas = config.txGas;
+    }
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;
@@ -253,7 +269,7 @@ export async function findOpp({
         .filter((v) => v !== undefined) as BundledOrders[];
 
     if (!opposingOrderbookOrders || !opposingOrderbookOrders.length) throw undefined;
-    let maximumInput = orderPairObject.takeOrders.reduce(
+    const maximumInput = orderPairObject.takeOrders.reduce(
         (a, b) => a.add(b.quote!.maxOutput),
         ethers.constants.Zero,
     );
@@ -288,37 +304,37 @@ export async function findOpp({
         for (const err of (e as AggregateError).errors) {
             allNoneNodeErrors.push(err?.value?.noneNodeError);
         }
-        maximumInput = maximumInput.div(2);
-        try {
-            // try to find the first resolving binary search
-            return await Promise.any(
-                opposingOrderbookOrders.map((v) => {
-                    // filter out the same owner orders
-                    const opposingOrders = {
-                        ...v,
-                        takeOrders: v.takeOrders.filter(
-                            (e) =>
-                                e.takeOrder.order.owner.toLowerCase() !==
-                                orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase(),
-                        ),
-                    };
-                    return binarySearch({
-                        orderPairObject,
-                        opposingOrders,
-                        signer,
-                        maximumInput,
-                        gasPrice,
-                        arb,
-                        inputToEthPrice,
-                        outputToEthPrice,
-                        config,
-                        viemClient,
-                    });
-                }),
-            );
-        } catch {
-            /**/
-        }
+        // maximumInput = maximumInput.div(2);
+        // try {
+        //     // try to find the first resolving binary search
+        //     return await Promise.any(
+        //         opposingOrderbookOrders.map((v) => {
+        //             // filter out the same owner orders
+        //             const opposingOrders = {
+        //                 ...v,
+        //                 takeOrders: v.takeOrders.filter(
+        //                     (e) =>
+        //                         e.takeOrder.order.owner.toLowerCase() !==
+        //                         orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase(),
+        //                 ),
+        //             };
+        //             return binarySearch({
+        //                 orderPairObject,
+        //                 opposingOrders,
+        //                 signer,
+        //                 maximumInput,
+        //                 gasPrice,
+        //                 arb,
+        //                 inputToEthPrice,
+        //                 outputToEthPrice,
+        //                 config,
+        //                 viemClient,
+        //             });
+        //         }),
+        //     );
+        // } catch {
+        //     /**/
+        // }
         const allOrderbooksAttributes: any = {};
         for (let i = 0; i < e.errors.length; i++) {
             allOrderbooksAttributes[opposingOrderbookOrders[i].orderbook] =

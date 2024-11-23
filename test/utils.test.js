@@ -1,9 +1,10 @@
 const { assert } = require("chai");
 const testData = require("./data");
-const { clone, getTotalIncome, checkOwnedOrders } = require("../src/utils");
+const { clone, getTotalIncome, checkOwnedOrders, scale18, scale18To } = require("../src/utils");
 const {
     ethers,
     utils: { hexlify, randomBytes },
+    BigNumber,
 } = require("ethers");
 
 describe("Test utils functions", async function () {
@@ -84,5 +85,37 @@ describe("Test utils functions", async function () {
             vaultBalance: ethers.BigNumber.from(i * 10),
         }));
         assert.deepEqual(result, expected);
+    });
+
+    it("should scale to 18", async function () {
+        // down
+        const value1 = "123456789";
+        const decimals1 = 3;
+        const result1 = scale18(value1, decimals1);
+        const expected1 = BigNumber.from("123456789000000000000000");
+        assert.deepEqual(result1, expected1);
+
+        // up
+        const value2 = "123456789";
+        const decimals2 = 23;
+        const result2 = scale18(value2, decimals2);
+        const expected2 = BigNumber.from("1234");
+        assert.deepEqual(result2, expected2);
+    });
+
+    it("should scale from 18", async function () {
+        // down
+        const value1 = "123456789";
+        const decimals1 = 12;
+        const result1 = scale18To(value1, decimals1);
+        const expected1 = BigNumber.from("123");
+        assert.deepEqual(result1, expected1);
+
+        // up
+        const value2 = "123456789";
+        const decimals2 = 23;
+        const result2 = scale18To(value2, decimals2);
+        const expected2 = BigNumber.from("12345678900000");
+        assert.deepEqual(result2, expected2);
     });
 });

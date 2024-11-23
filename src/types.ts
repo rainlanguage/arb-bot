@@ -47,6 +47,8 @@ export type CliOptions = {
     publicRpc: boolean;
     route?: string;
     gasPriceMultiplier: number;
+    gasLimitMultiplier: number;
+    txGas?: bigint;
 };
 
 export type TokenDetails = {
@@ -170,6 +172,8 @@ export type BotConfig = {
     route?: "multi" | "single";
     rpcRecords: Record<string, RpcRecord>;
     gasPriceMultiplier: number;
+    gasLimitMultiplier: number;
+    txGas?: bigint;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };
@@ -187,6 +191,8 @@ export type Report = {
     clearedOrders?: string[];
     income?: BigNumber;
     netProfit?: BigNumber;
+    reason?: ProcessPairHaltReason;
+    error?: any;
 };
 
 export type RoundReport = {

@@ -256,100 +256,6 @@ describe("Test inter-orderbook find opp", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should find opp with binary search", async function () {
-        // mock the signer to reject the first attempt on gas estimation
-        // so the dryrun goes into binary search
-        let rejectFirst = true;
-        signer.estimateGas = async () => {
-            if (rejectFirst) {
-                rejectFirst = false;
-                return Promise.reject(ethers.errors.UNPREDICTABLE_GAS_LIMIT);
-            } else return gasLimitEstimation;
-        };
-        const result = await findOpp({
-            orderPairObject,
-            signer,
-            gasPrice,
-            arb,
-            inputToEthPrice,
-            outputToEthPrice,
-            config,
-            viemClient,
-            orderbooksOrders,
-        });
-        const opposingMaxInput = vaultBalance
-            .mul(3)
-            .div(4)
-            .mul(orderPairObject.takeOrders[0].quote.ratio)
-            .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
-        const opposingMaxIORatio = ethers.BigNumber.from(`1${"0".repeat(36)}`).div(
-            orderPairObject.takeOrders[0].quote.ratio,
-        );
-        const obInterface = new ethers.utils.Interface(orderbookAbi);
-        const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
-            {
-                minimumInput: ethers.constants.One,
-                maximumInput: opposingMaxInput,
-                maximumIORatio: opposingMaxIORatio,
-                orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
-                data: "0x",
-            },
-        ]);
-        const expectedTakeOrdersConfigStruct = {
-            minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(3).div(4),
-            maximumIORatio: ethers.constants.MaxUint256,
-            orders: [orderPairObject.takeOrders[0].takeOrder],
-            data: ethers.utils.defaultAbiCoder.encode(
-                ["address", "address", "bytes"],
-                [opposingOrderPairObject.orderbook, opposingOrderPairObject.orderbook, encodedFN],
-            ),
-        };
-        const task = {
-            evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getBountyEnsureBytecode(
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice),
-                ),
-            },
-            signedContext: [],
-        };
-        const expected = {
-            value: {
-                rawtx: {
-                    data: arb.interface.encodeFunctionData("arb3", [
-                        orderPairObject.orderbook,
-                        expectedTakeOrdersConfigStruct,
-                        task,
-                    ]),
-                    to: arb.address,
-                    gasPrice,
-                    gas: gasLimitEstimation.toBigInt(),
-                },
-                maximumInput: vaultBalance.mul(3).div(4),
-                oppBlockNumber,
-                estimatedProfit: estimateProfit(
-                    orderPairObject,
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    opposingOrderPairObject,
-                    undefined,
-                    vaultBalance.mul(3).div(4),
-                ),
-            },
-            reason: undefined,
-            spanAttributes: {
-                oppBlockNumber,
-                foundOpp: true,
-                maxInput: vaultBalance.mul(3).div(4).toString(),
-            },
-        };
-        assert.deepEqual(result, expected);
-    });
-
     it("should NOT find opp", async function () {
         const err = ethers.errors.UNPREDICTABLE_GAS_LIMIT;
         signer.estimateGas = async () => {
@@ -404,7 +310,11 @@ describe("Test inter-orderbook find opp", async function () {
                     interpreter:
                         orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
                     store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                    bytecode: "0x",
+                    bytecode: getBountyEnsureBytecode(
+                        ethers.utils.parseUnits(inputToEthPrice),
+                        ethers.utils.parseUnits(outputToEthPrice),
+                        ethers.constants.Zero,
+                    ),
                 },
                 signedContext: [],
             };
@@ -429,6 +339,7 @@ describe("Test inter-orderbook find opp", async function () {
                         [opposingOrderbookAddress]: {
                             maxInput: vaultBalance.toString(),
                             blockNumber: oppBlockNumber,
+                            stage: 1,
                             isNodeError: false,
                             error: errorSnapshot("", err),
                             rawtx: JSON.stringify(rawtx),

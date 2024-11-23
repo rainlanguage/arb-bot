@@ -124,6 +124,7 @@ describe("Test find opp", async function () {
                 amountOut: formatUnits(getAmountOut(vaultBalance), 6),
                 marketPrice: formatUnits(getCurrentPrice(vaultBalance)),
                 route: expectedRouteVisual,
+                clearModePick: "rp4",
             },
         };
         assert.deepEqual(result, expected);
@@ -214,6 +215,7 @@ describe("Test find opp", async function () {
                 oppBlockNumber,
                 foundOpp: true,
                 maxInput: vaultBalance.toString(),
+                clearModePick: "inter",
             },
         };
         assert.deepEqual(result, expected);
@@ -309,6 +311,7 @@ describe("Test find opp", async function () {
             spanAttributes: {
                 oppBlockNumber,
                 foundOpp: true,
+                clearModePick: "intra",
             },
         };
         assert.deepEqual(result, expected);

@@ -250,6 +250,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
+                config.gasLimitMultiplier = 100;
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
@@ -584,6 +585,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
+                config.gasLimitMultiplier = 100;
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
@@ -936,6 +938,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.mainAccount = bot;
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
+                config.gasLimitMultiplier = 100;
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
