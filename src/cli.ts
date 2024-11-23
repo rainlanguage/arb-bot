@@ -307,7 +307,7 @@ export const arbRound = async (
             let didClear = false;
             const { reports = [], avgGasCost = undefined } = await clear(
                 config,
-                ordersDetails,
+                bundledOrders,
                 tracer,
                 ctx,
             );
@@ -325,8 +325,7 @@ export const arbRound = async (
                 }
                 if (
                     reports.some(
-                        (v) =>
-                            v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
+                        (v) => v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
                     )
                 ) {
                     didClear = true;
