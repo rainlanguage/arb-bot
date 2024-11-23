@@ -543,9 +543,6 @@ export function findMaxInput({
     let maximumInput = BigNumber.from(initAmount.toString());
     for (let i = 1; i < 26; i++) {
         const maxInput18 = scale18(maximumInput, fromToken.decimals);
-        const maxOutput18 = ratio.mul(maxInput18).div("1" + "0".repeat(18));
-        const maximumOutput = scale18To(maxOutput18, toToken.decimals);
-
         const route = Router.findBestRoute(
             pcMap,
             config.chain.id as ChainId,
@@ -558,15 +555,18 @@ export function findMaxInput({
             undefined,
             config.route,
         );
+
         if (route.status == "NoWay") {
             maximumInput = maximumInput.sub(initAmount.div(2 ** i));
         } else {
             const amountOut = scale18(route.amountOutBI, toToken.decimals);
-            if (amountOut.gte(maximumOutput)) {
-                result.unshift(scale18(maximumInput, fromToken.decimals));
-                maximumInput = maximumInput.add(initAmount.div(2 ** i));
-            } else {
+            const price = amountOut.mul("1" + "0".repeat(18)).div(maxInput18);
+
+            if (price.lt(ratio)) {
                 maximumInput = maximumInput.sub(initAmount.div(2 ** i));
+            } else {
+                result.unshift(maxInput18);
+                maximumInput = maximumInput.add(initAmount.div(2 ** i));
             }
         }
     }
