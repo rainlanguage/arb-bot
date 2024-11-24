@@ -23,6 +23,12 @@ module.exports = [
                 decimals: 18,
                 symbol: "IOEN",
             }),
+            new Token({
+                chainId: ChainId.POLYGON,
+                address: "0x874e178A2f3f3F9d34db862453Cd756E7eAb0381",
+                decimals: 18,
+                symbol: "GFI",
+            }),
         ],
 
         // addresses with token balance, in order with specified tokens
@@ -30,11 +36,16 @@ module.exports = [
             "0xdF906eA18C6537C6379aC83157047F507FB37263",
             "0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245",
             "0xdFB5396f06bE50eAA745094ff51d272C292cc218",
+            "0x9294132f9d423b0FD5823aB400133d814fe73016",
         ],
 
         // liq providers to use for test
         // ideally specify at least one for each univ2 and univ3 protocols
-        [LiquidityProviders.QuickSwapV2, LiquidityProviders.QuickSwapV3],
+        [
+            LiquidityProviders.QuickSwapV2,
+            LiquidityProviders.QuickSwapV3,
+            LiquidityProviders.GravityFinance,
+        ],
 
         // deposist amounts per token pair order
         ["1", "100", "100"],
