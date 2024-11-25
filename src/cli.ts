@@ -3,12 +3,12 @@ import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
+import { getOrderChanges, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
-import { getAddOrders, getRemoveOrders, SgOrder } from "./query";
 import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
@@ -571,10 +571,9 @@ export const main = async (argv: any, version?: string) => {
         }
     });
 
-    const lastReadOrdersTimestampMap = options.subgraph.map((v) => ({
+    const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
-        lastReadTimestampAdd: lastReadOrdersTimestamp,
-        lastReadTimestampRemove: lastReadOrdersTimestamp,
+        skip: 0,
     }));
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
@@ -795,48 +794,40 @@ export const main = async (argv: any, version?: string) => {
             }
 
             try {
-                const now = Math.floor(Date.now() / 1000);
-
-                // handle added orders
-                const addOrdersResult = await Promise.allSettled(
-                    lastReadOrdersTimestampMap.map((v) =>
-                        getAddOrders(v.sg, v.lastReadTimestampAdd, now, options.timeout, roundSpan),
-                    ),
+                // handle order changes (add/remove)
+                roundSpan.setAttribute(
+                    "watch-new-orders",
+                    JSON.stringify({
+                        hasRead: lastReadOrdersMap,
+                        startTime: lastReadOrdersTimestamp,
+                    }),
                 );
-                for (let i = 0; i < addOrdersResult.length; i++) {
-                    const res = addOrdersResult[i];
-                    if (res.status === "fulfilled") {
-                        lastReadOrdersTimestampMap[i].lastReadTimestampAdd = now;
-                        await handleAddOrderbookOwnersProfileMap(
-                            orderbooksOwnersProfileMap,
-                            res.value.map((v) => v.order),
-                            config.viemClient as any as ViemClient,
-                            tokens,
-                            options.ownerProfile,
-                            roundSpan,
-                        );
-                    }
-                }
-
-                // handle removed orders
-                const rmOrdersResult = await Promise.allSettled(
-                    lastReadOrdersTimestampMap.map((v) =>
-                        getRemoveOrders(
+                const results = await Promise.allSettled(
+                    lastReadOrdersMap.map((v) =>
+                        getOrderChanges(
                             v.sg,
-                            v.lastReadTimestampRemove,
-                            now,
+                            lastReadOrdersTimestamp,
+                            v.skip,
                             options.timeout,
                             roundSpan,
                         ),
                     ),
                 );
-                for (let i = 0; i < rmOrdersResult.length; i++) {
-                    const res = rmOrdersResult[i];
+                for (let i = 0; i < results.length; i++) {
+                    const res = results[i];
                     if (res.status === "fulfilled") {
-                        lastReadOrdersTimestampMap[i].lastReadTimestampRemove = now;
+                        lastReadOrdersMap[i].skip += res.value.count;
+                        await handleAddOrderbookOwnersProfileMap(
+                            orderbooksOwnersProfileMap,
+                            res.value.addOrders.map((v) => v.order),
+                            config.viemClient as any as ViemClient,
+                            tokens,
+                            options.ownerProfile,
+                            roundSpan,
+                        );
                         await handleRemoveOrderbookOwnersProfileMap(
                             orderbooksOwnersProfileMap,
-                            res.value.map((v) => v.order),
+                            res.value.removeOrders.map((v) => v.order),
                             roundSpan,
                         );
                     }

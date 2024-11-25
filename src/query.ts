@@ -37,6 +37,22 @@ export type NewSgOrder = {
     timestamp: number;
 };
 
+export type SgTx = {
+    events: SgEvent[];
+    timestamp: string;
+};
+
+export type SgEvent = SgAddRemoveEvent | SgOtherEvent;
+
+export type SgAddRemoveEvent = {
+    __typename: "AddOrder" | "RemoveOrder";
+    order: SgOrder;
+};
+
+export type SgOtherEvent = {
+    __typename: "Withdrawal" | "Deposit";
+};
+
 /**
  * Method to get the subgraph query body with optional filters
  * @param orderHash - The order hash to apply as filter
@@ -141,186 +157,160 @@ export const statusCheckQuery = `{
     }
 }`;
 
-export const getRemoveOrdersQuery = (start: number, end: number, skip: number) => {
-    return `{removeOrders(first: 100, skip: ${skip}, where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
-    order {
-        id
-        owner
-        orderHash
-        orderBytes
-        active
-        nonce
-        orderbook {
-            id
-        }
-        inputs {
-            balance
-            vaultId
-            token {
-                address
-                decimals
-                symbol
+/**
+ * Get query for transactions
+ */
+export const getTxsQuery = (start: number, skip: number) => {
+    return `{transactions(
+    orderBy: timestamp
+    orderDirection: desc
+    first: 100
+    skip: ${skip}
+    where: {timestamp_gt: "${start.toString()}"}
+  ) {
+    events {
+        __typename
+        ... on AddOrder {
+            transaction {
+                timestamp
+            }
+            order {
+                id
+                owner
+                orderHash
+                orderBytes
+                active
+                nonce
+                orderbook {
+                    id
+                }
+                inputs {
+                    balance
+                    vaultId
+                    token {
+                        address
+                        decimals
+                        symbol
+                    }
+                }
+                outputs {
+                    balance
+                    vaultId
+                    token {
+                        address
+                        decimals
+                        symbol
+                    }
+                }
             }
         }
-        outputs {
-            balance
-            vaultId
-            token {
-                address
-                decimals
-                symbol
+        ... on RemoveOrder {
+            transaction {
+                timestamp
+            }
+            order {
+                id
+                owner
+                orderHash
+                orderBytes
+                active
+                nonce
+                orderbook {
+                    id
+                }
+                inputs {
+                    balance
+                    vaultId
+                    token {
+                        address
+                        decimals
+                        symbol
+                    }
+                }
+                outputs {
+                    balance
+                    vaultId
+                    token {
+                        address
+                        decimals
+                        symbol
+                    }
+                }
             }
         }
     }
-    transaction {
-      timestamp
-    }
-}}`;
-};
-
-export const getAddOrdersQuery = (start: number, end: number, skip: number) => {
-    return `{addOrders(first: 100, skip: ${skip}, where: { transaction_: { timestamp_gt: "${start.toString()}", timestamp_lte: "${end.toString()}" } }) {
-    order {
-        id
-        owner
-        orderHash
-        orderBytes
-        active
-        nonce
-        orderbook {
-            id
-        }
-        inputs {
-            balance
-            vaultId
-            token {
-                address
-                decimals
-                symbol
-            }
-        }
-        outputs {
-            balance
-            vaultId
-            token {
-                address
-                decimals
-                symbol
-            }
-        }
-    }
-    transaction {
-      timestamp
-    }
+    timestamp
 }}`;
 };
 
 /**
- * Fecthes the remove orders from the given subgraph in the given timeframe
+ * Fecthes the order changes after the given time and skipping the first skip txs
  * @param subgraph - The subgraph url
  * @param startTimestamp - start timestamp range
- * @param endTimestamp - end timestamp range
+ * @param skip - skip count
  * @param timeout - promise timeout
  */
-export async function getRemoveOrders(
+export async function getOrderChanges(
     subgraph: string,
     startTimestamp: number,
-    endTimestamp: number,
+    skip: number,
     timeout?: number,
     span?: Span,
 ) {
-    let skip = 0;
-    const allResults: any[] = [];
+    let skip_ = skip;
+    let count = 0;
+    const allResults: SgTx[] = [];
+    const addOrders: NewSgOrder[] = [];
     const removeOrders: NewSgOrder[] = [];
     for (;;) {
         try {
             const res = await axios.post(
                 subgraph,
-                { query: getRemoveOrdersQuery(startTimestamp, endTimestamp, skip) },
+                { query: getTxsQuery(startTimestamp, skip_) },
                 { headers: { "Content-Type": "application/json" }, timeout },
             );
-            if (typeof res?.data?.data?.removeOrders !== "undefined") {
-                const orders = res.data.data.removeOrders;
-                allResults.push(...orders);
-                if (orders.length < 100) {
+            if (typeof res?.data?.data?.transactions !== "undefined") {
+                const txs = res.data.data.transactions;
+                count += txs.length;
+                allResults.push(...txs);
+                if (txs.length < 100) {
                     break;
                 } else {
-                    skip += 100;
+                    skip_ += 100;
                 }
             } else {
                 break;
             }
         } catch (error) {
-            span?.addEvent(errorSnapshot(`Failed to get new removed orders ${subgraph}`, error));
+            span?.addEvent(errorSnapshot(`Failed to get order changes ${subgraph}`, error));
             throw error;
         }
     }
-    allResults.forEach((v) => {
-        if (typeof v?.order?.active === "boolean" && !v.order.active) {
-            if (!removeOrders.find((e) => e.order.id === v.order.id)) {
-                removeOrders.push({
-                    order: v.order as SgOrder,
-                    timestamp: Number(v.transaction.timestamp),
-                });
-            }
-        }
-    });
-
-    removeOrders.sort((a, b) => b.timestamp - a.timestamp);
-    return removeOrders;
-}
-
-/**
- * Fecthes the add orders from the given subgraph in the given timeframe
- * @param subgraph - The subgraph url
- * @param startTimestamp - start timestamp range
- * @param endTimestamp - end timestamp range
- * @param timeout - promise timeout
- */
-export async function getAddOrders(
-    subgraph: string,
-    startTimestamp: number,
-    endTimestamp: number,
-    timeout?: number,
-    span?: Span,
-) {
-    let skip = 0;
-    const allResults: any[] = [];
-    const addOrders: NewSgOrder[] = [];
-    for (;;) {
-        try {
-            const res = await axios.post(
-                subgraph,
-                { query: getAddOrdersQuery(startTimestamp, endTimestamp, skip) },
-                { headers: { "Content-Type": "application/json" }, timeout },
-            );
-            if (typeof res?.data?.data?.addOrders !== "undefined") {
-                const orders = res.data.data.addOrders;
-                allResults.push(...orders);
-                if (orders.length < 100) {
-                    break;
-                } else {
-                    skip += 100;
+    allResults.forEach((tx) => {
+        if (tx?.events?.length) {
+            tx.events.forEach((event) => {
+                if (event.__typename === "AddOrder") {
+                    if (typeof event?.order?.active === "boolean" && event.order.active) {
+                        if (!addOrders.find((e) => e.order.id === event.order.id)) {
+                            addOrders.unshift({
+                                order: event.order as SgOrder,
+                                timestamp: Number(tx.timestamp),
+                            });
+                        }
+                    }
                 }
-            } else {
-                break;
-            }
-        } catch (error) {
-            span?.addEvent(errorSnapshot(`Failed to get new added orders ${subgraph}`, error));
-            throw error;
-        }
-    }
-    allResults.forEach((v) => {
-        if (typeof v?.order?.active === "boolean" && v.order.active) {
-            if (!addOrders.find((e) => e.order.id === v.order.id)) {
-                addOrders.push({
-                    order: v.order as SgOrder,
-                    timestamp: Number(v.transaction.timestamp),
-                });
-            }
+                if (event.__typename === "RemoveOrder") {
+                    if (typeof event?.order?.active === "boolean" && !event.order.active) {
+                        if (!removeOrders.find((e) => e.order.id === event.order.id)) {
+                            removeOrders.unshift({
+                                order: event.order as SgOrder,
+                                timestamp: Number(tx.timestamp),
+                            });
+                        }
+                    }
+                }
+            });
         }
     });
-
-    addOrders.sort((a, b) => b.timestamp - a.timestamp);
-    return addOrders;
+    return { addOrders, removeOrders, count };
 }
