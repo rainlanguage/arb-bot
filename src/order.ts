@@ -231,14 +231,20 @@ export async function handleRemoveOrderbookOwnersProfileMap(
         }
         const orderbookOwnerProfileItem = orderbooksOwnersProfileMap.get(orderbook);
         if (orderbookOwnerProfileItem) {
+            // eslint-disable-next-line no-console
+            console.log("aa1");
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
             if (ownerProfile) {
-                ownerProfile.orders.delete(orderDetails.orderHash.toLowerCase());
+                const x = ownerProfile.orders.delete(orderDetails.orderHash.toLowerCase());
+                // eslint-disable-next-line no-console
+                console.log("aa2", x);
             }
         }
     }
     if (span) {
         for (const orderbook in changes) {
+            // eslint-disable-next-line no-console
+            console.log("aa3");
             span.setAttribute(`orderbooksChanges.${orderbook}.removedOrders`, changes[orderbook]);
         }
     }
