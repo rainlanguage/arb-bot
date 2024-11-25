@@ -163,10 +163,10 @@ export const statusCheckQuery = `{
 export const getTxsQuery = (start: number, skip: number) => {
     return `{transactions(
     orderBy: timestamp
-    orderDirection: desc
+    orderDirection: asc
     first: 100
     skip: ${skip}
-    where: {timestamp_gt: "${start.toString()}"}
+    where: { timestamp_gt: "${start}" }
   ) {
     events {
         __typename
@@ -292,7 +292,7 @@ export async function getOrderChanges(
                 if (event.__typename === "AddOrder") {
                     if (typeof event?.order?.active === "boolean" && event.order.active) {
                         if (!addOrders.find((e) => e.order.id === event.order.id)) {
-                            addOrders.unshift({
+                            addOrders.push({
                                 order: event.order as SgOrder,
                                 timestamp: Number(tx.timestamp),
                             });
@@ -300,15 +300,9 @@ export async function getOrderChanges(
                     }
                 }
                 if (event.__typename === "RemoveOrder") {
-                    // eslint-disable-next-line no-console
-                    console.log("abcd");
                     if (typeof event?.order?.active === "boolean" && !event.order.active) {
-                        // eslint-disable-next-line no-console
-                        console.log("abcd1");
                         if (!removeOrders.find((e) => e.order.id === event.order.id)) {
-                            // eslint-disable-next-line no-console
-                            console.log("abcd2");
-                            removeOrders.unshift({
+                            removeOrders.push({
                                 order: event.order as SgOrder,
                                 timestamp: Number(tx.timestamp),
                             });
@@ -318,7 +312,5 @@ export async function getOrderChanges(
             });
         }
     });
-    // eslint-disable-next-line no-console
-    console.log(removeOrders);
     return { addOrders, removeOrders, count };
 }

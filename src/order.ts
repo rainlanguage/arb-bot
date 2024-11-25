@@ -211,8 +211,6 @@ export async function handleRemoveOrderbookOwnersProfileMap(
     ordersDetails: SgOrder[],
     span?: Span,
 ) {
-    // eslint-disable-next-line no-console
-    console.log("bruh");
     const changes: Record<string, string[]> = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
@@ -231,20 +229,14 @@ export async function handleRemoveOrderbookOwnersProfileMap(
         }
         const orderbookOwnerProfileItem = orderbooksOwnersProfileMap.get(orderbook);
         if (orderbookOwnerProfileItem) {
-            // eslint-disable-next-line no-console
-            console.log("aa1");
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
             if (ownerProfile) {
-                const x = ownerProfile.orders.delete(orderDetails.orderHash.toLowerCase());
-                // eslint-disable-next-line no-console
-                console.log("aa2", x);
+                ownerProfile.orders.delete(orderDetails.orderHash.toLowerCase());
             }
         }
     }
     if (span) {
         for (const orderbook in changes) {
-            // eslint-disable-next-line no-console
-            console.log("aa3");
             span.setAttribute(`orderbooksChanges.${orderbook}.removedOrders`, changes[orderbook]);
         }
     }

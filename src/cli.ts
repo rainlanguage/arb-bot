@@ -827,8 +827,7 @@ export const main = async (argv: any, version?: string) => {
                                 roundSpan,
                             );
                         } catch {
-                            // eslint-disable-next-line no-console
-                            console.log("bad1");
+                            /**/
                         }
                         try {
                             await handleRemoveOrderbookOwnersProfileMap(
@@ -837,8 +836,7 @@ export const main = async (argv: any, version?: string) => {
                                 roundSpan,
                             );
                         } catch {
-                            // eslint-disable-next-line no-console
-                            console.log("bad2");
+                            /**/
                         }
                     }
                 }
