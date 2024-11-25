@@ -8,7 +8,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
-import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
+import { addWatchedToken, fundOwnedOrders, getNonce, rotateAccounts } from "./account";
 import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert, isTimeout } from "./error";
 import {
     Report,
@@ -762,27 +762,21 @@ export async function processPair(args: {
 
             // keep track of gas consumption of the account and bounty token
             result.gasCost = actualGasCost;
-            if (
-                inputTokenIncome &&
-                inputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find((v) => v.address === orderPairObject.buyToken)
-            ) {
-                signer.BOUNTY.push({
+            if (inputTokenIncome && inputTokenIncome.gt(0)) {
+                const tkn = {
                     address: orderPairObject.buyToken.toLowerCase(),
                     decimals: orderPairObject.buyTokenDecimals,
                     symbol: orderPairObject.buyTokenSymbol,
-                });
+                };
+                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
             }
-            if (
-                outputTokenIncome &&
-                outputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find((v) => v.address === orderPairObject.sellToken)
-            ) {
-                signer.BOUNTY.push({
+            if (outputTokenIncome && outputTokenIncome.gt(0)) {
+                const tkn = {
                     address: orderPairObject.sellToken.toLowerCase(),
                     decimals: orderPairObject.sellTokenDecimals,
                     symbol: orderPairObject.sellTokenSymbol,
-                });
+                };
+                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
             }
             return result;
         } else {

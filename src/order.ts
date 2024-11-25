@@ -2,6 +2,7 @@ import { OrderV3 } from "./abis";
 import { SgOrder } from "./query";
 import { Span } from "@opentelemetry/api";
 import { hexlify } from "ethers/lib/utils";
+import { addWatchedToken } from "./account";
 import { getTokenSymbol, shuffleArray } from "./utils";
 import { decodeAbiParameters, parseAbiParameters } from "viem";
 import {
@@ -67,13 +68,14 @@ export async function getOrderPairs(
                 _outputSymbol = symbol;
             }
         } else {
-            if (!tokens.find((v) => v.address.toLowerCase() === _output.token.toLowerCase())) {
-                tokens.push({
+            addWatchedToken(
+                {
                     address: _output.token.toLowerCase(),
                     symbol: _outputSymbol,
                     decimals: _output.decimals,
-                });
-            }
+                },
+                tokens,
+            );
         }
 
         for (let k = 0; k < orderStruct.validInputs.length; k++) {
@@ -91,13 +93,14 @@ export async function getOrderPairs(
                     _inputSymbol = symbol;
                 }
             } else {
-                if (!tokens.find((v) => v.address.toLowerCase() === _input.token.toLowerCase())) {
-                    tokens.push({
+                addWatchedToken(
+                    {
                         address: _input.token.toLowerCase(),
                         symbol: _inputSymbol,
                         decimals: _input.decimals,
-                    });
-                }
+                    },
+                    tokens,
+                );
             }
 
             if (_input.token.toLowerCase() !== _output.token.toLowerCase())
@@ -278,29 +281,30 @@ export function prepareOrdersForRound(
         for (const [, ownerProfile] of ownersProfileMap) {
             let remainingLimit = ownerProfile.limit;
             const activeOrdersProfiles = Array.from(ownerProfile.orders).filter((v) => v[1].active);
-            const remainingOrdersPairs = activeOrdersProfiles.filter(
+            let remainingOrdersPairs = activeOrdersProfiles.filter(
                 (v) => v[1].takeOrders.length > 0,
             );
+            // reset if all orders are already consumed
             if (remainingOrdersPairs.length === 0) {
+                for (const [, orderProfile] of activeOrdersProfiles) {
+                    orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
+                }
+                remainingOrdersPairs = activeOrdersProfiles;
+            }
+            // consume orders limits
+            for (const [orderHash, orderProfile] of remainingOrdersPairs) {
+                if (remainingLimit > 0) {
+                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, remainingLimit);
+                    remainingLimit -= consumingOrderPairs.length;
+                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
+                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
+                }
+            }
+            // if all orders are consumed and still there is limit remaining,
+            // reset and start consuming again from top until limit is reached
+            if (remainingLimit > 0) {
                 for (const [orderHash, orderProfile] of activeOrdersProfiles) {
                     orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
-                    if (remainingLimit > 0) {
-                        const consumingOrderPairs = orderProfile.takeOrders.splice(
-                            0,
-                            remainingLimit,
-                        );
-                        remainingLimit -= consumingOrderPairs.length;
-                        orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                        gatherPairs(
-                            orderbook,
-                            orderHash,
-                            consumingOrderPairs,
-                            orderbookBundledOrders,
-                        );
-                    }
-                }
-            } else {
-                for (const [orderHash, orderProfile] of remainingOrdersPairs) {
                     if (remainingLimit > 0) {
                         const consumingOrderPairs = orderProfile.takeOrders.splice(
                             0,
@@ -351,6 +355,7 @@ function gatherPairs(
                 v.sellToken.toLowerCase() === pair.sellToken.toLowerCase(),
         );
         if (bundleOrder) {
+            // make sure to not duplicate
             if (
                 !bundleOrder.takeOrders.find((v) => v.id.toLowerCase() === orderHash.toLowerCase())
             ) {

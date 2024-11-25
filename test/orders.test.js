@@ -753,7 +753,7 @@ describe("Test order details", async function () {
             [order1, order2, order3, order4, order5, order6, order7, order8],
             undefined,
             [],
-            { [owner1]: 3, [owner2]: 1 }, // set owner1 limit as 3, owner2 to 1
+            { [owner1]: 4, [owner2]: 1 }, // set owner1 limit as 4, owner2 to 1
         );
 
         // prepare orders for first round
@@ -768,8 +768,8 @@ describe("Test order details", async function () {
                     sellTokenSymbol: token2.symbol,
                     sellTokenDecimals: token2.decimals,
                     orderbook,
-                    // first 3 owner1 orders for round1, owner1 limit is 3
-                    takeOrders: owner1Orders.slice(0, 3).map((v) => ({
+                    // first 4 owner1 orders for round1, owner1 limit is 4
+                    takeOrders: owner1Orders.slice(0, 4).map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,
@@ -814,8 +814,11 @@ describe("Test order details", async function () {
                     sellTokenSymbol: token2.symbol,
                     sellTokenDecimals: token2.decimals,
                     orderbook,
-                    // second 3 owner1 orders for round2, owner1 limit is 3
-                    takeOrders: owner1Orders.slice(3, owner1Orders.length).map((v) => ({
+                    // first2 and last 2 owner1 orders for round2, owner1 limit is 4
+                    takeOrders: [
+                        ...owner1Orders.slice(4, owner1Orders.length),
+                        ...owner1Orders.slice(0, 2),
+                    ].map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,
@@ -861,8 +864,8 @@ describe("Test order details", async function () {
                     sellTokenSymbol: token2.symbol,
                     sellTokenDecimals: token2.decimals,
                     orderbook,
-                    // first 3 owner1 orders again for round3, owner1 limit is 3
-                    takeOrders: owner1Orders.slice(0, 3).map((v) => ({
+                    // last 4 owner1 orders again for round3, owner1 limit is 4
+                    takeOrders: owner1Orders.slice(2).map((v) => ({
                         id: v.id,
                         takeOrder: {
                             order: v.struct,
@@ -894,6 +897,52 @@ describe("Test order details", async function () {
             ],
         ];
         assert.deepEqual(result3, expected3);
+
+        // prepare orders for 4th round
+        const result4 = prepareOrdersForRound(allOrders, false);
+        const expected4 = [
+            [
+                {
+                    buyToken: token1.address,
+                    buyTokenSymbol: token1.symbol,
+                    buyTokenDecimals: token1.decimals,
+                    sellToken: token2.address,
+                    sellTokenSymbol: token2.symbol,
+                    sellTokenDecimals: token2.decimals,
+                    orderbook,
+                    // back to first 4 owner1 orders for round4, owner1 limit is 4
+                    takeOrders: owner1Orders.slice(0, 4).map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+                {
+                    buyToken: token2.address,
+                    buyTokenSymbol: token2.symbol,
+                    buyTokenDecimals: token2.decimals,
+                    sellToken: token1.address,
+                    sellTokenSymbol: token1.symbol,
+                    sellTokenDecimals: token1.decimals,
+                    orderbook,
+                    // second 1 owner2 orders for round4, owner2 limit is 1
+                    takeOrders: owner2Orders.slice(1).map((v) => ({
+                        id: v.id,
+                        takeOrder: {
+                            order: v.struct,
+                            inputIOIndex: 0,
+                            outputIOIndex: 0,
+                            signedContext: [],
+                        },
+                    })),
+                },
+            ],
+        ];
+        assert.deepEqual(result4, expected4);
     });
 });
 

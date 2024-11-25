@@ -525,11 +525,11 @@ export async function sweepToMainWallet(
                     balance,
                 ]) as `0x${string}`,
             };
-            txs.push({ tx, bounty, balance: ethers.utils.formatUnits(balance, bounty.decimals) });
             const gas = await fromWallet.estimateGas(tx);
+            txs.push({ tx, bounty, balance: ethers.utils.formatUnits(balance, bounty.decimals) });
             cumulativeGasLimit = cumulativeGasLimit.add(gas);
         } catch {
-            failedBounties.push(bounty);
+            addWatchedToken(bounty, failedBounties);
         }
     }
 
@@ -612,7 +612,7 @@ export async function sweepToMainWallet(
                     code: SpanStatusCode.ERROR,
                     message: "Failed to sweep back to main wallet: tx reverted",
                 });
-                failedBounties.push(txs[i].bounty);
+                addWatchedToken(txs[i].bounty, failedBounties);
             }
             fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
         } catch (error) {
@@ -621,14 +621,14 @@ export async function sweepToMainWallet(
                 code: SpanStatusCode.ERROR,
                 message: "Failed to sweep back to main wallet: " + errorSnapshot("", error),
             });
-            failedBounties.push(txs[i].bounty);
+            addWatchedToken(txs[i].bounty, failedBounties);
         }
         span?.end();
     }
 
     // empty gas if all tokens are swept
     if (!failedBounties.length) {
-        const span = tracer?.startSpan("sweep-gas-to-main-wallet", undefined, mainCtx);
+        const span = tracer?.startSpan("sweep-remaining-gas-to-main-wallet", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
             const gasLimit = ethers.BigNumber.from(
@@ -889,7 +889,22 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
 }
 
 export async function setWatchedTokens(account: ViemClient, watchedTokens: TokenDetails[]) {
-    account.BOUNTY = watchedTokens;
+    account.BOUNTY = [...watchedTokens];
+}
+
+export function addWatchedToken(
+    token: TokenDetails,
+    watchedTokens: TokenDetails[],
+    account?: ViemClient,
+) {
+    if (!watchedTokens.find((v) => v.address.toLowerCase() === token.address.toLowerCase())) {
+        watchedTokens.push(token);
+    }
+    if (account) {
+        if (!account.BOUNTY.find((v) => v.address.toLowerCase() === token.address.toLowerCase())) {
+            account.BOUNTY.push(token);
+        }
+    }
 }
 
 /**
