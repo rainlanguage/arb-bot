@@ -300,8 +300,14 @@ export async function getOrderChanges(
                     }
                 }
                 if (event.__typename === "RemoveOrder") {
+                    // eslint-disable-next-line no-console
+                    console.log("abcd");
                     if (typeof event?.order?.active === "boolean" && !event.order.active) {
+                        // eslint-disable-next-line no-console
+                        console.log("abcd1");
                         if (!removeOrders.find((e) => e.order.id === event.order.id)) {
+                            // eslint-disable-next-line no-console
+                            console.log("abcd2");
                             removeOrders.unshift({
                                 order: event.order as SgOrder,
                                 timestamp: Number(tx.timestamp),
@@ -312,5 +318,7 @@ export async function getOrderChanges(
             });
         }
     });
+    // eslint-disable-next-line no-console
+    console.log(removeOrders);
     return { addOrders, removeOrders, count };
 }

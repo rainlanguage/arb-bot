@@ -817,19 +817,29 @@ export const main = async (argv: any, version?: string) => {
                     const res = results[i];
                     if (res.status === "fulfilled") {
                         lastReadOrdersMap[i].skip += res.value.count;
-                        await handleAddOrderbookOwnersProfileMap(
-                            orderbooksOwnersProfileMap,
-                            res.value.addOrders.map((v) => v.order),
-                            config.viemClient as any as ViemClient,
-                            tokens,
-                            options.ownerProfile,
-                            roundSpan,
-                        );
-                        await handleRemoveOrderbookOwnersProfileMap(
-                            orderbooksOwnersProfileMap,
-                            res.value.removeOrders.map((v) => v.order),
-                            roundSpan,
-                        );
+                        try {
+                            await handleAddOrderbookOwnersProfileMap(
+                                orderbooksOwnersProfileMap,
+                                res.value.addOrders.map((v) => v.order),
+                                config.viemClient as any as ViemClient,
+                                tokens,
+                                options.ownerProfile,
+                                roundSpan,
+                            );
+                        } catch {
+                            // eslint-disable-next-line no-console
+                            console.log("bad1");
+                        }
+                        try {
+                            await handleRemoveOrderbookOwnersProfileMap(
+                                orderbooksOwnersProfileMap,
+                                res.value.removeOrders.map((v) => v.order),
+                                roundSpan,
+                            );
+                        } catch {
+                            // eslint-disable-next-line no-console
+                            console.log("bad2");
+                        }
                     }
                 }
             } catch {

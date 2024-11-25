@@ -211,6 +211,8 @@ export async function handleRemoveOrderbookOwnersProfileMap(
     ordersDetails: SgOrder[],
     span?: Span,
 ) {
+    // eslint-disable-next-line no-console
+    console.log("bruh");
     const changes: Record<string, string[]> = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
