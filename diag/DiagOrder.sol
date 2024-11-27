@@ -7,7 +7,7 @@ import {Script} from "../lib/forge-std/src/Script.sol";
 
 // OrderHash : 0x74303a79cf1f8137a97b9297b76f46f0dfb4c649286539f15073589d31d17dde
 
-// forge script diag/DiagOrder.sol:DiagOrder -vvvvv --fork-url https://rpc.ankr.com/bsc/024cb02f1330653e22fccdca3fa025d7c7b56554b9560948bc9ac034533cdcd2 --fork-block-number 44370847 --sender 0xc92be5C1a82da1Ab3984a3923dCC5d8576279c7d
+// forge script diag/DiagOrder.sol:DiagOrder -vvvvv --fork-url <bsc-rpc-url> --fork-block-number 44370847 --sender 0xc92be5C1a82da1Ab3984a3923dCC5d8576279c7d
 contract DiagOrder is Script {
     function run() external {
         address to = address(0xd2938E7c9fe3597F78832CE780Feb61945c377d7); // put arb contract address
