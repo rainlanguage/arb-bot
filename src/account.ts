@@ -36,7 +36,7 @@ export async function initAccounts(
     const mainAccount = await createViemClient(
         config.chain.id as ChainId,
         config.rpc,
-        undefined,
+        config.publicRpc,
         isMnemonic
             ? mnemonicToAccount(mnemonicOrPrivateKey, {
                   addressIndex: MainAccountDerivationIndex,
@@ -59,7 +59,7 @@ export async function initAccounts(
                 await createViemClient(
                     config.chain.id as ChainId,
                     config.rpc,
-                    undefined,
+                    config.publicRpc,
                     mnemonicToAccount(mnemonicOrPrivateKey, {
                         addressIndex,
                     }),
@@ -210,7 +210,7 @@ export async function manageAccounts(
                 const acc = await createViemClient(
                     config.chain.id as ChainId,
                     config.rpc,
-                    undefined,
+                    config.publicRpc,
                     mnemonicToAccount(options.mnemonic!, {
                         addressIndex: ++lastIndex,
                     }),
@@ -337,7 +337,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         const viemClient = await createViemClient(
             config.chain.id as ChainId,
             config.rpc,
-            false,
+            config.publicRpc,
             undefined,
             config.timeout,
             undefined,
@@ -348,7 +348,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             config.dataFetcher = await getDataFetcher(
                 viemClient as any as PublicClient,
                 config.lps,
-                false,
+                config.publicRpc,
             );
         } else {
             config.dataFetcher.web3Client = viemClient as any as PublicClient;
@@ -361,7 +361,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         const mainAcc = await createViemClient(
             config.chain.id as ChainId,
             config.rpc,
-            false,
+            config.publicRpc,
             config.mainAccount.account,
             config.timeout,
             undefined,
@@ -379,7 +379,7 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
             const acc = await createViemClient(
                 config.chain.id as ChainId,
                 config.rpc,
-                false,
+                config.publicRpc,
                 config.accounts[i].account,
                 config.timeout,
                 undefined,
@@ -391,7 +391,11 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         }
     } else {
         if (resetDataFetcher) {
-            config.dataFetcher = await getDataFetcher(config.viemClient, config.lps, false);
+            config.dataFetcher = await getDataFetcher(
+                config.viemClient,
+                config.lps,
+                config.publicRpc,
+            );
         }
     }
 }
@@ -521,11 +525,11 @@ export async function sweepToMainWallet(
                     balance,
                 ]) as `0x${string}`,
             };
-            txs.push({ tx, bounty, balance: ethers.utils.formatUnits(balance, bounty.decimals) });
             const gas = await fromWallet.estimateGas(tx);
+            txs.push({ tx, bounty, balance: ethers.utils.formatUnits(balance, bounty.decimals) });
             cumulativeGasLimit = cumulativeGasLimit.add(gas);
         } catch {
-            failedBounties.push(bounty);
+            addWatchedToken(bounty, failedBounties);
         }
     }
 
@@ -608,7 +612,7 @@ export async function sweepToMainWallet(
                     code: SpanStatusCode.ERROR,
                     message: "Failed to sweep back to main wallet: tx reverted",
                 });
-                failedBounties.push(txs[i].bounty);
+                addWatchedToken(txs[i].bounty, failedBounties);
             }
             fromWallet.BALANCE = fromWallet.BALANCE.sub(txCost);
         } catch (error) {
@@ -617,14 +621,14 @@ export async function sweepToMainWallet(
                 code: SpanStatusCode.ERROR,
                 message: "Failed to sweep back to main wallet: " + errorSnapshot("", error),
             });
-            failedBounties.push(txs[i].bounty);
+            addWatchedToken(txs[i].bounty, failedBounties);
         }
         span?.end();
     }
 
     // empty gas if all tokens are swept
     if (!failedBounties.length) {
-        const span = tracer?.startSpan("sweep-gas-to-main-wallet", undefined, mainCtx);
+        const span = tracer?.startSpan("sweep-remaining-gas-to-main-wallet", undefined, mainCtx);
         span?.setAttribute("details.wallet", fromWallet.account.address);
         try {
             const gasLimit = ethers.BigNumber.from(
@@ -885,7 +889,22 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
 }
 
 export async function setWatchedTokens(account: ViemClient, watchedTokens: TokenDetails[]) {
-    account.BOUNTY = watchedTokens;
+    account.BOUNTY = [...watchedTokens];
+}
+
+export function addWatchedToken(
+    token: TokenDetails,
+    watchedTokens: TokenDetails[],
+    account?: ViemClient,
+) {
+    if (!watchedTokens.find((v) => v.address.toLowerCase() === token.address.toLowerCase())) {
+        watchedTokens.push(token);
+    }
+    if (account) {
+        if (!account.BOUNTY.find((v) => v.address.toLowerCase() === token.address.toLowerCase())) {
+            account.BOUNTY.push(token);
+        }
+    }
 }
 
 /**

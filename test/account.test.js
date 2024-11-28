@@ -193,6 +193,7 @@ describe("Test accounts", async function () {
             mainAccount,
             accounts,
             dataFetcher: dataFectherBefore,
+            publicRpc: false,
         };
 
         await rotateProviders(config, mainAccount, true);
@@ -203,6 +204,7 @@ describe("Test accounts", async function () {
         assert.exists(config.viemClient);
         assert.exists(config.dataFetcher);
         assert.equal(config.chain.id, 137);
+        assert.equal(config.viemClient.transport.transports.length, 2);
         assert.equal(config.viemClient.transport.transports[0].value.url, config.rpc[0]);
         assert.equal(config.viemClient.transport.transports[1].value.url, config.rpc[1]);
         assert.equal(config.mainAccount.provider, config.provider);

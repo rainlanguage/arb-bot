@@ -102,8 +102,7 @@ Other optional arguments are:
 - `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
 - `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
 - `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-- `--flashbot-rpc`, Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables
-- `--no-bundle`, Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables
+- `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables
 - `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
 - `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
 - `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
@@ -111,8 +110,10 @@ Other optional arguments are:
 - `--route`, Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables
 - `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
 - `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
+- `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
+- `--public-rpc`, Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables
 - `--gas-price-multiplier`, Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables
-- `--gas-limit-multiplier`, Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables
+- `--gas-limit-multiplier`, Option to multiply the gas limit estimation from the rpc as percentage, default is 108, ie +8%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables
 - `--tx-gas`, Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
@@ -161,7 +162,6 @@ Other optional arguments are:
 `HyperBlast`,
 `KinetixV2`,
 `KinetixV3`,
-`Camelot`,
 `Enosys`,
 `BlazeSwap`,
 
@@ -185,8 +185,8 @@ MNEMONIC=""
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
 
-# Option to submit transactions using the flashbot RPC. 
-FLASHBOT_RPC=""
+# Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
+WRITE_RPC=""
 
 # arb contract address
 ARB_ADDRESS="0x123..."
@@ -222,9 +222,6 @@ MAX_RATIO="true"
 # Optional seconds to wait for the transaction to mine before disregarding it
 TIMEOUT=""
 
-# Flag for not bundling orders based on pairs and clear each order individually
-NO_BUNDLE="false"
-
 # number of hops of binary search, if left unspecified will be 7 by default
 HOPS=11
 
@@ -253,13 +250,19 @@ BOT_MIN_BALANCE=
 # example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;...
 SELF_FUND_ORDERS=
 
+# Specifies the owner limit, in form of owner1=limit,owner2=limit,... , example: 0x123456=12,0x3456=44
+OWNER_PROFILE= 
+
+# Allows to use public RPCs as fallbacks, default is false
+PUBLIC_RPC=
+
 # Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
 ROUTE="single"
 
 # Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
 GAS_PRICE_MULTIPLIER=
 
-# Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%
+# Option to multiply the gas limit estimation from the rpc as percentage, default is 108, ie +8%
 GAS_LIMIT_MULTIPLIER=
 
 # Option to set a static gas limit for all submitting txs
@@ -268,9 +271,11 @@ TX_GAS=
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
 If you install this app as a dependency for your project you can run it by (All the above arguments apply here as well):
+
 ```bash
 arb-bot <OPTIONS>
 ```
+
 <br>
 
 ## Running On Github Actions

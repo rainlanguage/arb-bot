@@ -1,13 +1,15 @@
+import { SgOrder } from "./query";
 import { ChainId } from "sushi/chain";
 import { RouteLeg } from "sushi/tines";
 import { getDataFetcher } from "./config";
 import { Token, Type } from "sushi/currency";
 import BlackList from "./pool-blacklist.json";
+import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, orderbookAbi, OrderV3 } from "./abis";
 import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
-import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails } from "./types";
+import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails, ViemClient } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
 
 export function RPoolFilter(pool: any) {
@@ -638,6 +640,7 @@ export const bundleOrders = (
                     if (pair && _bundle)
                         pair.takeOrders.push({
                             id: orderDetails.orderHash,
+                            // active: true,
                             takeOrder: {
                                 order: orderStruct,
                                 inputIOIndex: k,
@@ -657,6 +660,7 @@ export const bundleOrders = (
                             takeOrders: [
                                 {
                                     id: orderDetails.orderHash,
+                                    // active: true,
                                     takeOrder: {
                                         order: orderStruct,
                                         inputIOIndex: k,
@@ -709,7 +713,7 @@ export async function getVaultBalance(
             address: orderbookAddress as `0x${string}`,
             allowFailure: false,
             chainId: viemClient.chain!.id,
-            abi: parseAbi([orderbookAbi[2]]),
+            abi: parseAbi([orderbookAbi[3]]),
             functionName: "vaultBalance",
             args: [
                 // owner
@@ -849,6 +853,9 @@ export async function quoteSingleOrder(
     }
 }
 
+/**
+ * Get a TakeOrder type consumable by orderbook Quote lib for quoting orders
+ */
 export function getQuoteConfig(orderDetails: any): TakeOrder {
     return {
         order: {
@@ -1083,7 +1090,12 @@ export const getRpSwap = async (
     }
 };
 
-export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
+/**
+ * Gets all distinct tokens of all the orders' IOs from a subgraph query,
+ * used to to keep a cache of known tokens at runtime to not fetch their
+ * details everytime with onchain calls
+ */
+export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
     const tokens: TokenDetails[] = [];
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
@@ -1096,12 +1108,12 @@ export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
             const _output = orderStruct.validOutputs[j];
             const _outputSymbol = orderDetails.outputs.find(
                 (v: any) => v.token.address.toLowerCase() === _output.token.toLowerCase(),
-            ).token.symbol;
+            )?.token?.symbol;
             if (!tokens.find((v) => v.address === _output.token.toLowerCase())) {
                 tokens.push({
                     address: _output.token.toLowerCase(),
                     decimals: _output.decimals,
-                    symbol: _outputSymbol,
+                    symbol: _outputSymbol ?? "UnknownSymbol",
                 });
             }
         }
@@ -1109,12 +1121,12 @@ export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
             const _input = orderStruct.validInputs[k];
             const _inputSymbol = orderDetails.inputs.find(
                 (v: any) => v.token.address.toLowerCase() === _input.token.toLowerCase(),
-            ).token.symbol;
+            )?.token?.symbol;
             if (!tokens.find((v) => v.address === _input.token.toLowerCase())) {
                 tokens.push({
                     address: _input.token.toLowerCase(),
                     decimals: _input.decimals,
-                    symbol: _inputSymbol,
+                    symbol: _inputSymbol ?? "UnknownSymbol",
                 });
             }
         }
@@ -1122,6 +1134,9 @@ export function getOrdersTokens(ordersDetails: any[]): TokenDetails[] {
     return tokens;
 }
 
+/**
+ * Checks if a route exists between 2 tokens using sushi router
+ */
 export async function routeExists(
     config: BotConfig,
     fromToken: Token,
@@ -1145,6 +1160,9 @@ export async function routeExists(
     }
 }
 
+/**
+ * Json serializer function for handling bigint type
+ */
 export function withBigintSerializer(_k: string, v: any) {
     if (typeof v == "bigint") {
         return v.toString();
@@ -1211,7 +1229,7 @@ export async function checkOwnedOrders(
                 address: v.orderbook,
                 allowFailure: false,
                 chainId: config.chain.id,
-                abi: parseAbi([orderbookAbi[2]]),
+                abi: parseAbi([orderbookAbi[3]]),
                 functionName: "vaultBalance",
                 args: [
                     // owner
@@ -1245,11 +1263,17 @@ export async function checkOwnedOrders(
     return result;
 }
 
+/**
+ * Converts to a float number
+ */
 export function toNumber(value: BigNumberish): number {
     const valueString = ethers.utils.formatUnits(value);
     return Number.parseFloat(valueString.substring(0, valueString.includes(".") ? 18 : 17));
 }
 
+/**
+ * Get market quote (price) for a token pair using sushi router
+ */
 export function getMarketQuote(
     config: BotConfig,
     fromToken: Token,
@@ -1281,6 +1305,67 @@ export function getMarketQuote(
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
         };
     }
+}
+
+/**
+ * Checks if an a value is a big numberish, from ethers
+ */
+export function isBigNumberish(value: any): value is BigNumberish {
+    return (
+        value != null &&
+        (BigNumber.isBigNumber(value) ||
+            (typeof value === "number" && value % 1 === 0) ||
+            (typeof value === "string" && !!value.match(/^-?[0-9]+$/)) ||
+            isHexString(value) ||
+            typeof value === "bigint" ||
+            isBytes(value))
+    );
+}
+
+/**
+ * Get block number with retries, using viem client
+ */
+export async function getBlockNumber(viemClient: ViemClient): Promise<bigint | undefined> {
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await viemClient.getBlockNumber();
+        } catch (e) {
+            await sleep(5_000);
+        }
+    }
+    return;
+}
+
+/**
+ * Get token symbol
+ * @param address - The address of token
+ * @param viemClient - The viem client
+ */
+export async function getTokenSymbol(address: string, viemClient: ViemClient): Promise<string> {
+    // 3 retries
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await viemClient.readContract({
+                address: address as `0x${string}`,
+                abi: parseAbi(erc20Abi),
+                functionName: "symbol",
+            });
+        } catch {
+            await sleep(5_000);
+        }
+    }
+    return "UnknownSymbol";
+}
+
+export function memory(msg: string) {
+    // eslint-disable-next-line no-console
+    console.log(msg);
+    for (const [key, value] of Object.entries(process.memoryUsage())) {
+        // eslint-disable-next-line no-console
+        console.log(`Memory usage by ${key}, ${value / 1_000_000}MB `);
+    }
+    // eslint-disable-next-line no-console
+    console.log("\n---\n");
 }
 
 /**

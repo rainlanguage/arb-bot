@@ -102,9 +102,12 @@ export function errorSnapshot(header: string, err: any): string {
 export function containsNodeError(err: BaseError): boolean {
     try {
         const snapshot = errorSnapshot("", err);
+        const parsed = parseRevertError(err);
         return (
             // err instanceof TransactionRejectedRpcError ||
             // err instanceof InvalidInputRpcError ||
+            !!parsed.decoded ||
+            !!parsed.raw.data ||
             err instanceof FeeCapTooLowError ||
             err instanceof ExecutionRevertedError ||
             err instanceof InsufficientFundsError ||

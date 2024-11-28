@@ -17,6 +17,7 @@ const { getChainConfig, getDataFetcher } = require("../../src/config");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const { prepareOrdersForRound, getOrderbookOwnersProfileMapFromSg } = require("../../src/order");
 const {
     arbDeploy,
     encodeMeta,
@@ -149,7 +150,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct = {
                         token: tokens[i].address,
@@ -236,7 +237,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.shuffle = false;
                 config.signer = bot;
                 config.hops = 2;
-                config.bundle = true;
                 config.retries = 1;
                 config.lps = liquidityProviders;
                 config.rpVersion = rpVersion;
@@ -251,6 +251,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
+                orders = prepareOrdersForRound(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
+                );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -415,7 +419,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
@@ -567,7 +571,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.shuffle = false;
                 config.signer = bot;
                 config.hops = 2;
-                config.bundle = true;
                 config.retries = 1;
                 config.lps = liquidityProviders;
                 config.rpVersion = rpVersion;
@@ -583,6 +586,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
+                orders = prepareOrdersForRound(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
+                );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -758,7 +765,7 @@ for (let i = 0; i < testData.length; i++) {
                 // the deployed orders in format of a sg query.
                 // all orders have WETH as output and other specified
                 // tokens as input
-                const orders = [];
+                let orders = [];
                 for (let i = 1; i < tokens.length; i++) {
                     const depositConfigStruct1 = {
                         token: tokens[i].address,
@@ -877,23 +884,20 @@ for (let i = 0; i < testData.length; i++) {
                 }
 
                 // mock quote responses
+                const t0 = [];
+                for (let i = 0; i < tokens.length - 1; i++) {
+                    t0.push(tokens[0]);
+                }
                 await mockServer
                     .forPost("/rpc")
                     .once()
                     .thenSendJsonRpcResult(
                         encodeQuoteResponse([
-                            ...tokens.slice(1).flatMap((v) => [
+                            ...[tokens[1], ...t0, ...tokens.slice(2)].flatMap((v) => [
                                 [
                                     true, // success
                                     v.depositAmount.mul("1" + "0".repeat(18 - v.decimals)), //maxout
                                     ethers.constants.Zero, // ratio
-                                ],
-                                [
-                                    true,
-                                    tokens[0].depositAmount.mul(
-                                        "1" + "0".repeat(18 - tokens[0].decimals),
-                                    ),
-                                    ethers.constants.Zero,
                                 ],
                             ]),
                         ]),
@@ -921,7 +925,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.shuffle = false;
                 config.signer = bot;
                 config.hops = 2;
-                config.bundle = true;
                 config.retries = 1;
                 config.lps = liquidityProviders;
                 config.rpVersion = rpVersion;
@@ -936,6 +939,10 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
+                orders = prepareOrdersForRound(
+                    await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
+                    false,
+                );
                 const { reports } = await clear(config, orders, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -949,7 +956,7 @@ for (let i = 0; i < testData.length; i++) {
                 let gasSpent = ethers.constants.Zero;
                 let inputProfit = ethers.constants.Zero;
                 for (let i = 0; i < reports.length; i++) {
-                    if (i % 2 !== 0) continue;
+                    if (reports[i].status !== ProcessPairReportStatus.FoundOpportunity) continue;
                     assert.equal(reports[i].status, ProcessPairReportStatus.FoundOpportunity);
                     assert.equal(reports[i].clearedOrders.length, 1);
 

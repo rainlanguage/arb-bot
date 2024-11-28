@@ -92,8 +92,8 @@ export function handleSgResults(
     const ordersDetails: any[] = [];
     for (let i = 0; i < responses.length; i++) {
         const res = responses[i];
-        if (res.status === "fulfilled" && res?.value?.data?.data?.orders) {
-            ordersDetails.push(...res.value.data.data.orders);
+        if (res.status === "fulfilled" && res?.value) {
+            ordersDetails.push(...res.value);
         } else if (res.status === "rejected") {
             reasons[availableSgs[i]] = res.reason;
         }

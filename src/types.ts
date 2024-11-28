@@ -23,6 +23,7 @@ export type CliOptions = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
     orderbookAddress?: string;
@@ -33,7 +34,6 @@ export type CliOptions = {
     orderOwner?: string;
     sleep: number;
     maxRatio: boolean;
-    flashbotRpc?: string;
     timeout?: number;
     hops: number;
     retries: number;
@@ -41,9 +41,10 @@ export type CliOptions = {
     walletCount?: number;
     topupAmount?: string;
     botMinBalance: string;
-    bundle: boolean;
     selfFundOrders?: SelfFundOrder[];
     tokens?: TokenDetails[];
+    ownerProfile?: Record<string, number>;
+    publicRpc: boolean;
     route?: string;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
@@ -69,6 +70,7 @@ export type BundledOrders = {
 
 export type TakeOrderDetails = {
     id: string;
+    // active: boolean;
     quote?: {
         maxOutput: BigNumber;
         ratio: BigNumber;
@@ -103,6 +105,29 @@ export type Order = {
     validOutputs: IO[];
 };
 
+export type Pair = {
+    buyToken: string;
+    buyTokenDecimals: number;
+    buyTokenSymbol: string;
+    sellToken: string;
+    sellTokenDecimals: number;
+    sellTokenSymbol: string;
+    takeOrder: TakeOrder;
+};
+export type OrderProfile = {
+    active: boolean;
+    order: Order;
+    takeOrders: Pair[];
+    consumedTakeOrders: Pair[];
+};
+export type OwnerProfile = {
+    limit: number;
+    orders: OrdersProfileMap;
+};
+export type OrdersProfileMap = Map<string, OrderProfile>;
+export type OwnersProfileMap = Map<string, OwnerProfile>;
+export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
+
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
     PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
 
@@ -127,15 +152,14 @@ export type BotConfig = {
     key?: string;
     mnemonic?: string;
     rpc: string[];
+    writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
     lps: LiquidityProviders[];
     maxRatio: boolean;
-    flashbotRpc?: string;
     timeout?: number;
     hops: number;
     retries: number;
-    bundle: boolean;
     gasCoveragePercentage: string;
     watchedTokens?: TokenDetails[];
     viemClient: PublicClient;
@@ -143,6 +167,7 @@ export type BotConfig = {
     mainAccount: ViemClient;
     accounts: ViemClient[];
     selfFundOrders?: SelfFundOrder[];
+    publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";
     rpcRecords: Record<string, RpcRecord>;

@@ -8,7 +8,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
-import { fundOwnedOrders, getNonce, rotateAccounts } from "./account";
+import { addWatchedToken, fundOwnedOrders, getNonce, rotateAccounts } from "./account";
 import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert, isTimeout } from "./error";
 import {
     Report,
@@ -21,13 +21,11 @@ import {
     ProcessPairResult,
 } from "./types";
 import {
-    sleep,
     toNumber,
     getIncome,
     getEthPrice,
     quoteOrders,
     routeExists,
-    bundleOrders,
     PoolBlackList,
     getMarketQuote,
     getTotalIncome,
@@ -69,7 +67,7 @@ export enum ProcessPairReportStatus {
  */
 export const processOrders = async (
     config: BotConfig,
-    ordersDetails: any[],
+    bundledOrders: BundledOrders[][],
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> => {
@@ -84,9 +82,6 @@ export const processOrders = async (
     if (config.genericArbAddress) {
         genericArb = new ethers.Contract(config.genericArbAddress, arbAbis);
     }
-
-    // prepare orders
-    const bundledOrders = bundleOrders(ordersDetails, false, true);
 
     // check owned vaults and top them up if necessary
     await tracer.startActiveSpan("handle-owned-vaults", {}, ctx, async (span) => {
@@ -184,11 +179,11 @@ export const processOrders = async (
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
                 const signer = accounts.length ? accounts[0] : mainAccount;
-                const flashbotSigner = config.flashbotRpc
+                const writeSigner = config.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
-                          [config.flashbotRpc],
-                          undefined,
+                          config.writeRpc,
+                          false,
                           privateKeyToAccount(
                               signer.account.getHdKey
                                   ? (ethers.utils.hexlify(
@@ -217,7 +212,7 @@ export const processOrders = async (
                         viemClient,
                         dataFetcher,
                         signer,
-                        flashbotSigner,
+                        writeSigner,
                         arb,
                         genericArb,
                         orderbook,
@@ -394,7 +389,6 @@ export const processOrders = async (
 
                 // rotate the accounts once they are used once
                 rotateAccounts(accounts);
-                await sleep(2000);
             }
         }
     }
@@ -410,7 +404,7 @@ export async function processPair(args: {
     viemClient: PublicClient;
     dataFetcher: BotDataFetcher;
     signer: ViemClient;
-    flashbotSigner: ViemClient | undefined;
+    writeSigner: ViemClient | undefined;
     arb: Contract;
     genericArb: Contract | undefined;
     orderbook: Contract;
@@ -423,7 +417,7 @@ export async function processPair(args: {
         viemClient,
         dataFetcher,
         signer,
-        flashbotSigner,
+        writeSigner,
         arb,
         genericArb,
         orderbook,
@@ -666,13 +660,13 @@ export async function processPair(args: {
     // submit the tx
     let txhash, txUrl;
     try {
-        rawtx.nonce = await getNonce(flashbotSigner !== undefined ? flashbotSigner : signer);
-        if (flashbotSigner !== undefined) {
+        rawtx.nonce = await getNonce(writeSigner !== undefined ? writeSigner : signer);
+        if (writeSigner !== undefined) {
             rawtx.gas = undefined;
         }
         txhash =
-            flashbotSigner !== undefined
-                ? await flashbotSigner.sendTransaction(rawtx)
+            writeSigner !== undefined
+                ? await writeSigner.sendTransaction(rawtx)
                 : await signer.sendTransaction(rawtx);
 
         txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
@@ -768,27 +762,21 @@ export async function processPair(args: {
 
             // keep track of gas consumption of the account and bounty token
             result.gasCost = actualGasCost;
-            if (
-                inputTokenIncome &&
-                inputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find((v) => v.address === orderPairObject.buyToken)
-            ) {
-                signer.BOUNTY.push({
+            if (inputTokenIncome && inputTokenIncome.gt(0)) {
+                const tkn = {
                     address: orderPairObject.buyToken.toLowerCase(),
                     decimals: orderPairObject.buyTokenDecimals,
                     symbol: orderPairObject.buyTokenSymbol,
-                });
+                };
+                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
             }
-            if (
-                outputTokenIncome &&
-                outputTokenIncome.gt(0) &&
-                !signer.BOUNTY.find((v) => v.address === orderPairObject.sellToken)
-            ) {
-                signer.BOUNTY.push({
+            if (outputTokenIncome && outputTokenIncome.gt(0)) {
+                const tkn = {
                     address: orderPairObject.sellToken.toLowerCase(),
                     decimals: orderPairObject.sellTokenDecimals,
                     symbol: orderPairObject.sellTokenSymbol,
-                });
+                };
+                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
             }
             return result;
         } else {

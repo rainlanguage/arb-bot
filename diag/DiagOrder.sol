@@ -5,10 +5,13 @@ import {Script} from "../lib/forge-std/src/Script.sol";
 
 contract DiagOrder is Script {
     function run() external {
+        vm.createSelectFork(""); // rpc url
+        vm.rollFork(); // block number
         address to = ; // put arb contract address
-        address from = ;
+        address from = ; // sender address
+        bytes memory data = hex""; // put calldata here without 0x
+
         vm.startPrank(from);
-        bytes memory data = hex"calldata"; // put calldata here without 0x
         (bool success, bytes memory result) = to.call(data);
         (success, result);
     }

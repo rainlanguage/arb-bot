@@ -3,14 +3,15 @@ import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { sleep, getOrdersTokens } from "./utils";
+import { getOrderChanges, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
-import { BotConfig, CliOptions, ViemClient } from "./types";
+import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
+import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import {
@@ -21,12 +22,18 @@ import {
     getBatchEthBalance,
 } from "./account";
 import {
+    prepareOrdersForRound,
+    getOrderbookOwnersProfileMapFromSg,
+    handleAddOrderbookOwnersProfileMap,
+    handleRemoveOrderbookOwnersProfileMap,
+} from "./order";
+import {
     diag,
     trace,
     context,
+    DiagLogLevel,
     SpanStatusCode,
     DiagConsoleLogger,
-    DiagLogLevel,
 } from "@opentelemetry/api";
 import {
     BasicTracerProvider,
@@ -52,9 +59,8 @@ const ENV_OPTIONS = {
     orderOwner: process?.env?.ORDER_OWNER,
     sleep: process?.env?.SLEEP,
     maxRatio: process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
-    bundle: process?.env?.NO_BUNDLE?.toLowerCase() === "true" ? false : true,
+    publicRpc: process?.env?.PUBLIC_RPC?.toLowerCase() === "true" ? true : false,
     timeout: process?.env?.TIMEOUT,
-    flashbotRpc: process?.env?.FLASHBOT_RPC,
     hops: process?.env?.HOPS,
     retries: process?.env?.RETRIES,
     poolUpdateInterval: process?.env?.POOL_UPDATE_INTERVAL || "15",
@@ -66,8 +72,14 @@ const ENV_OPTIONS = {
     gasLimitMultiplier: process?.env?.GAS_LIMIT_MULTIPLIER,
     txGas: process?.env?.TX_GAS,
     route: process?.env?.ROUTE,
+    ownerProfile: process?.env?.OWNER_PROFILE
+        ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
+        : undefined,
     rpc: process?.env?.RPC_URL
         ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
+        : undefined,
+    writeRpc: process?.env?.WRITE_RPC
+        ? Array.from(process?.env?.WRITE_RPC.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
     subgraph: process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -125,8 +137,8 @@ const getOptions = async (argv: any, version?: string) => {
             "Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables",
         )
         .option(
-            "--flashbot-rpc <url>",
-            "Optional flashbot rpc url to submit transaction to, Will override the 'FLASHBOT_RPC' in env variables",
+            "--write-rpc <url...>",
+            "Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables",
         )
         .option(
             "--timeout <integer>",
@@ -135,10 +147,6 @@ const getOptions = async (argv: any, version?: string) => {
         .option(
             "--max-ratio",
             "Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables",
-        )
-        .option(
-            "--no-bundle",
-            "Flag for not bundling orders based on pairs and clear each order individually. Will override the 'NO_BUNDLE' in env variables",
         )
         .option(
             "--hops <integer>",
@@ -169,6 +177,14 @@ const getOptions = async (argv: any, version?: string) => {
             "Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables",
         )
         .option(
+            "--owner-profile <OWNER=LIMIT...>",
+            "Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables",
+        )
+        .option(
+            "--public-rpc",
+            "Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables",
+        )
+        .option(
             "--route <string>",
             "Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables",
         )
@@ -178,7 +194,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--gas-limit-multiplier <integer>",
-            "Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
+            "Option to multiply the gas limit estimation from the rpc as percentage, default is 108, ie +8%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
         )
         .option(
             "--tx-gas <integer>",
@@ -197,33 +213,63 @@ const getOptions = async (argv: any, version?: string) => {
         .opts();
 
     // assigning specified options from cli/env
-    cmdOptions.key = cmdOptions.key || ENV_OPTIONS.key;
-    cmdOptions.mnemonic = cmdOptions.mnemonic || ENV_OPTIONS.mnemonic;
-    cmdOptions.rpc = cmdOptions.rpc || ENV_OPTIONS.rpc;
-    cmdOptions.arbAddress = cmdOptions.arbAddress || ENV_OPTIONS.arbAddress;
-    cmdOptions.genericArbAddress = cmdOptions.genericArbAddress || ENV_OPTIONS.genericArbAddress;
-    cmdOptions.orderbookAddress = cmdOptions.orderbookAddress || ENV_OPTIONS.orderbookAddress;
-    cmdOptions.subgraph = cmdOptions.subgraph || ENV_OPTIONS.subgraph;
-    cmdOptions.lps = cmdOptions.lps || ENV_OPTIONS.lps;
-    cmdOptions.gasCoverage = cmdOptions.gasCoverage || ENV_OPTIONS.gasCoverage;
-    cmdOptions.orderHash = cmdOptions.orderHash || ENV_OPTIONS.orderHash;
-    cmdOptions.orderOwner = cmdOptions.orderOwner || ENV_OPTIONS.orderOwner;
-    cmdOptions.sleep = cmdOptions.sleep || ENV_OPTIONS.sleep;
-    cmdOptions.maxRatio = cmdOptions.maxRatio || ENV_OPTIONS.maxRatio;
-    cmdOptions.flashbotRpc = cmdOptions.flashbotRpc || ENV_OPTIONS.flashbotRpc;
-    cmdOptions.timeout = cmdOptions.timeout || ENV_OPTIONS.timeout;
-    cmdOptions.hops = cmdOptions.hops || ENV_OPTIONS.hops;
-    cmdOptions.retries = cmdOptions.retries || ENV_OPTIONS.retries;
-    cmdOptions.poolUpdateInterval = cmdOptions.poolUpdateInterval || ENV_OPTIONS.poolUpdateInterval;
-    cmdOptions.walletCount = cmdOptions.walletCount || ENV_OPTIONS.walletCount;
-    cmdOptions.topupAmount = cmdOptions.topupAmount || ENV_OPTIONS.topupAmount;
-    cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || ENV_OPTIONS.selfFundOrders;
-    cmdOptions.gasPriceMultiplier = cmdOptions.gasPriceMultiplier || ENV_OPTIONS.gasPriceMultiplier;
-    cmdOptions.gasLimitMultiplier = cmdOptions.gasLimitMultiplier || ENV_OPTIONS.gasLimitMultiplier;
-    cmdOptions.txGas = cmdOptions.txGas || ENV_OPTIONS.txGas;
-    cmdOptions.botMinBalance = cmdOptions.botMinBalance || ENV_OPTIONS.botMinBalance;
-    cmdOptions.route = cmdOptions.route || ENV_OPTIONS.route;
-    cmdOptions.bundle = cmdOptions.bundle ? ENV_OPTIONS.bundle : false;
+    cmdOptions.key = cmdOptions.key || getEnv(ENV_OPTIONS.key);
+    cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
+    cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
+    cmdOptions.writeRpc = cmdOptions.writeRpc || getEnv(ENV_OPTIONS.writeRpc);
+    cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
+    cmdOptions.genericArbAddress =
+        cmdOptions.genericArbAddress || getEnv(ENV_OPTIONS.genericArbAddress);
+    cmdOptions.orderbookAddress =
+        cmdOptions.orderbookAddress || getEnv(ENV_OPTIONS.orderbookAddress);
+    cmdOptions.subgraph = cmdOptions.subgraph || getEnv(ENV_OPTIONS.subgraph);
+    cmdOptions.lps = cmdOptions.lps || getEnv(ENV_OPTIONS.lps);
+    cmdOptions.gasCoverage = cmdOptions.gasCoverage || getEnv(ENV_OPTIONS.gasCoverage);
+    cmdOptions.orderHash = cmdOptions.orderHash || getEnv(ENV_OPTIONS.orderHash);
+    cmdOptions.orderOwner = cmdOptions.orderOwner || getEnv(ENV_OPTIONS.orderOwner);
+    cmdOptions.sleep = cmdOptions.sleep || getEnv(ENV_OPTIONS.sleep);
+    cmdOptions.maxRatio = cmdOptions.maxRatio || getEnv(ENV_OPTIONS.maxRatio);
+    cmdOptions.timeout = cmdOptions.timeout || getEnv(ENV_OPTIONS.timeout);
+    cmdOptions.hops = cmdOptions.hops || getEnv(ENV_OPTIONS.hops);
+    cmdOptions.retries = cmdOptions.retries || getEnv(ENV_OPTIONS.retries);
+    cmdOptions.poolUpdateInterval =
+        cmdOptions.poolUpdateInterval || getEnv(ENV_OPTIONS.poolUpdateInterval);
+    cmdOptions.walletCount = cmdOptions.walletCount || getEnv(ENV_OPTIONS.walletCount);
+    cmdOptions.topupAmount = cmdOptions.topupAmount || getEnv(ENV_OPTIONS.topupAmount);
+    cmdOptions.selfFundOrders = cmdOptions.selfFundOrders || getEnv(ENV_OPTIONS.selfFundOrders);
+    cmdOptions.gasPriceMultiplier =
+        cmdOptions.gasPriceMultiplier || getEnv(ENV_OPTIONS.gasPriceMultiplier);
+    cmdOptions.gasLimitMultiplier =
+        cmdOptions.gasLimitMultiplier || getEnv(ENV_OPTIONS.gasLimitMultiplier);
+    cmdOptions.txGas = cmdOptions.txGas || getEnv(ENV_OPTIONS.txGas);
+    cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
+    cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
+    cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
+    cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
+    if (cmdOptions.ownerProfile) {
+        const profiles: Record<string, number> = {};
+        cmdOptions.ownerProfile.forEach((v: string) => {
+            const parsed = v.split("=");
+            if (parsed.length !== 2) {
+                throw "Invalid owner profile, must be in form of 'ownerAddress=limitValue'";
+            }
+            if (!ethers.utils.isAddress(parsed[0])) {
+                throw `Invalid owner address: ${parsed[0]}`;
+            }
+            if (!isBigNumberish(parsed[1]) && parsed[1] !== "max") {
+                throw "Invalid owner profile limit, must be an integer gte 0";
+            }
+            if (parsed[1] === "max") {
+                profiles[parsed[0].toLowerCase()] = Number.MAX_SAFE_INTEGER;
+            } else {
+                const limit = BigNumber.from(parsed[1]);
+                profiles[parsed[0].toLowerCase()] = limit.gte(Number.MAX_SAFE_INTEGER.toString())
+                    ? Number.MAX_SAFE_INTEGER
+                    : limit.toNumber();
+            }
+        });
+        cmdOptions.ownerProfile = profiles;
+    }
     if (cmdOptions.lps) {
         cmdOptions.lps = Array.from((cmdOptions.lps as string).matchAll(/[^,\s]+/g)).map(
             (v) => v[0],
@@ -250,96 +296,59 @@ export const arbRound = async (
     roundCtx: Context,
     options: CliOptions,
     config: BotConfig,
+    bundledOrders: BundledOrders[][],
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
-        let ordersDetails;
+        options;
         try {
-            try {
-                ordersDetails = await getOrderDetails(
-                    options.subgraph,
-                    {
-                        orderHash: options.orderHash,
-                        orderOwner: options.orderOwner,
-                        orderbook: options.orderbookAddress,
-                    },
-                    span,
-                    config.timeout,
-                );
-                if (!ordersDetails.length) {
-                    span.setStatus({ code: SpanStatusCode.OK, message: "found no orders" });
-                    span.end();
-                    return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
+            let txs;
+            let foundOpp = false;
+            let didClear = false;
+            const { reports = [], avgGasCost = undefined } = await clear(
+                config,
+                bundledOrders,
+                tracer,
+                ctx,
+            );
+            if (reports && reports.length) {
+                txs = reports.map((v) => v.txUrl).filter((v) => !!v);
+                if (txs.length) {
+                    foundOpp = true;
+                    span.setAttribute("txUrls", txs);
+                    span.setAttribute("foundOpp", true);
+                } else if (
+                    reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
+                ) {
+                    foundOpp = true;
+                    span.setAttribute("foundOpp", true);
                 }
-            } catch (e: any) {
-                const snapshot = errorSnapshot("", e);
-                span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                span.recordException(e);
+                if (
+                    reports.some(
+                        (v) => v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
+                    )
+                ) {
+                    didClear = true;
+                    span.setAttribute("didClear", true);
+                }
+            } else {
                 span.setAttribute("didClear", false);
-                span.setAttribute("foundOpp", false);
-                span.end();
-                return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
             }
-
-            try {
-                let txs;
-                let foundOpp = false;
-                let didClear = false;
-                const { reports = [], avgGasCost = undefined } = await clear(
-                    config,
-                    ordersDetails,
-                    tracer,
-                    ctx,
-                );
-                if (reports && reports.length) {
-                    txs = reports.map((v) => v.txUrl).filter((v) => !!v);
-                    if (txs.length) {
-                        foundOpp = true;
-                        span.setAttribute("txUrls", txs);
-                        span.setAttribute("foundOpp", true);
-                    } else if (
-                        reports.some((v) => v.status === ProcessPairReportStatus.FoundOpportunity)
-                    ) {
-                        foundOpp = true;
-                        span.setAttribute("foundOpp", true);
-                    }
-                    if (
-                        reports.some(
-                            (v) =>
-                                v.status === ProcessPairReportStatus.FoundOpportunity && !v.reason,
-                        )
-                    ) {
-                        didClear = true;
-                        span.setAttribute("didClear", true);
-                    }
-                } else {
-                    span.setAttribute("didClear", false);
-                }
-                if (avgGasCost) {
-                    span.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
-                }
-                span.setStatus({ code: SpanStatusCode.OK });
-                span.end();
-                return { txs, foundOpp, didClear, avgGasCost };
-            } catch (e: any) {
-                if (e?.startsWith?.("Failed to batch quote orders")) {
-                    span.setAttribute("severity", ErrorSeverity.LOW);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: e });
-                } else {
-                    const snapshot = errorSnapshot("Unexpected error occured", e);
-                    span.setAttribute("severity", ErrorSeverity.HIGH);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                }
-                span.recordException(e);
-                span.setAttribute("didClear", false);
-                span.setAttribute("foundOpp", false);
-                span.end();
-                return { txs: [], foundOpp: false, didClear: false, avgGasCost: undefined };
+            if (avgGasCost) {
+                span.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
+            span.setStatus({ code: SpanStatusCode.OK });
+            span.end();
+            return { txs, foundOpp, didClear, avgGasCost };
         } catch (e: any) {
-            const snapshot = errorSnapshot("Unexpected error occured", e);
-            span.setAttribute("severity", ErrorSeverity.HIGH);
-            span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            if (e?.startsWith?.("Failed to batch quote orders")) {
+                span.setAttribute("severity", ErrorSeverity.LOW);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: e });
+            } else {
+                const snapshot = errorSnapshot("Unexpected error occured", e);
+                span.setAttribute("severity", ErrorSeverity.HIGH);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            }
             span.recordException(e);
             span.setAttribute("didClear", false);
             span.setAttribute("foundOpp", false);
@@ -379,6 +388,14 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     }
     if (!options.rpc) throw "undefined RPC URL";
+    if (options.writeRpc) {
+        if (
+            !Array.isArray(options.writeRpc) ||
+            options.writeRpc.some((v) => typeof v !== "string")
+        ) {
+            throw `Invalid write rpcs: ${options.writeRpc}`;
+        }
+    }
     if (!options.arbAddress) throw "undefined arb contract address";
     if (options.sleep) {
         if (/^[0-9]+$/.test(options.sleep)) roundGap = Number(options.sleep) * 1000;
@@ -429,7 +446,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
         } else throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
     } else {
-        options.gasLimitMultiplier = 105;
+        options.gasLimitMultiplier = 108;
     }
     if (options.txGas) {
         if (typeof options.txGas === "number") {
@@ -443,8 +460,8 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         } else throw "invalid txGas value, must be an integer greater than zero";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
-    let ordersDetails: any[] = [];
-    if (!process?.env?.TEST)
+    let ordersDetails: SgOrder[] = [];
+    if (!process?.env?.CLI_STARTUP_TEST) {
         for (let i = 0; i < 3; i++) {
             try {
                 ordersDetails = await getOrderDetails(options.subgraph, {
@@ -458,7 +475,10 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 else throw e;
             }
         }
-    options.tokens = getOrdersTokens(ordersDetails);
+    }
+    const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
+    const tokens = getOrdersTokens(ordersDetails);
+    options.tokens = tokens;
 
     // get config
     const config = await getConfig(
@@ -475,6 +495,14 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         options: options as CliOptions,
         poolUpdateInterval,
         config,
+        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
+            ordersDetails,
+            config.viemClient as any as ViemClient,
+            tokens,
+            (options as CliOptions).ownerProfile,
+        ),
+        tokens,
+        lastReadOrdersTimestamp,
     };
 }
 
@@ -513,31 +541,40 @@ export const main = async (argv: any, version?: string) => {
     const tracer = provider.getTracer("arb-bot-tracer");
 
     // parse cli args and startup bot configuration
-    const { roundGap, options, poolUpdateInterval, config } = await tracer.startActiveSpan(
-        "startup",
-        async (startupSpan) => {
-            const ctx = trace.setSpan(context.active(), startupSpan);
-            try {
-                const result = await startup(argv, version, tracer, ctx);
-                startupSpan.setStatus({ code: SpanStatusCode.OK });
-                startupSpan.end();
-                return result;
-            } catch (e: any) {
-                const snapshot = errorSnapshot("", e);
-                startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-                startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-                startupSpan.recordException(e);
+    const {
+        roundGap,
+        options,
+        poolUpdateInterval,
+        config,
+        orderbooksOwnersProfileMap,
+        tokens,
+        lastReadOrdersTimestamp,
+    } = await tracer.startActiveSpan("startup", async (startupSpan) => {
+        const ctx = trace.setSpan(context.active(), startupSpan);
+        try {
+            const result = await startup(argv, version, tracer, ctx);
+            startupSpan.setStatus({ code: SpanStatusCode.OK });
+            startupSpan.end();
+            return result;
+        } catch (e: any) {
+            const snapshot = errorSnapshot("", e);
+            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
+            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+            startupSpan.recordException(e);
 
-                // end this span and wait for it to finish
-                startupSpan.end();
-                await sleep(20000);
+            // end this span and wait for it to finish
+            startupSpan.end();
+            await sleep(20000);
 
-                // reject the promise that makes the cli process to exit with error
-                return Promise.reject(e);
-            }
-        },
-    );
+            // reject the promise that makes the cli process to exit with error
+            return Promise.reject(e);
+        }
+    });
 
+    const lastReadOrdersMap = options.subgraph.map((v) => ({
+        sg: v,
+        skip: 0,
+    }));
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
     let lastInterval = Date.now() + poolUpdateInterval;
@@ -553,12 +590,14 @@ export const main = async (argv: any, version?: string) => {
     while (true) {
         await tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
+            const newMeta = await getMetaInfo(config, options.subgraph);
             roundSpan.setAttributes({
-                ...(await getMetaInfo(config, options.subgraph)),
+                ...newMeta,
                 "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
             });
+
             await tracer.startActiveSpan(
                 "check-wallet-balance",
                 {},
@@ -610,8 +649,16 @@ export const main = async (argv: any, version?: string) => {
                 update = true;
             }
             try {
+                const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 await rotateProviders(config, update);
-                const roundResult = await arbRound(tracer, roundCtx, options, config);
+                roundSpan.setAttribute("details.rpc", config.rpc);
+                const roundResult = await arbRound(
+                    tracer,
+                    roundCtx,
+                    options,
+                    config,
+                    bundledOrders,
+                );
                 let txs, foundOpp, didClear, roundAvgGasCost;
                 if (roundResult) {
                     txs = roundResult.txs;
@@ -746,6 +793,57 @@ export const main = async (argv: any, version?: string) => {
                 roundSpan.setAttribute("avgGasCost", ethers.utils.formatUnits(avgGasCost));
             }
 
+            try {
+                // handle order changes (add/remove)
+                roundSpan.setAttribute(
+                    "watch-new-orders",
+                    JSON.stringify({
+                        hasRead: lastReadOrdersMap,
+                        startTime: lastReadOrdersTimestamp,
+                    }),
+                );
+                const results = await Promise.allSettled(
+                    lastReadOrdersMap.map((v) =>
+                        getOrderChanges(
+                            v.sg,
+                            lastReadOrdersTimestamp,
+                            v.skip,
+                            options.timeout,
+                            roundSpan,
+                        ),
+                    ),
+                );
+                for (let i = 0; i < results.length; i++) {
+                    const res = results[i];
+                    if (res.status === "fulfilled") {
+                        lastReadOrdersMap[i].skip += res.value.count;
+                        try {
+                            await handleAddOrderbookOwnersProfileMap(
+                                orderbooksOwnersProfileMap,
+                                res.value.addOrders.map((v) => v.order),
+                                config.viemClient as any as ViemClient,
+                                tokens,
+                                options.ownerProfile,
+                                roundSpan,
+                            );
+                        } catch {
+                            /**/
+                        }
+                        try {
+                            await handleRemoveOrderbookOwnersProfileMap(
+                                orderbooksOwnersProfileMap,
+                                res.value.removeOrders.map((v) => v.order),
+                                roundSpan,
+                            );
+                        } catch {
+                            /**/
+                        }
+                    }
+                }
+            } catch {
+                /**/
+            }
+
             // report rpcs performance for round
             for (const rpc in config.rpcRecords) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
@@ -780,3 +878,13 @@ export const main = async (argv: any, version?: string) => {
     await exporter.shutdown();
     await sleep(10000);
 };
+
+function getEnv(value: any): any {
+    if (value !== undefined && value !== null) {
+        if (typeof value === "string") {
+            if (value !== "" && !/^\s*$/.test(value)) return value;
+            else return undefined;
+        } else return value;
+    }
+    return undefined;
+}

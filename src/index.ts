@@ -7,10 +7,10 @@ import { processLps } from "./utils";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
 import { Context, Span } from "@opentelemetry/api";
-import { getQuery, statusCheckQuery } from "./query";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { BotConfig, CliOptions, RoundReport, RpcRecord, SgFilter } from "./types";
+import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
+import { BotConfig, BundledOrders, CliOptions, RoundReport, SgFilter, RpcRecord } from "./types";
 import {
     getChainConfig,
     getDataFetcher,
@@ -32,9 +32,9 @@ export async function getOrderDetails(
     sgFilters?: SgFilter,
     span?: Span,
     timeout?: number,
-): Promise<any[]> {
+): Promise<SgOrder[]> {
     const hasjson = false;
-    const ordersDetails: any[] = [];
+    const ordersDetails: SgOrder[] = [];
     const isInvalidSg = !Array.isArray(sgs) || sgs.length === 0;
 
     if (isInvalidSg) throw "type of provided sources for reading orders are invalid";
@@ -62,16 +62,11 @@ export async function getOrderDetails(
             availableSgs.forEach((v) => {
                 if (v && typeof v === "string")
                     promises.push(
-                        axios.post(
+                        querySgOrders(
                             v,
-                            {
-                                query: getQuery(
-                                    sgFilters?.orderHash,
-                                    sgFilters?.orderOwner,
-                                    sgFilters?.orderbook,
-                                ),
-                            },
-                            { headers: { "Content-Type": "application/json" }, timeout },
+                            sgFilters?.orderHash,
+                            sgFilters?.orderOwner,
+                            sgFilters?.orderbook,
                         ),
                     );
             });
@@ -99,13 +94,12 @@ export async function getConfig(
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
-    const AddressPattern = /^0x[a-fA-F0-9]{40}$/;
-    if (!AddressPattern.test(arbAddress)) throw "invalid arb contract address";
-    if (options.genericArbAddress && !AddressPattern.test(options.genericArbAddress)) {
+    if (!ethers.utils.isAddress(arbAddress)) throw "invalid arb contract address";
+    if (options.genericArbAddress && !ethers.utils.isAddress(options.genericArbAddress)) {
         throw "invalid generic arb contract address";
     }
 
-    let timeout = 30_000;
+    let timeout = 15_000;
     if (options.timeout) {
         if (typeof options.timeout === "number") {
             if (!Number.isInteger(options.timeout) || options.timeout == 0)
@@ -159,6 +153,7 @@ export async function getConfig(
 
     const chainId = (await getChainId(rpcUrls)) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
+    if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
     const rpcRecords: Record<string, RpcRecord> = {};
     rpcUrls.forEach(
@@ -181,23 +176,23 @@ export async function getConfig(
     const viemClient = await createViemClient(
         chainId,
         rpcUrls,
-        false,
+        options.publicRpc,
         undefined,
         options.timeout,
         undefined,
         config,
     );
-    const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
-    if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
-
-    config.bundle = true;
-    if (options.bundle !== undefined) config.bundle = !!options.bundle;
+    const dataFetcher = await getDataFetcher(
+        viemClient as any as PublicClient,
+        lps,
+        options.publicRpc,
+    );
 
     config.rpc = rpcUrls;
     config.arbAddress = arbAddress;
     config.genericArbAddress = options.genericArbAddress;
     config.timeout = timeout;
-    config.flashbotRpc = options.flashbotRpc;
+    config.writeRpc = options.writeRpc;
     config.maxRatio = !!options.maxRatio;
     config.hops = hops;
     config.retries = retries;
@@ -207,6 +202,7 @@ export async function getConfig(
     config.dataFetcher = dataFetcher;
     config.watchedTokens = options.tokens ?? [];
     config.selfFundOrders = options.selfFundOrders;
+    config.publicRpc = options.publicRpc;
     config.walletKey = walletKey;
     config.route = route;
     config.rpcRecords = rpcRecords;
@@ -233,14 +229,14 @@ export async function getConfig(
  */
 export async function clear(
     config: BotConfig,
-    ordersDetails: any[],
+    bundledOrders: BundledOrders[][],
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> {
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
 
-    if (majorVersion >= 18) return await processOrders(config, ordersDetails, tracer, ctx);
+    if (majorVersion >= 18) return await processOrders(config, bundledOrders, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 }
 
