@@ -14,9 +14,13 @@ const {
     getOrderPairs,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
+    buildOtovMap,
+    fecthVaultBalances,
+    evaluateOwnersLimits,
+    resetLimits,
 } = require("../src/order");
 
-describe("Test order details", async function () {
+describe("Test order", async function () {
     beforeEach(() => mockServer.start(8081));
     afterEach(() => mockServer.stop());
 
@@ -943,6 +947,214 @@ describe("Test order details", async function () {
             ],
         ];
         assert.deepEqual(result4, expected4);
+    });
+
+    it("should build OTOV map", async function () {
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [order1, order2] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1),
+            getNewOrder(orderbook, owner2, token2, token1, 1),
+        ];
+
+        // build orderbook owner profile map
+        const ownerProfileMap = await getOrderbookOwnersProfileMapFromSg(
+            [order1, order2],
+            undefined,
+            [],
+        );
+
+        const result = buildOtovMap(ownerProfileMap);
+        const expected = new Map([
+            [
+                orderbook,
+                new Map([
+                    [
+                        token2.address,
+                        new Map([[owner1, [{ vaultId: order1.outputs[0].vaultId, balance: 0n }]]]),
+                    ],
+                    [
+                        token1.address,
+                        new Map([[owner2, [{ vaultId: order2.outputs[0].vaultId, balance: 0n }]]]),
+                    ],
+                ]),
+            ],
+        ]);
+
+        assert.deepEqual(result, expected);
+    });
+
+    it("should get vault balances for OTOV map", async function () {
+        // mock viem client
+        const viemClient = {
+            chain: { id: 137 },
+            multicall: async () => [5n, 8n],
+        };
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [order1, order2] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1),
+            getNewOrder(orderbook, owner2, token2, token1, 1),
+        ];
+        const otovMap = new Map([
+            [
+                orderbook,
+                new Map([
+                    [
+                        token2.address,
+                        new Map([[owner1, [{ vaultId: order1.outputs[0].vaultId, balance: 0n }]]]),
+                    ],
+                    [
+                        token1.address,
+                        new Map([[owner2, [{ vaultId: order2.outputs[0].vaultId, balance: 0n }]]]),
+                    ],
+                ]),
+            ],
+        ]);
+
+        await fecthVaultBalances(otovMap, viemClient);
+        const expected = new Map([
+            [
+                orderbook,
+                new Map([
+                    [
+                        token2.address,
+                        new Map([[owner1, [{ vaultId: order1.outputs[0].vaultId, balance: 5n }]]]),
+                    ],
+                    [
+                        token1.address,
+                        new Map([[owner2, [{ vaultId: order2.outputs[0].vaultId, balance: 8n }]]]),
+                    ],
+                ]),
+            ],
+        ]);
+
+        assert.deepEqual(otovMap, expected);
+    });
+
+    it("should evaluate owner limits", async function () {
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [owner1order1, owner2order1, owner1order2, owner2order2] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1),
+            getNewOrder(orderbook, owner2, token1, token2, 1),
+            getNewOrder(orderbook, owner1, token2, token1, 1),
+            getNewOrder(orderbook, owner2, token2, token1, 1),
+        ];
+
+        // build orderbook owner profile map
+        const ownerProfileMap = await getOrderbookOwnersProfileMapFromSg(
+            [owner1order1, owner2order1, owner1order2, owner2order2],
+            undefined,
+            [],
+            { [owner1]: 4 }, // set owner1 limit as 4, owner2 unset (defaults to 25)
+        );
+        const otovMap = new Map([
+            [
+                orderbook,
+                new Map([
+                    [
+                        token2.address,
+                        new Map([
+                            [owner1, [{ vaultId: owner1order1.outputs[0].vaultId, balance: 5n }]],
+                            [owner2, [{ vaultId: owner2order1.outputs[0].vaultId, balance: 5n }]],
+                        ]),
+                    ],
+                    [
+                        token1.address,
+                        new Map([
+                            [owner1, [{ vaultId: owner1order2.outputs[0].vaultId, balance: 9n }]],
+                            [owner2, [{ vaultId: owner2order2.outputs[0].vaultId, balance: 2n }]],
+                        ]),
+                    ],
+                ]),
+            ],
+        ]);
+        evaluateOwnersLimits(ownerProfileMap, otovMap, { [owner1]: 4 });
+
+        // after evaluation, owner 2 limit should be reduced to 10 from the default 25,
+        // that is because owner2 relative to owner1 has 2/9 of the total token1 supply
+        // and has 1/1 of token2 supply, 2/9 goes into the bracket of 0 - 25%, ie divide factor
+        // of 4 and 1/1 goes into barcket of 75 - >100%, ie divide factor of 1, avg of the factors
+        // equals to: (1 + 4) / 2 = 2.5 and then the default owner2 limit which was 25,
+        // divided by 2/5 equals to 10
+        // owner1 limit stays unchanged because it was set originally by the admin
+        const expected = await getOrderbookOwnersProfileMapFromSg(
+            [owner1order1, owner2order1, owner1order2, owner2order2],
+            undefined,
+            [],
+            { [owner1]: 4, [owner2]: 10 },
+        );
+
+        assert.deepEqual(ownerProfileMap, expected);
+    });
+
+    it("should reset owners limit", async function () {
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [order1, order2] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1),
+            getNewOrder(orderbook, owner2, token2, token1, 1),
+        ];
+
+        // build orderbook owner profile map
+        const ownerProfileMap = await getOrderbookOwnersProfileMapFromSg(
+            [order1, order2],
+            undefined,
+            [],
+            { [owner1]: 4, [owner2]: 10 }, // explicitly set owner2 limit to 10 for reset test
+        );
+        // reset owner limits, only resets non admin set owner limit, ie only owner2 limit back to 25
+        resetLimits(ownerProfileMap, { [owner1]: 4 });
+
+        const expected = await getOrderbookOwnersProfileMapFromSg([order1, order2], undefined, [], {
+            [owner1]: 4,
+        });
+        assert.deepEqual(ownerProfileMap, expected);
     });
 });
 

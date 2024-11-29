@@ -431,7 +431,7 @@ export function buildOtovMap(orderbooksOwnersProfileMap: OrderbooksOwnersProfile
  * Gets vault balances of instance of an OrderbooksTokensOwnersVaults
  */
 export async function fecthVaultBalances(
-    orderbooksTokensOwnersVaults: OTOVMap,
+    otovMap: OTOVMap,
     viemClient: ViemClient,
     multicallAddressOverride?: string,
 ) {
@@ -441,7 +441,7 @@ export async function fecthVaultBalances(
         owner: string;
         vault: Vault;
     }[] = [];
-    orderbooksTokensOwnersVaults.forEach((tokensOwnersVaults, orderbook) => {
+    otovMap.forEach((tokensOwnersVaults, orderbook) => {
         tokensOwnersVaults.forEach((ownersVaults, token) => {
             ownersVaults.forEach((vaults, owner) => {
                 vaults.forEach((v) => {
