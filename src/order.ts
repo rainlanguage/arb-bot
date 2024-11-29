@@ -1,10 +1,10 @@
-import { OrderV3 } from "./abis";
+import { orderbookAbi, OrderV3 } from "./abis";
 import { SgOrder } from "./query";
 import { Span } from "@opentelemetry/api";
 import { hexlify } from "ethers/lib/utils";
 import { addWatchedToken } from "./account";
 import { getTokenSymbol, shuffleArray } from "./utils";
-import { decodeAbiParameters, parseAbiParameters } from "viem";
+import { decodeAbiParameters, parseAbi, parseAbiParameters } from "viem";
 import {
     Pair,
     Order,
@@ -14,6 +14,10 @@ import {
     OrdersProfileMap,
     OwnersProfileMap,
     OrderbooksOwnersProfileMap,
+    TokensOwnersVaults,
+    OTOVMap,
+    OwnersVaults,
+    Vault,
 } from "./types";
 
 /**
@@ -382,4 +386,204 @@ function gatherPairs(
             });
         }
     }
+}
+
+/**
+ * Builds a map with following form from an `OrderbooksOwnersProfileMap` instance:
+ * `orderbook -> token -> owner -> vaults` called `OTOVMap`
+ * This is later on used to evaluate the owners limits
+ */
+export function buildOtovMap(orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap): OTOVMap {
+    const result: OTOVMap = new Map();
+    orderbooksOwnersProfileMap.forEach((ownersProfileMap, orderbook) => {
+        const tokensOwnersVaults: TokensOwnersVaults = new Map();
+        ownersProfileMap.forEach((ownerProfile, owner) => {
+            ownerProfile.orders.forEach((orderProfile) => {
+                orderProfile.takeOrders.forEach((pair) => {
+                    const token = pair.sellToken.toLowerCase();
+                    const vaultId =
+                        pair.takeOrder.order.validOutputs[
+                            pair.takeOrder.outputIOIndex
+                        ].vaultId.toLowerCase();
+                    const ownersVaults = tokensOwnersVaults.get(token);
+                    if (ownersVaults) {
+                        const vaults = ownersVaults.get(owner.toLowerCase());
+                        if (vaults) {
+                            if (!vaults.find((v) => v.vaultId === vaultId))
+                                vaults.push({ vaultId, balance: 0n });
+                        } else {
+                            ownersVaults.set(owner.toLowerCase(), [{ vaultId, balance: 0n }]);
+                        }
+                    } else {
+                        const newOwnersVaults: OwnersVaults = new Map();
+                        newOwnersVaults.set(owner.toLowerCase(), [{ vaultId, balance: 0n }]);
+                        tokensOwnersVaults.set(token, newOwnersVaults);
+                    }
+                });
+            });
+        });
+        result.set(orderbook, tokensOwnersVaults);
+    });
+    return result;
+}
+
+/**
+ * Gets vault balances of instance of an OrderbooksTokensOwnersVaults
+ */
+export async function fecthVaultBalances(
+    orderbooksTokensOwnersVaults: OTOVMap,
+    viemClient: ViemClient,
+    multicallAddressOverride?: string,
+) {
+    const flattened: {
+        orderbook: string;
+        token: string;
+        owner: string;
+        vault: Vault;
+    }[] = [];
+    orderbooksTokensOwnersVaults.forEach((tokensOwnersVaults, orderbook) => {
+        tokensOwnersVaults.forEach((ownersVaults, token) => {
+            ownersVaults.forEach((vaults, owner) => {
+                vaults.forEach((v) => {
+                    flattened.push({
+                        orderbook,
+                        token,
+                        owner,
+                        vault: v,
+                    });
+                });
+            });
+        });
+    });
+    const multicallResult = await viemClient.multicall({
+        multicallAddress:
+            (multicallAddressOverride as `0x${string}` | undefined) ??
+            viemClient.chain?.contracts?.multicall3?.address,
+        allowFailure: false,
+        contracts: flattened.map((v) => ({
+            address: v.orderbook as `0x${string}`,
+            allowFailure: false,
+            chainId: viemClient.chain!.id,
+            abi: parseAbi([orderbookAbi[3]]),
+            functionName: "vaultBalance",
+            args: [v.owner, v.token, v.vault.vaultId],
+        })),
+    });
+
+    for (let i = 0; i < multicallResult.length; i++) {
+        flattened[i].vault.balance = multicallResult[i];
+    }
+}
+
+/**
+ * Evaluates the owners limits by checking an owner vaults avg balances of a token against
+ * other owners total balances of that token to calculate a percentage, repeats the same
+ * process for every other token and owner and at the end ends up with map of owners with array
+ * of percentages, then calculates an avg of all those percenatges and that is applied as a divider
+ * factor to the owner's limit.
+ * This ensures that if an owner has many orders/vaults and has spread their balances across those
+ * many vaults and orders, he/she will get limited.
+ * Owners limits that are set by bot's admin as env or cli arg, are exluded from this evaluation process
+ */
+export function evaluateOwnersLimits(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+    otovMap: OTOVMap,
+    ownerLimits?: Record<string, number>,
+) {
+    otovMap.forEach((tokensOwnersVaults, orderbook) => {
+        const ownersProfileMap = orderbooksOwnersProfileMap.get(orderbook);
+        if (ownersProfileMap) {
+            const ownersCuts: Map<string, number[]> = new Map();
+            tokensOwnersVaults.forEach((ownersVaults) => {
+                ownersVaults.forEach((vaults, owner) => {
+                    // skip if owner limit is set by bot admin
+                    if (typeof ownerLimits?.[owner.toLowerCase()] === "number") return;
+
+                    const ownerProfile = ownersProfileMap.get(owner);
+                    if (ownerProfile) {
+                        const avgBalance =
+                            vaults.map((a) => a.balance).reduce((a, b) => a + b, 0n) /
+                            BigInt(vaults.length);
+                        const otherOwnersBalances = Array.from(ownersVaults)
+                            .filter(([owner_]) => owner_ !== owner)
+                            .flatMap(([, v]) => v.map((e) => e.balance))
+                            .reduce((a, b) => a + b, 0n);
+                        const balanceRatioPercent =
+                            otherOwnersBalances === 0n
+                                ? 100n
+                                : (avgBalance * 100n) / otherOwnersBalances;
+
+                        // divide into 4 segments
+                        let ownerEvalDivideFactor = 1;
+                        if (balanceRatioPercent >= 75n) {
+                            ownerEvalDivideFactor = 1;
+                        } else if (balanceRatioPercent >= 50n && balanceRatioPercent < 75n) {
+                            ownerEvalDivideFactor = 2;
+                        } else if (balanceRatioPercent >= 25n && balanceRatioPercent < 50n) {
+                            ownerEvalDivideFactor = 3;
+                        } else if (balanceRatioPercent > 0n && balanceRatioPercent < 25n) {
+                            ownerEvalDivideFactor = 4;
+                        }
+
+                        // gather owner divide factor for all of the owner's orders' tokens
+                        // to calculate an avg from them all later on
+                        const cuts = ownersCuts.get(owner.toLowerCase());
+                        if (cuts) {
+                            cuts.push(ownerEvalDivideFactor);
+                        } else {
+                            ownersCuts.set(owner.toLowerCase(), [ownerEvalDivideFactor]);
+                        }
+                    }
+                });
+            });
+            ownersProfileMap.forEach((ownerProfile, owner) => {
+                const cuts = ownersCuts.get(owner);
+                if (cuts?.length) {
+                    const avgCut = cuts.reduce((a, b) => a + b, 0) / cuts.length;
+                    // round to nearest int, if turned out 0, set it to 1 as minimum
+                    ownerProfile.limit = Math.round(ownerProfile.limit / avgCut);
+                    if (ownerProfile.limit === 0) ownerProfile.limit = 1;
+                }
+            });
+        }
+    });
+}
+
+/**
+ * Provides a protection by evaluating and possibly reducing owner's limit,
+ * this takes place by checking an owners avg vault balance of a token against
+ * all other owners cumulative balances, the calculated ratio is used a reducing
+ * factor for the owner limit when averaged out for all of tokens the owner has
+ */
+export async function downscaleProtection(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+    viemClient: ViemClient,
+    ownerLimits?: Record<string, number>,
+    multicallAddressOverride?: string,
+) {
+    const otovMap = buildOtovMap(orderbooksOwnersProfileMap);
+    try {
+        await fecthVaultBalances(otovMap, viemClient, multicallAddressOverride);
+        evaluateOwnersLimits(orderbooksOwnersProfileMap, otovMap, ownerLimits);
+    } catch (error) {
+        /**/
+    }
+}
+
+/**
+ * Resets owners limit to default value
+ */
+export async function resetLimits(
+    orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,
+    ownerLimits?: Record<string, number>,
+) {
+    orderbooksOwnersProfileMap.forEach((ownersProfileMap) => {
+        if (ownersProfileMap) {
+            ownersProfileMap.forEach((ownerProfile, owner) => {
+                // skip if owner limit is set by bot admin
+                if (typeof ownerLimits?.[owner.toLowerCase()] === "number") return;
+                ownerProfile.limit = DEFAULT_OWNER_LIMIT;
+            });
+        }
+    });
 }

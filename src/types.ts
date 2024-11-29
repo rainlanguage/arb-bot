@@ -128,6 +128,11 @@ export type OrdersProfileMap = Map<string, OrderProfile>;
 export type OwnersProfileMap = Map<string, OwnerProfile>;
 export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
 
+export type Vault = { vaultId: string; balance: bigint };
+export type OwnersVaults = Map<string, Vault[]>;
+export type TokensOwnersVaults = Map<string, OwnersVaults>;
+export type OTOVMap = Map<string, TokensOwnersVaults>;
+
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
     PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
 

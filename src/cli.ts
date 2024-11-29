@@ -26,6 +26,8 @@ import {
     getOrderbookOwnersProfileMapFromSg,
     handleAddOrderbookOwnersProfileMap,
     handleRemoveOrderbookOwnersProfileMap,
+    downscaleProtection,
+    resetLimits,
 } from "./order";
 import {
     diag,
@@ -490,17 +492,24 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         ctx,
     );
 
+    const orderbooksOwnersProfileMap = await getOrderbookOwnersProfileMapFromSg(
+        ordersDetails,
+        config.viemClient as any as ViemClient,
+        tokens,
+        (options as CliOptions).ownerProfile,
+    );
+    await downscaleProtection(
+        orderbooksOwnersProfileMap,
+        config.viemClient as any as ViemClient,
+        options.ownerProfile,
+    );
+
     return {
         roundGap,
         options: options as CliOptions,
         poolUpdateInterval,
         config,
-        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
-            ordersDetails,
-            config.viemClient as any as ViemClient,
-            tokens,
-            (options as CliOptions).ownerProfile,
-        ),
+        orderbooksOwnersProfileMap,
         tokens,
         lastReadOrdersTimestamp,
     };
@@ -802,6 +811,7 @@ export const main = async (argv: any, version?: string) => {
                         startTime: lastReadOrdersTimestamp,
                     }),
                 );
+                let ordersDidChange = false;
                 const results = await Promise.allSettled(
                     lastReadOrdersMap.map((v) =>
                         getOrderChanges(
@@ -816,6 +826,9 @@ export const main = async (argv: any, version?: string) => {
                 for (let i = 0; i < results.length; i++) {
                     const res = results[i];
                     if (res.status === "fulfilled") {
+                        if (res.value.addOrders.length || res.value.removeOrders.length) {
+                            ordersDidChange = true;
+                        }
                         lastReadOrdersMap[i].skip += res.value.count;
                         try {
                             await handleAddOrderbookOwnersProfileMap(
@@ -839,6 +852,16 @@ export const main = async (argv: any, version?: string) => {
                             /**/
                         }
                     }
+                }
+
+                // in case there are new orders or removed order, re evaluate owners limits
+                if (ordersDidChange) {
+                    resetLimits(orderbooksOwnersProfileMap, options.ownerProfile);
+                    await downscaleProtection(
+                        orderbooksOwnersProfileMap,
+                        config.viemClient as any as ViemClient,
+                        options.ownerProfile,
+                    );
                 }
             } catch {
                 /**/
