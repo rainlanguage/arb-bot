@@ -619,7 +619,7 @@ describe("Test order", async function () {
         const orderStruct = toOrder(
             decodeAbiParameters(parseAbiParameters(OrderV3), order1.orderBytes)[0],
         );
-        const result = await getOrderPairs(orderStruct, undefined, [], order1);
+        const result = await getOrderPairs(order1.orderHash, orderStruct, undefined, [], order1);
         const expected = [
             {
                 buyToken: orderStruct.validInputs[0].token,
@@ -629,10 +629,13 @@ describe("Test order", async function () {
                 sellTokenSymbol: order1.outputs[0].token.symbol,
                 sellTokenDecimals: orderStruct.validOutputs[0].decimals,
                 takeOrder: {
-                    order: orderStruct,
-                    inputIOIndex: 0,
-                    outputIOIndex: 0,
-                    signedContext: [],
+                    id: order1.orderHash,
+                    takeOrder: {
+                        order: orderStruct,
+                        inputIOIndex: 0,
+                        outputIOIndex: 0,
+                        signedContext: [],
+                    },
                 },
             },
         ];

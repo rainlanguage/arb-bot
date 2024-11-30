@@ -1,23 +1,23 @@
-import { orderbookAbi, OrderV3 } from "./abis";
 import { SgOrder } from "./query";
 import { Span } from "@opentelemetry/api";
 import { hexlify } from "ethers/lib/utils";
 import { addWatchedToken } from "./account";
+import { orderbookAbi, OrderV3 } from "./abis";
 import { getTokenSymbol, shuffleArray } from "./utils";
 import { decodeAbiParameters, erc20Abi, parseAbi, parseAbiParameters } from "viem";
 import {
     Pair,
     Order,
+    Vault,
+    OTOVMap,
     ViemClient,
+    OwnersVaults,
     TokenDetails,
     BundledOrders,
     OrdersProfileMap,
     OwnersProfileMap,
-    OrderbooksOwnersProfileMap,
     TokensOwnersVaults,
-    OTOVMap,
-    OwnersVaults,
-    Vault,
+    OrderbooksOwnersProfileMap,
 } from "./types";
 
 /**
@@ -51,6 +51,7 @@ export function toOrder(orderLog: any): Order {
  * Get all pairs of an order
  */
 export async function getOrderPairs(
+    orderHash: string,
     orderStruct: Order,
     viemClient: ViemClient,
     tokens: TokenDetails[],
@@ -116,10 +117,13 @@ export async function getOrderPairs(
                     sellTokenSymbol: _outputSymbol,
                     sellTokenDecimals: _output.decimals,
                     takeOrder: {
-                        order: orderStruct,
-                        inputIOIndex: k,
-                        outputIOIndex: j,
-                        signedContext: [],
+                        id: orderHash,
+                        takeOrder: {
+                            order: orderStruct,
+                            inputIOIndex: k,
+                            outputIOIndex: j,
+                            signedContext: [],
+                        },
                     },
                 });
         }
@@ -141,6 +145,7 @@ export async function handleAddOrderbookOwnersProfileMap(
     const changes: Record<string, string[]> = {};
     for (let i = 0; i < ordersDetails.length; i++) {
         const orderDetails = ordersDetails[i];
+        const orderHash = orderDetails.orderHash.toLowerCase();
         const orderbook = orderDetails.orderbook.id.toLowerCase();
         const orderStruct = toOrder(
             decodeAbiParameters(
@@ -158,12 +163,13 @@ export async function handleAddOrderbookOwnersProfileMap(
         if (orderbookOwnerProfileItem) {
             const ownerProfile = orderbookOwnerProfileItem.get(orderStruct.owner.toLowerCase());
             if (ownerProfile) {
-                const order = ownerProfile.orders.get(orderDetails.orderHash.toLowerCase());
+                const order = ownerProfile.orders.get(orderHash);
                 if (!order) {
-                    ownerProfile.orders.set(orderDetails.orderHash.toLowerCase(), {
+                    ownerProfile.orders.set(orderHash, {
                         active: true,
                         order: orderStruct,
                         takeOrders: await getOrderPairs(
+                            orderHash,
                             orderStruct,
                             viemClient,
                             tokens,
@@ -176,10 +182,16 @@ export async function handleAddOrderbookOwnersProfileMap(
                 }
             } else {
                 const ordersProfileMap: OrdersProfileMap = new Map();
-                ordersProfileMap.set(orderDetails.orderHash.toLowerCase(), {
+                ordersProfileMap.set(orderHash, {
                     active: true,
                     order: orderStruct,
-                    takeOrders: await getOrderPairs(orderStruct, viemClient, tokens, orderDetails),
+                    takeOrders: await getOrderPairs(
+                        orderHash,
+                        orderStruct,
+                        viemClient,
+                        tokens,
+                        orderDetails,
+                    ),
                     consumedTakeOrders: [],
                 });
                 orderbookOwnerProfileItem.set(orderStruct.owner.toLowerCase(), {
@@ -189,10 +201,16 @@ export async function handleAddOrderbookOwnersProfileMap(
             }
         } else {
             const ordersProfileMap: OrdersProfileMap = new Map();
-            ordersProfileMap.set(orderDetails.orderHash.toLowerCase(), {
+            ordersProfileMap.set(orderHash, {
                 active: true,
                 order: orderStruct,
-                takeOrders: await getOrderPairs(orderStruct, viemClient, tokens, orderDetails),
+                takeOrders: await getOrderPairs(
+                    orderHash,
+                    orderStruct,
+                    viemClient,
+                    tokens,
+                    orderDetails,
+                ),
                 consumedTakeOrders: [],
             });
             const ownerProfileMap: OwnersProfileMap = new Map();
@@ -363,10 +381,7 @@ function gatherPairs(
             if (
                 !bundleOrder.takeOrders.find((v) => v.id.toLowerCase() === orderHash.toLowerCase())
             ) {
-                bundleOrder.takeOrders.push({
-                    id: orderHash,
-                    takeOrder: pair.takeOrder,
-                });
+                bundleOrder.takeOrders.push(pair.takeOrder);
             }
         } else {
             bundledOrders.push({
@@ -377,12 +392,7 @@ function gatherPairs(
                 sellToken: pair.sellToken,
                 sellTokenDecimals: pair.sellTokenDecimals,
                 sellTokenSymbol: pair.sellTokenSymbol,
-                takeOrders: [
-                    {
-                        id: orderHash,
-                        takeOrder: pair.takeOrder,
-                    },
-                ],
+                takeOrders: [pair.takeOrder],
             });
         }
     }
@@ -402,8 +412,8 @@ export function buildOtovMap(orderbooksOwnersProfileMap: OrderbooksOwnersProfile
                 orderProfile.takeOrders.forEach((pair) => {
                     const token = pair.sellToken.toLowerCase();
                     const vaultId =
-                        pair.takeOrder.order.validOutputs[
-                            pair.takeOrder.outputIOIndex
+                        pair.takeOrder.takeOrder.order.validOutputs[
+                            pair.takeOrder.takeOrder.outputIOIndex
                         ].vaultId.toLowerCase();
                     const ownersVaults = tokensOwnersVaults.get(token);
                     if (ownersVaults) {
