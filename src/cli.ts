@@ -22,12 +22,11 @@ import {
     getBatchEthBalance,
 } from "./account";
 import {
+    downscaleProtection,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
     handleAddOrderbookOwnersProfileMap,
     handleRemoveOrderbookOwnersProfileMap,
-    downscaleProtection,
-    resetLimits,
 } from "./order";
 import {
     diag,
@@ -492,24 +491,17 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         ctx,
     );
 
-    const orderbooksOwnersProfileMap = await getOrderbookOwnersProfileMapFromSg(
-        ordersDetails,
-        config.viemClient as any as ViemClient,
-        tokens,
-        (options as CliOptions).ownerProfile,
-    );
-    await downscaleProtection(
-        orderbooksOwnersProfileMap,
-        config.viemClient as any as ViemClient,
-        options.ownerProfile,
-    );
-
     return {
         roundGap,
         options: options as CliOptions,
         poolUpdateInterval,
         config,
-        orderbooksOwnersProfileMap,
+        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
+            ordersDetails,
+            config.viemClient as any as ViemClient,
+            tokens,
+            (options as CliOptions).ownerProfile,
+        ),
         tokens,
         lastReadOrdersTimestamp,
     };
@@ -856,7 +848,6 @@ export const main = async (argv: any, version?: string) => {
 
                 // in case there are new orders or removed order, re evaluate owners limits
                 if (ordersDidChange) {
-                    resetLimits(orderbooksOwnersProfileMap, options.ownerProfile);
                     await downscaleProtection(
                         orderbooksOwnersProfileMap,
                         config.viemClient as any as ViemClient,

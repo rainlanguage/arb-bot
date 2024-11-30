@@ -15,9 +15,10 @@ const {
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
     buildOtovMap,
-    fecthVaultBalances,
+    fetchVaultBalances,
     evaluateOwnersLimits,
     resetLimits,
+    downscaleProtection,
 } = require("../src/order");
 
 describe("Test order", async function () {
@@ -995,66 +996,46 @@ describe("Test order", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should get vault balances for OTOV map", async function () {
+    it("should get vault balances for owners vaults", async function () {
         // mock viem client
         const viemClient = {
             chain: { id: 137 },
-            multicall: async () => [5n, 8n],
+            multicall: async () => [8n, 3n, 5n],
         };
         const orderbook = hexlify(randomBytes(20)).toLowerCase();
-        const owner1 = hexlify(randomBytes(20)).toLowerCase();
-        const owner2 = hexlify(randomBytes(20)).toLowerCase();
-        const token1 = {
+        const owner = hexlify(randomBytes(20)).toLowerCase();
+        const token = {
             address: hexlify(randomBytes(20)).toLowerCase(),
             decimals: 6,
             symbol: "NewToken1",
         };
-        const token2 = {
-            address: hexlify(randomBytes(20)).toLowerCase(),
-            decimals: 6,
-            symbol: "NewToken1",
-        };
-        const [order1, order2] = [
-            getNewOrder(orderbook, owner1, token1, token2, 1),
-            getNewOrder(orderbook, owner2, token2, token1, 1),
+        const vaults = [
+            { vaultId: "1", balance: 0n },
+            { vaultId: "2", balance: 0n },
+            { vaultId: "3", balance: 0n },
         ];
-        const otovMap = new Map([
-            [
-                orderbook,
-                new Map([
-                    [
-                        token2.address,
-                        new Map([[owner1, [{ vaultId: order1.outputs[0].vaultId, balance: 0n }]]]),
-                    ],
-                    [
-                        token1.address,
-                        new Map([[owner2, [{ vaultId: order2.outputs[0].vaultId, balance: 0n }]]]),
-                    ],
-                ]),
-            ],
-        ]);
+        await fetchVaultBalances(orderbook, token.address, owner, vaults, viemClient);
+        const expected = [
+            { vaultId: "1", balance: 8n },
+            { vaultId: "2", balance: 3n },
+            { vaultId: "3", balance: 5n },
+        ];
 
-        await fecthVaultBalances(otovMap, viemClient);
-        const expected = new Map([
-            [
-                orderbook,
-                new Map([
-                    [
-                        token2.address,
-                        new Map([[owner1, [{ vaultId: order1.outputs[0].vaultId, balance: 5n }]]]),
-                    ],
-                    [
-                        token1.address,
-                        new Map([[owner2, [{ vaultId: order2.outputs[0].vaultId, balance: 8n }]]]),
-                    ],
-                ]),
-            ],
-        ]);
-
-        assert.deepEqual(otovMap, expected);
+        assert.deepEqual(vaults, expected);
     });
 
     it("should evaluate owner limits", async function () {
+        // mock viem client
+        let counter = -1;
+        const viemClient = {
+            chain: { id: 137 },
+            readContract: async () => 10n,
+            multicall: async () => {
+                counter++;
+                if (counter === 0) return [5n]; // for tkn1 owner2
+                if (counter === 1) return [1n]; // for tkn2 owner2
+            },
+        };
         const orderbook = hexlify(randomBytes(20)).toLowerCase();
         const owner1 = hexlify(randomBytes(20)).toLowerCase();
         const owner2 = hexlify(randomBytes(20)).toLowerCase();
@@ -1097,17 +1078,17 @@ describe("Test order", async function () {
                         token1.address,
                         new Map([
                             [owner1, [{ vaultId: owner1order2.outputs[0].vaultId, balance: 9n }]],
-                            [owner2, [{ vaultId: owner2order2.outputs[0].vaultId, balance: 2n }]],
+                            [owner2, [{ vaultId: owner2order2.outputs[0].vaultId, balance: 1n }]],
                         ]),
                     ],
                 ]),
             ],
         ]);
-        evaluateOwnersLimits(ownerProfileMap, otovMap, { [owner1]: 4 });
+        await evaluateOwnersLimits(ownerProfileMap, otovMap, viemClient, { [owner1]: 4 });
 
         // after evaluation, owner 2 limit should be reduced to 10 from the default 25,
         // that is because owner2 relative to owner1 has 2/9 of the total token1 supply
-        // and has 1/1 of token2 supply, 2/9 goes into the bracket of 0 - 25%, ie divide factor
+        // and has 1/1 of token2 supply, 1/9 goes into the bracket of 0 - 25%, ie divide factor
         // of 4 and 1/1 goes into barcket of 75 - >100%, ie divide factor of 1, avg of the factors
         // equals to: (1 + 4) / 2 = 2.5 and then the default owner2 limit which was 25,
         // divided by 2/5 equals to 10
@@ -1154,6 +1135,56 @@ describe("Test order", async function () {
         const expected = await getOrderbookOwnersProfileMapFromSg([order1, order2], undefined, [], {
             [owner1]: 4,
         });
+        assert.deepEqual(ownerProfileMap, expected);
+    });
+
+    it("should run downscaleProtection", async function () {
+        // mock viem client
+        let counter = -1;
+        const viemClient = {
+            chain: { id: 137 },
+            readContract: async () => 10n,
+            multicall: async () => {
+                counter++;
+                if (counter === 0) return [5n]; // for tkn1 owner2
+                if (counter === 1) return [1n]; // for tkn2 owner2
+            },
+        };
+        const orderbook = hexlify(randomBytes(20)).toLowerCase();
+        const owner1 = hexlify(randomBytes(20)).toLowerCase();
+        const owner2 = hexlify(randomBytes(20)).toLowerCase();
+        const token1 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const token2 = {
+            address: hexlify(randomBytes(20)).toLowerCase(),
+            decimals: 6,
+            symbol: "NewToken1",
+        };
+        const [owner1order1, owner2order1, owner1order2, owner2order2] = [
+            getNewOrder(orderbook, owner1, token1, token2, 1),
+            getNewOrder(orderbook, owner2, token1, token2, 1),
+            getNewOrder(orderbook, owner1, token2, token1, 1),
+            getNewOrder(orderbook, owner2, token2, token1, 1),
+        ];
+
+        // build orderbook owner profile map
+        const ownerProfileMap = await getOrderbookOwnersProfileMapFromSg(
+            [owner1order1, owner2order1, owner1order2, owner2order2],
+            undefined,
+            [],
+            { [owner1]: 4 },
+        );
+        await downscaleProtection(ownerProfileMap, viemClient, { [owner1]: 4 });
+        const expected = await getOrderbookOwnersProfileMapFromSg(
+            [owner1order1, owner2order1, owner1order2, owner2order2],
+            undefined,
+            [],
+            { [owner1]: 4, [owner2]: 10 },
+        );
+
         assert.deepEqual(ownerProfileMap, expected);
     });
 });
