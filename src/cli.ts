@@ -194,7 +194,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--gas-limit-multiplier <integer>",
-            "Option to multiply the gas limit estimation from the rpc as percentage, default is 108, ie +8%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
+            "Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables",
         )
         .option(
             "--tx-gas <integer>",
@@ -446,7 +446,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
                 throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
         } else throw "invalid gasLimitMultiplier value, must be an integer greater than zero";
     } else {
-        options.gasLimitMultiplier = 108;
+        options.gasLimitMultiplier = 105;
     }
     if (options.txGas) {
         if (typeof options.txGas === "number") {

@@ -34,6 +34,7 @@ import {
     getActualClearAmount,
     withBigintSerializer,
 } from "./utils";
+import { getL1Fee } from "./gas";
 
 /**
  * Specifies reason that order process halted
@@ -696,7 +697,10 @@ export async function processPair(args: {
             timeout: 200_000,
         });
 
-        const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+        const l1Fee = getL1Fee(receipt, config);
+        const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
+            .mul(receipt.gasUsed)
+            .add(l1Fee);
         signer.BALANCE = signer.BALANCE.sub(actualGasCost);
         if (receipt.status === "success") {
             spanAttributes["didClear"] = true;
@@ -723,10 +727,13 @@ export async function processPair(args: {
             );
             const netProfit = income ? income.sub(actualGasCost) : undefined;
 
+            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+            if (config.isL2 && l1Fee) {
+                spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+            }
             if (income) {
                 spanAttributes["details.income"] = toNumber(income);
                 spanAttributes["details.netProfit"] = toNumber(netProfit!);
-                spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
             }
             if (inputTokenIncome) {
                 spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
@@ -801,10 +808,15 @@ export async function processPair(args: {
         // keep track of gas consumption of the account
         let actualGasCost;
         try {
-            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice).mul(
-                e.receipt.gasUsed,
-            );
+            const l1Fee = getL1Fee(e.receipt, config);
+            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice)
+                .mul(e.receipt.gasUsed)
+                .add(l1Fee);
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+            if (config.isL2 && l1Fee) {
+                spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+            }
         } catch {
             /**/
         }
