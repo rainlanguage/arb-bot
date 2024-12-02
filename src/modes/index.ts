@@ -53,19 +53,14 @@ export async function findOpp({
         /**/
     }
 
-    // if chain is L2, get L1 gas price before dryruns
+    // if chain is special L2, get L1 gas price just before dryruns
     let l1Signer;
-    let l1GasPrice: bigint | undefined;
-    if (config.isL2) {
+    let l1GasPrice = 0n;
+    if (config.isSpecialL2) {
         try {
-            // as already known, not all L2 chains support this method such as Arbitrum,
-            // only certain ones do, such as Base and Optimism, so use try/catch block
-            // and set to 0 on catch block so it becomes ineffective
             l1Signer = signer.extend(walletActionsL2()).extend(publicActionsL2());
             l1GasPrice = await l1Signer.getL1BaseFee();
-        } catch {
-            l1GasPrice = 0n;
-        }
+        } catch {}
     }
 
     const promises = [

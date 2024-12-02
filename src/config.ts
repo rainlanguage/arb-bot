@@ -58,7 +58,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
         nativeWrappedToken,
         routeProcessors,
         stableTokens,
-        isL2: L2Chains.is(chain.id),
+        isSpecialL2: SpecialL2Chains.is(chain.id),
     };
 }
 
@@ -289,13 +289,13 @@ export function getWithdrawEnsureBytecode(
  * such as Arbitrum and Polygon zkEvm are excluded, these chains'
  * gas actions are performed the same as usual L1 chains.
  */
-export enum L2Chains {
+export enum SpecialL2Chains {
     BASE = ChainId.BASE,
     OPTIMISM = ChainId.OPTIMISM,
 }
-export namespace L2Chains {
+export namespace SpecialL2Chains {
     export function is(chainId: number): boolean {
-        return Object.values(L2Chains).includes(chainId as any);
+        return Object.values(SpecialL2Chains).includes(chainId as any);
     }
 }
 

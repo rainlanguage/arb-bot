@@ -21,8 +21,8 @@ describe("Test gas", async function () {
             to: ("0x" + "1".repeat(40)) as `0x${string}`,
         };
 
-        // estimate gas as L2 chain
-        const botconfig = { isL2: true } as any as BotConfig;
+        // estimate gas as special L2 chain
+        const botconfig = { isSpecialL2: true } as any as BotConfig;
         const result1 = await estimateGasCost(tx, signer, botconfig, undefined, l1Signer);
         const expected1 = {
             gas: 55n,
@@ -34,8 +34,8 @@ describe("Test gas", async function () {
         };
         assert.deepEqual(result1, expected1);
 
-        // estimate as none L2 chain
-        botconfig.isL2 = false;
+        // estimate as usual chain
+        botconfig.isSpecialL2 = false;
         const result2 = await estimateGasCost(tx, signer, botconfig);
         const expected2 = {
             gas: 55n,

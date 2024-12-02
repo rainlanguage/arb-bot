@@ -728,7 +728,7 @@ export async function processPair(args: {
             const netProfit = income ? income.sub(actualGasCost) : undefined;
 
             spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
-            if (config.isL2 && l1Fee) {
+            if (config.isSpecialL2 && l1Fee) {
                 spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
             }
             if (income) {
@@ -814,7 +814,7 @@ export async function processPair(args: {
                 .add(l1Fee);
             signer.BALANCE = signer.BALANCE.sub(actualGasCost);
             spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
-            if (config.isL2 && l1Fee) {
+            if (config.isSpecialL2 && l1Fee) {
                 spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
             }
         } catch {
