@@ -169,6 +169,7 @@ export async function dryrun({
                               ethers.utils.parseUnits(ethPrice),
                               ethers.constants.Zero,
                               ethers.constants.Zero,
+                              signer.account.address,
                           ),
             },
             signedContext: [],
@@ -228,6 +229,7 @@ export async function dryrun({
                 ethers.utils.parseUnits(ethPrice),
                 ethers.constants.Zero,
                 gasCost.mul(headroom).div("100"),
+                signer.account.address,
             );
             rawtx.data = arb.interface.encodeFunctionData("arb3", [
                 orderPairObject.orderbook,
@@ -253,6 +255,7 @@ export async function dryrun({
                     ethers.utils.parseUnits(ethPrice),
                     ethers.constants.Zero,
                     gasCost.mul(config.gasCoveragePercentage).div("100"),
+                    signer.account.address,
                 );
                 rawtx.data = arb.interface.encodeFunctionData("arb3", [
                     orderPairObject.orderbook,
