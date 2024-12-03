@@ -2,15 +2,16 @@ import { ChainId } from "sushi";
 import { findOpp } from "./modes";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
-import { BaseError, PublicClient } from "viem";
 import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
+import { BaseError, PublicClient, TransactionReceipt } from "viem";
 import { addWatchedToken, fundOwnedOrders, getNonce, rotateAccounts } from "./account";
 import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert, isTimeout } from "./error";
 import {
+    RawTx,
     Report,
     BotConfig,
     SpanAttrs,
@@ -327,9 +328,16 @@ export const processOrders = async (
                         } else if (e.reason === ProcessPairHaltReason.TxReverted) {
                             // Tx reverted onchain, this can happen for example
                             // because of mev front running or false positive opportunities, etc
-                            let message = "transaction reverted onchain";
+                            let message = "";
                             if (e.error) {
-                                message = errorSnapshot(message, e.error);
+                                if ("snapshot" in e.error) {
+                                    message = e.error.snapshot;
+                                } else {
+                                    message = errorSnapshot(
+                                        "transaction reverted onchain",
+                                        e.error.err,
+                                    );
+                                }
                                 span.setAttribute("errorDetails", message);
                             }
                             if (e.spanAttributes["txNoneNodeError"]) {
@@ -666,8 +674,14 @@ export async function processPair(args: {
         }
         txhash =
             writeSigner !== undefined
-                ? await writeSigner.sendTransaction(rawtx)
-                : await signer.sendTransaction(rawtx);
+                ? await writeSigner.sendTransaction({
+                      ...rawtx,
+                      type: "legacy",
+                  })
+                : await signer.sendTransaction({
+                      ...rawtx,
+                      type: "legacy",
+                  });
 
         txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
         // eslint-disable-next-line no-console
@@ -693,111 +707,50 @@ export async function processPair(args: {
         const receipt = await viemClient.waitForTransactionReceipt({
             hash: txhash,
             confirmations: 1,
-            timeout: 200_000,
+            timeout: 120_000,
         });
-
-        const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
-        signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-        if (receipt.status === "success") {
-            spanAttributes["didClear"] = true;
-
-            const clearActualAmount = getActualClearAmount(rawtx.to, orderbook.address, receipt);
-
-            const inputTokenIncome = getIncome(
-                signer.account.address,
-                receipt,
-                orderPairObject.buyToken,
-            );
-            const outputTokenIncome = getIncome(
-                signer.account.address,
-                receipt,
-                orderPairObject.sellToken,
-            );
-            const income = getTotalIncome(
-                inputTokenIncome,
-                outputTokenIncome,
-                inputToEthPrice,
-                outputToEthPrice,
-                orderPairObject.buyTokenDecimals,
-                orderPairObject.sellTokenDecimals,
-            );
-            const netProfit = income ? income.sub(actualGasCost) : undefined;
-
-            if (income) {
-                spanAttributes["details.income"] = toNumber(income);
-                spanAttributes["details.netProfit"] = toNumber(netProfit!);
-                spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
-            }
-            if (inputTokenIncome) {
-                spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
-                    inputTokenIncome,
-                    orderPairObject.buyTokenDecimals,
-                );
-            }
-            if (outputTokenIncome) {
-                spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
-                    outputTokenIncome,
-                    orderPairObject.sellTokenDecimals,
-                );
-            }
-
-            result.report = {
-                status: ProcessPairReportStatus.FoundOpportunity,
-                txUrl,
-                tokenPair: pair,
-                buyToken: orderPairObject.buyToken,
-                sellToken: orderPairObject.sellToken,
-                clearedAmount: clearActualAmount?.toString(),
-                actualGasCost: ethers.utils.formatUnits(actualGasCost),
-                income,
-                inputTokenIncome: inputTokenIncome
-                    ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
-                    : undefined,
-                outputTokenIncome: outputTokenIncome
-                    ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
-                    : undefined,
-                netProfit,
-                clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
-            };
-
-            // keep track of gas consumption of the account and bounty token
-            result.gasCost = actualGasCost;
-            if (inputTokenIncome && inputTokenIncome.gt(0)) {
-                const tkn = {
-                    address: orderPairObject.buyToken.toLowerCase(),
-                    decimals: orderPairObject.buyTokenDecimals,
-                    symbol: orderPairObject.buyTokenSymbol,
-                };
-                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
-            }
-            if (outputTokenIncome && outputTokenIncome.gt(0)) {
-                const tkn = {
-                    address: orderPairObject.sellToken.toLowerCase(),
-                    decimals: orderPairObject.sellTokenDecimals,
-                    symbol: orderPairObject.sellTokenSymbol,
-                };
-                addWatchedToken(tkn, config.watchedTokens ?? [], signer);
-            }
-            return result;
-        } else {
-            // keep track of gas consumption of the account
-            const simulation = await handleRevert(viemClient as any, txhash);
-            if (simulation) {
-                result.error = simulation.err;
-                spanAttributes["txNoneNodeError"] = !simulation.nodeError;
-            }
-            result.report = {
-                status: ProcessPairReportStatus.FoundOpportunity,
-                txUrl,
-                tokenPair: pair,
-                buyToken: orderPairObject.buyToken,
-                sellToken: orderPairObject.sellToken,
-                actualGasCost: ethers.utils.formatUnits(actualGasCost),
-            };
-            result.reason = ProcessPairHaltReason.TxReverted;
-            return Promise.reject(result);
-        }
+        return handleReceipt(
+            txhash,
+            receipt,
+            signer,
+            viemClient as any as ViemClient,
+            spanAttributes,
+            rawtx,
+            orderbook,
+            orderPairObject,
+            inputToEthPrice,
+            outputToEthPrice,
+            result,
+            txUrl,
+            pair,
+            toToken,
+            fromToken,
+            config,
+        );
     } catch (e: any) {
+        try {
+            const newReceipt = await viemClient.getTransactionReceipt({ hash: txhash });
+            if (newReceipt) {
+                return handleReceipt(
+                    txhash,
+                    newReceipt,
+                    signer,
+                    viemClient as any as ViemClient,
+                    spanAttributes,
+                    rawtx,
+                    orderbook,
+                    orderPairObject,
+                    inputToEthPrice,
+                    outputToEthPrice,
+                    result,
+                    txUrl,
+                    pair,
+                    toToken,
+                    fromToken,
+                    config,
+                );
+            }
+        } catch {}
         // keep track of gas consumption of the account
         let actualGasCost;
         try {
@@ -829,5 +782,133 @@ export async function processPair(args: {
         spanAttributes["txNoneNodeError"] = !containsNodeError(e);
         result.reason = ProcessPairHaltReason.TxMineFailed;
         throw result;
+    }
+}
+
+/**
+ * Handles the tx receipt
+ */
+export async function handleReceipt(
+    txhash: string,
+    receipt: TransactionReceipt,
+    signer: ViemClient,
+    viemClient: ViemClient,
+    spanAttributes: any,
+    rawtx: RawTx,
+    orderbook: Contract,
+    orderPairObject: BundledOrders,
+    inputToEthPrice: string,
+    outputToEthPrice: string,
+    result: any,
+    txUrl: string,
+    pair: string,
+    toToken: Token,
+    fromToken: Token,
+    config: BotConfig,
+) {
+    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+    const signerBalance = signer.BALANCE;
+    signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+    if (receipt.status === "success") {
+        spanAttributes["didClear"] = true;
+
+        const clearActualAmount = getActualClearAmount(rawtx.to, orderbook.address, receipt);
+
+        const inputTokenIncome = getIncome(
+            signer.account.address,
+            receipt,
+            orderPairObject.buyToken,
+        );
+        const outputTokenIncome = getIncome(
+            signer.account.address,
+            receipt,
+            orderPairObject.sellToken,
+        );
+        const income = getTotalIncome(
+            inputTokenIncome,
+            outputTokenIncome,
+            inputToEthPrice,
+            outputToEthPrice,
+            orderPairObject.buyTokenDecimals,
+            orderPairObject.sellTokenDecimals,
+        );
+        const netProfit = income ? income.sub(actualGasCost) : undefined;
+
+        if (income) {
+            spanAttributes["details.income"] = toNumber(income);
+            spanAttributes["details.netProfit"] = toNumber(netProfit!);
+            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+        }
+        if (inputTokenIncome) {
+            spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
+                inputTokenIncome,
+                orderPairObject.buyTokenDecimals,
+            );
+        }
+        if (outputTokenIncome) {
+            spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
+                outputTokenIncome,
+                orderPairObject.sellTokenDecimals,
+            );
+        }
+
+        result.report = {
+            status: ProcessPairReportStatus.FoundOpportunity,
+            txUrl,
+            tokenPair: pair,
+            buyToken: orderPairObject.buyToken,
+            sellToken: orderPairObject.sellToken,
+            clearedAmount: clearActualAmount?.toString(),
+            actualGasCost: ethers.utils.formatUnits(actualGasCost),
+            income,
+            inputTokenIncome: inputTokenIncome
+                ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
+                : undefined,
+            outputTokenIncome: outputTokenIncome
+                ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
+                : undefined,
+            netProfit,
+            clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
+        };
+
+        // keep track of gas consumption of the account and bounty token
+        result.gasCost = actualGasCost;
+        if (inputTokenIncome && inputTokenIncome.gt(0)) {
+            const tkn = {
+                address: orderPairObject.buyToken.toLowerCase(),
+                decimals: orderPairObject.buyTokenDecimals,
+                symbol: orderPairObject.buyTokenSymbol,
+            };
+            addWatchedToken(tkn, config.watchedTokens ?? [], signer);
+        }
+        if (outputTokenIncome && outputTokenIncome.gt(0)) {
+            const tkn = {
+                address: orderPairObject.sellToken.toLowerCase(),
+                decimals: orderPairObject.sellTokenDecimals,
+                symbol: orderPairObject.sellTokenSymbol,
+            };
+            addWatchedToken(tkn, config.watchedTokens ?? [], signer);
+        }
+        return result;
+    } else {
+        const simulation = await handleRevert(
+            viemClient as any,
+            txhash as `0x${string}`,
+            receipt,
+            rawtx,
+            signerBalance,
+        );
+        result.error = simulation;
+        spanAttributes["txNoneNodeError"] = !simulation.nodeError;
+        result.report = {
+            status: ProcessPairReportStatus.FoundOpportunity,
+            txUrl,
+            tokenPair: pair,
+            buyToken: orderPairObject.buyToken,
+            sellToken: orderPairObject.sellToken,
+            actualGasCost: ethers.utils.formatUnits(actualGasCost),
+        };
+        result.reason = ProcessPairHaltReason.TxReverted;
+        return Promise.reject(result);
     }
 }

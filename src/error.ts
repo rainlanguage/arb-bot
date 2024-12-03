@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { ViemClient } from "./types";
+import { BigNumber } from "ethers";
+import { RawTx, ViemClient } from "./types";
 // @ts-ignore
 import { abi as obAbi } from "../test/abis/OrderBook.json";
 // @ts-ignore
@@ -15,6 +16,7 @@ import {
     RpcRequestError,
     FeeCapTooLowError,
     decodeErrorResult,
+    TransactionReceipt,
     ExecutionRevertedError,
     InsufficientFundsError,
     TransactionNotFoundError,
@@ -61,22 +63,39 @@ export type TxRevertError = {
 /**
  * Get error with snapshot
  */
-export function errorSnapshot(header: string, err: any): string {
+export function errorSnapshot(
+    header: string,
+    err: any,
+    data?: {
+        receipt: TransactionReceipt;
+        rawtx: RawTx;
+        signerBalance: BigNumber;
+    },
+): string {
     const message = [header];
     if (err instanceof BaseError) {
         if (err.shortMessage) message.push("Reason: " + err.shortMessage);
         if (err.name) message.push("Error: " + err.name);
         if (err.details) {
             message.push("Details: " + err.details);
-            if (message.some((v) => v.includes("unknown reason"))) {
+            if (
+                message.some(
+                    (v) => v.includes("unknown reason") || v.includes("execution reverted"),
+                )
+            ) {
                 const { raw, decoded } = parseRevertError(err);
                 if (decoded) {
                     message.push("Error Name: " + decoded.name);
                     if (decoded.args.length) {
                         message.push("Error Args: " + JSON.stringify(decoded.args));
                     }
-                } else {
-                    if (raw.data) message.push("Error Raw Data: " + raw.data);
+                } else if (raw.data) {
+                    message.push("Error Raw Data: " + raw.data);
+                } else if (data) {
+                    const gasErr = checkGasIssue(data.receipt, data.rawtx, data.signerBalance);
+                    if (gasErr) {
+                        message.push("Gas Error: " + gasErr);
+                    }
                 }
             }
         }
@@ -143,8 +162,16 @@ export function isTimeout(err: BaseError): boolean {
 export async function handleRevert(
     viemClient: ViemClient,
     hash: `0x${string}`,
-): Promise<{ err: any; nodeError: boolean } | undefined> {
+    receipt: TransactionReceipt,
+    rawtx: RawTx,
+    signerBalance: BigNumber,
+): Promise<{ err: any; nodeError: boolean; snapshot: string }> {
+    const header = "transaction reverted onchain";
     try {
+        const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
+        if (gasErr) {
+            return { err: header + gasErr, nodeError: false, snapshot: header + gasErr };
+        }
         const tx = await viemClient.getTransaction({ hash });
         await viemClient.call({
             account: tx.from,
@@ -154,13 +181,18 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        return undefined;
-    } catch (err) {
-        if (err instanceof BaseError) {
-            const { raw, decoded } = parseRevertError(err);
-            if (decoded || raw.data) return { err, nodeError: true };
-        }
-        return { err, nodeError: false };
+        return {
+            err: "transaction reverted onchain, but simulation indicates that it should have been successful",
+            nodeError: false,
+            snapshot:
+                "transaction reverted onchain, but simulation indicates that it should have been successful",
+        };
+    } catch (err: any) {
+        return {
+            err,
+            nodeError: containsNodeError(err),
+            snapshot: errorSnapshot(header, err, { receipt, rawtx, signerBalance }),
+        };
     }
 }
 
@@ -236,4 +268,19 @@ export function tryDecodeError(data: `0x${string}`): DecodedError | undefined {
             }
         }
     }
+}
+
+/**
+ * Check if a mined transaction contains gas issue or not
+ */
+export function checkGasIssue(receipt: TransactionReceipt, rawtx: RawTx, signerBalance: BigNumber) {
+    const txGasCost = receipt.effectiveGasPrice * receipt.gasUsed;
+    if (signerBalance.lt(txGasCost)) {
+        return "account ran out of gas for transaction gas cost";
+    }
+    if (typeof rawtx.gas === "bigint") {
+        const percentage = (receipt.gasUsed * 100n) / rawtx.gas;
+        if (percentage >= 98n) return "transaction ran out of specified gas";
+    }
+    return undefined;
 }
