@@ -898,8 +898,10 @@ export async function handleReceipt(
             rawtx,
             signerBalance,
         );
-        result.error = simulation;
-        spanAttributes["txNoneNodeError"] = !simulation.nodeError;
+        if (simulation) {
+            result.error = simulation;
+            spanAttributes["txNoneNodeError"] = !simulation.nodeError;
+        }
         result.report = {
             status: ProcessPairReportStatus.FoundOpportunity,
             txUrl,

@@ -165,7 +165,7 @@ export async function handleRevert(
     receipt: TransactionReceipt,
     rawtx: RawTx,
     signerBalance: BigNumber,
-): Promise<{ err: any; nodeError: boolean; snapshot: string }> {
+): Promise<{ err: any; nodeError: boolean; snapshot: string } | undefined> {
     const header = "transaction reverted onchain";
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
@@ -181,12 +181,13 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        return {
-            err: "transaction reverted onchain, but simulation indicates that it should have been successful",
-            nodeError: false,
-            snapshot:
-                "transaction reverted onchain, but simulation indicates that it should have been successful",
-        };
+        // return {
+        //     err: "transaction reverted onchain, but simulation indicates that it should have been successful",
+        //     nodeError: false,
+        //     snapshot:
+        //         "transaction reverted onchain, but simulation indicates that it should have been successful",
+        // };
+        return undefined;
     } catch (err: any) {
         return {
             err,
