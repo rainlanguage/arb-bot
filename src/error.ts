@@ -181,12 +181,12 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        // return {
-        //     err: "transaction reverted onchain, but simulation indicates that it should have been successful",
-        //     nodeError: false,
-        //     snapshot:
-        //         "transaction reverted onchain, but simulation indicates that it should have been successful",
-        // };
+        return {
+            err: "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
+            nodeError: false,
+            snapshot:
+                "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
+        };
         return undefined;
     } catch (err: any) {
         return {
