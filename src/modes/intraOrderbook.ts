@@ -299,7 +299,7 @@ export async function findOpp({
                 ]) as `0x${string}`,
             })
         ).data,
-    );
+    ).mul("1" + "0".repeat(18 - orderPairObject.buyTokenDecimals));
     const outputBalance = ethers.BigNumber.from(
         (
             await viemClient.call({
@@ -309,7 +309,7 @@ export async function findOpp({
                 ]) as `0x${string}`,
             })
         ).data,
-    );
+    ).mul("1" + "0".repeat(18 - orderPairObject.sellTokenDecimals));
     for (let i = 0; i < opposingOrders.length; i++) {
         try {
             return await dryrun({
