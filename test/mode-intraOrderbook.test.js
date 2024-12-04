@@ -65,6 +65,7 @@ describe("Test intra-orderbook dryrun", async function () {
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
                     gasLimitEstimation.mul(gasPrice),
+                    signer.account.address,
                 ),
             },
             signedContext: [],
@@ -170,6 +171,7 @@ describe("Test intra-orderbook find opp", async function () {
         };
     });
     const balance = ethers.BigNumber.from("1000000000000000000");
+    const balance2 = ethers.BigNumber.from("1000000000000000000000000000000");
 
     it("should find opp", async function () {
         const result = await findOpp({
@@ -190,11 +192,12 @@ describe("Test intra-orderbook find opp", async function () {
                     signer.account.address,
                     orderPairObject.buyToken,
                     orderPairObject.sellToken,
-                    balance,
+                    balance2,
                     balance,
                     ethers.utils.parseUnits(inputToEthPrice),
                     ethers.utils.parseUnits(outputToEthPrice),
                     gasLimitEstimation.mul(gasPrice),
+                    signer.account.address,
                 ),
             },
             signedContext: [],
@@ -291,11 +294,12 @@ describe("Test intra-orderbook find opp", async function () {
                                 signer.account.address,
                                 orderPairObject.buyToken,
                                 orderPairObject.sellToken,
-                                balance,
+                                balance2,
                                 balance,
                                 ethers.utils.parseUnits(inputToEthPrice),
                                 ethers.utils.parseUnits(outputToEthPrice),
                                 ethers.constants.Zero,
+                                signer.account.address,
                             ),
                         },
                         signedContext: [],

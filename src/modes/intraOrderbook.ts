@@ -62,6 +62,7 @@ export async function dryrun({
                 ethers.utils.parseUnits(inputToEthPrice),
                 ethers.utils.parseUnits(outputToEthPrice),
                 ethers.constants.Zero,
+                signer.account.address,
             ),
         },
         signedContext: [],
@@ -147,6 +148,7 @@ export async function dryrun({
             ethers.utils.parseUnits(inputToEthPrice),
             ethers.utils.parseUnits(outputToEthPrice),
             gasCost.mul(headroom).div("100"),
+            signer.account.address,
         );
         withdrawOutputCalldata = obInterface.encodeFunctionData("withdraw2", [
             orderPairObject.sellToken,
@@ -175,6 +177,7 @@ export async function dryrun({
                 ethers.utils.parseUnits(inputToEthPrice),
                 ethers.utils.parseUnits(outputToEthPrice),
                 gasCost.mul(config.gasCoveragePercentage).div("100"),
+                signer.account.address,
             );
             withdrawOutputCalldata = obInterface.encodeFunctionData("withdraw2", [
                 orderPairObject.sellToken,
@@ -296,7 +299,7 @@ export async function findOpp({
                 ]) as `0x${string}`,
             })
         ).data,
-    );
+    ).mul("1" + "0".repeat(18 - orderPairObject.buyTokenDecimals));
     const outputBalance = ethers.BigNumber.from(
         (
             await viemClient.call({
@@ -306,7 +309,7 @@ export async function findOpp({
                 ]) as `0x${string}`,
             })
         ).data,
-    );
+    ).mul("1" + "0".repeat(18 - orderPairObject.sellTokenDecimals));
     for (let i = 0; i < opposingOrders.length; i++) {
         try {
             return await dryrun({

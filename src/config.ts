@@ -221,11 +221,14 @@ export function getBountyEnsureBytecode(
     inputToEthPrice: BigNumber,
     outputToEthPrice: BigNumber,
     minimumExcepted: BigNumber,
+    sender: string,
 ): string {
     const inputPrice = inputToEthPrice.toHexString().substring(2).padStart(64, "0");
     const outputPrice = outputToEthPrice.toHexString().substring(2).padStart(64, "0");
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
+    const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
+    // :ensure(sender context<0 0>()),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
@@ -236,7 +239,7 @@ export function getBountyEnsureBytecode(
     //   )
     //   \"minimum sender output\"
     // );
-    return `0x0000000000000000000000000000000000000000000000000000000000000004${inputPrice}${outputPrice}${minimum}956d696e696d756d2073656e646572206f757470757400000000000000000000000000000000000000000000000000000000000000000000000000000000003b0100000d06000203100001011000003d12000003100101011000013d120000011000030110000200100001001000002b120000211200001d020000`;
+    return `0x0000000000000000000000000000000000000000000000000000000000000006${msgSender}8e756e6b6e6f776e2073656e6465720000000000000000000000000000000000${inputPrice}${outputPrice}${minimum}956d696e696d756d2073656e646572206f7574707574000000000000000000000000000000000000000000000000000000000000000000000000000000000047010000100500000110000103100000011000001e1200001d020000011000050110000403100101011000033d12000003100001011000023d1200002b120000211200001d020000`;
 }
 
 /**
@@ -259,6 +262,7 @@ export function getWithdrawEnsureBytecode(
     inputToEthPrice: BigNumber,
     outputToEthPrice: BigNumber,
     minimumExcepted: BigNumber,
+    sender: string,
 ): string {
     const bot = botAddress.substring(2).padStart(64, "0");
     const input = inputToken.substring(2).padStart(64, "0");
@@ -268,7 +272,9 @@ export function getWithdrawEnsureBytecode(
     const inputPrice = inputToEthPrice.toHexString().substring(2).padStart(64, "0");
     const outputPrice = outputToEthPrice.toHexString().substring(2).padStart(64, "0");
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
+    const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
+    // :ensure(sender context<0 0>()),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
@@ -279,7 +285,7 @@ export function getWithdrawEnsureBytecode(
     //   )
     //   \"minimumSenderOutput\"
     // );
-    return `0x0000000000000000000000000000000000000000000000000000000000000009${input}${bot}${inputBalance}${inputPrice}${output}${outputBalance}${outputPrice}${minimum}936d696e696d756d53656e6465724f757470757400000000000000000000000000000000000000000000000000000000000000000000000000000000000000530100001307000001100008011000070110000601100005011000010110000411120000471200003d1200000110000301100002011000010110000011120000471200003d1200002b120000211200001d020000`;
+    return `0x000000000000000000000000000000000000000000000000000000000000000b${msgSender}8e756e6b6e6f776e2073656e6465720000000000000000000000000000000000${input}${bot}${inputBalance}${inputPrice}${output}${outputBalance}${outputPrice}${minimum}936d696e696d756d53656e6465724f75747075740000000000000000000000000000000000000000000000000000000000000000000000000000000000000067010000180700000110000103100000011000001e1200001d0200000110000a011000090110000801100007011000030110000611120000471200003d1200000110000501100004011000030110000211120000471200003d1200002b120000211200001d020000`;
 }
 
 /**
