@@ -614,7 +614,12 @@ describe("Test process pair", async function () {
                     actualGasCost: formatUnits(effectiveGasPrice.mul(gasUsed)),
                 },
                 reason: ProcessPairHaltReason.TxReverted,
-                error: "out of gas",
+                error: {
+                    err: "transaction reverted onchainaccount ran out of gas for transaction gas cost",
+                    nodeError: false,
+                    snapshot:
+                        "transaction reverted onchainaccount ran out of gas for transaction gas cost",
+                },
                 gasCost: undefined,
                 spanAttributes: {
                     "details.pair": pair,
