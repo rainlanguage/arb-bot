@@ -25,7 +25,6 @@ import {
     toNumber,
     getIncome,
     getEthPrice,
-    quoteOrders,
     routeExists,
     PoolBlackList,
     getMarketQuote,
@@ -151,16 +150,6 @@ export const processOrders = async (
         }
         span.end();
     });
-
-    // batch quote orders to establish the orders to loop over
-    try {
-        await quoteOrders(
-            bundledOrders,
-            (config as any).isTest ? (config as any).quoteRpc : config.rpc,
-        );
-    } catch (e) {
-        throw errorSnapshot("Failed to batch quote orders", e);
-    }
 
     let avgGasCost: BigNumber | undefined;
     const reports: Report[] = [];
@@ -468,6 +457,8 @@ export async function processPair(args: {
         await quoteSingleOrder(
             orderPairObject,
             (config as any).isTest ? (config as any).quoteRpc : config.rpc,
+            undefined,
+            config.quoteGas,
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {

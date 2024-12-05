@@ -71,6 +71,7 @@ const ENV_OPTIONS = {
     gasPriceMultiplier: process?.env?.GAS_PRICE_MULTIPLIER,
     gasLimitMultiplier: process?.env?.GAS_LIMIT_MULTIPLIER,
     txGas: process?.env?.TX_GAS,
+    quoteGas: process?.env?.QUOTE_GAS,
     route: process?.env?.ROUTE,
     ownerProfile: process?.env?.OWNER_PROFILE
         ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -200,6 +201,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--tx-gas <integer>",
             "Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables",
         )
+        .option(
+            "--quote-gas <integer>",
+            "Option to set a static gas limit for quote read calls, default is 1 milion. Will override the 'QUOTE_GAS' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -242,6 +247,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.gasLimitMultiplier =
         cmdOptions.gasLimitMultiplier || getEnv(ENV_OPTIONS.gasLimitMultiplier);
     cmdOptions.txGas = cmdOptions.txGas || getEnv(ENV_OPTIONS.txGas);
+    cmdOptions.quoteGas = cmdOptions.quoteGas || getEnv(ENV_OPTIONS.quoteGas);
     cmdOptions.botMinBalance = cmdOptions.botMinBalance || getEnv(ENV_OPTIONS.botMinBalance);
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
     cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
@@ -458,6 +464,15 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             if (options.txGas <= 0n)
                 throw "invalid txGas value, must be an integer greater than zero";
         } else throw "invalid txGas value, must be an integer greater than zero";
+    }
+    if (options.quoteGas) {
+        try {
+            options.quoteGas = BigInt(options.quoteGas);
+        } catch {
+            throw "invalid quoteGas value, must be an integer greater than equal zero";
+        }
+    } else {
+        options.quoteGas = 1_000_000n; // default
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];
