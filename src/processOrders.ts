@@ -164,7 +164,6 @@ export const processOrders = async (
     const reports: Report[] = [];
     const results: {
         settle: () => Promise<ProcessPairResult>;
-        span: Span;
         pair: string;
         orderPairObject: BundledOrders;
     }[] = [];
@@ -184,8 +183,10 @@ export const processOrders = async (
                     sellTokenDecimals: pairOrders.sellTokenDecimals,
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
-                // const signer = accounts.length ? accounts[0] : mainAccount;
+
+                // await for first available signer
                 const signer = await getSigner(accounts, mainAccount);
+
                 const writeSigner = config.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
@@ -207,33 +208,38 @@ export const processOrders = async (
                     : undefined;
 
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
-
-                // instantiate a span for this pair
-                const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+                const span = tracer.startSpan("checkpoint", undefined, ctx);
+                span.setAttributes({
+                    "details.pair": pair,
+                    "details.order": orderPairObject.takeOrders[0].id,
+                    "details.orderbook": orderbook.address,
+                    "details.account": signer.account.address,
+                });
 
                 // process the pair
-                try {
-                    const settle = await processPair({
-                        config,
-                        orderPairObject,
-                        viemClient,
-                        dataFetcher,
-                        signer,
-                        writeSigner,
-                        arb,
-                        genericArb,
-                        orderbook,
-                        pair,
-                        orderbooksOrders: bundledOrders,
-                        span,
-                    });
-                    results.push({ settle, span, pair, orderPairObject });
-                } catch {}
+                const settle = await processPair({
+                    config,
+                    orderPairObject,
+                    viemClient,
+                    dataFetcher,
+                    signer,
+                    writeSigner,
+                    arb,
+                    genericArb,
+                    orderbook,
+                    pair,
+                    orderbooksOrders: bundledOrders,
+                    span,
+                });
+                results.push({ settle, pair, orderPairObject });
+                span.end();
             }
         }
     }
 
-    for (const { settle, span, pair,  orderPairObject } of results) {
+    for (const { settle, pair,  orderPairObject } of results) {
+        // instantiate a span for this pair
+        const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
         try {
             const result = await settle();
 
