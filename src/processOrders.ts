@@ -9,7 +9,7 @@ import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { Context, Span, SpanStatusCode } from "@opentelemetry/api";
+import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { ErrorSeverity, errorSnapshot, isTimeout } from "./error";
 import {
     Report,
@@ -229,7 +229,6 @@ export const processOrders = async (
                     orderbook,
                     pair,
                     orderbooksOrders: bundledOrders,
-                    span,
                 });
                 results.push({ settle, pair, orderPairObject });
                 span.end();
@@ -435,7 +434,6 @@ export async function processPair(args: {
     orderbook: Contract;
     pair: string;
     orderbooksOrders: BundledOrders[][];
-    span: Span,
 }): Promise<() => Promise<ProcessPairResult>> {
     const {
         config,
