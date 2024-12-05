@@ -170,7 +170,7 @@ export async function handleRevert(
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
         if (gasErr) {
-            return { err: header + gasErr, nodeError: false, snapshot: header + gasErr };
+            return { err: header + ", " + gasErr, nodeError: false, snapshot: header + ", " + gasErr };
         }
         const tx = await viemClient.getTransaction({ hash });
         await viemClient.call({

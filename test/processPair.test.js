@@ -100,7 +100,7 @@ describe("Test process pair", async function () {
         dataFetcher.getCurrentPoolCodeMap = () => {
             return poolCodeMap;
         };
-        const result = await processPair({
+        const result = await (await processPair({
             config,
             orderPairObject,
             viemClient,
@@ -113,7 +113,7 @@ describe("Test process pair", async function () {
             accounts: [signer],
             fetchedPairPools: [],
             orderbooksOrders,
-        });
+        }))();
         const expected = {
             report: {
                 status: ProcessPairReportStatus.FoundOpportunity,
@@ -179,7 +179,7 @@ describe("Test process pair", async function () {
                 return poolCodeMap;
             } else return new Map();
         };
-        const result = await processPair({
+        const result = await (await processPair({
             config,
             orderPairObject,
             viemClient,
@@ -193,7 +193,7 @@ describe("Test process pair", async function () {
             accounts: [signer],
             fetchedPairPools: [],
             orderbooksOrders,
-        });
+        }))();
         const expected = {
             report: {
                 status: ProcessPairReportStatus.FoundOpportunity,
@@ -255,7 +255,7 @@ describe("Test process pair", async function () {
                 encodeQuoteResponse([[true, ethers.constants.Zero, ethers.constants.Zero]]),
             );
         const orderPairObjectCopy = clone(orderPairObject);
-        const result = await processPair({
+        const result = await (await processPair({
             config,
             orderPairObject: orderPairObjectCopy,
             viemClient,
@@ -268,7 +268,7 @@ describe("Test process pair", async function () {
             mainAccount: signer,
             accounts: [signer],
             fetchedPairPools: [],
-        });
+        }))();
         const expected = {
             reason: undefined,
             error: undefined,
@@ -290,7 +290,7 @@ describe("Test process pair", async function () {
     it("should fail to quote order", async function () {
         await mockServer.forPost("/rpc").thenSendJsonRpcError();
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -303,7 +303,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
@@ -332,7 +332,7 @@ describe("Test process pair", async function () {
             return Promise.reject(evmError);
         };
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -345,7 +345,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
@@ -378,7 +378,7 @@ describe("Test process pair", async function () {
             return new Map();
         };
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -391,7 +391,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
@@ -427,7 +427,7 @@ describe("Test process pair", async function () {
             return Promise.reject(evmError);
         };
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -440,7 +440,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
@@ -477,7 +477,7 @@ describe("Test process pair", async function () {
             return Promise.reject(evmError);
         };
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -490,7 +490,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
@@ -586,7 +586,7 @@ describe("Test process pair", async function () {
         viemClient.getTransaction = async () => ({});
         viemClient.call = async () => Promise.reject("out of gas");
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -599,7 +599,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expected = {
@@ -613,10 +613,10 @@ describe("Test process pair", async function () {
                 },
                 reason: ProcessPairHaltReason.TxReverted,
                 error: {
-                    err: "transaction reverted onchainaccount ran out of gas for transaction gas cost",
+                    err: "transaction reverted onchain, account ran out of gas for transaction gas cost",
                     nodeError: false,
                     snapshot:
-                        "transaction reverted onchainaccount ran out of gas for transaction gas cost",
+                        "transaction reverted onchain, account ran out of gas for transaction gas cost",
                 },
                 gasCost: undefined,
                 spanAttributes: {
@@ -667,7 +667,7 @@ describe("Test process pair", async function () {
         signer.sendTransaction = async () => txHash;
         viemClient.waitForTransactionReceipt = async () => Promise.reject(errorRejection);
         try {
-            await processPair({
+            await (await processPair({
                 config,
                 orderPairObject,
                 viemClient,
@@ -680,7 +680,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
-            });
+            }))();
             assert.fail("expected to reject, but resolved");
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {

@@ -129,11 +129,11 @@ export type OwnersProfileMap = Map<string, OwnerProfile>;
 export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
 
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
-    PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
+    PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[]; BUSY: boolean };
 
 export type TestViemClient = TestClient<"hardhat"> &
     PublicActions &
-    WalletActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
+    WalletActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[]; BUSY: boolean };
 
 export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
 

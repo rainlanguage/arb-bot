@@ -1,17 +1,17 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
+import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
+import { handleTransaction } from "./tx";
 import { createViemClient } from "./config";
+import { fundOwnedOrders } from "./account";
 import { arbAbis, orderbookAbi } from "./abis";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { Context, SpanStatusCode } from "@opentelemetry/api";
-import { BaseError, PublicClient, TransactionReceipt } from "viem";
-import { addWatchedToken, fundOwnedOrders, getNonce, rotateAccounts } from "./account";
-import { containsNodeError, ErrorSeverity, errorSnapshot, handleRevert, isTimeout } from "./error";
+import { Context, Span, SpanStatusCode } from "@opentelemetry/api";
+import { ErrorSeverity, errorSnapshot, isTimeout } from "./error";
 import {
-    RawTx,
     Report,
     BotConfig,
     SpanAttrs,
@@ -22,18 +22,16 @@ import {
     ProcessPairResult,
 } from "./types";
 import {
+    sleep,
     toNumber,
-    getIncome,
     getEthPrice,
     quoteOrders,
     routeExists,
+    shuffleArray,
     PoolBlackList,
     getMarketQuote,
-    getTotalIncome,
     checkOwnedOrders,
     quoteSingleOrder,
-    getActualClearAmount,
-    withBigintSerializer,
 } from "./utils";
 
 /**
@@ -160,9 +158,16 @@ export const processOrders = async (
     } catch (e) {
         throw errorSnapshot("Failed to batch quote orders", e);
     }
+    
 
     let avgGasCost: BigNumber | undefined;
     const reports: Report[] = [];
+    const results: {
+        settle: () => Promise<ProcessPairResult>;
+        span: Span;
+        pair: string;
+        orderPairObject: BundledOrders;
+    }[] = [];
     for (const orderbookOrders of bundledOrders) {
         for (const pairOrders of orderbookOrders) {
             // instantiating orderbook contract
@@ -179,7 +184,8 @@ export const processOrders = async (
                     sellTokenDecimals: pairOrders.sellTokenDecimals,
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
-                const signer = accounts.length ? accounts[0] : mainAccount;
+                // const signer = accounts.length ? accounts[0] : mainAccount;
+                const signer = await getSigner(accounts, mainAccount);
                 const writeSigner = config.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
@@ -207,7 +213,7 @@ export const processOrders = async (
 
                 // process the pair
                 try {
-                    const result = await processPair({
+                    const settle = await processPair({
                         config,
                         orderPairObject,
                         viemClient,
@@ -219,186 +225,191 @@ export const processOrders = async (
                         orderbook,
                         pair,
                         orderbooksOrders: bundledOrders,
+                        span,
                     });
-
-                    // keep track of avggas cost
-                    if (result.gasCost) {
-                        if (!avgGasCost) {
-                            avgGasCost = result.gasCost;
-                        } else {
-                            avgGasCost = avgGasCost.add(result.gasCost).div(2);
-                        }
-                    }
-
-                    reports.push(result.report);
-
-                    // set the span attributes with the values gathered at processPair()
-                    span.setAttributes(result.spanAttributes);
-
-                    // set the otel span status based on report status
-                    if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
-                    } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
-                        if (result.error && typeof result.error === "string") {
-                            span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
-                        } else {
-                            span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
-                        }
-                    } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
-                        span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
-                    } else {
-                        // set the span status to unexpected error
-                        span.setAttribute("severity", ErrorSeverity.HIGH);
-                        span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
-                    }
-                } catch (e: any) {
-                    // keep track of avg gas cost
-                    if (e.gasCost) {
-                        if (!avgGasCost) {
-                            avgGasCost = e.gasCost;
-                        } else {
-                            avgGasCost = avgGasCost.add(e.gasCost).div(2);
-                        }
-                    }
-
-                    // set the span attributes with the values gathered at processPair()
-                    span.setAttributes(e.spanAttributes);
-
-                    // record otel span status based on reported reason
-                    if (e.reason) {
-                        // report the error reason along with the rest of report
-                        reports.push({
-                            ...e.report,
-                            error: e.error,
-                            reason: e.reason,
-                        });
-
-                        // set the otel span status based on returned reason
-                        if (e.reason === ProcessPairHaltReason.FailedToQuote) {
-                            let message =
-                                "failed to quote order: " + orderPairObject.takeOrders[0].id;
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                            }
-                            span.setStatus({ code: SpanStatusCode.OK, message });
-                        } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                            let message = pair + ": failed to get gas price";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.recordException(e.error);
-                            }
-                            span.setAttribute("severity", ErrorSeverity.LOW);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                        } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
-                            let message = pair + ": failed to get pool details";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.recordException(e.error);
-                            }
-                            span.setAttribute("severity", ErrorSeverity.MEDIUM);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                        } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
-                            // set OK status because a token might not have a pool and as a result eth price cannot
-                            // be fetched for it and if it is set to ERROR it will constantly error on each round
-                            // resulting in lots of false positives
-                            let message = "failed to get eth price";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.setAttribute("errorDetails", message);
-                            }
-                            span.setStatus({ code: SpanStatusCode.OK, message });
-                        } else if (e.reason === ProcessPairHaltReason.TxFailed) {
-                            // failed to submit the tx to mempool, this can happen for example when rpc rejects
-                            // the tx for example because of low gas or invalid parameters, etc
-                            let message = "failed to submit the transaction";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.setAttribute("errorDetails", message);
-                                if (isTimeout(e.error)) {
-                                    span.setAttribute("severity", ErrorSeverity.LOW);
-                                } else {
-                                    span.setAttribute("severity", ErrorSeverity.HIGH);
-                                }
-                            } else {
-                                span.setAttribute("severity", ErrorSeverity.HIGH);
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                            span.setAttribute("unsuccessfulClear", true);
-                            span.setAttribute("txSendFailed", true);
-                        } else if (e.reason === ProcessPairHaltReason.TxReverted) {
-                            // Tx reverted onchain, this can happen for example
-                            // because of mev front running or false positive opportunities, etc
-                            let message = "";
-                            if (e.error) {
-                                if ("snapshot" in e.error) {
-                                    message = e.error.snapshot;
-                                } else {
-                                    message = errorSnapshot(
-                                        "transaction reverted onchain",
-                                        e.error.err,
-                                    );
-                                }
-                                span.setAttribute("errorDetails", message);
-                            }
-                            if (e.spanAttributes["txNoneNodeError"]) {
-                                span.setAttribute("severity", ErrorSeverity.HIGH);
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                            span.setAttribute("unsuccessfulClear", true);
-                            span.setAttribute("txReverted", true);
-                        } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
-                            // tx failed to get included onchain, this can happen as result of timeout, rpc dropping the tx, etc
-                            let message = "transaction failed";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.setAttribute("errorDetails", message);
-                                if (isTimeout(e.error)) {
-                                    span.setAttribute("severity", ErrorSeverity.LOW);
-                                } else {
-                                    span.setAttribute("severity", ErrorSeverity.HIGH);
-                                }
-                            } else {
-                                span.setAttribute("severity", ErrorSeverity.HIGH);
-                            }
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                            span.setAttribute("unsuccessfulClear", true);
-                            span.setAttribute("txMineFailed", true);
-                        } else {
-                            // record the error for the span
-                            let message = "unexpected error";
-                            if (e.error) {
-                                message = errorSnapshot(message, e.error);
-                                span.recordException(e.error);
-                            }
-                            // set the span status to unexpected error
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
-                            span.setStatus({ code: SpanStatusCode.ERROR, message });
-                        }
-                    } else {
-                        // record the error for the span
-                        let message = "unexpected error";
-                        if (e.error) {
-                            message = errorSnapshot(message, e.error);
-                            span.recordException(e.error);
-                        }
-
-                        // report the unexpected error reason
-                        reports.push({
-                            ...e.report,
-                            error: e.error,
-                            reason: ProcessPairHaltReason.UnexpectedError,
-                        });
-                        // set the span status to unexpected error
-                        span.setAttribute("severity", ErrorSeverity.HIGH);
-                        span.setStatus({ code: SpanStatusCode.ERROR, message });
-                    }
-                }
-                span.end();
-
-                // rotate the accounts once they are used once
-                rotateAccounts(accounts);
+                    results.push({ settle, span, pair, orderPairObject });
+                } catch {}
             }
         }
+    }
+
+    for (const { settle, span, pair,  orderPairObject } of results) {
+        try {
+            const result = await settle();
+
+            // keep track of avg gas cost
+            if (result.gasCost) {
+                if (!avgGasCost) {
+                    avgGasCost = result.gasCost;
+                } else {
+                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
+                }
+            }
+
+            reports.push(result.report);
+
+            // set the span attributes with the values gathered at processPair()
+            span.setAttributes(result.spanAttributes);
+
+            // set the otel span status based on report status
+            if (result.report.status === ProcessPairReportStatus.ZeroOutput) {
+                span.setStatus({ code: SpanStatusCode.OK, message: "zero max output" });
+            } else if (result.report.status === ProcessPairReportStatus.NoOpportunity) {
+                if (result.error && typeof result.error === "string") {
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: result.error });
+                } else {
+                    span.setStatus({ code: SpanStatusCode.OK, message: "no opportunity" });
+                }
+            } else if (result.report.status === ProcessPairReportStatus.FoundOpportunity) {
+                span.setStatus({ code: SpanStatusCode.OK, message: "found opportunity" });
+            } else {
+                // set the span status to unexpected error
+                span.setAttribute("severity", ErrorSeverity.HIGH);
+                span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
+            }
+        } catch (e: any) {
+            // keep track of avg gas cost
+            if (e.gasCost) {
+                if (!avgGasCost) {
+                    avgGasCost = e.gasCost;
+                } else {
+                    avgGasCost = avgGasCost.add(e.gasCost).div(2);
+                }
+            }
+
+            // set the span attributes with the values gathered at processPair()
+            span.setAttributes(e.spanAttributes);
+
+            // record otel span status based on reported reason
+            if (e.reason) {
+                // report the error reason along with the rest of report
+                reports.push({
+                    ...e.report,
+                    error: e.error,
+                    reason: e.reason,
+                });
+
+                // set the otel span status based on returned reason
+                if (e.reason === ProcessPairHaltReason.FailedToQuote) {
+                    let message =
+                        "failed to quote order: " + orderPairObject.takeOrders[0].id;
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                    }
+                    span.setStatus({ code: SpanStatusCode.OK, message });
+                } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
+                    let message = pair + ": failed to get gas price";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.recordException(e.error);
+                    }
+                    span.setAttribute("severity", ErrorSeverity.LOW);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
+                    let message = pair + ": failed to get pool details";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.recordException(e.error);
+                    }
+                    span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                } else if (e.reason === ProcessPairHaltReason.FailedToGetEthPrice) {
+                    // set OK status because a token might not have a pool and as a result eth price cannot
+                    // be fetched for it and if it is set to ERROR it will constantly error on each round
+                    // resulting in lots of false positives
+                    let message = "failed to get eth price";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.setAttribute("errorDetails", message);
+                    }
+                    span.setStatus({ code: SpanStatusCode.OK, message });
+                } else if (e.reason === ProcessPairHaltReason.TxFailed) {
+                    // failed to submit the tx to mempool, this can happen for example when rpc rejects
+                    // the tx for example because of low gas or invalid parameters, etc
+                    let message = "failed to submit the transaction";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.setAttribute("errorDetails", message);
+                        if (isTimeout(e.error)) {
+                            span.setAttribute("severity", ErrorSeverity.LOW);
+                        } else {
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
+                        }
+                    } else {
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
+                    }
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                    span.setAttribute("unsuccessfulClear", true);
+                    span.setAttribute("txSendFailed", true);
+                } else if (e.reason === ProcessPairHaltReason.TxReverted) {
+                    // Tx reverted onchain, this can happen for example
+                    // because of mev front running or false positive opportunities, etc
+                    let message = "";
+                    if (e.error) {
+                        if ("snapshot" in e.error) {
+                            message = e.error.snapshot;
+                        } else {
+                            message = errorSnapshot(
+                                "transaction reverted onchain",
+                                e.error.err,
+                            );
+                        }
+                        span.setAttribute("errorDetails", message);
+                    }
+                    if (e.spanAttributes["txNoneNodeError"]) {
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
+                    }
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                    span.setAttribute("unsuccessfulClear", true);
+                    span.setAttribute("txReverted", true);
+                } else if (e.reason === ProcessPairHaltReason.TxMineFailed) {
+                    // tx failed to get included onchain, this can happen as result of timeout, rpc dropping the tx, etc
+                    let message = "transaction failed";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.setAttribute("errorDetails", message);
+                        if (isTimeout(e.error)) {
+                            span.setAttribute("severity", ErrorSeverity.LOW);
+                        } else {
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
+                        }
+                    } else {
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
+                    }
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                    span.setAttribute("unsuccessfulClear", true);
+                    span.setAttribute("txMineFailed", true);
+                } else {
+                    // record the error for the span
+                    let message = "unexpected error";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.recordException(e.error);
+                    }
+                    // set the span status to unexpected error
+                    span.setAttribute("severity", ErrorSeverity.HIGH);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
+                }
+            } else {
+                // record the error for the span
+                let message = "unexpected error";
+                if (e.error) {
+                    message = errorSnapshot(message, e.error);
+                    span.recordException(e.error);
+                }
+
+                // report the unexpected error reason
+                reports.push({
+                    ...e.report,
+                    error: e.error,
+                    reason: ProcessPairHaltReason.UnexpectedError,
+                });
+                // set the span status to unexpected error
+                span.setAttribute("severity", ErrorSeverity.HIGH);
+                span.setStatus({ code: SpanStatusCode.ERROR, message });
+            }
+        }
+        span.end();
     }
     return { reports, avgGasCost };
 };
@@ -418,7 +429,8 @@ export async function processPair(args: {
     orderbook: Contract;
     pair: string;
     orderbooksOrders: BundledOrders[][];
-}): Promise<ProcessPairResult> {
+    span: Span,
+}): Promise<() => Promise<ProcessPairResult>> {
     const {
         config,
         orderPairObject,
@@ -475,12 +487,12 @@ export async function processPair(args: {
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
             };
-            return result;
+            return async () => { return result; };
         }
     } catch (e) {
         result.error = e;
         result.reason = ProcessPairHaltReason.FailedToQuote;
-        throw result;
+        return async () => { throw result; };
     }
 
     spanAttributes["details.quote"] = JSON.stringify({
@@ -497,7 +509,7 @@ export async function processPair(args: {
     } catch (e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
         result.error = e;
-        throw result;
+        return async () => { throw result; };
     }
 
     // get pool details
@@ -521,7 +533,7 @@ export async function processPair(args: {
         } catch (e) {
             result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;
-            throw result;
+            return async () => { throw result; };
         }
     }
 
@@ -572,7 +584,7 @@ export async function processPair(args: {
             } else {
                 result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
                 result.error = "no-route";
-                return Promise.reject(result);
+                return async () => { return Promise.reject(result); };
             }
         } else {
             const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
@@ -589,7 +601,7 @@ export async function processPair(args: {
         } else {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
             result.error = e;
-            throw result;
+            return async () => { throw result; };
         }
     }
 
@@ -641,7 +653,7 @@ export async function processPair(args: {
             buyToken: orderPairObject.buyToken,
             sellToken: orderPairObject.sellToken,
         };
-        return result;
+        return async () => { return result; };
     }
 
     // from here on we know an opp is found, so record it in report and in otel span attributes
@@ -665,252 +677,39 @@ export async function processPair(args: {
         spanAttributes["details.blockNumberError"] = errorSnapshot("failed to get block number", e);
     }
 
-    // submit the tx
-    let txhash, txUrl;
-    try {
-        rawtx.nonce = await getNonce(writeSigner !== undefined ? writeSigner : signer);
-        if (writeSigner !== undefined) {
-            rawtx.gas = undefined;
-        }
-        txhash =
-            writeSigner !== undefined
-                ? await writeSigner.sendTransaction({
-                      ...rawtx,
-                      type: "legacy",
-                  })
-                : await signer.sendTransaction({
-                      ...rawtx,
-                      type: "legacy",
-                  });
-
-        txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
-        // eslint-disable-next-line no-console
-        console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
-        spanAttributes["details.txUrl"] = txUrl;
-    } catch (e) {
-        // record rawtx in case it is not already present in the error
-        spanAttributes["details.rawTx"] = JSON.stringify(
-            {
-                ...rawtx,
-                from: signer.account.address,
-            },
-            withBigintSerializer,
-        );
-        spanAttributes["txNoneNodeError"] = !containsNodeError(e as BaseError);
-        result.error = e;
-        result.reason = ProcessPairHaltReason.TxFailed;
-        throw result;
-    }
-
-    // wait for tx receipt
-    try {
-        const receipt = await viemClient.waitForTransactionReceipt({
-            hash: txhash,
-            confirmations: 1,
-            timeout: 120_000,
-        });
-        return handleReceipt(
-            txhash,
-            receipt,
-            signer,
-            viemClient as any as ViemClient,
-            spanAttributes,
-            rawtx,
-            orderbook,
-            orderPairObject,
-            inputToEthPrice,
-            outputToEthPrice,
-            result,
-            txUrl,
-            pair,
-            toToken,
-            fromToken,
-            config,
-        );
-    } catch (e: any) {
-        try {
-            const newReceipt = await viemClient.getTransactionReceipt({ hash: txhash });
-            if (newReceipt) {
-                return handleReceipt(
-                    txhash,
-                    newReceipt,
-                    signer,
-                    viemClient as any as ViemClient,
-                    spanAttributes,
-                    rawtx,
-                    orderbook,
-                    orderPairObject,
-                    inputToEthPrice,
-                    outputToEthPrice,
-                    result,
-                    txUrl,
-                    pair,
-                    toToken,
-                    fromToken,
-                    config,
-                );
-            }
-        } catch {}
-        // keep track of gas consumption of the account
-        let actualGasCost;
-        try {
-            actualGasCost = ethers.BigNumber.from(e.receipt.effectiveGasPrice).mul(
-                e.receipt.gasUsed,
-            );
-            signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-        } catch {
-            /**/
-        }
-        result.report = {
-            status: ProcessPairReportStatus.FoundOpportunity,
-            txUrl,
-            tokenPair: pair,
-            buyToken: orderPairObject.buyToken,
-            sellToken: orderPairObject.sellToken,
-        };
-        if (actualGasCost) {
-            result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
-        }
-        result.error = e;
-        spanAttributes["details.rawTx"] = JSON.stringify(
-            {
-                ...rawtx,
-                from: signer.account.address,
-            },
-            withBigintSerializer,
-        );
-        spanAttributes["txNoneNodeError"] = !containsNodeError(e);
-        result.reason = ProcessPairHaltReason.TxMineFailed;
-        throw result;
-    }
+    // call and return the tx processor
+    return handleTransaction(
+        signer,
+        viemClient as any as ViemClient,
+        spanAttributes,
+        rawtx,
+        orderbook,
+        orderPairObject,
+        inputToEthPrice,
+        outputToEthPrice,
+        result,
+        pair,
+        toToken,
+        fromToken,
+        config,
+        writeSigner,
+    );
 }
 
 /**
- * Handles the tx receipt
+ * Returns the first available signer by constantly polling the signers in 30ms intervals
  */
-export async function handleReceipt(
-    txhash: string,
-    receipt: TransactionReceipt,
-    signer: ViemClient,
-    viemClient: ViemClient,
-    spanAttributes: any,
-    rawtx: RawTx,
-    orderbook: Contract,
-    orderPairObject: BundledOrders,
-    inputToEthPrice: string,
-    outputToEthPrice: string,
-    result: any,
-    txUrl: string,
-    pair: string,
-    toToken: Token,
-    fromToken: Token,
-    config: BotConfig,
-) {
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
-    const signerBalance = signer.BALANCE;
-    signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-    if (receipt.status === "success") {
-        spanAttributes["didClear"] = true;
-
-        const clearActualAmount = getActualClearAmount(rawtx.to, orderbook.address, receipt);
-
-        const inputTokenIncome = getIncome(
-            signer.account.address,
-            receipt,
-            orderPairObject.buyToken,
-        );
-        const outputTokenIncome = getIncome(
-            signer.account.address,
-            receipt,
-            orderPairObject.sellToken,
-        );
-        const income = getTotalIncome(
-            inputTokenIncome,
-            outputTokenIncome,
-            inputToEthPrice,
-            outputToEthPrice,
-            orderPairObject.buyTokenDecimals,
-            orderPairObject.sellTokenDecimals,
-        );
-        const netProfit = income ? income.sub(actualGasCost) : undefined;
-
-        if (income) {
-            spanAttributes["details.income"] = toNumber(income);
-            spanAttributes["details.netProfit"] = toNumber(netProfit!);
-            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+export async function getSigner(accounts: ViemClient[], mainAccount: ViemClient): Promise<ViemClient> {
+    if (accounts.length) {
+        shuffleArray(accounts);
+    }
+    const accs = accounts.length ? accounts : [mainAccount];
+    for (;;) {
+        const acc = accs.find((v) => !v.BUSY);
+        if (acc) {
+            return acc;
+        } else {
+            await sleep(30);
         }
-        if (inputTokenIncome) {
-            spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
-                inputTokenIncome,
-                orderPairObject.buyTokenDecimals,
-            );
-        }
-        if (outputTokenIncome) {
-            spanAttributes["details.outputTokenIncome"] = ethers.utils.formatUnits(
-                outputTokenIncome,
-                orderPairObject.sellTokenDecimals,
-            );
-        }
-
-        result.report = {
-            status: ProcessPairReportStatus.FoundOpportunity,
-            txUrl,
-            tokenPair: pair,
-            buyToken: orderPairObject.buyToken,
-            sellToken: orderPairObject.sellToken,
-            clearedAmount: clearActualAmount?.toString(),
-            actualGasCost: ethers.utils.formatUnits(actualGasCost),
-            income,
-            inputTokenIncome: inputTokenIncome
-                ? ethers.utils.formatUnits(inputTokenIncome, toToken.decimals)
-                : undefined,
-            outputTokenIncome: outputTokenIncome
-                ? ethers.utils.formatUnits(outputTokenIncome, fromToken.decimals)
-                : undefined,
-            netProfit,
-            clearedOrders: orderPairObject.takeOrders.map((v) => v.id),
-        };
-
-        // keep track of gas consumption of the account and bounty token
-        result.gasCost = actualGasCost;
-        if (inputTokenIncome && inputTokenIncome.gt(0)) {
-            const tkn = {
-                address: orderPairObject.buyToken.toLowerCase(),
-                decimals: orderPairObject.buyTokenDecimals,
-                symbol: orderPairObject.buyTokenSymbol,
-            };
-            addWatchedToken(tkn, config.watchedTokens ?? [], signer);
-        }
-        if (outputTokenIncome && outputTokenIncome.gt(0)) {
-            const tkn = {
-                address: orderPairObject.sellToken.toLowerCase(),
-                decimals: orderPairObject.sellTokenDecimals,
-                symbol: orderPairObject.sellTokenSymbol,
-            };
-            addWatchedToken(tkn, config.watchedTokens ?? [], signer);
-        }
-        return result;
-    } else {
-        const simulation = await handleRevert(
-            viemClient as any,
-            txhash as `0x${string}`,
-            receipt,
-            rawtx,
-            signerBalance,
-        );
-        if (simulation) {
-            result.error = simulation;
-            spanAttributes["txNoneNodeError"] = !simulation.nodeError;
-        }
-        result.report = {
-            status: ProcessPairReportStatus.FoundOpportunity,
-            txUrl,
-            tokenPair: pair,
-            buyToken: orderPairObject.buyToken,
-            sellToken: orderPairObject.sellToken,
-            actualGasCost: ethers.utils.formatUnits(actualGasCost),
-        };
-        result.reason = ProcessPairHaltReason.TxReverted;
-        return Promise.reject(result);
     }
 }
