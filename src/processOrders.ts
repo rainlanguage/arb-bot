@@ -815,7 +815,7 @@ export async function handleReceipt(
     const l1Fee = getL1Fee(receipt, config);
     const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
         .mul(receipt.gasUsed)
-        .add(l1Fee);;
+        .add(l1Fee);
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
     if (receipt.status === "success") {
