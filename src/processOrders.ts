@@ -185,6 +185,9 @@ export const processOrders = async (
                 };
 
                 // await for first available signer
+                if (accounts.length) {
+                    shuffleArray(accounts);
+                }
                 const signer = await getSigner(accounts, mainAccount);
 
                 const writeSigner = config.writeRpc
@@ -236,7 +239,7 @@ export const processOrders = async (
         }
     }
 
-    for (const { settle, pair,  orderPairObject } of results) {
+    for (const { settle, pair, orderPairObject } of results) {
         // instantiate a span for this pair
         const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
         try {
@@ -704,9 +707,6 @@ export async function processPair(args: {
  * Returns the first available signer by constantly polling the signers in 30ms intervals
  */
 export async function getSigner(accounts: ViemClient[], mainAccount: ViemClient): Promise<ViemClient> {
-    if (accounts.length) {
-        shuffleArray(accounts);
-    }
     const accs = accounts.length ? accounts : [mainAccount];
     for (;;) {
         const acc = accs.find((v) => !v.BUSY);

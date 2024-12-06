@@ -96,6 +96,8 @@ export function errorSnapshot(
                     if (gasErr) {
                         message.push("Gas Error: " + gasErr);
                     }
+                } else {
+                    message.push("Comment: Found no additional info")
                 }
             }
         }
@@ -181,13 +183,9 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        return {
-            err: "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
-            nodeError: false,
-            snapshot:
-                "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
-        };
-        return undefined;
+        const msg = header +
+            " and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details";
+        return { err: msg, nodeError: false, snapshot: msg };
     } catch (err: any) {
         return {
             err,

@@ -36,8 +36,9 @@ export async function handleTransaction(
     writeSigner?: ViemClient,
 ): Promise<() => Promise<ProcessPairResult>> {
     // submit the tx
-    let txhash, txUrl;
-    try {
+    let txhash: `0x${string}`, txUrl: string;
+    let time = 0;
+    const sendTx = async () => {
         rawtx.nonce = await getNonce(writeSigner !== undefined ? writeSigner : signer);
         if (writeSigner !== undefined) {
             rawtx.gas = undefined;
@@ -56,34 +57,18 @@ export async function handleTransaction(
 
         writeSigner !== undefined ? (writeSigner.BUSY = false) : (signer.BUSY = false);
         txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
+        time = Date.now();
         // eslint-disable-next-line no-console
         console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
         spanAttributes["details.txUrl"] = txUrl;
+    };
+    try {
+        await sendTx();
     } catch (e) {
         try {
             // retry again after 5 seconds if first attempt failed
             await sleep(5000);
-            rawtx.nonce = await getNonce(writeSigner !== undefined ? writeSigner : signer);
-            if (writeSigner !== undefined) {
-                rawtx.gas = undefined;
-            }
-            writeSigner !== undefined ? (writeSigner.BUSY = true) : (signer.BUSY = true);
-            txhash =
-                writeSigner !== undefined
-                    ? await writeSigner.sendTransaction({
-                          ...rawtx,
-                          type: "legacy",
-                      })
-                    : await signer.sendTransaction({
-                          ...rawtx,
-                          type: "legacy",
-                      });
-
-            writeSigner !== undefined ? (writeSigner.BUSY = false) : (signer.BUSY = false);
-            txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
-            // eslint-disable-next-line no-console
-            console.log("\x1b[33m%s\x1b[0m", txUrl, "\n");
-            spanAttributes["details.txUrl"] = txUrl;
+            await sendTx();
         } catch {
             writeSigner !== undefined ? (writeSigner.BUSY = false) : (signer.BUSY = false);
             // record rawtx in case it is not already present in the error
@@ -105,7 +90,7 @@ export async function handleTransaction(
 
     // start getting tx receipt in background and return the resolver fn
     const receipt = viemClient.waitForTransactionReceipt({
-        hash: txhash,
+        hash: txhash!,
         confirmations: 1,
         timeout: 120_000,
     });
@@ -116,7 +101,6 @@ export async function handleTransaction(
                 txhash,
                 await receipt,
                 signer,
-                viemClient as any as ViemClient,
                 spanAttributes,
                 rawtx,
                 orderbook,
@@ -129,6 +113,7 @@ export async function handleTransaction(
                 toToken,
                 fromToken,
                 config,
+                time,
             );
         } catch (e: any) {
             try {
@@ -138,7 +123,6 @@ export async function handleTransaction(
                         txhash,
                         newReceipt,
                         signer,
-                        viemClient as any as ViemClient,
                         spanAttributes,
                         rawtx,
                         orderbook,
@@ -151,6 +135,7 @@ export async function handleTransaction(
                         toToken,
                         fromToken,
                         config,
+                        time,
                     );
                 }
             } catch {}
@@ -194,7 +179,6 @@ export async function handleReceipt(
     txhash: string,
     receipt: TransactionReceipt,
     signer: ViemClient,
-    viemClient: ViemClient,
     spanAttributes: any,
     rawtx: RawTx,
     orderbook: Contract,
@@ -207,15 +191,16 @@ export async function handleReceipt(
     toToken: Token,
     fromToken: Token,
     config: BotConfig,
-) {
+    time: number,
+): Promise<ProcessPairResult> {
     const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+
     if (receipt.status === "success") {
         spanAttributes["didClear"] = true;
 
         const clearActualAmount = getActualClearAmount(rawtx.to, orderbook.address, receipt);
-
         const inputTokenIncome = getIncome(
             signer.account.address,
             receipt,
@@ -293,8 +278,14 @@ export async function handleReceipt(
         }
         return result;
     } else {
+        // wait at least 60s before simulating the revert tx
+        // in order for rpcs to catch up
+        const wait = 60000 - Date.now() + time;
+        if (wait > 0) {
+            await sleep(wait);
+        }
         const simulation = await handleRevert(
-            viemClient as any,
+            signer,
             txhash as `0x${string}`,
             receipt,
             rawtx,
