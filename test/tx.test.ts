@@ -1,9 +1,16 @@
 import { assert } from "chai";
 import fixtures from "./data";
 import { ethers } from "ethers";
-import { handleReceipt, handleTransaction } from "../src/tx";
-import { InsufficientFundsError, TransactionReceipt } from "viem";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "../src/processOrders";
+import { InsufficientFundsError, InvalidInputRpcError, TransactionReceipt } from "viem";
+import {
+    getNonce,
+    getSigner,
+    pollSigners,
+    handleReceipt,
+    sendTransaction,
+    handleTransaction,
+} from "../src/tx";
 
 describe("Test tx", async function () {
     let signer: any = {};
@@ -31,6 +38,7 @@ describe("Test tx", async function () {
             BOUNTY: [],
             BUSY: false,
             sendTransaction: async () => txHash,
+            sendTx: async () => txHash,
             getTransactionCount: async () => 0,
             waitForTransactionReceipt: async () => {
                 return {
@@ -57,7 +65,7 @@ describe("Test tx", async function () {
         };
     });
 
-    it("handle transaction successfuly", async function () {
+    it("should handle transaction successfully", async function () {
         const spanAttributes = {};
         const rawtx = {
             to: "0x" + "1".repeat(40),
@@ -120,7 +128,7 @@ describe("Test tx", async function () {
 
     it("handle fail to submit transaction", async function () {
         // mock signer to reject the sendTransaction
-        signer.sendTransaction = async () => {
+        signer.sendTx = async () => {
             throw new InsufficientFundsError();
         };
         const spanAttributes = {};
@@ -174,7 +182,6 @@ describe("Test tx", async function () {
                     "details.rawTx": JSON.stringify({
                         to: rawtx.to,
                         data: "",
-                        nonce: 0,
                         from: signer.account.address,
                     }),
                     txNoneNodeError: false,
@@ -184,7 +191,7 @@ describe("Test tx", async function () {
         }
     });
 
-    it("should handle success transaction receipt successfuly", async function () {
+    it("should handle success transaction receipt successfully", async function () {
         const receipt: Promise<TransactionReceipt> = (async () => ({
             status: "success", // success tx receipt
             effectiveGasPrice,
@@ -251,7 +258,7 @@ describe("Test tx", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should handle revert transaction receipt successfuly", async function () {
+    it("should handle revert transaction receipt successfully", async function () {
         // mock signer to throw on tx simulation
         signer.call = async () => {
             throw new InsufficientFundsError();
@@ -323,5 +330,89 @@ describe("Test tx", async function () {
             };
             assert.deepEqual(e, expected);
         }
+    });
+
+    it("should test sendTransaction happy", async function () {
+        const rawtx: any = {
+            to: "0x" + "1".repeat(40),
+            data: "",
+        };
+        const result = await sendTransaction(signer, rawtx);
+        assert.equal(result, txHash);
+    });
+
+    it("should test sendTransaction unhappy", async function () {
+        const rawtx: any = {
+            to: "0x" + "1".repeat(40),
+            data: "",
+        };
+        try {
+            // mock inner send call to throw an error
+            signer.sendTransaction = async () => {
+                throw new InsufficientFundsError();
+            };
+            await sendTransaction(signer, rawtx);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            assert.deepEqual(error, new InsufficientFundsError());
+        }
+    });
+
+    it("should test getNonce happy", async function () {
+        // should get nonce succesfully
+        const result = await getNonce(signer);
+        assert.equal(result, 0);
+    });
+
+    it("should test getNonce unhappy", async function () {
+        try {
+            // mock inner getTransactionCount to throw an error
+            signer.getTransactionCount = async () => {
+                throw new InvalidInputRpcError(new Error("some error"));
+            };
+            await getNonce(signer);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            assert.deepEqual(error, new InvalidInputRpcError(new Error("some error")));
+        }
+    });
+
+    it("should test getSigner", async function () {
+        // mock some signer accounts and main signer
+        const mainSigner: any = { BUSY: true };
+        const someMockedSigners: any[] = [
+            { BUSY: true },
+            { BUSY: true },
+            { BUSY: true },
+            { BUSY: true },
+        ];
+
+        // set timeout to free a signer after 2s
+        setTimeout(() => (someMockedSigners[2].BUSY = false), 2000);
+        // test multi account
+        let result = await getSigner(someMockedSigners, mainSigner);
+        assert.equal(result, someMockedSigners[2]);
+
+        // set timeout to free main signer after 2s
+        setTimeout(() => (mainSigner.BUSY = false), 2000);
+        // test single account
+        result = await getSigner([], mainSigner);
+        assert.equal(result, mainSigner);
+    });
+
+    it("should test pollSigners", async function () {
+        // mock some signer accounts
+        const someMockedSigners: any[] = [
+            { BUSY: true },
+            { BUSY: true },
+            { BUSY: true },
+            { BUSY: true },
+        ];
+
+        // set timeout to free a signer after 2s
+        setTimeout(() => (someMockedSigners[2].BUSY = false), 2000);
+
+        const result = await pollSigners(someMockedSigners);
+        assert.equal(result, someMockedSigners[2]);
     });
 });

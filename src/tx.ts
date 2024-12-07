@@ -1,17 +1,18 @@
 import { Token } from "sushi/currency";
+import { addWatchedToken } from "./account";
 import { BigNumber, Contract, ethers } from "ethers";
-import { BaseError, TransactionReceipt } from "viem";
-import { addWatchedToken, getNonce } from "./account";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
 import { BotConfig, BundledOrders, ProcessPairResult, RawTx, ViemClient } from "./types";
+import { Account, BaseError, Chain, SendTransactionParameters, TransactionReceipt } from "viem";
 import {
+    sleep,
     toNumber,
     getIncome,
+    shuffleArray,
     getTotalIncome,
     withBigintSerializer,
     getActualClearAmount,
-    sleep,
 } from "./utils";
 
 /**
@@ -39,23 +40,19 @@ export async function handleTransaction(
     let txhash: `0x${string}`, txUrl: string;
     let time = 0;
     const sendTx = async () => {
-        rawtx.nonce = await getNonce(writeSigner !== undefined ? writeSigner : signer);
         if (writeSigner !== undefined) {
             rawtx.gas = undefined;
         }
-        writeSigner !== undefined ? (writeSigner.BUSY = true) : (signer.BUSY = true);
         txhash =
             writeSigner !== undefined
-                ? await writeSigner.sendTransaction({
+                ? await writeSigner.sendTx({
                       ...rawtx,
                       type: "legacy",
                   })
-                : await signer.sendTransaction({
+                : await signer.sendTx({
                       ...rawtx,
                       type: "legacy",
                   });
-
-        writeSigner !== undefined ? (writeSigner.BUSY = false) : (signer.BUSY = false);
         txUrl = config.chain.blockExplorers?.default.url + "/tx/" + txhash;
         time = Date.now();
         // eslint-disable-next-line no-console
@@ -70,8 +67,7 @@ export async function handleTransaction(
             await sleep(5000);
             await sendTx();
         } catch {
-            writeSigner !== undefined ? (writeSigner.BUSY = false) : (signer.BUSY = false);
-            // record rawtx in case it is not already present in the error
+            // record rawtx in logs
             spanAttributes["details.rawTx"] = JSON.stringify(
                 {
                     ...rawtx,
@@ -88,18 +84,18 @@ export async function handleTransaction(
         }
     }
 
-    // start getting tx receipt in background and return the resolver fn
-    const receipt = viemClient.waitForTransactionReceipt({
+    // start getting tx receipt in background and return the settler fn
+    const receiptPromise = viemClient.waitForTransactionReceipt({
         hash: txhash!,
         confirmations: 1,
         timeout: 120_000,
     });
     return async () => {
-        // wait for tx receipt
         try {
+            const receipt = await receiptPromise;
             return handleReceipt(
                 txhash,
-                await receipt,
+                receipt,
                 signer,
                 spanAttributes,
                 rawtx,
@@ -305,5 +301,71 @@ export async function handleReceipt(
         };
         result.reason = ProcessPairHaltReason.TxReverted;
         return Promise.reject(result);
+    }
+}
+
+/**
+ * A wrapper for sending transactions that handles nonce and keeps
+ * signer busy while the transaction is being sent
+ */
+export async function sendTransaction<chain extends Chain, account extends Account>(
+    signer: ViemClient,
+    tx: SendTransactionParameters<chain, account>,
+): Promise<`0x${string}`> {
+    // make sure signer is free
+    await pollSigners([signer]);
+
+    // start sending tranaction process
+    signer.BUSY = true;
+    try {
+        const nonce = await getNonce(signer);
+        const result = await signer.sendTransaction({ ...tx, nonce });
+        signer.BUSY = false;
+        return result;
+    } catch (error) {
+        signer.BUSY = false;
+        throw error;
+    }
+}
+
+/**
+ * A wrapper fn to get an signer's nonce at latest mined block
+ */
+export async function getNonce(client: ViemClient): Promise<number> {
+    if (!client?.account?.address) throw "undefined account";
+    return await client.getTransactionCount({
+        address: client.account.address,
+        blockTag: "latest",
+    });
+}
+
+/**
+ * Returns the first available signer by polling the
+ * signers until first one becomes available
+ */
+export async function getSigner(
+    accounts: ViemClient[],
+    mainAccount: ViemClient,
+    shuffle = false,
+): Promise<ViemClient> {
+    if (shuffle && accounts.length) {
+        shuffleArray(accounts);
+    }
+    const accs = accounts.length ? accounts : [mainAccount];
+    return await pollSigners(accs);
+}
+
+/**
+ * Polls an array of given signers in 30ms intervals
+ * until the first one becomes free for consumption
+ */
+export async function pollSigners(accounts: ViemClient[]): Promise<ViemClient> {
+    for (;;) {
+        const acc = accounts.find((v) => !v.BUSY);
+        if (acc) {
+            return acc;
+        } else {
+            await sleep(30);
+        }
     }
 }

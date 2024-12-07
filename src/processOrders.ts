@@ -2,10 +2,10 @@ import { ChainId } from "sushi";
 import { findOpp } from "./modes";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
-import { handleTransaction } from "./tx";
 import { createViemClient } from "./config";
 import { fundOwnedOrders } from "./account";
 import { arbAbis, orderbookAbi } from "./abis";
+import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
@@ -22,12 +22,10 @@ import {
     ProcessPairResult,
 } from "./types";
 import {
-    sleep,
     toNumber,
     getEthPrice,
     quoteOrders,
     routeExists,
-    shuffleArray,
     PoolBlackList,
     getMarketQuote,
     checkOwnedOrders,
@@ -158,7 +156,6 @@ export const processOrders = async (
     } catch (e) {
         throw errorSnapshot("Failed to batch quote orders", e);
     }
-    
 
     let avgGasCost: BigNumber | undefined;
     const reports: Report[] = [];
@@ -184,11 +181,8 @@ export const processOrders = async (
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
 
-                // await for first available signer
-                if (accounts.length) {
-                    shuffleArray(accounts);
-                }
-                const signer = await getSigner(accounts, mainAccount);
+                // await for first available signer to get free
+                const signer = await getSigner(accounts, mainAccount, true);
 
                 const writeSigner = config.writeRpc
                     ? await createViemClient(
@@ -211,15 +205,18 @@ export const processOrders = async (
                     : undefined;
 
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
-                const span = tracer.startSpan("checkpoint", undefined, ctx);
+                const span = tracer.startSpan(`checkpoint_${pair}`, undefined, ctx);
                 span.setAttributes({
                     "details.pair": pair,
-                    "details.order": orderPairObject.takeOrders[0].id,
+                    "details.orderHash": orderPairObject.takeOrders[0].id,
                     "details.orderbook": orderbook.address,
-                    "details.account": signer.account.address,
+                    "details.sender": signer.account.address,
+                    "details.owner": orderPairObject.takeOrders[0].takeOrder.order.owner,
                 });
 
-                // process the pair
+                // call process pair and save the settlement fn
+                // to later settle without needing to pause if
+                // there are more signers available
                 const settle = await processPair({
                     config,
                     orderPairObject,
@@ -243,6 +240,10 @@ export const processOrders = async (
         // instantiate a span for this pair
         const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
         try {
+            // settle the process results
+            // this will return the report of the operation and in case
+            // there was a revert tx, it will try to simulate it and find
+            // the root cause as well
             const result = await settle();
 
             // keep track of avg gas cost
@@ -299,8 +300,7 @@ export const processOrders = async (
 
                 // set the otel span status based on returned reason
                 if (e.reason === ProcessPairHaltReason.FailedToQuote) {
-                    let message =
-                        "failed to quote order: " + orderPairObject.takeOrders[0].id;
+                    let message = "failed to quote order: " + orderPairObject.takeOrders[0].id;
                     if (e.error) {
                         message = errorSnapshot(message, e.error);
                     }
@@ -357,10 +357,7 @@ export const processOrders = async (
                         if ("snapshot" in e.error) {
                             message = e.error.snapshot;
                         } else {
-                            message = errorSnapshot(
-                                "transaction reverted onchain",
-                                e.error.err,
-                            );
+                            message = errorSnapshot("transaction reverted onchain", e.error.err);
                         }
                         span.setAttribute("errorDetails", message);
                     }
@@ -494,12 +491,16 @@ export async function processPair(args: {
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
             };
-            return async () => { return result; };
+            return async () => {
+                return result;
+            };
         }
     } catch (e) {
         result.error = e;
         result.reason = ProcessPairHaltReason.FailedToQuote;
-        return async () => { throw result; };
+        return async () => {
+            throw result;
+        };
     }
 
     spanAttributes["details.quote"] = JSON.stringify({
@@ -516,7 +517,9 @@ export async function processPair(args: {
     } catch (e) {
         result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
         result.error = e;
-        return async () => { throw result; };
+        return async () => {
+            throw result;
+        };
     }
 
     // get pool details
@@ -540,7 +543,9 @@ export async function processPair(args: {
         } catch (e) {
             result.reason = ProcessPairHaltReason.FailedToGetPools;
             result.error = e;
-            return async () => { throw result; };
+            return async () => {
+                throw result;
+            };
         }
     }
 
@@ -591,7 +596,9 @@ export async function processPair(args: {
             } else {
                 result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
                 result.error = "no-route";
-                return async () => { return Promise.reject(result); };
+                return async () => {
+                    return Promise.reject(result);
+                };
             }
         } else {
             const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
@@ -608,7 +615,9 @@ export async function processPair(args: {
         } else {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
             result.error = e;
-            return async () => { throw result; };
+            return async () => {
+                throw result;
+            };
         }
     }
 
@@ -660,7 +669,9 @@ export async function processPair(args: {
             buyToken: orderPairObject.buyToken,
             sellToken: orderPairObject.sellToken,
         };
-        return async () => { return result; };
+        return async () => {
+            return result;
+        };
     }
 
     // from here on we know an opp is found, so record it in report and in otel span attributes
@@ -684,7 +695,7 @@ export async function processPair(args: {
         spanAttributes["details.blockNumberError"] = errorSnapshot("failed to get block number", e);
     }
 
-    // call and return the tx processor
+    // handle the found transaction opportunity
     return handleTransaction(
         signer,
         viemClient as any as ViemClient,
@@ -701,19 +712,4 @@ export async function processPair(args: {
         config,
         writeSigner,
     );
-}
-
-/**
- * Returns the first available signer by constantly polling the signers in 30ms intervals
- */
-export async function getSigner(accounts: ViemClient[], mainAccount: ViemClient): Promise<ViemClient> {
-    const accs = accounts.length ? accounts : [mainAccount];
-    for (;;) {
-        const acc = accs.find((v) => !v.BUSY);
-        if (acc) {
-            return acc;
-        } else {
-            await sleep(30);
-        }
-    }
 }

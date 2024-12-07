@@ -97,7 +97,7 @@ export function errorSnapshot(
                         message.push("Gas Error: " + gasErr);
                     }
                 } else {
-                    message.push("Comment: Found no additional info")
+                    message.push("Comment: Found no additional info");
                 }
             }
         }
@@ -172,7 +172,11 @@ export async function handleRevert(
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
         if (gasErr) {
-            return { err: header + ", " + gasErr, nodeError: false, snapshot: header + ", " + gasErr };
+            return {
+                err: header + ", " + gasErr,
+                nodeError: false,
+                snapshot: header + ", " + gasErr,
+            };
         }
         const tx = await viemClient.getTransaction({ hash });
         await viemClient.call({
@@ -183,7 +187,8 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        const msg = header +
+        const msg =
+            header +
             " and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details";
         return { err: msg, nodeError: false, snapshot: msg };
     } catch (err: any) {
