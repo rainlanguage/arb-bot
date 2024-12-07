@@ -319,7 +319,7 @@ export async function sendTransaction<chain extends Chain, account extends Accou
     signer.BUSY = true;
     try {
         const nonce = await getNonce(signer);
-        const result = await signer.sendTransaction({ ...tx, nonce });
+        const result = await signer.sendTransaction({ ...(tx as any), nonce });
         signer.BUSY = false;
         return result;
     } catch (error) {
