@@ -176,15 +176,12 @@ export async function handleRevert(
     receipt: TransactionReceipt,
     rawtx: RawTx,
     signerBalance: BigNumber,
-): Promise<
-    | {
-          err: any;
-          nodeError: boolean;
-          snapshot: string;
-          rawRevertError?: TxRevertError;
-      }
-    | undefined
-> {
+): Promise<{
+    err: any;
+    nodeError: boolean;
+    snapshot: string;
+    rawRevertError?: TxRevertError;
+}> {
     const header = "transaction reverted onchain";
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);

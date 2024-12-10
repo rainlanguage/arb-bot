@@ -281,16 +281,29 @@ export async function handleReceipt(
         }
         return result;
     } else {
-        // wait at least 90s before simulating the revert tx
-        // in order for rpcs to catch up
-        await sleep(Math.max(90_000 + time - Date.now(), 0));
-        const simulation = await handleRevert(
-            signer,
-            txhash as `0x${string}`,
-            receipt,
-            rawtx,
-            signerBalance,
-        );
+        const simulation = await (async () => {
+            const result = await handleRevert(
+                signer,
+                txhash as `0x${string}`,
+                receipt,
+                rawtx,
+                signerBalance,
+            );
+            if (result.snapshot.includes("simulation failed to find the revert reason")) {
+                // wait at least 90s before simulating the revert tx
+                // in order for rpcs to catch up
+                await sleep(Math.max(90_000 + time - Date.now(), 0));
+                return await handleRevert(
+                    signer,
+                    txhash as `0x${string}`,
+                    receipt,
+                    rawtx,
+                    signerBalance,
+                );
+            } else {
+                return result;
+            }
+        })();
         if (simulation) {
             result.error = simulation;
             spanAttributes["txNoneNodeError"] = !simulation.nodeError;
