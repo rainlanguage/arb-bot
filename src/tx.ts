@@ -288,6 +288,7 @@ export async function handleReceipt(
                 receipt,
                 rawtx,
                 signerBalance,
+                orderbook.address as `0x${string}`,
             );
             if (result.snapshot.includes("simulation failed to find the revert reason")) {
                 // wait at least 90s before simulating the revert tx
@@ -299,6 +300,7 @@ export async function handleReceipt(
                     receipt,
                     rawtx,
                     signerBalance,
+                    orderbook.address as `0x${string}`,
                 );
             } else {
                 return result;
