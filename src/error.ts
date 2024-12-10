@@ -36,6 +36,15 @@ export enum ErrorSeverity {
 }
 
 /**
+ * Known errors
+ */
+export const KnownErrors = [
+    "unknown sender",
+    "minimumSenderOutput",
+    "MinimalOutputBalanceViolation",
+] as const;
+
+/**
  * Specifies a decoded contract error
  */
 export type DecodedError = {
@@ -96,6 +105,8 @@ export function errorSnapshot(
                     if (gasErr) {
                         message.push("Gas Error: " + gasErr);
                     }
+                } else {
+                    message.push("Comment: Found no additional info");
                 }
             }
         }
@@ -165,12 +176,21 @@ export async function handleRevert(
     receipt: TransactionReceipt,
     rawtx: RawTx,
     signerBalance: BigNumber,
-): Promise<{ err: any; nodeError: boolean; snapshot: string } | undefined> {
+): Promise<{
+    err: any;
+    nodeError: boolean;
+    snapshot: string;
+    rawRevertError?: TxRevertError;
+}> {
     const header = "transaction reverted onchain";
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
         if (gasErr) {
-            return { err: header + gasErr, nodeError: false, snapshot: header + gasErr };
+            return {
+                err: header + ", " + gasErr,
+                nodeError: false,
+                snapshot: header + ", " + gasErr,
+            };
         }
         const tx = await viemClient.getTransaction({ hash });
         await viemClient.call({
@@ -181,18 +201,16 @@ export async function handleRevert(
             gasPrice: tx.gasPrice,
             blockNumber: tx.blockNumber,
         });
-        return {
-            err: "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
-            nodeError: false,
-            snapshot:
-                "transaction reverted onchain and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details",
-        };
-        return undefined;
+        const msg =
+            header +
+            " and simulation failed to find the revert reason, please try to simulate the tx manualy for more details";
+        return { err: msg, nodeError: false, snapshot: msg };
     } catch (err: any) {
         return {
             err,
             nodeError: containsNodeError(err),
             snapshot: errorSnapshot(header, err, { receipt, rawtx, signerBalance }),
+            rawRevertError: parseRevertError(err),
         };
     }
 }

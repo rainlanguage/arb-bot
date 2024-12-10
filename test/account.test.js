@@ -1,5 +1,6 @@
 const { assert } = require("chai");
 const { ethers, viem } = require("hardhat");
+const { sendTransaction } = require("../src/tx");
 const { publicActions, walletActions } = require("viem");
 const { BridgeUnlimited, ConstantProductRPool } = require("sushi/tines");
 const { WNATIVE, WNATIVE_ADDRESS, Native, DAI } = require("sushi/currency");
@@ -139,6 +140,15 @@ describe("Test accounts", async function () {
         ]);
         acc1.BOUNTY = ["0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"];
         acc2.BOUNTY = ["0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"];
+        mainAccount.sendTx = async (tx) => {
+            return await sendTransaction(mainAccount, tx);
+        };
+        acc1.sendTx = async (tx) => {
+            return await sendTransaction(acc1, tx);
+        };
+        acc2.sendTx = async (tx) => {
+            return await sendTransaction(acc2, tx);
+        };
 
         mainAccount.BALANCE = ethers.BigNumber.from("0x4563918244F40000");
         acc1.BALANCE = ethers.BigNumber.from("10");
@@ -277,6 +287,7 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
+                sendTx: async () => "0x1234",
                 getTransactionCount: async () => 0,
                 waitForTransactionReceipt: async () => ({
                     status: "success",
@@ -360,6 +371,7 @@ describe("Test accounts", async function () {
                 estimateGas: async () => 25n,
                 getBalance: async () => 10000n,
                 sendTransaction: async () => "0x1234",
+                sendTx: async () => "0x1234",
                 getTransactionCount: async () => 0,
                 call: async () => ({ data: "0x00" }),
                 waitForTransactionReceipt: async () => ({

@@ -30,6 +30,7 @@ import {
     ROUTE_PROCESSOR_3_1_ADDRESS,
     ROUTE_PROCESSOR_3_2_ADDRESS,
 } from "sushi/config";
+import { sendTransaction } from "./tx";
 
 /**
  * Get the chain config for a given chain id
@@ -114,7 +115,7 @@ export async function createViemClient(
           ? fallback([...topRpcs, ...fallbacks], configuration)
           : fallback(topRpcs, configuration);
 
-    return testClient
+    const client = testClient
         ? ((await testClient({ account }))
               .extend(publicActions)
               .extend(walletActions) as any as ViemClient)
@@ -123,6 +124,14 @@ export async function createViemClient(
               chain: publicClientConfig[chainId]?.chain,
               transport,
           }).extend(publicActions) as any as ViemClient);
+
+    // set injected properties
+    client.BUSY = false;
+    client.sendTx = async (tx) => {
+        return await sendTransaction(client, tx);
+    };
+
+    return client;
 }
 
 /**
@@ -228,7 +237,7 @@ export function getBountyEnsureBytecode(
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
     const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
-    // :ensure(sender context<0 0>()),
+    // :ensure(equal-to(sender context<0 0>()) \"unknown sender\"),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
@@ -274,7 +283,7 @@ export function getWithdrawEnsureBytecode(
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
     const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
-    // :ensure(sender context<0 0>()),
+    // :ensure(equal-to(sender context<0 0>()) \"unknown sender\"),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
