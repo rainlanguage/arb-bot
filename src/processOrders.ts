@@ -10,7 +10,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
-import { ErrorSeverity, errorSnapshot, isTimeout } from "./error";
+import { ErrorSeverity, errorSnapshot, isTimeout, KnownErrors } from "./error";
 import {
     Report,
     BotConfig,
@@ -358,6 +358,9 @@ export const processOrders = async (
                             message = e.error.snapshot;
                         } else {
                             message = errorSnapshot("transaction reverted onchain", e.error.err);
+                        }
+                        if (KnownErrors.some((v) => message.includes(v))) {
+                            span.setAttribute("severity", ErrorSeverity.HIGH);
                         }
                         span.setAttribute("errorDetails", message);
                     }

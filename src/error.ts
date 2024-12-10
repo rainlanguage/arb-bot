@@ -36,6 +36,15 @@ export enum ErrorSeverity {
 }
 
 /**
+ * Known errors
+ */
+export const KnownErrors = [
+    "unknown sender",
+    "minimumSenderOutput",
+    "MinimalOutputBalanceViolation",
+] as const;
+
+/**
  * Specifies a decoded contract error
  */
 export type DecodedError = {
@@ -167,7 +176,15 @@ export async function handleRevert(
     receipt: TransactionReceipt,
     rawtx: RawTx,
     signerBalance: BigNumber,
-): Promise<{ err: any; nodeError: boolean; snapshot: string } | undefined> {
+): Promise<
+    | {
+          err: any;
+          nodeError: boolean;
+          snapshot: string;
+          rawRevertError?: TxRevertError;
+      }
+    | undefined
+> {
     const header = "transaction reverted onchain";
     try {
         const gasErr = checkGasIssue(receipt, rawtx, signerBalance);
@@ -189,13 +206,14 @@ export async function handleRevert(
         });
         const msg =
             header +
-            " and simulation failed to find out what was the revert reason, please try to simulate the tx manualy for more details";
+            " and simulation failed to find the revert reason, please try to simulate the tx manualy for more details";
         return { err: msg, nodeError: false, snapshot: msg };
     } catch (err: any) {
         return {
             err,
             nodeError: containsNodeError(err),
             snapshot: errorSnapshot(header, err, { receipt, rawtx, signerBalance }),
+            rawRevertError: parseRevertError(err),
         };
     }
 }

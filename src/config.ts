@@ -237,7 +237,7 @@ export function getBountyEnsureBytecode(
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
     const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
-    // :ensure(sender context<0 0>()),
+    // :ensure(equal-to(sender context<0 0>()) \"unknown sender\"),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(
@@ -283,7 +283,7 @@ export function getWithdrawEnsureBytecode(
     const minimum = minimumExcepted.toHexString().substring(2).padStart(64, "0");
     const msgSender = sender.substring(2).padStart(64, "0").toLowerCase();
     // rainlang bytecode:
-    // :ensure(sender context<0 0>()),
+    // :ensure(equal-to(sender context<0 0>()) \"unknown sender\"),
     // :ensure(
     //   greater-than-or-equal-to(
     //     add(

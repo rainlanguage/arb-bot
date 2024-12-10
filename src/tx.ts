@@ -113,7 +113,14 @@ export async function handleTransaction(
             );
         } catch (e: any) {
             try {
-                const newReceipt = await viemClient.getTransactionReceipt({ hash: txhash });
+                const newReceipt = await (async () => {
+                    try {
+                        return await viemClient.getTransactionReceipt({ hash: txhash });
+                    } catch {
+                        await sleep(Math.max(90_000 + time - Date.now(), 0));
+                        return await viemClient.getTransactionReceipt({ hash: txhash });
+                    }
+                })();
                 if (newReceipt) {
                     return handleReceipt(
                         txhash,
@@ -274,12 +281,9 @@ export async function handleReceipt(
         }
         return result;
     } else {
-        // wait at least 60s before simulating the revert tx
+        // wait at least 90s before simulating the revert tx
         // in order for rpcs to catch up
-        const wait = 60000 - Date.now() + time;
-        if (wait > 0) {
-            await sleep(wait);
-        }
+        await sleep(Math.max(90_000 + time - Date.now(), 0));
         const simulation = await handleRevert(
             signer,
             txhash as `0x${string}`,
