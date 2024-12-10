@@ -359,10 +359,10 @@ export const processOrders = async (
                         } else {
                             message = errorSnapshot("transaction reverted onchain", e.error.err);
                         }
-                        if (KnownErrors.some((v) => message.includes(v))) {
-                            span.setAttribute("severity", ErrorSeverity.HIGH);
-                        }
                         span.setAttribute("errorDetails", message);
+                    }
+                    if (KnownErrors.some((v) => !message.includes(v))) {
+                        span.setAttribute("severity", ErrorSeverity.HIGH);
                     }
                     if (e.spanAttributes["txNoneNodeError"]) {
                         span.setAttribute("severity", ErrorSeverity.HIGH);
