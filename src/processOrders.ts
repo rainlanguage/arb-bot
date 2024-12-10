@@ -361,7 +361,7 @@ export const processOrders = async (
                         }
                         span.setAttribute("errorDetails", message);
                     }
-                    if (KnownErrors.some((v) => !message.includes(v))) {
+                    if (KnownErrors.every((v) => !message.includes(v))) {
                         span.setAttribute("severity", ErrorSeverity.HIGH);
                     }
                     if (e.spanAttributes["txNoneNodeError"]) {
