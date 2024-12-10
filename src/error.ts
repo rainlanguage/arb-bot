@@ -41,6 +41,7 @@ export enum ErrorSeverity {
 export const KnownErrors = [
     "unknown sender",
     "minimumSenderOutput",
+    "minimum sender output",
     "MinimalOutputBalanceViolation",
 ] as const;
 
