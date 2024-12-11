@@ -116,10 +116,11 @@ Other optional arguments are:
 - `--gas-limit-multiplier`, Option to multiply the gas limit estimation from the rpc as percentage, default is 105, ie +5%. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables
 - `--tx-gas`, Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables
 - `--quote-gas`, Option to set a static gas limit for quote read calls, default is 1 milion. Will override the 'QUOTE_GAS' in env variables
+- `--rp-only`, Only clear orders through RP4, excludes intra and inter orderbook clears. Will override the 'RP_ONLY' in env variablesin env variables
 - `-V` or `--version`, output the version number
 - `-h` or `--help`, output usage information
 
-<br> 
+<br>
 
 ### List of available supported dexes (decentralized exchanges)
 - all of the below names are case INSENSITIVE:
@@ -271,6 +272,9 @@ TX_GAS=
 
 # Option to set a static gas limit for quote read calls, default is 1 milion
 QUOTE_GAS=
+
+# Only clear orders through RP4, excludes intra and inter orderbook clears
+RP_ONLY="true"
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 

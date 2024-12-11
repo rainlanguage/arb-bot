@@ -5,6 +5,7 @@ const { ChainKey } = require("sushi");
 const { clear } = require("../../src");
 const { arbAbis } = require("../../src/abis");
 const mockServer = require("mockttp").getLocal();
+const { sendTransaction } = require("../../src/tx");
 const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
@@ -96,6 +97,9 @@ for (let i = 0; i < testData.length; i++) {
                       )
                           .extend(publicActions)
                           .extend(walletActions);
+                bot.sendTx = async (tx) => {
+                    return await sendTransaction(bot, tx);
+                };
                 bot.impersonateAccount({
                     address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
                 });
@@ -357,6 +361,9 @@ for (let i = 0; i < testData.length; i++) {
                       )
                           .extend(publicActions)
                           .extend(walletActions);
+                bot.sendTx = async (tx) => {
+                    return await sendTransaction(bot, tx);
+                };
                 bot.impersonateAccount({
                     address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
                 });
@@ -702,6 +709,9 @@ for (let i = 0; i < testData.length; i++) {
                       )
                           .extend(publicActions)
                           .extend(walletActions);
+                bot.sendTx = async (tx) => {
+                    return await sendTransaction(bot, tx);
+                };
                 bot.impersonateAccount({
                     address: botAddress ?? "0x22025257BeF969A81eDaC0b343ce82d777931327",
                 });

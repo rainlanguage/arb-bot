@@ -103,10 +103,9 @@ export async function initAccounts(
                     span?.setAttribute("details.wallet", accounts[i].account.address);
                     span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
                     try {
-                        const hash = await mainAccount.sendTransaction({
+                        const hash = await mainAccount.sendTx({
                             to: accounts[i].account.address,
                             value: transferAmount.toBigInt(),
-                            nonce: await getNonce(mainAccount),
                         });
                         const receipt = await mainAccount.waitForTransactionReceipt({
                             hash,
@@ -248,10 +247,9 @@ export async function manageAccounts(
                         continue;
                     }
                     try {
-                        const hash = await config.mainAccount.sendTransaction({
+                        const hash = await config.mainAccount.sendTx({
                             to: acc.account.address,
                             value: transferAmount.toBigInt(),
-                            nonce: await getNonce(config.mainAccount),
                         });
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
                             hash,
@@ -543,10 +541,9 @@ export async function sweepToMainWallet(
                 .div(100)
                 .sub(fromWallet.BALANCE);
             span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
-            const hash = await toWallet.sendTransaction({
+            const hash = await toWallet.sendTx({
                 to: fromWallet.account.address,
                 value: transferAmount.toBigInt(),
-                nonce: await getNonce(toWallet),
             });
             const receipt = await toWallet.waitForTransactionReceipt({
                 hash,
@@ -589,9 +586,7 @@ export async function sweepToMainWallet(
         span?.setAttribute("details.tokenAddress", txs[i].bounty.address);
         span?.setAttribute("details.balance", txs[i].balance);
         try {
-            const nonce = await getNonce(fromWallet);
-            (txs[i].tx as any).nonce = nonce;
-            const hash = await fromWallet.sendTransaction(txs[i].tx);
+            const hash = await fromWallet.sendTx(txs[i].tx);
             const receipt = await fromWallet.waitForTransactionReceipt({
                 hash,
                 confirmations: 4,
@@ -643,12 +638,11 @@ export async function sweepToMainWallet(
             const transferAmount = remainingGas.sub(gasLimit.mul(gasPrice));
             if (transferAmount.gt(0)) {
                 span?.setAttribute("details.amount", ethers.utils.formatUnits(transferAmount));
-                const hash = await fromWallet.sendTransaction({
+                const hash = await fromWallet.sendTx({
                     gasPrice,
                     to: toWallet.account.address,
                     value: transferAmount.toBigInt(),
                     gas: gasLimit.toBigInt(),
-                    nonce: await getNonce(fromWallet),
                 });
                 const receipt = await fromWallet.waitForTransactionReceipt({
                     hash,
@@ -791,13 +785,12 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
             ).data;
             if (allowance && balance.gt(allowance)) {
                 span?.addEvent("Approving spend limit");
-                const hash = await config.mainAccount.sendTransaction({
+                const hash = await config.mainAccount.sendTx({
                     to: bounty.address as `0x${string}`,
                     data: erc20.encodeFunctionData("approve", [
                         rp4Address,
                         balance.mul(100),
                     ]) as `0x${string}`,
-                    nonce: await getNonce(config.mainAccount),
                 });
                 await config.mainAccount.waitForTransactionReceipt({
                     hash,
@@ -838,9 +831,7 @@ export async function sweepToEth(config: BotConfig, tracer?: Tracer, ctx?: Conte
                 span?.end();
                 continue;
             } else {
-                const nonce = await getNonce(config.mainAccount);
-                (rawtx as any).nonce = nonce;
-                const hash = await config.mainAccount.sendTransaction(rawtx);
+                const hash = await config.mainAccount.sendTx(rawtx);
                 span?.setAttribute("txHash", hash);
                 const receipt = await config.mainAccount.waitForTransactionReceipt({
                     hash,
@@ -1012,11 +1003,10 @@ export async function fundOwnedOrders(
                                 finalRpParams!.to,
                                 finalRpParams!.routeCode,
                             ]) as `0x${string}`;
-                            const swapHash = await config.mainAccount.sendTransaction({
+                            const swapHash = await config.mainAccount.sendTx({
                                 to: rp4Address,
                                 value: sellAmount!.toBigInt(),
                                 data,
-                                nonce: await getNonce(config.mainAccount),
                             });
                             const swapReceipt = await config.mainAccount.waitForTransactionReceipt({
                                 hash: swapHash,
@@ -1046,13 +1036,12 @@ export async function fundOwnedOrders(
                             })
                         ).data;
                         if (allowance && topupAmount.gt(allowance)) {
-                            const approveHash = await config.mainAccount.sendTransaction({
+                            const approveHash = await config.mainAccount.sendTx({
                                 to: ownedOrder.token as `0x${string}`,
                                 data: erc20.encodeFunctionData("approve", [
                                     ownedOrder.orderbook,
                                     topupAmount.mul(20),
                                 ]) as `0x${string}`,
-                                nonce: await getNonce(config.mainAccount),
                             });
                             const approveReceipt =
                                 await config.mainAccount.waitForTransactionReceipt({
@@ -1070,7 +1059,7 @@ export async function fundOwnedOrders(
                             }
                         }
 
-                        const hash = await config.mainAccount.sendTransaction({
+                        const hash = await config.mainAccount.sendTx({
                             to: ownedOrder.orderbook as `0x${string}`,
                             data: ob.encodeFunctionData("deposit2", [
                                 ownedOrder.token,
@@ -1078,7 +1067,6 @@ export async function fundOwnedOrders(
                                 topupAmount,
                                 [],
                             ]) as `0x${string}`,
-                            nonce: await getNonce(config.mainAccount),
                         });
                         const receipt = await config.mainAccount.waitForTransactionReceipt({
                             hash,
@@ -1137,24 +1125,4 @@ async function getTransactionCount(
         { dedupe: Boolean(blockNumber) },
     );
     return hexToNumber(count);
-}
-
-/**
- * Get an account's nonce
- * @param client - The viem client
- * @param address - account address
- */
-export async function getNonce(client: ViemClient): Promise<number> {
-    for (let i = 0; i < 3; i++) {
-        try {
-            return await client.getTransactionCount({
-                address: client.account.address,
-                blockTag: "latest",
-            });
-        } catch (error) {
-            if (i === 2) throw error;
-            else await sleep((i + 1) * 5000);
-        }
-    }
-    throw "Failed to get account's nonce";
 }

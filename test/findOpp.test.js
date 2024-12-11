@@ -230,7 +230,7 @@ describe("Test find opp", async function () {
         };
         const orderbooksOrdersTemp = clone(orderbooksOrders);
         orderbooksOrdersTemp[0][0].orderbook = orderPairObject.orderbook;
-        const inputBalance = ethers.BigNumber.from("1000000000000000000");
+        const inputBalance = ethers.BigNumber.from("1000000000000000000000000000000");
         const outputBalance = ethers.BigNumber.from("1000000000000000000");
         const result = await findOpp({
             orderPairObject,
