@@ -72,6 +72,7 @@ const ENV_OPTIONS = {
     gasLimitMultiplier: process?.env?.GAS_LIMIT_MULTIPLIER,
     txGas: process?.env?.TX_GAS,
     route: process?.env?.ROUTE,
+    rpOnly: process?.env?.RP_ONLY?.toLowerCase() === "true" ? true : false,
     ownerProfile: process?.env?.OWNER_PROFILE
         ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
@@ -200,6 +201,10 @@ const getOptions = async (argv: any, version?: string) => {
             "--tx-gas <integer>",
             "Option to set a static gas limit for all submitting txs. Will override the 'TX_GAS' in env variables",
         )
+        .option(
+            "--rp-only",
+            "Only clear orders through RP4, excludes intra and inter orderbook clears. Will override the 'RP_ONLY' in env variables",
+        )
         .description(
             [
                 "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
@@ -246,6 +251,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.ownerProfile = cmdOptions.ownerProfile || getEnv(ENV_OPTIONS.ownerProfile);
     cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
     cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
+    cmdOptions.rpOnly = cmdOptions.rpOnly || getEnv(ENV_OPTIONS.rpOnly);
     if (cmdOptions.ownerProfile) {
         const profiles: Record<string, number> = {};
         cmdOptions.ownerProfile.forEach((v: string) => {
