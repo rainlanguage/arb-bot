@@ -189,6 +189,7 @@ describe("Test cli", async function () {
             "110",
             "--tx-gas",
             "123456789",
+            "--rp-only",
         ]);
         const expected = {
             roundGap: 10000,
@@ -210,12 +211,14 @@ describe("Test cli", async function () {
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
                 txGas: 123456789n,
+                rpOnly: true,
             },
             options: {
                 botMinBalance: "0.123",
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
                 txGas: 123456789n,
+                rpOnly: true,
             },
         };
         await sleep(1000);
@@ -233,5 +236,7 @@ describe("Test cli", async function () {
         assert.equal(result.config.gasLimitMultiplier, expected.config.gasLimitMultiplier);
         assert.equal(result.options.txGas, expected.options.txGas);
         assert.equal(result.config.txGas, expected.config.txGas);
+        assert.equal(result.options.rpOnly, expected.options.rpOnly);
+        assert.equal(result.config.rpOnly, expected.config.rpOnly);
     });
 });

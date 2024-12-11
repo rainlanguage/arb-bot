@@ -78,31 +78,31 @@ export async function findOpp({
             l1GasPrice,
             l1Signer,
         }),
-        findIntraObOpp({
-            orderPairObject,
-            signer,
-            gasPrice,
-            inputToEthPrice,
-            outputToEthPrice,
-            config,
-            viemClient,
-            orderbooksOrders,
-            l1GasPrice,
-            l1Signer,
-        }),
-        findInterObOpp({
-            orderPairObject,
-            signer,
-            gasPrice,
-            arb: genericArb!,
-            inputToEthPrice,
-            outputToEthPrice,
-            config,
-            viemClient,
-            orderbooksOrders,
-            l1GasPrice,
-            l1Signer,
-        }),
+        ...(!config.rpOnly
+            ? [
+                  findIntraObOpp({
+                      orderPairObject,
+                      signer,
+                      gasPrice,
+                      inputToEthPrice,
+                      outputToEthPrice,
+                      config,
+                      viemClient,
+                      orderbooksOrders,
+                  }),
+                  findInterObOpp({
+                      orderPairObject,
+                      signer,
+                      gasPrice,
+                      arb: genericArb!,
+                      inputToEthPrice,
+                      outputToEthPrice,
+                      config,
+                      viemClient,
+                      orderbooksOrders,
+                  }),
+              ]
+            : []),
     ];
     const allResults = await Promise.allSettled(promises);
 
