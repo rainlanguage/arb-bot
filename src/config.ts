@@ -59,6 +59,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
         nativeWrappedToken,
         routeProcessors,
         stableTokens,
+        isSpecialL2: SpecialL2Chains.is(chain.id),
     };
 }
 
@@ -295,6 +296,22 @@ export function getWithdrawEnsureBytecode(
     //   \"minimumSenderOutput\"
     // );
     return `0x000000000000000000000000000000000000000000000000000000000000000b${msgSender}8e756e6b6e6f776e2073656e6465720000000000000000000000000000000000${input}${bot}${inputBalance}${inputPrice}${output}${outputBalance}${outputPrice}${minimum}936d696e696d756d53656e6465724f75747075740000000000000000000000000000000000000000000000000000000000000000000000000000000000000067010000180700000110000103100000011000001e1200001d0200000110000a011000090110000801100007011000030110000611120000471200003d1200000110000501100004011000030110000211120000471200003d1200002b120000211200001d020000`;
+}
+
+/**
+ * List of L2 chains that require SEPARATE L1 gas actions.
+ * other L2 chains that dont require separate L1 gas actions
+ * such as Arbitrum and Polygon zkEvm are excluded, these chains'
+ * gas actions are performed the same as usual L1 chains.
+ */
+export enum SpecialL2Chains {
+    BASE = ChainId.BASE,
+    OPTIMISM = ChainId.OPTIMISM,
+}
+export namespace SpecialL2Chains {
+    export function is(chainId: number): boolean {
+        return Object.values(SpecialL2Chains).includes(chainId as any);
+    }
 }
 
 /**
