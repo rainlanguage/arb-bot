@@ -1,3 +1,4 @@
+import { getL1Fee } from "./gas";
 import { Token } from "sushi/currency";
 import { addWatchedToken } from "./account";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -145,8 +146,15 @@ export async function handleTransaction(
             // keep track of gas consumption of the account
             let actualGasCost;
             try {
-                actualGasCost = BigNumber.from(e.receipt.effectiveGasPrice).mul(e.receipt.gasUsed);
+                const l1Fee = getL1Fee(e.receipt, config);
+                actualGasCost = BigNumber.from(e.receipt.effectiveGasPrice)
+                    .mul(e.receipt.gasUsed)
+                    .add(l1Fee);
                 signer.BALANCE = signer.BALANCE.sub(actualGasCost);
+                spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+                if (config.isSpecialL2 && l1Fee) {
+                    spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+                }
             } catch {
                 /**/
             }
@@ -196,7 +204,10 @@ export async function handleReceipt(
     config: BotConfig,
     time: number,
 ): Promise<ProcessPairResult> {
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+    const l1Fee = getL1Fee(receipt, config);
+    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
+        .mul(receipt.gasUsed)
+        .add(l1Fee);
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
 
@@ -224,10 +235,13 @@ export async function handleReceipt(
         );
         const netProfit = income ? income.sub(actualGasCost) : undefined;
 
+        spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+        if (config.isSpecialL2 && l1Fee) {
+            spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+        }
         if (income) {
             spanAttributes["details.income"] = toNumber(income);
             spanAttributes["details.netProfit"] = toNumber(netProfit!);
-            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
         }
         if (inputTokenIncome) {
             spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(

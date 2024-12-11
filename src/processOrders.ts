@@ -31,7 +31,6 @@ import {
     checkOwnedOrders,
     quoteSingleOrder,
 } from "./utils";
-import { getL1Fee } from "./gas";
 
 /**
  * Specifies reason that order process halted
