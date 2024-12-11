@@ -5,6 +5,7 @@ import { DataFetcher, LiquidityProviders } from "sushi/router";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
 import {
     Chain,
+    Account,
     HDAccount,
     TestClient,
     WalletClient,
@@ -12,6 +13,7 @@ import {
     PublicActions,
     WalletActions,
     FallbackTransport,
+    SendTransactionParameters,
 } from "viem";
 
 export type BotError = {
@@ -49,6 +51,7 @@ export type CliOptions = {
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: bigint;
+    rpOnly?: boolean;
 };
 
 export type TokenDetails = {
@@ -129,11 +132,25 @@ export type OwnersProfileMap = Map<string, OwnerProfile>;
 export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
 
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
-    PublicActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
+    PublicActions & {
+        BALANCE: BigNumber;
+        BOUNTY: TokenDetails[];
+        BUSY: boolean;
+        sendTx: <chain extends Chain, account extends Account>(
+            tx: SendTransactionParameters<chain, account>,
+        ) => Promise<`0x${string}`>;
+    };
 
 export type TestViemClient = TestClient<"hardhat"> &
     PublicActions &
-    WalletActions & { BALANCE: BigNumber; BOUNTY: TokenDetails[] };
+    WalletActions & {
+        BALANCE: BigNumber;
+        BOUNTY: TokenDetails[];
+        BUSY: boolean;
+        sendTx: <chain extends Chain, account extends Account>(
+            tx: SendTransactionParameters<chain, account>,
+        ) => Promise<`0x${string}`>;
+    };
 
 export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
 
@@ -174,6 +191,7 @@ export type BotConfig = {
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: bigint;
+    rpOnly?: boolean;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };
