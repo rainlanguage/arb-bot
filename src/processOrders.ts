@@ -157,7 +157,7 @@ export const processOrders = async (
         throw errorSnapshot("Failed to batch quote orders", e);
     }
 
-    let avgGasCost: BigNumber | undefined;
+    const txGasCosts: BigNumber[] = [];
     const reports: Report[] = [];
     const results: {
         settle: () => Promise<ProcessPairResult>;
@@ -239,6 +239,7 @@ export const processOrders = async (
     for (const { settle, pair, orderPairObject } of results) {
         // instantiate a span for this pair
         const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+        span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
         try {
             // settle the process results
             // this will return the report of the operation and in case
@@ -248,11 +249,7 @@ export const processOrders = async (
 
             // keep track of avg gas cost
             if (result.gasCost) {
-                if (!avgGasCost) {
-                    avgGasCost = result.gasCost;
-                } else {
-                    avgGasCost = avgGasCost.add(result.gasCost).div(2);
-                }
+                txGasCosts.push(result.gasCost);
             }
 
             reports.push(result.report);
@@ -277,15 +274,6 @@ export const processOrders = async (
                 span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
         } catch (e: any) {
-            // keep track of avg gas cost
-            if (e.gasCost) {
-                if (!avgGasCost) {
-                    avgGasCost = e.gasCost;
-                } else {
-                    avgGasCost = avgGasCost.add(e.gasCost).div(2);
-                }
-            }
-
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
@@ -419,7 +407,12 @@ export const processOrders = async (
         }
         span.end();
     }
-    return { reports, avgGasCost };
+    return {
+        reports,
+        avgGasCost: txGasCosts.length
+            ? txGasCosts.reduce((a, b) => a.add(b), ethers.constants.Zero).div(txGasCosts.length)
+            : undefined,
+    };
 };
 
 /**
