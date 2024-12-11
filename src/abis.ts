@@ -1,3 +1,5 @@
+import { parseAbi } from "viem";
+
 /**
  * Minimal ABI for ERC20 contract only including Transfer event
  */
@@ -45,6 +47,7 @@ export const orderbookAbi = [
     "function multicall(bytes[] calldata data) external returns (bytes[] memory results)",
     `function takeOrders2(${TakeOrdersConfigV3} memory config) external returns (uint256 totalInput, uint256 totalOutput)`,
     `function clear2(${OrderV3} memory aliceOrder, ${OrderV3} memory bobOrder, ${ClearConfig} calldata clearConfig, ${SignedContextV1}[] memory aliceSignedContext, ${SignedContextV1}[] memory bobSignedContext) external`,
+    `event TakeOrderV2(address sender, ${TakeOrderConfigV3} config, uint256 input, uint256 output)`,
 ] as const;
 
 /**
@@ -89,3 +92,5 @@ export const DefaultArbEvaluable = {
     store: "0x" + "0".repeat(40),
     bytecode: "0x",
 } as const;
+
+export const TakeOrderV2EventAbi = parseAbi([orderbookAbi[13]]);
