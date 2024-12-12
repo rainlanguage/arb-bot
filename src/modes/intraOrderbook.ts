@@ -3,7 +3,7 @@ import { BaseError, PublicClient } from "viem";
 import { erc20Abi, orderbookAbi } from "../abis";
 import { getWithdrawEnsureBytecode } from "../config";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, withBigintSerializer } from "../utils";
+import { estimateProfit, extendSpanAttributes, withBigintSerializer } from "../utils";
 import {
     BotConfig,
     BundledOrders,
@@ -287,7 +287,6 @@ export async function findOpp({
         );
     if (!opposingOrders || !opposingOrders.length) throw undefined;
 
-    const allErrorAttributes: string[] = [];
     const allNoneNodeErrors: (string | undefined)[] = [];
     const erc20 = new ethers.utils.Interface(erc20Abi);
     const inputBalance = ethers.BigNumber.from(
@@ -326,10 +325,9 @@ export async function findOpp({
             });
         } catch (e: any) {
             allNoneNodeErrors.push(e?.value?.noneNodeError);
-            allErrorAttributes.push(JSON.stringify(e.spanAttributes));
+            extendSpanAttributes(spanAttributes, e.spanAttributes, "intraOrderbook." + i);
         }
     }
-    spanAttributes["intraOrderbook"] = allErrorAttributes;
     const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
     if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
         result.value = {

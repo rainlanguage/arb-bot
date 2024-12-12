@@ -3,7 +3,7 @@ import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, withBigintSerializer } from "../utils";
+import { estimateProfit, extendSpanAttributes, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
 /**
@@ -338,12 +338,13 @@ export async function findOpp({
         // } catch {
         //     /**/
         // }
-        const allOrderbooksAttributes: any = {};
         for (let i = 0; i < e.errors.length; i++) {
-            allOrderbooksAttributes[opposingOrderbookOrders[i].orderbook] =
-                e.errors[i].spanAttributes;
+            extendSpanAttributes(
+                spanAttributes,
+                e.errors[i].spanAttributes,
+                "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
+            );
         }
-        spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
         const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
         if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
             result.value = {
