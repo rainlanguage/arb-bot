@@ -181,14 +181,8 @@ export const processOrders = async (
                     takeOrders: [pairOrders.takeOrders[i]],
                 };
 
-                await tracer.startActiveSpan("pre-signer", {}, ctx, async (span) => {
-                    span.end();
-                });
                 // await for first available signer to get free
                 const signer = await getSigner(accounts, mainAccount, true);
-                await tracer.startActiveSpan("post-signer", {}, ctx, async (span) => {
-                    span.end();
-                });
 
                 const writeSigner = config.writeRpc
                     ? await createViemClient(
