@@ -508,23 +508,23 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
             )
             .map((v) => {
                 const portions: RouteLeg[] = [v];
-                while (
-                    portions.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
-                ) {
-                    const legPortion = legs.find(
-                        (e) =>
-                            e.tokenFrom.address.toLowerCase() ===
-                                portions.at(-1)?.tokenTo.address.toLowerCase() &&
-                            portions.every(
-                                (k) => k.poolAddress.toLowerCase() !== e.poolAddress.toLowerCase(),
-                            ),
-                    );
-                    if (legPortion) {
-                        portions.push(legPortion);
-                    } else {
-                        break;
-                    }
-                }
+                // while (
+                //     portions.at(-1)?.tokenTo.address.toLowerCase() !== toToken.address.toLowerCase()
+                // ) {
+                //     const legPortion = legs.find(
+                //         (e) =>
+                //             e.tokenFrom.address.toLowerCase() ===
+                //                 portions.at(-1)?.tokenTo.address.toLowerCase() &&
+                //             portions.every(
+                //                 (k) => k.poolAddress.toLowerCase() !== e.poolAddress.toLowerCase(),
+                //             ),
+                //     );
+                //     if (legPortion) {
+                //         portions.push(legPortion);
+                //     } else {
+                //         break;
+                //     }
+                // }
                 return portions;
             }),
     ]
