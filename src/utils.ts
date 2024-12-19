@@ -1269,8 +1269,7 @@ export async function checkOwnedOrders(
  * Converts to a float number
  */
 export function toNumber(value: BigNumberish): number {
-    const valueString = ethers.utils.formatUnits(value);
-    return Number.parseFloat(valueString.substring(0, valueString.includes(".") ? 18 : 17));
+    return Number.parseFloat(ethers.utils.formatUnits(value));
 }
 
 /**

@@ -159,6 +159,7 @@ export type ChainConfig = {
     nativeWrappedToken: Token;
     routeProcessors: { [key: string]: `0x${string}` };
     stableTokens?: Token[];
+    isSpecialL2: boolean;
 };
 
 export type BotConfig = {
@@ -166,6 +167,7 @@ export type BotConfig = {
     nativeWrappedToken: Token;
     routeProcessors: { [key: string]: `0x${string}` };
     stableTokens?: Token[];
+    isSpecialL2: boolean;
     key?: string;
     mnemonic?: string;
     rpc: string[];

@@ -1,6 +1,7 @@
+import { getL1Fee } from "./gas";
 import { Token } from "sushi/currency";
+import { Contract, ethers } from "ethers";
 import { addWatchedToken } from "./account";
-import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
 import { BotConfig, BundledOrders, ProcessPairResult, RawTx, ViemClient } from "./types";
@@ -142,14 +143,6 @@ export async function handleTransaction(
                     );
                 }
             } catch {}
-            // keep track of gas consumption of the account
-            let actualGasCost;
-            try {
-                actualGasCost = BigNumber.from(e.receipt.effectiveGasPrice).mul(e.receipt.gasUsed);
-                signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-            } catch {
-                /**/
-            }
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -157,9 +150,6 @@ export async function handleTransaction(
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
             };
-            if (actualGasCost) {
-                result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
-            }
             result.error = e;
             spanAttributes["details.rawTx"] = JSON.stringify(
                 {
@@ -196,7 +186,10 @@ export async function handleReceipt(
     config: BotConfig,
     time: number,
 ): Promise<ProcessPairResult> {
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+    const l1Fee = getL1Fee(receipt, config);
+    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
+        .mul(receipt.gasUsed)
+        .add(l1Fee);
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
 
@@ -224,10 +217,13 @@ export async function handleReceipt(
         );
         const netProfit = income ? income.sub(actualGasCost) : undefined;
 
+        spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+        if (config.isSpecialL2 && l1Fee) {
+            spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+        }
         if (income) {
             spanAttributes["details.income"] = toNumber(income);
             spanAttributes["details.netProfit"] = toNumber(netProfit!);
-            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
         }
         if (inputTokenIncome) {
             spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(
