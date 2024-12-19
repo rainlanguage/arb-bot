@@ -1,7 +1,7 @@
 import { getL1Fee } from "./gas";
 import { Token } from "sushi/currency";
+import { Contract, ethers } from "ethers";
 import { addWatchedToken } from "./account";
-import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
 import { BotConfig, BundledOrders, ProcessPairResult, RawTx, ViemClient } from "./types";
@@ -143,21 +143,6 @@ export async function handleTransaction(
                     );
                 }
             } catch {}
-            // keep track of gas consumption of the account
-            let actualGasCost;
-            try {
-                const l1Fee = getL1Fee(e.receipt, config);
-                actualGasCost = BigNumber.from(e.receipt.effectiveGasPrice)
-                    .mul(e.receipt.gasUsed)
-                    .add(l1Fee);
-                signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-                spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
-                if (config.isSpecialL2 && l1Fee) {
-                    spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
-                }
-            } catch {
-                /**/
-            }
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -165,9 +150,6 @@ export async function handleTransaction(
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
             };
-            if (actualGasCost) {
-                result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
-            }
             result.error = e;
             spanAttributes["details.rawTx"] = JSON.stringify(
                 {

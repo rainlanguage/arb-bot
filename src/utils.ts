@@ -515,7 +515,9 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                         (e) =>
                             e.tokenFrom.address.toLowerCase() ===
                                 portions.at(-1)?.tokenTo.address.toLowerCase() &&
-                            !portions.includes(e),
+                            portions.every(
+                                (k) => k.poolAddress.toLowerCase() !== e.poolAddress.toLowerCase(),
+                            ),
                     );
                     if (legPortion) {
                         portions.push(legPortion);
@@ -1271,7 +1273,6 @@ export async function checkOwnedOrders(
  * Converts to a float number
  */
 export function toNumber(value: BigNumberish): number {
-    // valueString.substring(0, valueString.includes(".") ? 18 : 17)
     return Number.parseFloat(ethers.utils.formatUnits(value));
 }
 
