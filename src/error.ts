@@ -337,18 +337,20 @@ export async function hasFrontrun(
             }
         })();
         if (orderConfig) {
-            const logs = await viemClient.getLogs({
-                event: TakeOrderV2EventAbi[0],
-                address: orderbook,
-                blockHash: receipt.blockHash,
-            });
-            const otherLogs = logs.filter(
+            const txHash = receipt.transactionHash.toLowerCase();
+            const logs = (
+                await viemClient.getLogs({
+                    event: TakeOrderV2EventAbi[0],
+                    address: orderbook,
+                    blockHash: receipt.blockHash,
+                })
+            ).filter(
                 (v) =>
                     receipt.transactionIndex > v.transactionIndex &&
-                    v.transactionHash.toLowerCase() !== receipt.transactionHash.toLowerCase(),
+                    v.transactionHash.toLowerCase() !== txHash,
             );
-            if (otherLogs.length) {
-                for (const log of otherLogs) {
+            if (logs.length) {
+                for (const log of logs) {
                     if (isDeepStrictEqual(log.args.config, orderConfig)) return log.transactionHash;
                 }
             }
