@@ -210,14 +210,14 @@ describe("Test cli", async function () {
                 },
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
-                txGas: 123456789n,
+                txGas: "123456789",
                 rpOnly: true,
             },
             options: {
                 botMinBalance: "0.123",
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
-                txGas: 123456789n,
+                txGas: "123456789",
                 rpOnly: true,
             },
         };

@@ -10,6 +10,7 @@ import {
     handleReceipt,
     sendTransaction,
     handleTransaction,
+    getTxGas,
 } from "../src/tx";
 
 describe("Test tx", async function () {
@@ -414,5 +415,24 @@ describe("Test tx", async function () {
 
         const result = await pollSigners(someMockedSigners);
         assert.equal(result, someMockedSigners[2]);
+    });
+
+    it("should test getTxGas", async function () {
+        const gas = 500n;
+        const config = {
+            txGas: "120%",
+        } as any;
+        let result = getTxGas(config, gas);
+        let expected = 600n;
+        assert.equal(result, expected);
+
+        config.txGas = "900";
+        result = getTxGas(config, gas);
+        expected = 900n;
+        assert.equal(result, expected);
+
+        config.txGas = undefined;
+        result = getTxGas(config, gas);
+        assert.equal(result, gas);
     });
 });
