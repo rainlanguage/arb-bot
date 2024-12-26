@@ -9,8 +9,13 @@ import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, orderbookAbi, OrderV3 } from "./abis";
 import { parseAbi, PublicClient, TransactionReceipt } from "viem";
 import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
-import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails, ViemClient } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
+import { BotConfig, BundledOrders, OwnedOrder, TakeOrder, TokenDetails, ViemClient } from "./types";
+
+/**
+ * One ether which equals to 1e18
+ */
+export const ONE18 = 1_000_000_000_000_000_000n as const;
 
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
@@ -152,7 +157,7 @@ export const getActualPrice = (
         );
     if (eventObj[0] && eventObj[0]?.value)
         return ethers.utils.formatUnits(
-            eventObj[0].value.mul("1" + "0".repeat(36 - buyDecimals)).div(amount),
+            scale18(eventObj[0].value, buyDecimals).mul(ONE18).div(amount),
         );
     else return undefined;
 };
@@ -931,23 +936,23 @@ export function getTotalIncome(
     if (inputTokenIncome && outputTokenIncome) {
         const inputTokenIncomeInEth = ethers.utils
             .parseUnits(inputTokenPrice)
-            .mul(inputTokenIncome)
-            .div("1" + "0".repeat(inputTokenDecimals));
+            .mul(scale18(inputTokenIncome, inputTokenDecimals))
+            .div(ONE18);
         const outputTokenIncomeInEth = ethers.utils
             .parseUnits(outputTokenPrice)
-            .mul(outputTokenIncome)
-            .div("1" + "0".repeat(outputTokenDecimals));
+            .mul(scale18(outputTokenIncome, outputTokenDecimals))
+            .div(ONE18);
         return inputTokenIncomeInEth.add(outputTokenIncomeInEth);
     } else if (inputTokenIncome && !outputTokenIncome) {
         return ethers.utils
             .parseUnits(inputTokenPrice)
-            .mul(inputTokenIncome)
-            .div("1" + "0".repeat(inputTokenDecimals));
+            .mul(scale18(inputTokenIncome, inputTokenDecimals))
+            .div(ONE18);
     } else if (!inputTokenIncome && outputTokenIncome) {
         return ethers.utils
             .parseUnits(outputTokenPrice)
-            .mul(outputTokenIncome)
-            .div("1" + "0".repeat(outputTokenDecimals));
+            .mul(scale18(outputTokenIncome, outputTokenDecimals))
+            .div(ONE18);
     }
     return undefined;
 }
@@ -1298,10 +1303,8 @@ export function getMarketQuote(
     if (route.status == "NoWay") {
         return undefined;
     } else {
-        const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
-            "1" + "0".repeat(18 - toToken.decimals),
-        );
-        const price = rateFixed.mul("1" + "0".repeat(18)).div(amountInFixed);
+        const rateFixed = scale18(route.amountOutBI, toToken.decimals);
+        const price = rateFixed.mul(ONE18).div(amountInFixed);
         return {
             price: ethers.utils.formatUnits(price),
             amountOut: ethers.utils.formatUnits(route.amountOutBI, toToken.decimals),
