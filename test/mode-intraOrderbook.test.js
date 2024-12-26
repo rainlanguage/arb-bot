@@ -11,6 +11,7 @@ let signer = {};
 const viemClient = {
     getBlockNumber: async () => BigInt(oppBlockNumber),
     call: async () => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() }),
+    readContract: async () => 1000000000000000000n,
 };
 
 const oppBlockNumber = 123456;

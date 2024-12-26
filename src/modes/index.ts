@@ -45,10 +45,11 @@ export async function findOpp({
     fromToken: Token;
 }): Promise<DryrunResult> {
     try {
-        gasPrice = BigNumber.from(await viemClient.getGasPrice())
+        const gp = BigNumber.from(await viemClient.getGasPrice())
             .mul(config.gasPriceMultiplier)
             .div("100")
             .toBigInt();
+        if (gp > gasPrice) gasPrice = gp;
     } catch {
         /**/
     }

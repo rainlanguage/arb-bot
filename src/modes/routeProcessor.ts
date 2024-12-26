@@ -6,6 +6,7 @@ import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
+    ONE18,
     scale18,
     scale18To,
     RPoolFilter,
@@ -22,16 +23,6 @@ export enum RouteProcessorDryrunHaltReason {
     NoOpportunity = 1,
     NoRoute = 2,
 }
-
-/**
- * Route Processor versions
- */
-const getRouteProcessorParamsVersion = {
-    "3": Router.routeProcessor3Params,
-    "3.1": Router.routeProcessor3_1Params,
-    "3.2": Router.routeProcessor3_2Params,
-    "4": Router.routeProcessor4Params,
-} as const;
 
 /**
  * Executes a extimateGas call for an arb() tx, to determine if the tx is successfull ot not
@@ -72,9 +63,7 @@ export async function dryrun({
         spanAttributes,
     };
 
-    const maximumInput = maximumInputFixed.div(
-        "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals),
-    );
+    const maximumInput = scale18To(maximumInputFixed, orderPairObject.sellTokenDecimals);
     spanAttributes["amountIn"] = ethers.utils.formatUnits(maximumInputFixed);
 
     // get route details from sushi dataFetcher
@@ -92,15 +81,14 @@ export async function dryrun({
         config.route,
     );
     if (route.status == "NoWay") {
+        if (hasPriceMatch) hasPriceMatch.value = false;
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
     } else {
         spanAttributes["amountOut"] = ethers.utils.formatUnits(route.amountOutBI, toToken.decimals);
-        const rateFixed = ethers.BigNumber.from(route.amountOutBI).mul(
-            "1" + "0".repeat(18 - orderPairObject.buyTokenDecimals),
-        );
-        const price = rateFixed.mul("1" + "0".repeat(18)).div(maximumInputFixed);
+        const rateFixed = scale18(route.amountOutBI, orderPairObject.buyTokenDecimals);
+        const price = rateFixed.mul(ONE18).div(maximumInputFixed);
         spanAttributes["marketPrice"] = ethers.utils.formatEther(price);
 
         const routeVisual: string[] = [];
@@ -121,7 +109,7 @@ export async function dryrun({
             return Promise.reject(result);
         }
 
-        const rpParams = getRouteProcessorParamsVersion["4"](
+        const rpParams = Router.routeProcessor4Params(
             pcMap,
             route,
             fromToken,
@@ -274,9 +262,6 @@ export async function dryrun({
             }
         }
         rawtx.gas = gasLimit.toBigInt();
-        if (typeof config.txGas === "bigint") {
-            rawtx.gas = config.txGas;
-        }
 
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
@@ -560,7 +545,7 @@ export function findMaxInput({
             maximumInput = maximumInput.sub(initAmount.div(2 ** i));
         } else {
             const amountOut = scale18(route.amountOutBI, toToken.decimals);
-            const price = amountOut.mul("1" + "0".repeat(18)).div(maxInput18);
+            const price = amountOut.mul(ONE18).div(maxInput18);
 
             if (price.lt(ratio)) {
                 maximumInput = maximumInput.sub(initAmount.div(2 ** i));
