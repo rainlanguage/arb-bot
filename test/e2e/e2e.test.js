@@ -72,6 +72,9 @@ for (let i = 0; i < testData.length; i++) {
         provider.register();
         const tracer = provider.getTracer("arb-bot-tracer");
 
+        config.rpc = [rpc];
+        const dataFetcherPromise = getDataFetcher(config, liquidityProviders, false);
+
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {
             const rpVersion = rpVersions[j];
@@ -79,7 +82,7 @@ for (let i = 0; i < testData.length; i++) {
             it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await dataFetcherPromise;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -342,7 +345,7 @@ for (let i = 0; i < testData.length; i++) {
             it("should clear orders successfully using inter-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await dataFetcherPromise;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -690,7 +693,7 @@ for (let i = 0; i < testData.length; i++) {
             it("should clear orders successfully using intra-orderbook", async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
-                const dataFetcher = await getDataFetcher(config, liquidityProviders, false);
+                const dataFetcher = await dataFetcherPromise;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 

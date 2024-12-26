@@ -50,7 +50,7 @@ export type CliOptions = {
     route?: string;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
-    txGas?: bigint;
+    txGas?: string;
     quoteGas: bigint;
     rpOnly?: boolean;
 };
@@ -193,7 +193,7 @@ export type BotConfig = {
     rpcRecords: Record<string, RpcRecord>;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
-    txGas?: bigint;
+    txGas?: string;
     quoteGas: bigint;
     rpOnly?: boolean;
     onFetchRequest?: (request: Request) => void;

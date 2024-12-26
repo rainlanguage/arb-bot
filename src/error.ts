@@ -131,7 +131,8 @@ export function errorSnapshot(
  * Checks if a viem BaseError is from eth node, copied from
  * "viem/_types/utils/errors/getNodeError" since not a default export
  */
-export function containsNodeError(err: BaseError): boolean {
+export function containsNodeError(err: BaseError, circuitBreaker = 0): boolean {
+    if (circuitBreaker > 25) return false;
     try {
         const snapshot = errorSnapshot("", err);
         const parsed = parseRevertError(err);
@@ -145,7 +146,7 @@ export function containsNodeError(err: BaseError): boolean {
             err instanceof InsufficientFundsError ||
             (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
             (snapshot.includes("exceeds allowance") && !snapshot.includes("out of gas")) ||
-            ("cause" in err && containsNodeError(err.cause as any))
+            ("cause" in err && containsNodeError(err.cause as any, ++circuitBreaker))
         );
     } catch (error) {
         return false;
@@ -155,14 +156,15 @@ export function containsNodeError(err: BaseError): boolean {
 /**
  * Checks if a viem BaseError is timeout error
  */
-export function isTimeout(err: BaseError): boolean {
+export function isTimeout(err: BaseError, circuitBreaker = 0): boolean {
+    if (circuitBreaker > 25) return false;
     try {
         return (
             err instanceof TimeoutError ||
             err instanceof TransactionNotFoundError ||
             err instanceof TransactionReceiptNotFoundError ||
             err instanceof WaitForTransactionReceiptTimeoutError ||
-            ("cause" in err && isTimeout(err.cause as any))
+            ("cause" in err && isTimeout(err.cause as any, ++circuitBreaker))
         );
     } catch (error) {
         return false;
@@ -227,14 +229,23 @@ export async function handleRevert(
 /**
  * Parses a revert error to TxRevertError type
  */
-export function parseRevertError(error: BaseError): TxRevertError {
+export function parseRevertError(error: BaseError, circuitBreaker = 0): TxRevertError {
+    if (circuitBreaker > 25) {
+        return {
+            raw: {
+                code: -2,
+                message:
+                    "Couldn't extract rpc error from the viem error object because the viem error object is circular",
+            },
+        };
+    }
     if ("cause" in error) {
-        return parseRevertError(error.cause as any);
+        return parseRevertError(error.cause as any, ++circuitBreaker);
     } else {
         let decoded: DecodedError | undefined;
         const raw: RawError = {
-            code: (error as any).code ?? NaN,
-            message: error.message,
+            code: (error as any).code ?? -2,
+            message: error.message ?? "No error msg",
             data: (error as any).data ?? undefined,
         };
         if ("data" in error && isHex(error.data)) {
