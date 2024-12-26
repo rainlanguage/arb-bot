@@ -540,6 +540,23 @@ export function findMaxInput({
     const result: BigNumber[] = [];
     const ratio = orderPairObject.takeOrders[0].quote!.ratio;
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+    if (
+        fromToken.address.toLowerCase() ===
+            "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase() ||
+        toToken.address.toLowerCase() === "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase()
+    ) {
+        pcMap.forEach((x) => {
+            if (
+                x.pool.token0.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase() ||
+                x.pool.token1.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase()
+            ) {
+                // eslint-disable-next-line no-console
+                console.log(x);
+            }
+        });
+    }
     const initAmount = scale18To(maximumInputFixed, fromToken.decimals).div(2);
     let maximumInput = BigNumber.from(initAmount.toString());
     for (let i = 1; i < 26; i++) {
@@ -558,8 +575,26 @@ export function findMaxInput({
         );
 
         if (route.status == "NoWay") {
+            if (
+                fromToken.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase() ||
+                toToken.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase()
+            ) {
+                // eslint-disable-next-line no-console
+                console.log("noway", maximumInput.toString());
+            }
             maximumInput = maximumInput.sub(initAmount.div(2 ** i));
         } else {
+            if (
+                fromToken.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase() ||
+                toToken.address.toLowerCase() ===
+                    "0xb02541995f317fd47c5df8e8fba7284b502b5d7b".toLowerCase()
+            ) {
+                // eslint-disable-next-line no-console
+                console.log("way", maximumInput.toString());
+            }
             const amountOut = scale18(route.amountOutBI, toToken.decimals);
             const price = amountOut.mul("1" + "0".repeat(18)).div(maxInput18);
 
