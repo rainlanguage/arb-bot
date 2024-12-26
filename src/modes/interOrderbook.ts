@@ -195,9 +195,6 @@ export async function dryrun({
         }
     }
     rawtx.gas = gasLimit.toBigInt();
-    if (typeof config.txGas === "bigint") {
-        rawtx.gas = config.txGas;
-    }
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;

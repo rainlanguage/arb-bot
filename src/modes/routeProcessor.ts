@@ -91,6 +91,7 @@ export async function dryrun({
         config.route,
     );
     if (route.status == "NoWay") {
+        if (hasPriceMatch) hasPriceMatch.value = false;
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
@@ -273,9 +274,6 @@ export async function dryrun({
             }
         }
         rawtx.gas = gasLimit.toBigInt();
-        if (typeof config.txGas === "bigint") {
-            rawtx.gas = config.txGas;
-        }
 
         // if reached here, it means there was a success and found opp
         // rest of span attr are not needed since they are present in the result.data
