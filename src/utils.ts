@@ -933,28 +933,28 @@ export function getTotalIncome(
     inputTokenDecimals: number,
     outputTokenDecimals: number,
 ): BigNumber | undefined {
-    if (inputTokenIncome && outputTokenIncome) {
-        const inputTokenIncomeInEth = ethers.utils
-            .parseUnits(inputTokenPrice)
-            .mul(scale18(inputTokenIncome, inputTokenDecimals))
-            .div(ONE18);
-        const outputTokenIncomeInEth = ethers.utils
-            .parseUnits(outputTokenPrice)
-            .mul(scale18(outputTokenIncome, outputTokenDecimals))
-            .div(ONE18);
-        return inputTokenIncomeInEth.add(outputTokenIncomeInEth);
-    } else if (inputTokenIncome && !outputTokenIncome) {
-        return ethers.utils
-            .parseUnits(inputTokenPrice)
-            .mul(scale18(inputTokenIncome, inputTokenDecimals))
-            .div(ONE18);
-    } else if (!inputTokenIncome && outputTokenIncome) {
-        return ethers.utils
-            .parseUnits(outputTokenPrice)
-            .mul(scale18(outputTokenIncome, outputTokenDecimals))
-            .div(ONE18);
-    }
-    return undefined;
+    if (!inputTokenIncome && !outputTokenIncome) return undefined;
+    const inputTokenIncomeInEth = (() => {
+        if (inputTokenIncome) {
+            return ethers.utils
+                .parseUnits(inputTokenPrice)
+                .mul(scale18(inputTokenIncome, inputTokenDecimals))
+                .div(ONE18);
+        } else {
+            return ethers.constants.Zero;
+        }
+    })();
+    const outputTokenIncomeInEth = (() => {
+        if (outputTokenIncome) {
+            return ethers.utils
+                .parseUnits(outputTokenPrice)
+                .mul(scale18(outputTokenIncome, outputTokenDecimals))
+                .div(ONE18);
+        } else {
+            return ethers.constants.Zero;
+        }
+    })();
+    return inputTokenIncomeInEth.add(outputTokenIncomeInEth);
 }
 
 /**
