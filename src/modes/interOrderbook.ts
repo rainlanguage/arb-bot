@@ -4,8 +4,8 @@ import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, withBigintSerializer } from "../utils";
-import { BotConfig, SpanAttrs, ViemClient, DryrunResult, BundledOrders } from "../types";
+import { estimateProfit, scale18To, withBigintSerializer } from "../utils";
+import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
 /**
  * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
@@ -44,16 +44,17 @@ export async function dryrun({
         spanAttributes,
     };
 
-    const maximumInput = maximumInputFixed.div(
-        "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals),
-    );
+    const maximumInput = scale18To(maximumInputFixed, orderPairObject.sellTokenDecimals);
     spanAttributes["maxInput"] = maximumInput.toString();
 
     const opposingMaxInput = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
-        : maximumInputFixed
-              .mul(orderPairObject.takeOrders[0].quote!.ratio)
-              .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
+        : scale18To(
+              maximumInputFixed
+                  .mul(orderPairObject.takeOrders[0].quote!.ratio)
+                  .div(`1${"0".repeat(18)}`),
+              orderPairObject.buyTokenDecimals,
+          );
 
     const opposingMaxIORatio = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256

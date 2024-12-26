@@ -686,6 +686,7 @@ describe("Test process pair", async function () {
         };
         signer.sendTx = async () => txHash;
         viemClient.waitForTransactionReceipt = async () => Promise.reject(errorRejection);
+        viemClient.getTransactionReceipt = async () => Promise.reject(errorRejection);
         try {
             await (
                 await processPair({
