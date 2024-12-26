@@ -91,6 +91,7 @@ export async function dryrun({
         config.route,
     );
     if (route.status == "NoWay") {
+        if (hasPriceMatch) hasPriceMatch.value = false;
         spanAttributes["route"] = "no-way";
         result.reason = RouteProcessorDryrunHaltReason.NoRoute;
         return Promise.reject(result);
