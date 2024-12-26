@@ -419,6 +419,8 @@ describe("Test tx", async function () {
 
     it("should test getTxGas", async function () {
         const gas = 500n;
+
+        // percentage
         const config = {
             txGas: "120%",
         } as any;
@@ -426,11 +428,13 @@ describe("Test tx", async function () {
         let expected = 600n;
         assert.equal(result, expected);
 
+        // static
         config.txGas = "900";
         result = getTxGas(config, gas);
         expected = 900n;
         assert.equal(result, expected);
 
+        // none
         config.txGas = undefined;
         result = getTxGas(config, gas);
         assert.equal(result, gas);
