@@ -202,8 +202,8 @@ describe("Test cli", async function () {
                 route: "single",
                 rpcRecords: {
                     "https://rpc.ankr.com/polygon/": {
-                        req: 1,
-                        success: 1,
+                        req: 2,
+                        success: 2,
                         failure: 0,
                         cache: {},
                     },

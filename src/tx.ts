@@ -1,6 +1,6 @@
-import { getL1Fee } from "./gas";
 import { Token } from "sushi/currency";
 import { Contract, ethers } from "ethers";
+import { getL1Fee, getTxFee } from "./gas";
 import { addWatchedToken } from "./account";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
@@ -167,9 +167,7 @@ export async function handleReceipt(
     time: number,
 ): Promise<ProcessPairResult> {
     const l1Fee = getL1Fee(receipt, config);
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
-        .mul(receipt.gasUsed)
-        .add(l1Fee);
+    const actualGasCost = ethers.BigNumber.from(getTxFee(receipt, config));
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
 

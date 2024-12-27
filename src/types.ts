@@ -198,6 +198,11 @@ export type BotConfig = {
     onFetchResponse?: (request: Response) => void;
 };
 
+export type OperationState = {
+    gasPrice: bigint;
+    l1GasPrice: bigint;
+};
+
 export type Report = {
     status: ProcessPairReportStatus;
     tokenPair: string;

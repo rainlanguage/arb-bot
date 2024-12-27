@@ -1,10 +1,9 @@
+import { Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
-import { BigNumber, Contract } from "ethers";
 import { findOpp as findInterObOpp } from "./interOrderbook";
 import { findOpp as findIntraObOpp } from "./intraOrderbook";
-import { publicActionsL2, walletActionsL2 } from "viem/op-stack";
 import { findOppWithRetries as findRpOpp } from "./routeProcessor";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
@@ -29,6 +28,7 @@ export async function findOpp({
     inputToEthPrice,
     outputToEthPrice,
     orderbooksOrders,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -43,27 +43,8 @@ export async function findOpp({
     outputToEthPrice: string;
     toToken: Token;
     fromToken: Token;
+    l1GasPrice: bigint;
 }): Promise<DryrunResult> {
-    try {
-        const gp = BigNumber.from(await viemClient.getGasPrice())
-            .mul(config.gasPriceMultiplier)
-            .div("100")
-            .toBigInt();
-        if (gp > gasPrice) gasPrice = gp;
-    } catch {
-        /**/
-    }
-
-    // if chain is special L2, get L1 gas price just before dryruns
-    let l1Signer;
-    let l1GasPrice = 0n;
-    if (config.isSpecialL2) {
-        try {
-            l1Signer = signer.extend(walletActionsL2()).extend(publicActionsL2());
-            l1GasPrice = await l1Signer.getL1BaseFee();
-        } catch {}
-    }
-
     const promises = [
         findRpOpp({
             orderPairObject,
@@ -77,7 +58,6 @@ export async function findOpp({
             config,
             viemClient,
             l1GasPrice,
-            l1Signer,
         }),
         ...(!config.rpOnly
             ? [
@@ -90,6 +70,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
                   findInterObOpp({
                       orderPairObject,
@@ -101,6 +82,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
               ]
             : []),

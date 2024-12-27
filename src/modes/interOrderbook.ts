@@ -21,7 +21,6 @@ export async function dryrun({
     outputToEthPrice,
     config,
     viemClient,
-    l1Signer,
     l1GasPrice,
 }: {
     config: BotConfig;
@@ -34,7 +33,6 @@ export async function dryrun({
     outputToEthPrice: string;
     opposingOrders: BundledOrders;
     maximumInput: BigNumber;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
@@ -116,7 +114,7 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice, l1Signer);
+        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
         l1Cost = estimation.l1Cost;
         gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
     } catch (e) {
@@ -161,7 +159,7 @@ export async function dryrun({
 
         try {
             spanAttributes["blockNumber"] = blockNumber;
-            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice, l1Signer);
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
@@ -235,7 +233,6 @@ export async function findOpp({
     config,
     viemClient,
     orderbooksOrders,
-    l1Signer,
     l1GasPrice,
 }: {
     config: BotConfig;
@@ -247,7 +244,6 @@ export async function findOpp({
     gasPrice: bigint;
     inputToEthPrice: string;
     outputToEthPrice: string;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     if (!arb) throw undefined;
@@ -307,7 +303,6 @@ export async function findOpp({
                     outputToEthPrice,
                     config,
                     viemClient,
-                    l1Signer,
                     l1GasPrice,
                 });
             }),
@@ -378,7 +373,6 @@ export async function binarySearch({
     outputToEthPrice,
     config,
     viemClient,
-    l1Signer,
     l1GasPrice,
 }: {
     config: BotConfig;
@@ -391,7 +385,6 @@ export async function binarySearch({
     outputToEthPrice: string;
     opposingOrders: BundledOrders;
     maximumInput: ethers.BigNumber;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes = {};
@@ -416,7 +409,6 @@ export async function binarySearch({
                     outputToEthPrice,
                     config,
                     viemClient,
-                    l1Signer,
                     l1GasPrice,
                 }),
             );

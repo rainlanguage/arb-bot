@@ -41,7 +41,6 @@ export async function dryrun({
     config,
     viemClient,
     hasPriceMatch,
-    l1Signer,
     l1GasPrice,
 }: {
     mode: number;
@@ -57,7 +56,6 @@ export async function dryrun({
     fromToken: Token;
     maximumInput: BigNumber;
     hasPriceMatch?: { value: boolean };
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }) {
     const spanAttributes: SpanAttrs = {};
@@ -178,7 +176,7 @@ export async function dryrun({
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice, l1Signer);
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
             l1Cost = estimation.l1Cost;
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
@@ -227,13 +225,7 @@ export async function dryrun({
 
             try {
                 spanAttributes["blockNumber"] = blockNumber;
-                const estimation = await estimateGasCost(
-                    rawtx,
-                    signer,
-                    config,
-                    l1GasPrice,
-                    l1Signer,
-                );
+                const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
                 gasLimit = ethers.BigNumber.from(estimation.gas)
                     .mul(config.gasLimitMultiplier)
                     .div(100);
@@ -317,7 +309,6 @@ export async function findOpp({
     config,
     viemClient,
     l1GasPrice,
-    l1Signer,
 }: {
     mode: number;
     config: BotConfig;
@@ -331,7 +322,6 @@ export async function findOpp({
     toToken: Token;
     fromToken: Token;
     l1GasPrice?: bigint;
-    l1Signer?: any;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -368,7 +358,6 @@ export async function findOpp({
             viemClient,
             hasPriceMatch,
             l1GasPrice,
-            l1Signer,
         });
     } catch (e: any) {
         // the fail reason can only be no route in case all hops fail reasons are no route
@@ -402,7 +391,6 @@ export async function findOpp({
                     config,
                     viemClient,
                     l1GasPrice,
-                    l1Signer,
                 });
             } catch (e: any) {
                 // the fail reason can only be no route in case all hops fail reasons are no route
@@ -446,7 +434,6 @@ export async function findOppWithRetries({
     config,
     viemClient,
     l1GasPrice,
-    l1Signer,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -458,7 +445,6 @@ export async function findOppWithRetries({
     ethPrice: string;
     toToken: Token;
     fromToken: Token;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
@@ -484,7 +470,6 @@ export async function findOppWithRetries({
                 config,
                 viemClient,
                 l1GasPrice,
-                l1Signer,
             }),
         );
     }
