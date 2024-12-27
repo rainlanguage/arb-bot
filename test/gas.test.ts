@@ -1,8 +1,8 @@
 import { assert } from "chai";
-import { estimateGasCost, getL1Fee } from "../src/gas";
-import { BotConfig, ViemClient } from "../src/types";
-import { createViemClient, getChainConfig } from "../src/config";
 import { ChainId } from "sushi";
+import { BotConfig, ViemClient } from "../src/types";
+import { estimateGasCost, getL1Fee, getTxFee } from "../src/gas";
+import { createViemClient, getChainConfig } from "../src/config";
 
 describe("Test gas", async function () {
     it("should estimate gas correctly for L1 and L2 chains", async function () {
@@ -22,7 +22,7 @@ describe("Test gas", async function () {
         };
 
         // estimate gas as special L2 chain
-        const botconfig = { isSpecialL2: true } as any as BotConfig;
+        const botconfig = { isSpecialL2: true, gasPriceMultiplier: 100n } as any as BotConfig;
         const result1 = await estimateGasCost(tx, signer, botconfig, undefined, l1Signer);
         const expected1 = {
             gas: 55n,
@@ -57,5 +57,23 @@ describe("Test gas", async function () {
         const result = getL1Fee(receipt, config as any as BotConfig);
         const expected = 43615200401n; // known L1 cost taken from the actual tx
         assert.equal(result, expected);
+    });
+
+    it("should get tx fee", async function () {
+        const config = {} as any;
+        const receipt = {
+            effectiveGasPrice: 10n,
+            gasUsed: 5n,
+        } as any;
+
+        // normal
+        let result = getTxFee(receipt, config);
+        assert.equal(result, 50n);
+
+        // l2 chain
+        config.isSpecialL2 = true;
+        receipt.l1Fee = 50n;
+        result = getTxFee(receipt, config);
+        assert.equal(result, 100n);
     });
 });

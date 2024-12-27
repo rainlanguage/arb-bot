@@ -1,6 +1,6 @@
-import { getL1Fee } from "./gas";
 import { Token } from "sushi/currency";
 import { Contract, ethers } from "ethers";
+import { getL1Fee, getTxFee } from "./gas";
 import { addWatchedToken } from "./account";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
@@ -84,11 +84,23 @@ export async function handleTransaction(
     }
 
     // start getting tx receipt in background and return the settler fn
-    const receiptPromise = viemClient.waitForTransactionReceipt({
-        hash: txhash!,
-        confirmations: 1,
-        timeout: 120_000,
-    });
+    const receiptPromise = (async () => {
+        try {
+            return await viemClient.waitForTransactionReceipt({
+                hash: txhash!,
+                confirmations: 1,
+                timeout: 120_000,
+            });
+        } catch {
+            // in case waiting for tx receipt was unsuccessful, try getting the receipt directly
+            try {
+                return await viemClient.getTransactionReceipt({ hash: txhash! });
+            } catch {
+                await sleep(Math.max(90_000 + time - Date.now(), 0));
+                return await viemClient.getTransactionReceipt({ hash: txhash! });
+            }
+        }
+    })();
     return async () => {
         try {
             const receipt = await receiptPromise;
@@ -111,36 +123,6 @@ export async function handleTransaction(
                 time,
             );
         } catch (e: any) {
-            try {
-                const newReceipt = await (async () => {
-                    try {
-                        return await viemClient.getTransactionReceipt({ hash: txhash });
-                    } catch {
-                        await sleep(Math.max(90_000 + time - Date.now(), 0));
-                        return await viemClient.getTransactionReceipt({ hash: txhash });
-                    }
-                })();
-                if (newReceipt) {
-                    return handleReceipt(
-                        txhash,
-                        newReceipt,
-                        signer,
-                        spanAttributes,
-                        rawtx,
-                        orderbook,
-                        orderPairObject,
-                        inputToEthPrice,
-                        outputToEthPrice,
-                        result,
-                        txUrl,
-                        pair,
-                        toToken,
-                        fromToken,
-                        config,
-                        time,
-                    );
-                }
-            } catch {}
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -185,9 +167,7 @@ export async function handleReceipt(
     time: number,
 ): Promise<ProcessPairResult> {
     const l1Fee = getL1Fee(receipt, config);
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice)
-        .mul(receipt.gasUsed)
-        .add(l1Fee);
+    const actualGasCost = ethers.BigNumber.from(getTxFee(receipt, config));
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
 
@@ -286,7 +266,10 @@ export async function handleReceipt(
             );
             if (result.snapshot.includes("simulation failed to find the revert reason")) {
                 // wait at least 90s before simulating the revert tx
-                // in order for rpcs to catch up
+                // in order for rpcs to catch up, this is concurrent to
+                // whole bot operation, so ideally all of it or at least
+                // partially will overlap with when bot is processing other
+                // orders
                 await sleep(Math.max(90_000 + time - Date.now(), 0));
                 return await handleRevert(
                     signer,

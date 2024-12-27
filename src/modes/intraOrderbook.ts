@@ -1,10 +1,10 @@
+import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
 import { BigNumber, ethers } from "ethers";
-import { BaseError, PublicClient } from "viem";
-import { erc20Abi, orderbookAbi } from "../abis";
 import { getWithdrawEnsureBytecode } from "../config";
+import { BaseError, erc20Abi, PublicClient } from "viem";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, withBigintSerializer } from "../utils";
+import { estimateProfit, scale18, withBigintSerializer } from "../utils";
 import {
     SpanAttrs,
     BotConfig,
@@ -28,7 +28,6 @@ export async function dryrun({
     viemClient,
     inputBalance,
     outputBalance,
-    l1Signer,
     l1GasPrice,
 }: {
     config: BotConfig;
@@ -41,7 +40,6 @@ export async function dryrun({
     inputBalance: BigNumber;
     outputBalance: BigNumber;
     opposingOrder: TakeOrderDetails;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
@@ -112,7 +110,7 @@ export async function dryrun({
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice, l1Signer);
+        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
         l1Cost = estimation.l1Cost;
         gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
     } catch (e) {
@@ -167,7 +165,7 @@ export async function dryrun({
 
         try {
             spanAttributes["blockNumber"] = blockNumber;
-            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice, l1Signer);
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
@@ -246,7 +244,6 @@ export async function findOpp({
     config,
     viemClient,
     orderbooksOrders,
-    l1Signer,
     l1GasPrice,
 }: {
     config: BotConfig;
@@ -257,7 +254,6 @@ export async function findOpp({
     gasPrice: bigint;
     inputToEthPrice: string;
     outputToEthPrice: string;
-    l1Signer?: any;
     l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
@@ -298,27 +294,24 @@ export async function findOpp({
 
     const allErrorAttributes: string[] = [];
     const allNoneNodeErrors: (string | undefined)[] = [];
-    const erc20 = new ethers.utils.Interface(erc20Abi);
-    const inputBalance = ethers.BigNumber.from(
-        (
-            await viemClient.call({
-                to: orderPairObject.buyToken as `0x${string}`,
-                data: erc20.encodeFunctionData("balanceOf", [
-                    signer.account.address,
-                ]) as `0x${string}`,
-            })
-        ).data,
-    ).mul("1" + "0".repeat(18 - orderPairObject.buyTokenDecimals));
-    const outputBalance = ethers.BigNumber.from(
-        (
-            await viemClient.call({
-                to: orderPairObject.sellToken as `0x${string}`,
-                data: erc20.encodeFunctionData("balanceOf", [
-                    signer.account.address,
-                ]) as `0x${string}`,
-            })
-        ).data,
-    ).mul("1" + "0".repeat(18 - orderPairObject.sellTokenDecimals));
+    const inputBalance = scale18(
+        await viemClient.readContract({
+            address: orderPairObject.buyToken as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [signer.account.address],
+        }),
+        orderPairObject.buyTokenDecimals,
+    );
+    const outputBalance = scale18(
+        await viemClient.readContract({
+            address: orderPairObject.sellToken as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [signer.account.address],
+        }),
+        orderPairObject.sellTokenDecimals,
+    );
     for (let i = 0; i < opposingOrders.length; i++) {
         try {
             return await dryrun({
@@ -332,7 +325,6 @@ export async function findOpp({
                 viemClient,
                 inputBalance,
                 outputBalance,
-                l1Signer,
                 l1GasPrice,
             });
         } catch (e: any) {
