@@ -75,7 +75,7 @@ describe("Test find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: vaultBalance.mul(110).div(100),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -161,7 +161,7 @@ describe("Test find opp", async function () {
         const encodedFN = obInterface.encodeFunctionData("takeOrders2", [
             {
                 minimumInput: ethers.constants.One,
-                maximumInput: opposingMaxInput,
+                maximumInput: opposingMaxInput.mul(110).div(100),
                 maximumIORatio: opposingMaxIORatio,
                 orders: opposingOrderPairObject.takeOrders.map((v) => v.takeOrder),
                 data: "0x",
@@ -169,7 +169,7 @@ describe("Test find opp", async function () {
         ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: vaultBalance.mul(110).div(100),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(

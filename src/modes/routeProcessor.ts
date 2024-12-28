@@ -135,7 +135,7 @@ export async function dryrun({
 
         const takeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput,
+            maximumInput: maximumInput.mul(110).div(100), // +10% headroom
             maximumIORatio: config.maxRatio ? ethers.constants.MaxUint256 : price,
             orders,
             data: ethers.utils.defaultAbiCoder.encode(["bytes"], [rpParams.routeCode]),
@@ -469,7 +469,7 @@ export async function findOppWithRetries({
             // ie its maxInput is the greatest
             const prom = allPromises[i];
             if (prom.status === "fulfilled") {
-                if (!choice || choice.maximumInput!.lt(prom.value.value!.maximumInput!)) {
+                if (!choice || choice.estimatedProfit.lt(prom.value.value!.estimatedProfit!)) {
                     // record the attributes of the choosing one
                     for (const attrKey in prom.value.spanAttributes) {
                         spanAttributes[attrKey] = prom.value.spanAttributes[attrKey];

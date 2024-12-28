@@ -512,7 +512,7 @@ describe("Test process pair", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: vaultBalance.mul(110).div(100),
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -706,7 +706,7 @@ describe("Test process pair", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: vaultBalance.mul(110).div(100),
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
