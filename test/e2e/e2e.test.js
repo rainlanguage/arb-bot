@@ -119,11 +119,11 @@ for (let i = 0; i < testData.length; i++) {
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
                 const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                    interpreter.address,
-                    store.address,
-                    parser.address,
-                );
+                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
+                    interpreter: interpreter.address,
+                    store: store.address,
+                    parser: parser.address,
+                });
                 const orderbook = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
@@ -394,11 +394,11 @@ for (let i = 0; i < testData.length; i++) {
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
                 const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                    interpreter.address,
-                    store.address,
-                    parser.address,
-                );
+                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
+                    interpreter: interpreter.address,
+                    store: store.address,
+                    parser: parser.address,
+                });
                 const orderbook1 = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
@@ -756,11 +756,11 @@ for (let i = 0; i < testData.length; i++) {
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
                 const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy(
-                    interpreter.address,
-                    store.address,
-                    parser.address,
-                );
+                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
+                    interpreter: interpreter.address,
+                    store: store.address,
+                    parser: parser.address,
+                });
                 const orderbook = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);

@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { isAddress } from "viem";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
@@ -41,7 +42,6 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import { isAddress } from "viem";
 
 config();
 
@@ -123,7 +123,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "--dispair <address...>",
-            "Addresses of dispair to use for tasks, in order of [interpreter, store, deployer], Will override the 'DISPAIR' in env variables",
+            "Addresses of dispair to use for tasks, in order of interpreter, store, deployer, Will override the 'DISPAIR' in env variables",
         )
         .option(
             "-l, --lps <string>",

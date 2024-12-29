@@ -1,5 +1,4 @@
 import { assert } from "chai";
-import { ChainId } from "sushi";
 import { getLocal } from "mockttp";
 import { BigNumber, utils } from "ethers";
 import { encodeAbiParameters } from "viem";
@@ -14,24 +13,25 @@ describe("Test task", async function () {
     it("should get ensure bounty rainlang", async function () {
         const inputToEthPrice = BigNumber.from(10);
         const outputToEthPrice = BigNumber.from(20);
-        const minimumExcepted = BigNumber.from(15);
+        const minimumExpected = BigNumber.from(15);
         const sender = utils.hexlify(utils.randomBytes(20));
 
         const result = await getBountyEnsureRainlang(
             inputToEthPrice,
             outputToEthPrice,
-            minimumExcepted,
+            minimumExpected,
             sender,
         );
         const expected = `/* 0. main */ 
 :ensure(equal-to(${sender} context<0 0>()) "unknown sender"),
+total-bounty-eth: add(
+    mul(${utils.formatUnits(inputToEthPrice)} context<1 0>())
+    mul(${utils.formatUnits(outputToEthPrice)} context<1 1>())
+),
 :ensure(
     greater-than-or-equal-to(
-        add(
-            mul(${utils.formatUnits(inputToEthPrice)} context<1 0>())
-            mul(${utils.formatUnits(outputToEthPrice)} context<1 1>())
-        )
-        ${utils.formatUnits(minimumExcepted)}
+        total-bounty-eth
+        ${utils.formatUnits(minimumExpected)}
     )
     "minimum sender output"
 );`;
@@ -41,7 +41,7 @@ describe("Test task", async function () {
     it("should get withdraw ensure bounty rainlang", async function () {
         const inputToEthPrice = BigNumber.from(10);
         const outputToEthPrice = BigNumber.from(20);
-        const minimumExcepted = BigNumber.from(15);
+        const minimumExpected = BigNumber.from(15);
         const sender = utils.hexlify(utils.randomBytes(20));
         const botAddress = utils.hexlify(utils.randomBytes(20));
         const inputToken = utils.hexlify(utils.randomBytes(20));
@@ -57,24 +57,27 @@ describe("Test task", async function () {
             orgOutputBalance,
             inputToEthPrice,
             outputToEthPrice,
-            minimumExcepted,
+            minimumExpected,
             sender,
         );
         const expected = `/* 0. main */ 
 :ensure(equal-to(${sender} context<0 0>()) "unknown sender"),
+input-bounty: sub(
+    erc20-balance-of(${inputToken} ${botAddress})
+    ${utils.formatUnits(orgInputBalance)}
+),
+output-bounty: sub(
+    erc20-balance-of(${outputToken} ${botAddress})
+    ${utils.formatUnits(orgOutputBalance)}
+),
+total-bounty-eth: add(
+    mul(input-bounty ${utils.formatUnits(inputToEthPrice)})
+    mul(output-bounty ${utils.formatUnits(outputToEthPrice)})
+),
 :ensure(
     greater-than-or-equal-to(
-        add(
-            mul(
-                sub(erc20-balance-of(${inputToken} ${botAddress}) ${utils.formatUnits(orgInputBalance)})
-                ${utils.formatUnits(inputToEthPrice)}
-            )
-            mul(
-                sub(erc20-balance-of(${outputToken} ${botAddress}) ${utils.formatUnits(orgOutputBalance)})
-                ${utils.formatUnits(outputToEthPrice)}
-            )
-        )
-        ${utils.formatUnits(minimumExcepted)}
+        total-bounty-eth
+        ${utils.formatUnits(minimumExpected)}
     )
     "minimum sender output"
 );`;
@@ -82,7 +85,7 @@ describe("Test task", async function () {
     });
 
     it("should parse rainlang to bytecode", async function () {
-        const viemClient = await createViemClient(ChainId.POLYGON, [mockServer.url + "/rpc"]);
+        const viemClient = await createViemClient(1, [mockServer.url + "/rpc"]);
         const rainlang = "some-rainlang";
         const dispair = {
             interpreter: utils.hexlify(utils.randomBytes(20)),
@@ -96,7 +99,7 @@ describe("Test task", async function () {
         // mock call
         await mockServer
             .forPost("/rpc")
-            .withBodyIncluding("0xa3869e14")
+            .withBodyIncluding("0xa3869e14") // parse2() selector
             .thenSendJsonRpcResult(callResult);
         const result = await parseRainlang(rainlang, viemClient, dispair);
 

@@ -62,13 +62,8 @@ exports.rainterpreterParserNPE2Deploy = async () => {
     return await this.basicDeploy(RainterpreterParserNPE2Artifact);
 };
 
-exports.rainterpreterExpressionDeployerNPE2Deploy = async (interpreter, store, parser) => {
-    // eslint-disable-next-line prettier/prettier
-    return await this.basicDeploy(
-        RainterpreterExpressionDeployerNPE2Artifact,
-        // eslint-disable-next-line prettier/prettier
-        { interpreter, store, parser },
-    );
+exports.rainterpreterExpressionDeployerNPE2Deploy = async (deployConfig) => {
+    return await this.basicDeploy(RainterpreterExpressionDeployerNPE2Artifact, deployConfig);
 };
 
 /**

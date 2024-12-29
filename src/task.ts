@@ -14,25 +14,24 @@ export const WithdrawEnsureBountyDotrainPath = "./tasks/withdraw-ensure-bounty.r
  * Get the bounty check ensure task rainlang
  * @param inputToEthPrice - Input token to Eth price
  * @param outputToEthPrice - Output token to Eth price
- * @param minimumExcepted - Minimum expected amount
+ * @param minimumExpected - Minimum expected amount
  * @param sender - The msg sender
  */
 export async function getBountyEnsureRainlang(
     inputToEthPrice: BigNumber,
     outputToEthPrice: BigNumber,
-    minimumExcepted: BigNumber,
+    minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
-    const text = fs.readFileSync(EnsureBountyDotrainPath, { encoding: "utf8" });
     return await RainDocument.composeText(
-        text,
+        fs.readFileSync(EnsureBountyDotrainPath, { encoding: "utf8" }),
         TaskEntryPoint as any as string[],
         new MetaStore(),
         [
             ["sender", sender],
             ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
             ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-            ["minimum-excepted", utils.formatUnits(minimumExcepted)],
+            ["minimum-expected", utils.formatUnits(minimumExpected)],
         ],
     );
 }
@@ -46,7 +45,7 @@ export async function getBountyEnsureRainlang(
  * @param orgOutputBalance - Output token original balance
  * @param inputToEthPrice - Input token to Eth price
  * @param outputToEthPrice - Output token to Eth price
- * @param minimumExcepted - Minimum expected amount
+ * @param minimumExpected - Minimum expected amount
  * @param sender - The msg sender
  */
 export async function getWithdrawEnsureRainlang(
@@ -57,22 +56,21 @@ export async function getWithdrawEnsureRainlang(
     orgOutputBalance: BigNumber,
     inputToEthPrice: BigNumber,
     outputToEthPrice: BigNumber,
-    minimumExcepted: BigNumber,
+    minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
-    const text = fs.readFileSync(WithdrawEnsureBountyDotrainPath, { encoding: "utf8" });
     return await RainDocument.composeText(
-        text,
+        fs.readFileSync(WithdrawEnsureBountyDotrainPath, { encoding: "utf8" }),
         TaskEntryPoint as any as string[],
         new MetaStore(),
         [
             ["sender", sender],
-            ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-            ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-            ["minimum-excepted", utils.formatUnits(minimumExcepted)],
             ["bot-address", botAddress],
             ["input-token", inputToken],
             ["output-token", outputToken],
+            ["minimum-expected", utils.formatUnits(minimumExpected)],
+            ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+            ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
             ["original-input-balance", utils.formatUnits(orgInputBalance)],
             ["original-output-balance", utils.formatUnits(orgOutputBalance)],
         ],

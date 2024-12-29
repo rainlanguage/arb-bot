@@ -1,4 +1,5 @@
 import { getSgOrderbooks } from "./sg";
+import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
@@ -29,7 +30,6 @@ import {
     ROUTE_PROCESSOR_3_1_ADDRESS,
     ROUTE_PROCESSOR_3_2_ADDRESS,
 } from "sushi/config";
-import { sendTransaction } from "./tx";
 
 /**
  * Get the chain config for a given chain id
