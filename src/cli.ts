@@ -41,6 +41,7 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
+import { isAddress } from "viem";
 
 config();
 
@@ -85,6 +86,9 @@ const ENV_OPTIONS = {
     subgraph: process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
+    dispair: process?.env?.DISPAIR
+        ? Array.from(process?.env?.DISPAIR.matchAll(/[^,\s]+/g)).map((v) => v[0])
+        : undefined,
 };
 
 const getOptions = async (argv: any, version?: string) => {
@@ -116,6 +120,10 @@ const getOptions = async (argv: any, version?: string) => {
         .option(
             "--generic-arb-address <address>",
             "Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables",
+        )
+        .option(
+            "--dispair <address...>",
+            "Addresses of dispair to use for tasks, in order of [interpreter, store, deployer], Will override the 'DISPAIR' in env variables",
         )
         .option(
             "-l, --lps <string>",
@@ -252,6 +260,7 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.route = cmdOptions.route || getEnv(ENV_OPTIONS.route);
     cmdOptions.publicRpc = cmdOptions.publicRpc || getEnv(ENV_OPTIONS.publicRpc);
     cmdOptions.rpOnly = cmdOptions.rpOnly || getEnv(ENV_OPTIONS.rpOnly);
+    cmdOptions.dispair = cmdOptions.dispair || getEnv(ENV_OPTIONS.dispair);
     if (cmdOptions.ownerProfile) {
         const profiles: Record<string, number> = {};
         cmdOptions.ownerProfile.forEach((v: string) => {
@@ -458,6 +467,23 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         if (typeof options.txGas !== "string" || !/^[0-9]+%?$/.test(options.txGas)) {
             throw "invalid txGas value, must be an integer greater than zero optionally with appended percentage sign to apply as percentage to original gas";
         }
+    }
+    if (options.dispair) {
+        if (
+            !Array.isArray(options.dispair) ||
+            options.dispair.length !== 3 ||
+            !options.dispair.every((v) => typeof v === "string" && isAddress(v, { strict: false }))
+        ) {
+            throw "expected 3 addresses for dispair, interpreter, store, deployer";
+        } else {
+            options.dispair = {
+                interpreter: options.dispair[0],
+                store: options.dispair[1],
+                deployer: options.dispair[2],
+            };
+        }
+    } else {
+        throw "undefined dispair addresses";
     }
     const poolUpdateInterval = _poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];

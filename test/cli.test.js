@@ -56,6 +56,10 @@ describe("Test cli", async function () {
 
     it("test cli startup", async function () {
         process.env.CLI_STARTUP_TEST = true;
+        const interpreter = `0x${"5".repeat(40)}`;
+        const store = `0x${"6".repeat(40)}`;
+        const deployer = `0x${"7".repeat(40)}`;
+
         try {
             await startup(["", ""]);
             assert.fail("expected to fail, but resolved");
@@ -170,6 +174,82 @@ describe("Test cli", async function () {
             assert.equal(error, expected);
         }
 
+        try {
+            await startup([
+                "",
+                "",
+                "--key",
+                `0x${"0".repeat(64)}`,
+                "--rpc",
+                "some-rpc",
+                "--arb-address",
+                `0x${"0".repeat(64)}`,
+                "--orderbook-address",
+                `0x${"0".repeat(64)}`,
+                "--pool-update-interval",
+                "10",
+                "--bot-min-balance",
+                "12",
+            ]);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            const expected = "undefined dispair addresses";
+            assert.equal(error, expected);
+        }
+
+        try {
+            await startup([
+                "",
+                "",
+                "--key",
+                `0x${"0".repeat(64)}`,
+                "--rpc",
+                "some-rpc",
+                "--arb-address",
+                `0x${"0".repeat(64)}`,
+                "--orderbook-address",
+                `0x${"0".repeat(64)}`,
+                "--pool-update-interval",
+                "10",
+                "--bot-min-balance",
+                "12",
+                "--dispair", // not all dispair addresses
+                interpreter,
+                store,
+            ]);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            const expected = "expected 3 addresses for dispair, interpreter, store, deployer";
+            assert.equal(error, expected);
+        }
+
+        try {
+            await startup([
+                "",
+                "",
+                "--key",
+                `0x${"0".repeat(64)}`,
+                "--rpc",
+                "some-rpc",
+                "--arb-address",
+                `0x${"0".repeat(64)}`,
+                "--orderbook-address",
+                `0x${"0".repeat(64)}`,
+                "--pool-update-interval",
+                "10",
+                "--bot-min-balance",
+                "12",
+                "--dispair",
+                interpreter,
+                store,
+                "0x1234", // bad address
+            ]);
+            assert.fail("expected to fail, but resolved");
+        } catch (error) {
+            const expected = "expected 3 addresses for dispair, interpreter, store, deployer";
+            assert.equal(error, expected);
+        }
+
         const result = await startup([
             "",
             "",
@@ -190,6 +270,10 @@ describe("Test cli", async function () {
             "--tx-gas",
             "123456789",
             "--rp-only",
+            "--dispair",
+            interpreter,
+            store,
+            deployer,
         ]);
         const expected = {
             roundGap: 10000,
@@ -212,6 +296,11 @@ describe("Test cli", async function () {
                 gasLimitMultiplier: 110,
                 txGas: "123456789",
                 rpOnly: true,
+                dispair: {
+                    interpreter,
+                    store,
+                    deployer,
+                },
             },
             options: {
                 botMinBalance: "0.123",
@@ -219,6 +308,11 @@ describe("Test cli", async function () {
                 gasLimitMultiplier: 110,
                 txGas: "123456789",
                 rpOnly: true,
+                dispair: {
+                    interpreter,
+                    store,
+                    deployer,
+                },
             },
         };
         await sleep(1000);
@@ -238,5 +332,7 @@ describe("Test cli", async function () {
         assert.equal(result.config.txGas, expected.config.txGas);
         assert.equal(result.options.rpOnly, expected.options.rpOnly);
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
+        assert.deepEqual(result.options.dispair, expected.options.dispair);
+        assert.deepEqual(result.config.dispair, expected.config.dispair);
     });
 });

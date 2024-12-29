@@ -70,6 +70,10 @@ export const routeProcessor3Abi = [
     `function processRoute(address tokenIn, uint256 amountIn, address tokenOut, uint256 amountOutMin ,address to, bytes memory route) external payable returns (uint256 amountOut)`,
 ] as const;
 
+export const deployerAbi = [
+    "function parse2(bytes data) external view returns (bytes bytecode)",
+] as const;
+
 /**
  * Minimal ABI for Arb contract
  */

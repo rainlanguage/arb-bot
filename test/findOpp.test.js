@@ -7,7 +7,11 @@ const {
     ethers,
     utils: { formatUnits },
 } = require("ethers");
-const { getBountyEnsureBytecode, getWithdrawEnsureBytecode } = require("../src/config");
+const {
+    parseRainlang,
+    getBountyEnsureRainlang,
+    getWithdrawEnsureRainlang,
+} = require("../src/task");
 
 // mocking signer and dataFetcher
 let signer = {};
@@ -15,7 +19,10 @@ let dataFetcher = {};
 const viemClient = {
     getBlockNumber: async () => BigInt(oppBlockNumber),
     call: async () => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() }),
-    readContract: async () => 1000000000000000000n,
+    readContract: async (arg) => {
+        if (arg.functionName === "parse2") return "0x1234";
+        else return 1000000000000000000n;
+    },
 };
 
 const oppBlockNumber = 123456;
@@ -40,6 +47,7 @@ const {
     orderbook,
     getAmountOut,
 } = testData;
+config.viemClient = viemClient;
 
 describe("Test find opp", async function () {
     beforeEach(() => {
@@ -82,13 +90,17 @@ describe("Test find opp", async function () {
         };
         const task = {
             evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getBountyEnsureBytecode(
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.constants.Zero,
-                    gasLimitEstimation.mul(gasPrice),
-                    signer.account.address,
+                interpreter: config.dispair.interpreter,
+                store: config.dispair.store,
+                bytecode: await parseRainlang(
+                    await getBountyEnsureRainlang(
+                        ethers.utils.parseUnits(inputToEthPrice),
+                        ethers.constants.Zero,
+                        gasLimitEstimation.mul(gasPrice),
+                        signer.account.address,
+                    ),
+                    viemClient,
+                    config.dispair,
                 ),
             },
             signedContext: [],
@@ -179,13 +191,17 @@ describe("Test find opp", async function () {
         };
         const task = {
             evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getBountyEnsureBytecode(
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice),
-                    signer.account.address,
+                interpreter: config.dispair.interpreter,
+                store: config.dispair.store,
+                bytecode: await parseRainlang(
+                    await getBountyEnsureRainlang(
+                        ethers.utils.parseUnits(inputToEthPrice),
+                        ethers.utils.parseUnits(outputToEthPrice),
+                        gasLimitEstimation.mul(gasPrice),
+                        signer.account.address,
+                    ),
+                    viemClient,
+                    config.dispair,
                 ),
             },
             signedContext: [],
@@ -249,18 +265,22 @@ describe("Test find opp", async function () {
         });
         const task = {
             evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
-                bytecode: getWithdrawEnsureBytecode(
-                    signer.account.address,
-                    orderPairObject.buyToken,
-                    orderPairObject.sellToken,
-                    inputBalance,
-                    outputBalance,
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    gasLimitEstimation.mul(gasPrice),
-                    signer.account.address,
+                interpreter: config.dispair.interpreter,
+                store: config.dispair.store,
+                bytecode: await parseRainlang(
+                    await getWithdrawEnsureRainlang(
+                        signer.account.address,
+                        orderPairObject.buyToken,
+                        orderPairObject.sellToken,
+                        inputBalance,
+                        outputBalance,
+                        ethers.utils.parseUnits(inputToEthPrice),
+                        ethers.utils.parseUnits(outputToEthPrice),
+                        gasLimitEstimation.mul(gasPrice),
+                        signer.account.address,
+                    ),
+                    viemClient,
+                    config.dispair,
                 ),
             },
             signedContext: [],

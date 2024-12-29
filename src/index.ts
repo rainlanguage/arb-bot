@@ -210,6 +210,7 @@ export async function getConfig(
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;
     config.rpOnly = options.rpOnly;
+    config.dispair = options.dispair;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);

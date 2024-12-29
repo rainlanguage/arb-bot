@@ -52,6 +52,7 @@ export type CliOptions = {
     gasLimitMultiplier: number;
     txGas?: string;
     rpOnly?: boolean;
+    dispair: Dispair;
 };
 
 export type TokenDetails = {
@@ -192,6 +193,7 @@ export type BotConfig = {
     gasLimitMultiplier: number;
     txGas?: string;
     rpOnly?: boolean;
+    dispair: Dispair;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };
@@ -281,6 +283,12 @@ export type RpcRecord = {
     success: number;
     failure: number;
     cache: Record<number, any>;
+};
+
+export type Dispair = {
+    deployer: string;
+    interpreter: string;
+    store: string;
 };
 
 export type RpcRequest = {

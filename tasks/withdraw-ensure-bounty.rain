@@ -1,0 +1,29 @@
+---
+#sender ! msg sender
+#bot-address ! bot wallet adddress as bounty vault owner
+#input-token ! input token address
+#output-token ! input token address
+#input-to-eth-price ! set input token to eth price
+#output-to-eth-price ! set output token to eth price
+#original-input-balance ! original balance of the bot input token bounty vault before clear
+#original-output-balance ! original balance of the bot output token bounty vault before clear
+#minimum-excepted ! minimum expected bounty
+
+#main
+:ensure(equal-to(sender context<0 0>()) "unknown sender"),
+:ensure(
+    greater-than-or-equal-to(
+        add(
+            mul(
+                sub(erc20-balance-of(input-token bot-address) original-input-balance)
+                input-to-eth-price
+            )
+            mul(
+                sub(erc20-balance-of(output-token bot-address) original-output-balance)
+                output-to-eth-price
+            )
+        )
+        minimum-excepted
+    )
+    "minimum sender output"
+);

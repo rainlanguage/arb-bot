@@ -1,9 +1,9 @@
 import { Token } from "sushi/currency";
 import { BaseError, PublicClient } from "viem";
-import { getBountyEnsureBytecode } from "../config";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
+import { getBountyEnsureRainlang, parseRainlang } from "../task";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
     ONE18,
@@ -143,16 +143,20 @@ export async function dryrun({
 
         const task = {
             evaluable: {
-                interpreter: orderPairObject.takeOrders[0].takeOrder.order.evaluable.interpreter,
-                store: orderPairObject.takeOrders[0].takeOrder.order.evaluable.store,
+                interpreter: config.dispair.interpreter,
+                store: config.dispair.store,
                 bytecode:
                     config.gasCoveragePercentage === "0"
                         ? "0x"
-                        : getBountyEnsureBytecode(
-                              ethers.utils.parseUnits(ethPrice),
-                              ethers.constants.Zero,
-                              ethers.constants.Zero,
-                              signer.account.address,
+                        : await parseRainlang(
+                              await getBountyEnsureRainlang(
+                                  ethers.utils.parseUnits(ethPrice),
+                                  ethers.constants.Zero,
+                                  ethers.constants.Zero,
+                                  signer.account.address,
+                              ),
+                              config.viemClient,
+                              config.dispair,
                           ),
             },
             signedContext: [],
@@ -206,11 +210,15 @@ export async function dryrun({
         // sender output which is already called above
         if (config.gasCoveragePercentage !== "0") {
             const headroom = (Number(config.gasCoveragePercentage) * 1.03).toFixed();
-            task.evaluable.bytecode = getBountyEnsureBytecode(
-                ethers.utils.parseUnits(ethPrice),
-                ethers.constants.Zero,
-                gasCost.mul(headroom).div("100"),
-                signer.account.address,
+            task.evaluable.bytecode = await parseRainlang(
+                await getBountyEnsureRainlang(
+                    ethers.utils.parseUnits(ethPrice),
+                    ethers.constants.Zero,
+                    gasCost.mul(headroom).div("100"),
+                    signer.account.address,
+                ),
+                config.viemClient,
+                config.dispair,
             );
             rawtx.data = arb.interface.encodeFunctionData("arb3", [
                 orderPairObject.orderbook,
@@ -226,11 +234,15 @@ export async function dryrun({
                     .div(100);
                 rawtx.gas = gasLimit.toBigInt();
                 gasCost = gasLimit.mul(gasPrice);
-                task.evaluable.bytecode = getBountyEnsureBytecode(
-                    ethers.utils.parseUnits(ethPrice),
-                    ethers.constants.Zero,
-                    gasCost.mul(config.gasCoveragePercentage).div("100"),
-                    signer.account.address,
+                task.evaluable.bytecode = await parseRainlang(
+                    await getBountyEnsureRainlang(
+                        ethers.utils.parseUnits(ethPrice),
+                        ethers.constants.Zero,
+                        gasCost.mul(config.gasCoveragePercentage).div("100"),
+                        signer.account.address,
+                    ),
+                    config.viemClient,
+                    config.dispair,
                 );
                 rawtx.data = arb.interface.encodeFunctionData("arb3", [
                     orderPairObject.orderbook,
