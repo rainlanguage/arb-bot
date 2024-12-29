@@ -5,7 +5,7 @@ import { Dispair, ViemClient } from "./types";
 import { parseAbi, PublicClient, stringToHex } from "viem";
 import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
 
-export const TaskEntryPoint: string[] = ["main"] as const;
+export const TaskEntryPoint = ["main"] as const;
 
 export const EnsureBountyDotrainPath = "./tasks/ensure-bounty.rain" as const;
 export const WithdrawEnsureBountyDotrainPath = "./tasks/withdraw-ensure-bounty.rain" as const;
@@ -24,12 +24,17 @@ export async function getBountyEnsureRainlang(
     sender: string,
 ): Promise<string> {
     const text = fs.readFileSync(EnsureBountyDotrainPath, { encoding: "utf8" });
-    return await RainDocument.composeText(text, TaskEntryPoint, new MetaStore(), [
-        ["sender", sender],
-        ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-        ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-        ["minimum-excepted", utils.formatUnits(minimumExcepted)],
-    ]);
+    return await RainDocument.composeText(
+        text,
+        TaskEntryPoint as any as string[],
+        new MetaStore(),
+        [
+            ["sender", sender],
+            ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+            ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+            ["minimum-excepted", utils.formatUnits(minimumExcepted)],
+        ],
+    );
 }
 
 /**
@@ -56,17 +61,22 @@ export async function getWithdrawEnsureRainlang(
     sender: string,
 ): Promise<string> {
     const text = fs.readFileSync(WithdrawEnsureBountyDotrainPath, { encoding: "utf8" });
-    return await RainDocument.composeText(text, TaskEntryPoint, new MetaStore(), [
-        ["sender", sender],
-        ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-        ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-        ["minimum-excepted", utils.formatUnits(minimumExcepted)],
-        ["bot-address", botAddress],
-        ["input-token", inputToken],
-        ["output-token", outputToken],
-        ["original-input-balance", utils.formatUnits(orgInputBalance)],
-        ["original-output-balance", utils.formatUnits(orgOutputBalance)],
-    ]);
+    return await RainDocument.composeText(
+        text,
+        TaskEntryPoint as any as string[],
+        new MetaStore(),
+        [
+            ["sender", sender],
+            ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+            ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+            ["minimum-excepted", utils.formatUnits(minimumExcepted)],
+            ["bot-address", botAddress],
+            ["input-token", inputToken],
+            ["output-token", outputToken],
+            ["original-input-balance", utils.formatUnits(orgInputBalance)],
+            ["original-output-balance", utils.formatUnits(orgOutputBalance)],
+        ],
+    );
 }
 
 /**
