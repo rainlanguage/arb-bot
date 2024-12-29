@@ -71,8 +71,8 @@ export async function getWithdrawEnsureRainlang(
             ["minimum-expected", utils.formatUnits(minimumExpected)],
             ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
             ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-            ["original-input-balance", utils.formatUnits(orgInputBalance)],
-            ["original-output-balance", utils.formatUnits(orgOutputBalance)],
+            ["org-input-balance", utils.formatUnits(orgInputBalance)],
+            ["org-output-balance", utils.formatUnits(orgOutputBalance)],
         ],
     );
 }

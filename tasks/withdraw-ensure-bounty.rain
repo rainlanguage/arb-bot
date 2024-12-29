@@ -5,19 +5,19 @@
 #output-token ! input token address
 #input-to-eth-price ! input token to eth price
 #output-to-eth-price ! output token to eth price
-#original-input-balance ! original balance of the bot input token bounty vault before clear
-#original-output-balance ! original balance of the bot output token bounty vault before clear
+#org-input-balance ! original balance of the bot input token before clear
+#org-output-balance ! original balance of the bot output token before clear
 #minimum-expected ! minimum expected bounty
 
 #main
 :ensure(equal-to(sender context<0 0>()) "unknown sender"),
 input-bounty: sub(
     erc20-balance-of(input-token bot-address)
-    original-input-balance
+    org-input-balance
 ),
 output-bounty: sub(
     erc20-balance-of(output-token bot-address)
-    original-output-balance
+    org-output-balance
 ),
 total-bounty-eth: add(
     mul(input-bounty input-to-eth-price)
