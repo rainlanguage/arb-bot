@@ -47,9 +47,7 @@ export async function dryrun({
         : scale18To(
               maximumInputFixed.mul(orderPairObject.takeOrders[0].quote!.ratio).div(ONE18),
               orderPairObject.buyTokenDecimals,
-          )
-              .mul(110)
-              .div(100);
+          );
 
     const opposingMaxIORatio = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
@@ -70,7 +68,7 @@ export async function dryrun({
     ]);
     const takeOrdersConfigStruct = {
         minimumInput: ethers.constants.One,
-        maximumInput: maximumInput.mul(110).div(100), // +10% headroom
+        maximumInput: ethers.constants.MaxUint256,
         maximumIORatio: ethers.constants.MaxUint256,
         orders: [orderPairObject.takeOrders[0].takeOrder],
         data: ethers.utils.defaultAbiCoder.encode(

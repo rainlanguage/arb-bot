@@ -73,7 +73,7 @@ describe("Test route processor dryrun", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(110).div(100),
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -190,7 +190,7 @@ describe("Test route processor dryrun", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance.mul(110).div(100),
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -274,7 +274,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(110).div(100),
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -357,7 +357,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: ethers.utils.parseUnits("9999999.701976776123046875").mul(110).div(100),
+            maximumInput: ethers.utils.parseUnits("9999999.701976776123046875"),
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -440,7 +440,7 @@ describe("Test route processor find opp", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance.mul(110).div(100),
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -555,7 +555,7 @@ describe("Test find opp with retries", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance.mul(110).div(100),
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [
                 orderPairObject.takeOrders[0].takeOrder,
@@ -638,7 +638,7 @@ describe("Test find opp with retries", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance.mul(110).div(100),
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
