@@ -3,7 +3,7 @@ import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, withBigintSerializer } from "../utils";
+import { estimateProfit, ONE18, scale18To, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
 /**
@@ -39,16 +39,15 @@ export async function dryrun({
         spanAttributes,
     };
 
-    const maximumInput = maximumInputFixed.div(
-        "1" + "0".repeat(18 - orderPairObject.sellTokenDecimals),
-    );
+    const maximumInput = scale18To(maximumInputFixed, orderPairObject.sellTokenDecimals);
     spanAttributes["maxInput"] = maximumInput.toString();
 
     const opposingMaxInput = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
-        : maximumInputFixed
-              .mul(orderPairObject.takeOrders[0].quote!.ratio)
-              .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
+        : scale18To(
+              maximumInputFixed.mul(orderPairObject.takeOrders[0].quote!.ratio).div(ONE18),
+              orderPairObject.buyTokenDecimals,
+          );
 
     const opposingMaxIORatio = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
@@ -69,7 +68,7 @@ export async function dryrun({
     ]);
     const takeOrdersConfigStruct = {
         minimumInput: ethers.constants.One,
-        maximumInput,
+        maximumInput: ethers.constants.MaxUint256,
         maximumIORatio: ethers.constants.MaxUint256,
         orders: [orderPairObject.takeOrders[0].takeOrder],
         data: ethers.utils.defaultAbiCoder.encode(
@@ -195,9 +194,6 @@ export async function dryrun({
         }
     }
     rawtx.gas = gasLimit.toBigInt();
-    if (typeof config.txGas === "bigint") {
-        rawtx.gas = config.txGas;
-    }
 
     // if reached here, it means there was a success and found opp
     spanAttributes["oppBlockNumber"] = blockNumber;

@@ -512,7 +512,7 @@ describe("Test process pair", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -684,6 +684,7 @@ describe("Test process pair", async function () {
         };
         signer.sendTx = async () => txHash;
         viemClient.waitForTransactionReceipt = async () => Promise.reject(errorRejection);
+        viemClient.getTransactionReceipt = async () => Promise.reject(errorRejection);
         try {
             await (
                 await processPair({
@@ -705,7 +706,7 @@ describe("Test process pair", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,

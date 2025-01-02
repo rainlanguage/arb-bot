@@ -15,6 +15,7 @@ let dataFetcher = {};
 const viemClient = {
     getBlockNumber: async () => BigInt(oppBlockNumber),
     call: async () => ({ data: ethers.BigNumber.from("1000000000000000000").toHexString() }),
+    readContract: async () => 1000000000000000000n,
 };
 
 const oppBlockNumber = 123456;
@@ -74,7 +75,7 @@ describe("Test find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -168,7 +169,7 @@ describe("Test find opp", async function () {
         ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(

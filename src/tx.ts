@@ -1,6 +1,6 @@
 import { Token } from "sushi/currency";
+import { Contract, ethers } from "ethers";
 import { addWatchedToken } from "./account";
-import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
 import { BotConfig, BundledOrders, ProcessPairResult, RawTx, ViemClient } from "./types";
@@ -40,9 +40,7 @@ export async function handleTransaction(
     let txhash: `0x${string}`, txUrl: string;
     let time = 0;
     const sendTx = async () => {
-        if (writeSigner !== undefined) {
-            rawtx.gas = undefined;
-        }
+        rawtx.gas = getTxGas(config, rawtx.gas!);
         txhash =
             writeSigner !== undefined
                 ? await writeSigner.sendTx({
@@ -85,11 +83,23 @@ export async function handleTransaction(
     }
 
     // start getting tx receipt in background and return the settler fn
-    const receiptPromise = viemClient.waitForTransactionReceipt({
-        hash: txhash!,
-        confirmations: 1,
-        timeout: 120_000,
-    });
+    const receiptPromise = (async () => {
+        try {
+            return await viemClient.waitForTransactionReceipt({
+                hash: txhash!,
+                confirmations: 1,
+                timeout: 120_000,
+            });
+        } catch {
+            // in case waiting for tx receipt was unsuccessful, try getting the receipt directly
+            try {
+                return await viemClient.getTransactionReceipt({ hash: txhash! });
+            } catch {
+                await sleep(Math.max(90_000 + time - Date.now(), 0));
+                return await viemClient.getTransactionReceipt({ hash: txhash! });
+            }
+        }
+    })();
     return async () => {
         try {
             const receipt = await receiptPromise;
@@ -112,44 +122,6 @@ export async function handleTransaction(
                 time,
             );
         } catch (e: any) {
-            try {
-                const newReceipt = await (async () => {
-                    try {
-                        return await viemClient.getTransactionReceipt({ hash: txhash });
-                    } catch {
-                        await sleep(Math.max(90_000 + time - Date.now(), 0));
-                        return await viemClient.getTransactionReceipt({ hash: txhash });
-                    }
-                })();
-                if (newReceipt) {
-                    return handleReceipt(
-                        txhash,
-                        newReceipt,
-                        signer,
-                        spanAttributes,
-                        rawtx,
-                        orderbook,
-                        orderPairObject,
-                        inputToEthPrice,
-                        outputToEthPrice,
-                        result,
-                        txUrl,
-                        pair,
-                        toToken,
-                        fromToken,
-                        config,
-                        time,
-                    );
-                }
-            } catch {}
-            // keep track of gas consumption of the account
-            let actualGasCost;
-            try {
-                actualGasCost = BigNumber.from(e.receipt.effectiveGasPrice).mul(e.receipt.gasUsed);
-                signer.BALANCE = signer.BALANCE.sub(actualGasCost);
-            } catch {
-                /**/
-            }
             result.report = {
                 status: ProcessPairReportStatus.FoundOpportunity,
                 txUrl,
@@ -157,9 +129,6 @@ export async function handleTransaction(
                 buyToken: orderPairObject.buyToken,
                 sellToken: orderPairObject.sellToken,
             };
-            if (actualGasCost) {
-                result.report.actualGasCost = ethers.utils.formatUnits(actualGasCost);
-            }
             result.error = e;
             spanAttributes["details.rawTx"] = JSON.stringify(
                 {
@@ -292,7 +261,10 @@ export async function handleReceipt(
             );
             if (result.snapshot.includes("simulation failed to find the revert reason")) {
                 // wait at least 90s before simulating the revert tx
-                // in order for rpcs to catch up
+                // in order for rpcs to catch up, this is concurrent to
+                // whole bot operation, so ideally all of it or at least
+                // partially will overlap with when bot is processing other
+                // orders
                 await sleep(Math.max(90_000 + time - Date.now(), 0));
                 return await handleRevert(
                     signer,
@@ -386,5 +358,21 @@ export async function pollSigners(accounts: ViemClient[]): Promise<ViemClient> {
         } else {
             await sleep(30);
         }
+    }
+}
+
+/**
+ * Returns the gas limit for a tx by applying the specified config
+ */
+export function getTxGas(config: BotConfig, gas: bigint): bigint {
+    if (config.txGas) {
+        if (config.txGas.endsWith("%")) {
+            const multiplier = BigInt(config.txGas.substring(0, config.txGas.length - 1));
+            return (gas * multiplier) / 100n;
+        } else {
+            return BigInt(config.txGas);
+        }
+    } else {
+        return gas;
     }
 }

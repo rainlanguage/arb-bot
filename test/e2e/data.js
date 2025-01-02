@@ -82,13 +82,8 @@ module.exports = [
             "0x51cD71ec61487A3359993922A5BBac294934A628",
             "0x2e574D0802F433E71F7dC91650aB2C23aDeb0D81",
         ],
-        [
-            LiquidityProviders.Enosys,
-            LiquidityProviders.BlazeSwap,
-            LiquidityProviders.SparkDexV2,
-            LiquidityProviders.SparkDexV3,
-        ],
-        ["1", "100", "100", "100"],
+        [LiquidityProviders.Enosys, LiquidityProviders.SparkDexV2, LiquidityProviders.SparkDexV3],
+        ["1", "100", "100"],
     ],
     [
         ChainId.ETHEREUM,
