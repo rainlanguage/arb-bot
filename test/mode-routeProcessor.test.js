@@ -75,7 +75,7 @@ describe("Test route processor dryrun", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -196,7 +196,7 @@ describe("Test route processor dryrun", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -283,7 +283,7 @@ describe("Test route processor find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -457,7 +457,7 @@ describe("Test route processor find opp", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -575,7 +575,7 @@ describe("Test find opp with retries", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [
                 orderPairObject.takeOrders[0].takeOrder,
@@ -662,7 +662,7 @@ describe("Test find opp with retries", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
