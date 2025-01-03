@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { getGasPrice } from "./gas";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
@@ -11,9 +12,9 @@ import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { ProcessPairReportStatus } from "./processOrders";
 import { sleep, getOrdersTokens, isBigNumberish } from "./utils";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
-import { BotConfig, BundledOrders, CliOptions, ViemClient } from "./types";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { BotConfig, BundledOrders, CliOptions, OperationState, ViemClient } from "./types";
 import {
     sweepToEth,
     manageAccounts,
@@ -304,6 +305,7 @@ export const arbRound = async (
     options: CliOptions,
     config: BotConfig,
     bundledOrders: BundledOrders[][],
+    state: OperationState,
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
@@ -315,6 +317,7 @@ export const arbRound = async (
             const { reports = [], avgGasCost = undefined } = await clear(
                 config,
                 bundledOrders,
+                state,
                 tracer,
                 ctx,
             );
@@ -491,6 +494,13 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         ctx,
     );
 
+    // fetch initial gas price on startup
+    const state: OperationState = {
+        gasPrice: 0n,
+        l1GasPrice: 0n,
+    };
+    await getGasPrice(config, state);
+
     return {
         roundGap,
         options: options as CliOptions,
@@ -504,6 +514,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         ),
         tokens,
         lastReadOrdersTimestamp,
+        state,
     };
 }
 
@@ -550,6 +561,7 @@ export const main = async (argv: any, version?: string) => {
         orderbooksOwnersProfileMap,
         tokens,
         lastReadOrdersTimestamp,
+        state,
     } = await tracer.startActiveSpan("startup", async (startupSpan) => {
         const ctx = trace.setSpan(context.active(), startupSpan);
         try {
@@ -571,6 +583,9 @@ export const main = async (argv: any, version?: string) => {
             return Promise.reject(e);
         }
     });
+
+    // periodically fetch and set gas price in state (once every 20 seconds)
+    setInterval(() => getGasPrice(config, state), 20_000);
 
     const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
@@ -659,6 +674,7 @@ export const main = async (argv: any, version?: string) => {
                     options,
                     config,
                     bundledOrders,
+                    state,
                 );
                 let txs, foundOpp, didClear, roundAvgGasCost;
                 if (roundResult) {
@@ -716,6 +732,7 @@ export const main = async (argv: any, version?: string) => {
                         avgGasCost,
                         lastUsedAccountIndex,
                         wgc,
+                        state,
                         tracer,
                         roundCtx,
                     );
@@ -727,11 +744,11 @@ export const main = async (argv: any, version?: string) => {
                     if (wgc.length) {
                         for (let k = wgc.length - 1; k >= 0; k--) {
                             try {
-                                const gasPrice = await config.viemClient.getGasPrice();
                                 await sweepToMainWallet(
                                     wgc[k],
                                     config.mainAccount,
-                                    gasPrice,
+                                    state,
+                                    config,
                                     tracer,
                                     roundCtx,
                                 );
@@ -766,7 +783,7 @@ export const main = async (argv: any, version?: string) => {
                     }
                     // try to sweep main wallet's tokens back to eth
                     try {
-                        await sweepToEth(config, tracer, roundCtx);
+                        await sweepToEth(config, state, tracer, roundCtx);
                     } catch {
                         /**/
                     }

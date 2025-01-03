@@ -22,7 +22,7 @@ const oppBlockNumber = 123456;
 const {
     inputToEthPrice,
     outputToEthPrice,
-    gasPrice,
+    gasPrice: _gasPrice,
     gasLimitEstimation,
     arb,
     vaultBalance,
@@ -40,6 +40,7 @@ const {
     orderbook,
     getAmountOut,
 } = testData;
+const gasPrice = _gasPrice.toBigInt();
 
 describe("Test find opp", async function () {
     beforeEach(() => {

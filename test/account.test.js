@@ -276,6 +276,7 @@ describe("Test accounts", async function () {
                 ),
             ],
         ]);
+        const state = { gasPrice: 5n };
         const config = {
             chain: { id: chainId },
             mainAccount: {
@@ -310,7 +311,7 @@ describe("Test accounts", async function () {
             },
         };
 
-        await sweepToEth(config);
+        await sweepToEth(config, state);
         assert.deepEqual(config.mainAccount.BOUNTY, []);
     });
 
@@ -360,6 +361,7 @@ describe("Test accounts", async function () {
                 ),
             ],
         ]);
+        const state = { gasPrice: 5n };
         const config = {
             chain: { id: chainId },
             mainAccount: {
@@ -414,7 +416,7 @@ describe("Test accounts", async function () {
             },
         ];
 
-        const result = await fundOwnedOrders(ownedOrders, config);
+        const result = await fundOwnedOrders(ownedOrders, config, state);
         assert.deepEqual(result, []);
         assert.ok(
             // (balance - gasCost - gasCost - sent topup) >= current balance (a bit lower than right side because of pool fee)

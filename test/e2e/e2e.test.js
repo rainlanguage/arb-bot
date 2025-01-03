@@ -262,7 +262,10 @@ for (let i = 0; i < testData.length; i++) {
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
-                const { reports } = await clear(config, orders, tracer, ctx);
+                const state = {
+                    gasPrice: await bot.getGasPrice(),
+                };
+                const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
                 assert.ok(reports.length == tokens.length - 1, "Failed to clear all given orders");
@@ -600,7 +603,10 @@ for (let i = 0; i < testData.length; i++) {
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
-                const { reports } = await clear(config, orders, tracer, ctx);
+                const state = {
+                    gasPrice: await bot.getGasPrice(),
+                };
+                const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
                 assert.ok(
@@ -956,7 +962,10 @@ for (let i = 0; i < testData.length; i++) {
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
-                const { reports } = await clear(config, orders, tracer, ctx);
+                const state = {
+                    gasPrice: await bot.getGasPrice(),
+                };
+                const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
                 assert.ok(

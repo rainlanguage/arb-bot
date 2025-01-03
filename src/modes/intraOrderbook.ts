@@ -1,4 +1,5 @@
 import { orderbookAbi } from "../abis";
+import { estimateGasCost } from "../gas";
 import { BigNumber, ethers } from "ethers";
 import { getWithdrawEnsureBytecode } from "../config";
 import { BaseError, erc20Abi, PublicClient } from "viem";
@@ -27,6 +28,7 @@ export async function dryrun({
     viemClient,
     inputBalance,
     outputBalance,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -38,6 +40,7 @@ export async function dryrun({
     inputBalance: BigNumber;
     outputBalance: BigNumber;
     opposingOrder: TakeOrderDetails;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -103,13 +106,13 @@ export async function dryrun({
 
     // trying to find opp with doing gas estimation, once to get gas and calculate
     // minimum sender output and second time to check the clear2() with withdraw2() and headroom
-    let gasLimit, blockNumber;
+    let gasLimit, blockNumber, l1Cost;
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
-            .mul(config.gasLimitMultiplier)
-            .div(100);
+        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+        l1Cost = estimation.l1Cost;
+        gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
         const isNodeError = containsNodeError(e as BaseError);
@@ -132,7 +135,7 @@ export async function dryrun({
         }
         return Promise.reject(result);
     }
-    let gasCost = gasLimit.mul(gasPrice);
+    let gasCost = gasLimit.mul(gasPrice).add(l1Cost);
 
     // repeat the same process with heaedroom if gas
     // coverage is not 0, 0 gas coverage means 0 minimum
@@ -161,13 +164,13 @@ export async function dryrun({
         ]);
 
         try {
-            blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+            gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
             rawtx.gas = gasLimit.toBigInt();
-            gasCost = gasLimit.mul(gasPrice);
+            gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
             task.evaluable.bytecode = getWithdrawEnsureBytecode(
                 signer.account.address,
                 orderPairObject.buyToken,
@@ -241,6 +244,7 @@ export async function findOpp({
     config,
     viemClient,
     orderbooksOrders,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -250,6 +254,7 @@ export async function findOpp({
     gasPrice: bigint;
     inputToEthPrice: string;
     outputToEthPrice: string;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -317,6 +322,7 @@ export async function findOpp({
                 viemClient,
                 inputBalance,
                 outputBalance,
+                l1GasPrice,
             });
         } catch (e: any) {
             allNoneNodeErrors.push(e?.value?.noneNodeError);

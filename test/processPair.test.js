@@ -43,6 +43,9 @@ describe("Test process pair", async function () {
     const config = JSON.parse(JSON.stringify(fixtureConfig));
     config.rpc = ["http://localhost:8082/rpc"];
     const quoteResponse = encodeQuoteResponse([[true, vaultBalance, ethers.constants.Zero]]);
+    const state = {
+        gasPrice: gasPrice.mul(107).div(100).toBigInt(),
+    };
 
     beforeEach(() => {
         mockServer.start(8082);
@@ -53,8 +56,8 @@ describe("Test process pair", async function () {
             BOUNTY: [],
             getAddress: () => "0x1F1E4c845183EF6d50E9609F16f6f9cAE43BC9Cb",
             getBlockNumber: async () => 123456,
-            getGasPrice: async () => gasPrice,
-            estimateGas: async () => gasLimitEstimation,
+            getGasPrice: async () => gasPrice.toBigInt(),
+            estimateGas: async () => gasLimitEstimation.toBigInt(),
             sendTransaction: async () => txHash,
             sendTx: async () => txHash,
             getTransactionCount: async () => 0,
@@ -115,6 +118,7 @@ describe("Test process pair", async function () {
                 accounts: [signer],
                 fetchedPairPools: [],
                 orderbooksOrders,
+                state,
             })
         )();
         const expected = {
@@ -149,6 +153,7 @@ describe("Test process pair", async function () {
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.mul(107).div(100).toString(),
+                "details.actualGasCost": Number(formatUnits(effectiveGasPrice.mul(gasUsed))),
                 foundOpp: true,
                 didClear: true,
                 "details.inputToEthPrice": formatUnits(getCurrentInputToEthPrice()),
@@ -197,6 +202,7 @@ describe("Test process pair", async function () {
                 accounts: [signer],
                 fetchedPairPools: [],
                 orderbooksOrders,
+                state,
             })
         )();
         const expected = {
@@ -226,6 +232,7 @@ describe("Test process pair", async function () {
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 "details.pair": pair,
                 "details.gasPrice": gasPrice.mul(107).div(100).toString(),
+                "details.actualGasCost": Number(formatUnits(effectiveGasPrice.mul(gasUsed))),
                 foundOpp: true,
                 didClear: true,
                 "details.marketQuote.num": 0.99699,
@@ -274,6 +281,7 @@ describe("Test process pair", async function () {
                 mainAccount: signer,
                 accounts: [signer],
                 fetchedPairPools: [],
+                state,
             })
         )();
         const expected = {
@@ -311,6 +319,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");
@@ -328,54 +337,6 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                },
-            };
-            assert.deepEqual(error, expected);
-        }
-    });
-
-    it("should fail to get gas price", async function () {
-        await mockServer.forPost("/rpc").thenSendJsonRpcResult(quoteResponse);
-        const evmError = { code: ethers.errors.CALL_EXCEPTION };
-        viemClient.getGasPrice = async () => {
-            return Promise.reject(evmError);
-        };
-        try {
-            await (
-                await processPair({
-                    config,
-                    orderPairObject,
-                    viemClient,
-                    dataFetcher,
-                    signer,
-                    flashbotSigner: undefined,
-                    arb,
-                    orderbook,
-                    pair,
-                    mainAccount: signer,
-                    accounts: [signer],
-                    fetchedPairPools: [],
-                })
-            )();
-            assert.fail("expected to reject, but resolved");
-        } catch (error) {
-            const expected = {
-                report: {
-                    status: ProcessPairReportStatus.NoOpportunity,
-                    tokenPair: pair,
-                    buyToken: orderPairObject.buyToken,
-                    sellToken: orderPairObject.sellToken,
-                },
-                gasCost: undefined,
-                reason: ProcessPairHaltReason.FailedToGetGasPrice,
-                error: evmError,
-                spanAttributes: {
-                    "details.pair": pair,
-                    "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.quote": JSON.stringify({
-                        maxOutput: formatUnits(vaultBalance),
-                        ratio: formatUnits(ethers.constants.Zero),
-                    }),
                 },
             };
             assert.deepEqual(error, expected);
@@ -403,6 +364,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");
@@ -420,7 +382,6 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.marketQuote.num": 0.99699,
                     "details.marketQuote.str": "0.99699",
                     "details.quote": JSON.stringify({
@@ -454,6 +415,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");
@@ -471,7 +433,6 @@ describe("Test process pair", async function () {
                 spanAttributes: {
                     "details.pair": pair,
                     "details.orders": [orderPairObject.takeOrders[0].id],
-                    "details.gasPrice": gasPrice.mul(107).div(100).toString(),
                     "details.quote": JSON.stringify({
                         maxOutput: formatUnits(vaultBalance),
                         ratio: formatUnits(ethers.constants.Zero),
@@ -506,6 +467,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");
@@ -616,6 +578,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");
@@ -700,6 +663,7 @@ describe("Test process pair", async function () {
                     mainAccount: signer,
                     accounts: [signer],
                     fetchedPairPools: [],
+                    state,
                 })
             )();
             assert.fail("expected to reject, but resolved");

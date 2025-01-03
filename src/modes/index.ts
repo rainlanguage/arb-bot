@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from "ethers";
+import { Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
@@ -28,6 +28,7 @@ export async function findOpp({
     inputToEthPrice,
     outputToEthPrice,
     orderbooksOrders,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -42,16 +43,8 @@ export async function findOpp({
     outputToEthPrice: string;
     toToken: Token;
     fromToken: Token;
+    l1GasPrice: bigint;
 }): Promise<DryrunResult> {
-    try {
-        const gp = BigNumber.from(await viemClient.getGasPrice())
-            .mul(config.gasPriceMultiplier)
-            .div("100")
-            .toBigInt();
-        if (gp > gasPrice) gasPrice = gp;
-    } catch {
-        /**/
-    }
     const promises = [
         findRpOpp({
             orderPairObject,
@@ -64,6 +57,7 @@ export async function findOpp({
             ethPrice: inputToEthPrice,
             config,
             viemClient,
+            l1GasPrice,
         }),
         ...(!config.rpOnly
             ? [
@@ -76,6 +70,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
                   findInterObOpp({
                       orderPairObject,
@@ -87,6 +82,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
               ]
             : []),
