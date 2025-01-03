@@ -65,6 +65,9 @@ export async function dryrun({
         spanAttributes,
     };
 
+    // determines if amount is partial derived from binary search or not
+    const isPartial = !orderPairObject.takeOrders[0].quote!.maxOutput.eq(maximumInputFixed);
+
     const maximumInput = scale18To(maximumInputFixed, orderPairObject.sellTokenDecimals);
     spanAttributes["amountIn"] = ethers.utils.formatUnits(maximumInputFixed);
 
@@ -138,7 +141,7 @@ export async function dryrun({
 
         const takeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput,
+            maximumInput: isPartial ? maximumInput : ethers.constants.MaxUint256,
             maximumIORatio: config.maxRatio ? ethers.constants.MaxUint256 : price,
             orders,
             data: ethers.utils.defaultAbiCoder.encode(["bytes"], [rpParams.routeCode]),

@@ -73,7 +73,7 @@ for (let i = 0; i < testData.length; i++) {
         const tracer = provider.getTracer("arb-bot-tracer");
 
         config.rpc = [rpc];
-        const dataFetcherPromise = getDataFetcher(config, liquidityProviders, false);
+        const dataFetcherPromise = getDataFetcher(config, liquidityProviders, true);
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {

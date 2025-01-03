@@ -4,7 +4,7 @@ import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { estimateProfit, scale18To, withBigintSerializer } from "../utils";
+import { estimateProfit, ONE18, scale18To, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
 /**
@@ -48,9 +48,7 @@ export async function dryrun({
     const opposingMaxInput = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
         : scale18To(
-              maximumInputFixed
-                  .mul(orderPairObject.takeOrders[0].quote!.ratio)
-                  .div(`1${"0".repeat(18)}`),
+              maximumInputFixed.mul(orderPairObject.takeOrders[0].quote!.ratio).div(ONE18),
               orderPairObject.buyTokenDecimals,
           );
 
@@ -73,7 +71,7 @@ export async function dryrun({
     ]);
     const takeOrdersConfigStruct = {
         minimumInput: ethers.constants.One,
-        maximumInput,
+        maximumInput: ethers.constants.MaxUint256,
         maximumIORatio: ethers.constants.MaxUint256,
         orders: [orderPairObject.takeOrders[0].takeOrder],
         data: ethers.utils.defaultAbiCoder.encode(

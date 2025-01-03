@@ -76,7 +76,7 @@ describe("Test find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -170,7 +170,7 @@ describe("Test find opp", async function () {
         ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(
