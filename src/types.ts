@@ -53,7 +53,7 @@ export type CliOptions = {
     txGas?: string;
     quoteGas: bigint;
     rpOnly?: boolean;
-    dispair: Dispair;
+    dispair: string;
 };
 
 export type TokenDetails = {

@@ -6,9 +6,12 @@ import { parseAbi, PublicClient, stringToHex } from "viem";
 import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
 
 export const TaskEntryPoint = ["main"] as const;
-
-export const EnsureBountyDotrainPath = "./tasks/ensure-bounty.rain" as const;
-export const WithdrawEnsureBountyDotrainPath = "./tasks/withdraw-ensure-bounty.rain" as const;
+export const EnsureBountyDotrain = fs.readFileSync("./tasks/ensure-bounty.rain", {
+    encoding: "utf8",
+});
+export const WithdrawEnsureBountyDotrain = fs.readFileSync("./tasks/withdraw-ensure-bounty.rain", {
+    encoding: "utf8",
+});
 
 /**
  * Get the bounty check ensure task rainlang
@@ -24,7 +27,7 @@ export async function getBountyEnsureRainlang(
     sender: string,
 ): Promise<string> {
     return await RainDocument.composeText(
-        fs.readFileSync(EnsureBountyDotrainPath, { encoding: "utf8" }),
+        EnsureBountyDotrain,
         TaskEntryPoint as any as string[],
         new MetaStore(),
         [
@@ -60,7 +63,7 @@ export async function getWithdrawEnsureRainlang(
     sender: string,
 ): Promise<string> {
     return await RainDocument.composeText(
-        fs.readFileSync(WithdrawEnsureBountyDotrainPath, { encoding: "utf8" }),
+        WithdrawEnsureBountyDotrain,
         TaskEntryPoint as any as string[],
         new MetaStore(),
         [

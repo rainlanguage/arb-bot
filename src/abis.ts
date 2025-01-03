@@ -75,6 +75,9 @@ export const routeProcessor3Abi = [
  */
 export const deployerAbi = [
     "function parse2(bytes memory data) external view returns (bytes memory bytecode)",
+    "function iStore() external view returns (address)",
+    "function iInterpreter() external view returns (address)",
+    "function iParser() external view returns (address)",
 ] as const;
 
 /**

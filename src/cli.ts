@@ -76,6 +76,7 @@ const ENV_OPTIONS = {
     txGas: process?.env?.TX_GAS,
     quoteGas: process?.env?.QUOTE_GAS,
     route: process?.env?.ROUTE,
+    dispair: process?.env?.DISPAIR,
     rpOnly: process?.env?.RP_ONLY?.toLowerCase() === "true" ? true : false,
     ownerProfile: process?.env?.OWNER_PROFILE
         ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
@@ -88,9 +89,6 @@ const ENV_OPTIONS = {
         : undefined,
     subgraph: process?.env?.SUBGRAPH
         ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
-    dispair: process?.env?.DISPAIR
-        ? Array.from(process?.env?.DISPAIR.matchAll(/[^,\s]+/g)).map((v) => v[0])
         : undefined,
 };
 
@@ -125,8 +123,8 @@ const getOptions = async (argv: any, version?: string) => {
             "Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables",
         )
         .option(
-            "--dispair <address...>",
-            "Addresses of dispair to use for tasks, in order of interpreter, store, deployer, Will override the 'DISPAIR' in env variables",
+            "--dispair <address>",
+            "Address of dispair (ExpressionDeployer contract) to use for tasks, Will override the 'DISPAIR' in env variables",
         )
         .option(
             "-l, --lps <string>",
@@ -479,21 +477,11 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         }
     }
     if (options.dispair) {
-        if (
-            !Array.isArray(options.dispair) ||
-            options.dispair.length !== 3 ||
-            !options.dispair.every((v) => typeof v === "string" && isAddress(v, { strict: false }))
-        ) {
-            throw "expected 3 addresses for dispair, interpreter, store, deployer";
-        } else {
-            options.dispair = {
-                interpreter: options.dispair[0],
-                store: options.dispair[1],
-                deployer: options.dispair[2],
-            };
+        if (typeof options.dispair !== "string" || !isAddress(options.dispair, { strict: false })) {
+            throw "expected dispair (ExpressionDeployer contract) address";
         }
     } else {
-        throw "undefined dispair addresses";
+        throw "undefined dispair address";
     }
     if (options.quoteGas) {
         try {
