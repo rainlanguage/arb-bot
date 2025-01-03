@@ -10,7 +10,15 @@ import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
-import { BotConfig, BundledOrders, CliOptions, RoundReport, SgFilter, RpcRecord } from "./types";
+import {
+    SgFilter,
+    BotConfig,
+    RpcRecord,
+    CliOptions,
+    RoundReport,
+    BundledOrders,
+    OperationState,
+} from "./types";
 import {
     getChainConfig,
     getDataFetcher,
@@ -209,6 +217,7 @@ export async function getConfig(
     config.gasPriceMultiplier = options.gasPriceMultiplier;
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;
+    config.quoteGas = options.quoteGas;
     config.rpOnly = options.rpOnly;
     config.dispair = options.dispair;
 
@@ -232,13 +241,14 @@ export async function getConfig(
 export async function clear(
     config: BotConfig,
     bundledOrders: BundledOrders[][],
+    state: OperationState,
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> {
     const version = versions.node;
     const majorVersion = Number(version.slice(0, version.indexOf(".")));
 
-    if (majorVersion >= 18) return await processOrders(config, bundledOrders, tracer, ctx);
+    if (majorVersion >= 18) return await processOrders(config, bundledOrders, state, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
 }
 

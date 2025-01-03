@@ -1,5 +1,6 @@
 import { Token } from "sushi/currency";
 import { Contract, ethers } from "ethers";
+import { getL1Fee, getTxFee } from "./gas";
 import { addWatchedToken } from "./account";
 import { containsNodeError, handleRevert } from "./error";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./processOrders";
@@ -165,7 +166,8 @@ export async function handleReceipt(
     config: BotConfig,
     time: number,
 ): Promise<ProcessPairResult> {
-    const actualGasCost = ethers.BigNumber.from(receipt.effectiveGasPrice).mul(receipt.gasUsed);
+    const l1Fee = getL1Fee(receipt, config);
+    const actualGasCost = ethers.BigNumber.from(getTxFee(receipt, config));
     const signerBalance = signer.BALANCE;
     signer.BALANCE = signer.BALANCE.sub(actualGasCost);
 
@@ -193,10 +195,13 @@ export async function handleReceipt(
         );
         const netProfit = income ? income.sub(actualGasCost) : undefined;
 
+        spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
+        if (config.isSpecialL2 && l1Fee) {
+            spanAttributes["details.gasCostL1"] = toNumber(l1Fee);
+        }
         if (income) {
             spanAttributes["details.income"] = toNumber(income);
             spanAttributes["details.netProfit"] = toNumber(netProfit!);
-            spanAttributes["details.actualGasCost"] = toNumber(actualGasCost);
         }
         if (inputTokenIncome) {
             spanAttributes["details.inputTokenIncome"] = ethers.utils.formatUnits(

@@ -269,6 +269,8 @@ describe("Test cli", async function () {
             "110",
             "--tx-gas",
             "123456789",
+            "--quote-gas",
+            "7777",
             "--rp-only",
             "--dispair",
             interpreter,
@@ -286,8 +288,8 @@ describe("Test cli", async function () {
                 route: "single",
                 rpcRecords: {
                     "https://rpc.ankr.com/polygon/": {
-                        req: 1,
-                        success: 1,
+                        req: 2,
+                        success: 2,
                         failure: 0,
                         cache: {},
                     },
@@ -295,6 +297,7 @@ describe("Test cli", async function () {
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
                 txGas: "123456789",
+                quoteGas: 7777n,
                 rpOnly: true,
                 dispair: {
                     interpreter,
@@ -307,6 +310,7 @@ describe("Test cli", async function () {
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
                 txGas: "123456789",
+                quoteGas: 7777n,
                 rpOnly: true,
                 dispair: {
                     interpreter,
@@ -330,6 +334,8 @@ describe("Test cli", async function () {
         assert.equal(result.config.gasLimitMultiplier, expected.config.gasLimitMultiplier);
         assert.equal(result.options.txGas, expected.options.txGas);
         assert.equal(result.config.txGas, expected.config.txGas);
+        assert.equal(result.options.quoteGas, expected.options.quoteGas);
+        assert.equal(result.config.quoteGas, expected.config.quoteGas);
         assert.equal(result.options.rpOnly, expected.options.rpOnly);
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);

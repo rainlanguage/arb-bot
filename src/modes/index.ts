@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from "ethers";
+import { Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
@@ -6,6 +6,7 @@ import { findOpp as findInterObOpp } from "./interOrderbook";
 import { findOpp as findIntraObOpp } from "./intraOrderbook";
 import { findOppWithRetries as findRpOpp } from "./routeProcessor";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
+import { extendSpanAttributes } from "../utils";
 
 /**
  * The main entrypoint for the main logic to find opps.
@@ -28,6 +29,7 @@ export async function findOpp({
     inputToEthPrice,
     outputToEthPrice,
     orderbooksOrders,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -42,16 +44,8 @@ export async function findOpp({
     outputToEthPrice: string;
     toToken: Token;
     fromToken: Token;
+    l1GasPrice: bigint;
 }): Promise<DryrunResult> {
-    try {
-        const gp = BigNumber.from(await viemClient.getGasPrice())
-            .mul(config.gasPriceMultiplier)
-            .div("100")
-            .toBigInt();
-        if (gp > gasPrice) gasPrice = gp;
-    } catch {
-        /**/
-    }
     const promises = [
         findRpOpp({
             orderPairObject,
@@ -64,6 +58,7 @@ export async function findOpp({
             ethPrice: inputToEthPrice,
             config,
             viemClient,
+            l1GasPrice,
         }),
         ...(!config.rpOnly
             ? [
@@ -76,6 +71,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
                   findInterObOpp({
                       orderPairObject,
@@ -87,6 +83,7 @@ export async function findOpp({
                       config,
                       viemClient,
                       orderbooksOrders,
+                      l1GasPrice,
                   }),
               ]
             : []),
@@ -120,18 +117,24 @@ export async function findOpp({
             noneNodeError: undefined,
         };
         if ((allResults[0] as any)?.reason?.spanAttributes) {
-            spanAttributes["route-processor"] = JSON.stringify(
+            extendSpanAttributes(
+                spanAttributes,
                 (allResults[0] as any).reason.spanAttributes,
+                "routeProcessor",
             );
         }
         if ((allResults[1] as any)?.reason?.spanAttributes) {
-            spanAttributes["intra-orderbook"] = JSON.stringify(
-                (allResults[1] as any).reason.spanAttributes["intraOrderbook"],
+            extendSpanAttributes(
+                spanAttributes,
+                (allResults[1] as any).reason.spanAttributes,
+                "intraOrderbook",
             );
         }
         if ((allResults[2] as any)?.reason?.spanAttributes) {
-            spanAttributes["inter-orderbook"] = JSON.stringify(
+            extendSpanAttributes(
+                spanAttributes,
                 (allResults[2] as any).reason.spanAttributes,
+                "interOrderbook",
             );
         }
         if ((allResults[0] as any)?.reason?.value?.noneNodeError) {

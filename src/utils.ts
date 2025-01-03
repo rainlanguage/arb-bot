@@ -751,6 +751,7 @@ export async function quoteOrders(
     orderDetails: BundledOrders[][],
     rpcs: string[],
     blockNumber?: bigint,
+    gas?: bigint,
     multicallAddressOverride?: string,
 ): Promise<BundledOrders[][]> {
     let quoteResults: any[] = [];
@@ -769,6 +770,7 @@ export async function quoteOrders(
                 targets,
                 rpc,
                 blockNumber,
+                gas,
                 multicallAddressOverride,
             );
             break;
@@ -826,6 +828,7 @@ export async function quoteSingleOrder(
     orderDetails: BundledOrders,
     rpcs: string[],
     blockNumber?: bigint,
+    gas?: bigint,
     multicallAddressOverride?: string,
 ) {
     for (let i = 0; i < rpcs.length; i++) {
@@ -841,6 +844,7 @@ export async function quoteSingleOrder(
                     ] as any as QuoteTarget[],
                     rpc,
                     blockNumber,
+                    gas,
                     multicallAddressOverride,
                 )
             )[0];
@@ -1274,8 +1278,7 @@ export async function checkOwnedOrders(
  * Converts to a float number
  */
 export function toNumber(value: BigNumberish): number {
-    const valueString = ethers.utils.formatUnits(value);
-    return Number.parseFloat(valueString.substring(0, valueString.includes(".") ? 18 : 17));
+    return Number.parseFloat(ethers.utils.formatUnits(value));
 }
 
 /**
@@ -1394,5 +1397,23 @@ export function scale18To(value: BigNumberish, targetDecimals: BigNumberish): Bi
         return BigNumber.from(value).mul("1" + "0".repeat(decimals - 18));
     } else {
         return BigNumber.from(value).div("1" + "0".repeat(18 - decimals));
+    }
+}
+
+/**
+ * Adds the given k/v pairs to the spanAttributes by prepending the key with given header
+ */
+export function extendSpanAttributes(
+    spanAttributes: Record<string, any>,
+    newAttributes: Record<string, any>,
+    header: string,
+    excludeHeaderForKeys: string[] = [],
+) {
+    for (const attrKey in newAttributes) {
+        if (!excludeHeaderForKeys.includes(attrKey)) {
+            spanAttributes[header + "." + attrKey] = newAttributes[attrKey];
+        } else {
+            spanAttributes[attrKey] = newAttributes[attrKey];
+        }
     }
 }

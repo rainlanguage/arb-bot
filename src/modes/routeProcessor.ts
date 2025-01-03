@@ -1,10 +1,11 @@
 import { Token } from "sushi/currency";
+import { estimateGasCost } from "../gas";
 import { BaseError, PublicClient } from "viem";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
-import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
+import { SpanAttrs, BotConfig, ViemClient, DryrunResult, BundledOrders } from "../types";
 import {
     ONE18,
     scale18,
@@ -13,6 +14,7 @@ import {
     estimateProfit,
     visualizeRoute,
     withBigintSerializer,
+    extendSpanAttributes,
 } from "../utils";
 
 /**
@@ -40,6 +42,7 @@ export async function dryrun({
     config,
     viemClient,
     hasPriceMatch,
+    l1GasPrice,
 }: {
     mode: number;
     config: BotConfig;
@@ -54,6 +57,7 @@ export async function dryrun({
     fromToken: Token;
     maximumInput: BigNumber;
     hasPriceMatch?: { value: boolean };
+    l1GasPrice?: bigint;
 }) {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -176,11 +180,13 @@ export async function dryrun({
 
         // trying to find opp with doing gas estimation, once to get gas and calculate
         // minimum sender output and second to check the arb() with headroom
-        let gasLimit, blockNumber;
+        let gasLimit, blockNumber, l1Cost;
         try {
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+            l1Cost = estimation.l1Cost;
+            gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
         } catch (e) {
@@ -206,7 +212,7 @@ export async function dryrun({
             }
             return Promise.reject(result);
         }
-        let gasCost = gasLimit.mul(gasPrice);
+        let gasCost = gasLimit.mul(gasPrice).add(l1Cost);
 
         // repeat the same process with heaedroom if gas
         // coverage is not 0, 0 gas coverage means 0 minimum
@@ -230,13 +236,13 @@ export async function dryrun({
             ]);
 
             try {
-                blockNumber = Number(await viemClient.getBlockNumber());
                 spanAttributes["blockNumber"] = blockNumber;
-                gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+                const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+                gasLimit = ethers.BigNumber.from(estimation.gas)
                     .mul(config.gasLimitMultiplier)
                     .div(100);
                 rawtx.gas = gasLimit.toBigInt();
-                gasCost = gasLimit.mul(gasPrice);
+                gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
                 task.evaluable.bytecode = await parseRainlang(
                     await getBountyEnsureRainlang(
                         ethers.utils.parseUnits(ethPrice),
@@ -318,6 +324,7 @@ export async function findOpp({
     ethPrice,
     config,
     viemClient,
+    l1GasPrice,
 }: {
     mode: number;
     config: BotConfig;
@@ -330,6 +337,7 @@ export async function findOpp({
     ethPrice: string;
     toToken: Token;
     fromToken: Token;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -347,8 +355,6 @@ export async function findOpp({
         ethers.constants.Zero,
     );
     const maximumInput = BigNumber.from(initAmount.toString());
-
-    const allHopsAttributes: string[] = [];
     const allNoneNodeErrors: (string | undefined)[] = [];
     try {
         return await dryrun({
@@ -365,12 +371,13 @@ export async function findOpp({
             config,
             viemClient,
             hasPriceMatch,
+            l1GasPrice,
         });
     } catch (e: any) {
         // the fail reason can only be no route in case all hops fail reasons are no route
         if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
         allNoneNodeErrors.push(e?.value?.noneNodeError);
-        allHopsAttributes.push(JSON.stringify(e.spanAttributes));
+        extendSpanAttributes(spanAttributes, e.spanAttributes, "full");
     }
     if (!hasPriceMatch.value) {
         const maxTradeSize = findMaxInput({
@@ -397,17 +404,16 @@ export async function findOpp({
                     ethPrice,
                     config,
                     viemClient,
+                    l1GasPrice,
                 });
             } catch (e: any) {
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
-                allHopsAttributes.push(JSON.stringify(e.spanAttributes));
+                extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
             }
         }
     }
-    // in case of no successfull hop, allHopsAttributes will be included
-    spanAttributes["hops"] = allHopsAttributes;
 
     if (noRoute) result.reason = RouteProcessorDryrunHaltReason.NoRoute;
     else {
@@ -438,6 +444,7 @@ export async function findOppWithRetries({
     ethPrice,
     config,
     viemClient,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -449,6 +456,7 @@ export async function findOppWithRetries({
     ethPrice: string;
     toToken: Token;
     fromToken: Token;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -472,6 +480,7 @@ export async function findOppWithRetries({
                 ethPrice,
                 config,
                 viemClient,
+                l1GasPrice,
             }),
         );
     }

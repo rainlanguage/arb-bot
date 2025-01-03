@@ -58,6 +58,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
         nativeWrappedToken,
         routeProcessors,
         stableTokens,
+        isSpecialL2: SpecialL2Chains.is(chain.id),
     };
 }
 
@@ -216,6 +217,22 @@ export async function getDataFetcher(
         return dataFetcher as BotDataFetcher;
     } catch (error) {
         throw "cannot instantiate DataFetcher for this network";
+    }
+}
+
+/**
+ * List of L2 chains that require SEPARATE L1 gas actions.
+ * other L2 chains that dont require separate L1 gas actions
+ * such as Arbitrum and Polygon zkEvm are excluded, these chains'
+ * gas actions are performed the same as usual L1 chains.
+ */
+export enum SpecialL2Chains {
+    BASE = ChainId.BASE,
+    OPTIMISM = ChainId.OPTIMISM,
+}
+export namespace SpecialL2Chains {
+    export function is(chainId: number): boolean {
+        return Object.values(SpecialL2Chains).includes(chainId as any);
     }
 }
 

@@ -19,12 +19,12 @@ import {
     RoundReport,
     BundledOrders,
     BotDataFetcher,
+    OperationState,
     ProcessPairResult,
 } from "./types";
 import {
     toNumber,
     getEthPrice,
-    quoteOrders,
     routeExists,
     PoolBlackList,
     getMarketQuote,
@@ -37,13 +37,12 @@ import {
  */
 export enum ProcessPairHaltReason {
     FailedToQuote = 1,
-    FailedToGetGasPrice = 2,
-    FailedToGetEthPrice = 3,
-    FailedToGetPools = 4,
-    TxFailed = 5,
-    TxMineFailed = 6,
-    TxReverted = 7,
-    UnexpectedError = 8,
+    FailedToGetEthPrice = 2,
+    FailedToGetPools = 3,
+    TxFailed = 4,
+    TxMineFailed = 5,
+    TxReverted = 6,
+    UnexpectedError = 7,
 }
 
 /**
@@ -65,6 +64,7 @@ export enum ProcessPairReportStatus {
 export const processOrders = async (
     config: BotConfig,
     bundledOrders: BundledOrders[][],
+    state: OperationState,
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> => {
@@ -85,7 +85,7 @@ export const processOrders = async (
         try {
             const ownedOrders = await checkOwnedOrders(config, bundledOrders);
             if (ownedOrders.length) {
-                const failedFundings = await fundOwnedOrders(ownedOrders, config);
+                const failedFundings = await fundOwnedOrders(ownedOrders, config, state);
                 const emptyOrders = ownedOrders.filter((v) => v.vaultBalance.isZero());
                 if (failedFundings.length || emptyOrders.length) {
                     const message: string[] = [];
@@ -146,16 +146,6 @@ export const processOrders = async (
         }
         span.end();
     });
-
-    // batch quote orders to establish the orders to loop over
-    try {
-        await quoteOrders(
-            bundledOrders,
-            (config as any).isTest ? (config as any).quoteRpc : config.rpc,
-        );
-    } catch (e) {
-        throw errorSnapshot("Failed to batch quote orders", e);
-    }
 
     const txGasCosts: BigNumber[] = [];
     const reports: Report[] = [];
@@ -229,6 +219,7 @@ export const processOrders = async (
                     orderbook,
                     pair,
                     orderbooksOrders: bundledOrders,
+                    state,
                 });
                 results.push({ settle, pair, orderPairObject });
                 span.end();
@@ -237,15 +228,16 @@ export const processOrders = async (
     }
 
     for (const { settle, pair, orderPairObject } of results) {
-        // instantiate a span for this pair
-        const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
-        span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
         try {
             // settle the process results
             // this will return the report of the operation and in case
             // there was a revert tx, it will try to simulate it and find
             // the root cause as well
             const result = await settle();
+
+            // instantiate a span for this pair
+            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
 
             // keep track of avg gas cost
             if (result.gasCost) {
@@ -273,7 +265,12 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
+            span.end();
         } catch (e: any) {
+            // instantiate a span for this pair
+            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
+
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
@@ -293,14 +290,6 @@ export const processOrders = async (
                         message = errorSnapshot(message, e.error);
                     }
                     span.setStatus({ code: SpanStatusCode.OK, message });
-                } else if (e.reason === ProcessPairHaltReason.FailedToGetGasPrice) {
-                    let message = pair + ": failed to get gas price";
-                    if (e.error) {
-                        message = errorSnapshot(message, e.error);
-                        span.recordException(e.error);
-                    }
-                    span.setAttribute("severity", ErrorSeverity.LOW);
-                    span.setStatus({ code: SpanStatusCode.ERROR, message });
                 } else if (e.reason === ProcessPairHaltReason.FailedToGetPools) {
                     let message = pair + ": failed to get pool details";
                     if (e.error) {
@@ -404,8 +393,8 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
             }
+            span.end();
         }
-        span.end();
     }
     return {
         reports,
@@ -430,6 +419,7 @@ export async function processPair(args: {
     orderbook: Contract;
     pair: string;
     orderbooksOrders: BundledOrders[][];
+    state: OperationState;
 }): Promise<() => Promise<ProcessPairResult>> {
     const {
         config,
@@ -443,6 +433,7 @@ export async function processPair(args: {
         orderbook,
         pair,
         orderbooksOrders,
+        state,
     } = args;
 
     const spanAttributes: SpanAttrs = {};
@@ -458,6 +449,7 @@ export async function processPair(args: {
             sellToken: orderPairObject.sellToken,
         },
     };
+    const gasPrice = ethers.BigNumber.from(state.gasPrice);
 
     spanAttributes["details.orders"] = orderPairObject.takeOrders.map((v) => v.id);
     spanAttributes["details.pair"] = pair;
@@ -479,6 +471,8 @@ export async function processPair(args: {
         await quoteSingleOrder(
             orderPairObject,
             (config as any).isTest ? (config as any).quoteRpc : config.rpc,
+            undefined,
+            config.quoteGas,
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {
@@ -503,20 +497,6 @@ export async function processPair(args: {
         maxOutput: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote!.maxOutput),
         ratio: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote!.ratio),
     });
-
-    // get gas price
-    let gasPrice;
-    try {
-        const gasPriceBigInt = await viemClient.getGasPrice();
-        gasPrice = ethers.BigNumber.from(gasPriceBigInt).mul(config.gasPriceMultiplier).div("100");
-        spanAttributes["details.gasPrice"] = gasPrice.toString();
-    } catch (e) {
-        result.reason = ProcessPairHaltReason.FailedToGetGasPrice;
-        result.error = e;
-        return async () => {
-            throw result;
-        };
-    }
 
     // get pool details
     if (
@@ -617,6 +597,12 @@ export async function processPair(args: {
         }
     }
 
+    // record gas price for otel
+    spanAttributes["details.gasPrice"] = state.gasPrice.toString();
+    if (state.l1GasPrice) {
+        spanAttributes["details.gasPriceL1"] = state.l1GasPrice.toString();
+    }
+
     // execute process to find opp through different modes
     let rawtx, oppBlockNumber, estimatedProfit;
     try {
@@ -628,12 +614,13 @@ export async function processPair(args: {
             fromToken,
             toToken,
             signer,
-            gasPrice: gasPrice.toBigInt(),
+            gasPrice: state.gasPrice,
             config,
             viemClient,
             inputToEthPrice,
             outputToEthPrice,
             orderbooksOrders,
+            l1GasPrice: state.l1GasPrice,
         });
         ({ rawtx, oppBlockNumber, estimatedProfit } = findOppResult.value!);
 
