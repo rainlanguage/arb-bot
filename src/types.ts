@@ -53,6 +53,7 @@ export type CliOptions = {
     txGas?: string;
     quoteGas: bigint;
     rpOnly?: boolean;
+    dispair: string;
 };
 
 export type TokenDetails = {
@@ -201,6 +202,7 @@ export type BotConfig = {
     txGas?: string;
     quoteGas: bigint;
     rpOnly?: boolean;
+    dispair: Dispair;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };
@@ -295,6 +297,12 @@ export type RpcRecord = {
     success: number;
     failure: number;
     cache: Record<number, any>;
+};
+
+export type Dispair = {
+    deployer: string;
+    interpreter: string;
+    store: string;
 };
 
 export type RpcRequest = {

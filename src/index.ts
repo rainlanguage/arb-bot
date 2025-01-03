@@ -2,7 +2,7 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { ChainId } from "sushi";
 import { versions } from "process";
-import { PublicClient } from "viem";
+import { parseAbi, PublicClient } from "viem";
 import { processLps } from "./utils";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
@@ -26,6 +26,7 @@ import {
     onFetchResponse,
     createViemClient,
 } from "./config";
+import { deployerAbi } from "./abis";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -196,6 +197,29 @@ export async function getConfig(
         options.publicRpc,
     );
 
+    const interpreter = await (async () => {
+        try {
+            return await viemClient.readContract({
+                address: options.dispair as `0x${string}`,
+                abi: parseAbi(deployerAbi),
+                functionName: "iInterpreter",
+            });
+        } catch {
+            throw "failed to get dispair interpreter address";
+        }
+    })();
+    const store = await (async () => {
+        try {
+            return await viemClient.readContract({
+                address: options.dispair as `0x${string}`,
+                abi: parseAbi(deployerAbi),
+                functionName: "iStore",
+            });
+        } catch {
+            throw "failed to get dispair store address";
+        }
+    })();
+
     config.rpc = rpcUrls;
     config.arbAddress = arbAddress;
     config.genericArbAddress = options.genericArbAddress;
@@ -219,6 +243,11 @@ export async function getConfig(
     config.txGas = options.txGas;
     config.quoteGas = options.quoteGas;
     config.rpOnly = options.rpOnly;
+    config.dispair = {
+        interpreter,
+        store,
+        deployer: options.dispair,
+    };
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
