@@ -1,10 +1,17 @@
 import { orderbookAbi } from "../abis";
+import { estimateGasCost } from "../gas";
 import { BaseError, PublicClient } from "viem";
 import { getBountyEnsureBytecode } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
-import { estimateProfit, scale18To, withBigintSerializer, extendSpanAttributes } from "../utils";
+import {
+    ONE18,
+    scale18To,
+    estimateProfit,
+    withBigintSerializer,
+    extendSpanAttributes,
+} from "../utils";
 
 /**
  * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
@@ -20,6 +27,7 @@ export async function dryrun({
     outputToEthPrice,
     config,
     viemClient,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -31,6 +39,7 @@ export async function dryrun({
     outputToEthPrice: string;
     opposingOrders: BundledOrders;
     maximumInput: BigNumber;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes: SpanAttrs = {};
     const result: DryrunResult = {
@@ -45,9 +54,7 @@ export async function dryrun({
     const opposingMaxInput = orderPairObject.takeOrders[0].quote!.ratio.isZero()
         ? ethers.constants.MaxUint256
         : scale18To(
-              maximumInputFixed
-                  .mul(orderPairObject.takeOrders[0].quote!.ratio)
-                  .div(`1${"0".repeat(18)}`),
+              maximumInputFixed.mul(orderPairObject.takeOrders[0].quote!.ratio).div(ONE18),
               orderPairObject.buyTokenDecimals,
           );
 
@@ -70,7 +77,7 @@ export async function dryrun({
     ]);
     const takeOrdersConfigStruct = {
         minimumInput: ethers.constants.One,
-        maximumInput,
+        maximumInput: ethers.constants.MaxUint256,
         maximumIORatio: ethers.constants.MaxUint256,
         orders: [orderPairObject.takeOrders[0].takeOrder],
         data: ethers.utils.defaultAbiCoder.encode(
@@ -107,13 +114,13 @@ export async function dryrun({
 
     // trying to find opp with doing gas estimation, once to get gas and calculate
     // minimum sender output and second time to check the arb() with headroom
-    let gasLimit, blockNumber;
+    let gasLimit, blockNumber, l1Cost;
     try {
         blockNumber = Number(await viemClient.getBlockNumber());
         spanAttributes["blockNumber"] = blockNumber;
-        gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
-            .mul(config.gasLimitMultiplier)
-            .div(100);
+        const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+        l1Cost = estimation.l1Cost;
+        gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
     } catch (e) {
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
@@ -135,7 +142,7 @@ export async function dryrun({
         }
         return Promise.reject(result);
     }
-    let gasCost = gasLimit.mul(gasPrice);
+    let gasCost = gasLimit.mul(gasPrice).add(l1Cost);
 
     // repeat the same process with heaedroom if gas
     // coverage is not 0, 0 gas coverage means 0 minimum
@@ -155,13 +162,13 @@ export async function dryrun({
         ]);
 
         try {
-            blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
-            gasLimit = ethers.BigNumber.from(await signer.estimateGas(rawtx))
+            const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+            gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
             rawtx.gas = gasLimit.toBigInt();
-            gasCost = gasLimit.mul(gasPrice);
+            gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
             task.evaluable.bytecode = getBountyEnsureBytecode(
                 ethers.utils.parseUnits(inputToEthPrice),
                 ethers.utils.parseUnits(outputToEthPrice),
@@ -230,6 +237,7 @@ export async function findOpp({
     config,
     viemClient,
     orderbooksOrders,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -240,6 +248,7 @@ export async function findOpp({
     gasPrice: bigint;
     inputToEthPrice: string;
     outputToEthPrice: string;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     if (!arb) throw undefined;
     const spanAttributes: SpanAttrs = {};
@@ -281,12 +290,23 @@ export async function findOpp({
                 // filter out the same owner orders
                 const opposingOrders = {
                     ...v,
-                    takeOrders: v.takeOrders.filter(
-                        (e) =>
-                            e.takeOrder.order.owner.toLowerCase() !==
-                            orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase(),
-                    ),
+                    takeOrders: v.takeOrders
+                        .filter(
+                            (e) =>
+                                e.takeOrder.order.owner.toLowerCase() !==
+                                    orderPairObject.takeOrders[0].takeOrder.order.owner.toLowerCase() &&
+                                e.quote &&
+                                e.quote.maxOutput.gt(0),
+                        )
+                        .sort((a, b) =>
+                            a.quote!.ratio.lt(b.quote!.ratio)
+                                ? -1
+                                : a.quote!.ratio.gt(b.quote!.ratio)
+                                  ? 1
+                                  : 0,
+                        ),
                 };
+                if (!opposingOrders.takeOrders.length) throw "";
                 return dryrun({
                     orderPairObject,
                     opposingOrders,
@@ -298,6 +318,7 @@ export async function findOpp({
                     outputToEthPrice,
                     config,
                     viemClient,
+                    l1GasPrice,
                 });
             }),
         );
@@ -368,6 +389,7 @@ export async function binarySearch({
     outputToEthPrice,
     config,
     viemClient,
+    l1GasPrice,
 }: {
     config: BotConfig;
     orderPairObject: BundledOrders;
@@ -379,6 +401,7 @@ export async function binarySearch({
     outputToEthPrice: string;
     opposingOrders: BundledOrders;
     maximumInput: ethers.BigNumber;
+    l1GasPrice?: bigint;
 }): Promise<DryrunResult> {
     const spanAttributes = {};
     const result: DryrunResult = {
@@ -402,6 +425,7 @@ export async function binarySearch({
                     outputToEthPrice,
                     config,
                     viemClient,
+                    l1GasPrice,
                 }),
             );
             // set the maxInput for next hop by increasing

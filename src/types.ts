@@ -51,6 +51,7 @@ export type CliOptions = {
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
+    quoteGas: bigint;
     rpOnly?: boolean;
 };
 
@@ -115,7 +116,7 @@ export type Pair = {
     sellToken: string;
     sellTokenDecimals: number;
     sellTokenSymbol: string;
-    takeOrder: TakeOrder;
+    takeOrder: TakeOrderDetails;
 };
 export type OrderProfile = {
     active: boolean;
@@ -130,6 +131,11 @@ export type OwnerProfile = {
 export type OrdersProfileMap = Map<string, OrderProfile>;
 export type OwnersProfileMap = Map<string, OwnerProfile>;
 export type OrderbooksOwnersProfileMap = Map<string, OwnersProfileMap>;
+
+export type Vault = { vaultId: string; balance: bigint };
+export type OwnersVaults = Map<string, Vault[]>;
+export type TokensOwnersVaults = Map<string, OwnersVaults>;
+export type OTOVMap = Map<string, TokensOwnersVaults>;
 
 export type ViemClient = WalletClient<FallbackTransport, Chain, HDAccount> &
     PublicActions & {
@@ -159,6 +165,7 @@ export type ChainConfig = {
     nativeWrappedToken: Token;
     routeProcessors: { [key: string]: `0x${string}` };
     stableTokens?: Token[];
+    isSpecialL2: boolean;
 };
 
 export type BotConfig = {
@@ -166,6 +173,7 @@ export type BotConfig = {
     nativeWrappedToken: Token;
     routeProcessors: { [key: string]: `0x${string}` };
     stableTokens?: Token[];
+    isSpecialL2: boolean;
     key?: string;
     mnemonic?: string;
     rpc: string[];
@@ -191,9 +199,15 @@ export type BotConfig = {
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
+    quoteGas: bigint;
     rpOnly?: boolean;
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
+};
+
+export type OperationState = {
+    gasPrice: bigint;
+    l1GasPrice: bigint;
 };
 
 export type Report = {

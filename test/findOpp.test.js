@@ -23,7 +23,7 @@ const oppBlockNumber = 123456;
 const {
     inputToEthPrice,
     outputToEthPrice,
-    gasPrice,
+    gasPrice: _gasPrice,
     gasLimitEstimation,
     arb,
     vaultBalance,
@@ -41,6 +41,7 @@ const {
     orderbook,
     getAmountOut,
 } = testData;
+const gasPrice = _gasPrice.toBigInt();
 
 describe("Test find opp", async function () {
     beforeEach(() => {
@@ -76,7 +77,7 @@ describe("Test find opp", async function () {
         });
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: expectedRouteData,
@@ -170,7 +171,7 @@ describe("Test find opp", async function () {
         ]);
         const expectedTakeOrdersConfigStruct = {
             minimumInput: ethers.constants.One,
-            maximumInput: vaultBalance,
+            maximumInput: ethers.constants.MaxUint256,
             maximumIORatio: ethers.constants.MaxUint256,
             orders: [orderPairObject.takeOrders[0].takeOrder],
             data: ethers.utils.defaultAbiCoder.encode(

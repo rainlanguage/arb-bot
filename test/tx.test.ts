@@ -108,6 +108,9 @@ describe("Test tx", async function () {
             spanAttributes: {
                 "details.txUrl": scannerUrl + "/tx/" + txHash,
                 didClear: true,
+                "details.actualGasCost": Number(
+                    ethers.utils.formatUnits(effectiveGasPrice * gasUsed),
+                ),
             },
             report: {
                 status: ProcessPairReportStatus.FoundOpportunity,
@@ -240,7 +243,12 @@ describe("Test tx", async function () {
             reason: undefined,
             error: undefined,
             gasCost: ethers.BigNumber.from(gasUsed * effectiveGasPrice),
-            spanAttributes: { didClear: true },
+            spanAttributes: {
+                didClear: true,
+                "details.actualGasCost": Number(
+                    ethers.utils.formatUnits(effectiveGasPrice * gasUsed),
+                ),
+            },
             report: {
                 status: 3,
                 txUrl,
