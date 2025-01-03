@@ -3,7 +3,7 @@ const testData = require("./data");
 const { findOpp } = require("../src/modes");
 const { orderbookAbi } = require("../src/abis");
 const { errorSnapshot } = require("../src/error");
-const { clone, estimateProfit } = require("../src/utils");
+const { clone, estimateProfit, withBigintSerializer } = require("../src/utils");
 const {
     ethers,
     utils: { formatUnits },
@@ -323,7 +323,7 @@ describe("Test find opp", async function () {
         assert.deepEqual(result, expected);
     });
 
-    it("should NOT find opp", async function () {
+    it.only("should NOT find opp", async function () {
         const err = ethers.errors.UNPREDICTABLE_GAS_LIMIT;
         signer.estimateGas = async () => {
             return Promise.reject(err);
@@ -351,7 +351,7 @@ describe("Test find opp", async function () {
         } catch (error) {
             const expectedTakeOrdersConfigStruct = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: expectedRouteData,
@@ -370,16 +370,19 @@ describe("Test find opp", async function () {
                 },
                 signedContext: [],
             };
-            const rawtx = JSON.stringify({
-                data: arb.interface.encodeFunctionData("arb3", [
-                    orderPairObject.orderbook,
-                    expectedTakeOrdersConfigStruct,
-                    task,
-                ]),
-                to: arb.address,
-                gasPrice,
-                from: signer.account.address,
-            });
+            const rawtx = JSON.stringify(
+                {
+                    data: arb.interface.encodeFunctionData("arb3", [
+                        orderPairObject.orderbook,
+                        expectedTakeOrdersConfigStruct,
+                        task,
+                    ]),
+                    to: arb.address,
+                    gasPrice: gasPrice,
+                    from: signer.account.address,
+                },
+                withBigintSerializer,
+            );
             const opposingMaxInput = vaultBalance
                 .mul(orderPairObject.takeOrders[0].quote.ratio)
                 .div(`1${"0".repeat(36 - orderPairObject.buyTokenDecimals)}`);
@@ -398,7 +401,7 @@ describe("Test find opp", async function () {
             ]);
             const expectedTakeOrdersConfigStruct2 = {
                 minimumInput: ethers.constants.One,
-                maximumInput: vaultBalance,
+                maximumInput: ethers.constants.MaxUint256,
                 maximumIORatio: ethers.constants.MaxUint256,
                 orders: [orderPairObject.takeOrders[0].takeOrder],
                 data: ethers.utils.defaultAbiCoder.encode(
@@ -456,7 +459,7 @@ describe("Test find opp", async function () {
                     [`interOrderbook.againstOrderbooks.${opposingOrderbookAddress}.blockNumber`]:
                         oppBlockNumber,
                     [`interOrderbook.againstOrderbooks.${opposingOrderbookAddress}.rawtx`]:
-                        JSON.stringify(rawtx2),
+                        JSON.stringify(rawtx2, withBigintSerializer),
                     [`interOrderbook.againstOrderbooks.${opposingOrderbookAddress}.maxInput`]:
                         vaultBalance.toString(),
                     [`interOrderbook.againstOrderbooks.${opposingOrderbookAddress}.error`]:

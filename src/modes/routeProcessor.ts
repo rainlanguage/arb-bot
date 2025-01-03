@@ -397,7 +397,6 @@ export async function findOpp({
             } catch (e: any) {
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
-                delete e.spanAttributes["rawtx"];
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
                 extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
             }
