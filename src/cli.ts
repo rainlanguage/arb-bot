@@ -66,7 +66,7 @@ const ENV_OPTIONS = {
     timeout: process?.env?.TIMEOUT,
     hops: process?.env?.HOPS,
     retries: process?.env?.RETRIES,
-    poolUpdateInterval: process?.env?.POOL_UPDATE_INTERVAL || "15",
+    poolUpdateInterval: process?.env?.POOL_UPDATE_INTERVAL,
     walletCount: process?.env?.WALLET_COUNT,
     topupAmount: process?.env?.TOPUP_AMOUNT,
     botMinBalance: process?.env?.BOT_MIN_BALANCE,
