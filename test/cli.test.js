@@ -247,7 +247,7 @@ describe("Test cli", async function () {
         ]);
         const expected = {
             roundGap: 10000,
-            poolUpdateInterval: 900000,
+            poolUpdateInterval: 0,
             config: {
                 chain: { id: 137 },
                 rpc: ["https://rpc.ankr.com/polygon"],
