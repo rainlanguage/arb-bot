@@ -185,6 +185,7 @@ export async function dryrun({
             blockNumber = Number(await viemClient.getBlockNumber());
             spanAttributes["blockNumber"] = blockNumber;
             const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+            spanAttributes["gasDetails"] = JSON.stringify(estimation, withBigintSerializer);
             l1Cost = estimation.l1Cost;
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
@@ -238,6 +239,7 @@ export async function dryrun({
             try {
                 spanAttributes["blockNumber"] = blockNumber;
                 const estimation = await estimateGasCost(rawtx, signer, config, l1GasPrice);
+                spanAttributes["gasDetails"] = JSON.stringify(estimation, withBigintSerializer);
                 gasLimit = ethers.BigNumber.from(estimation.gas)
                     .mul(config.gasLimitMultiplier)
                     .div(100);
