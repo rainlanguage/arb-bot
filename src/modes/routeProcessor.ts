@@ -199,8 +199,8 @@ export async function dryrun({
                     gasPrice: estimation.gasPrice.toString(),
                     ...(config.isSpecialL2
                         ? {
-                              l1GasPrice: estimation.l1Cost.toString(),
-                              l1Cost: estimation.l1GasPrice.toString(),
+                              l1Cost: estimation.l1Cost.toString(),
+                              l1GasPrice: estimation.l1GasPrice.toString(),
                           }
                         : {}),
                 },
@@ -274,8 +274,8 @@ export async function dryrun({
                         gasPrice: estimation.gasPrice.toString(),
                         ...(config.isSpecialL2
                             ? {
-                                  l1GasPrice: estimation.l1Cost.toString(),
-                                  l1Cost: estimation.l1GasPrice.toString(),
+                                  l1Cost: estimation.l1Cost.toString(),
+                                  l1GasPrice: estimation.l1GasPrice.toString(),
                               }
                             : {}),
                     },
