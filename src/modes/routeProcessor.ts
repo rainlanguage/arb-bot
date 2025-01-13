@@ -189,13 +189,12 @@ export async function dryrun({
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
-            spanAttributes["headroom.estGasLimit"] = estimation.gas.toString();
-            spanAttributes["headroom.estTotalCost"] = estimation.totalGasCost.toString();
-            spanAttributes["headroom.gasPrice"] = estimation.gasPrice.toString();
+            spanAttributes["gasEst.headroom.gasLimit"] = estimation.gas.toString();
+            spanAttributes["gasEst.headroom.totalCost"] = estimation.totalGasCost.toString();
+            spanAttributes["gasEst.headroom.gasPrice"] = estimation.gasPrice.toString();
             if (config.isSpecialL2) {
-                spanAttributes["headroom.l1GasPrice"] = estimation.l1GasPrice.toString();
-                spanAttributes["headroom.estL1GasLimit"] = estimation.l1Gas.toString();
-                spanAttributes["headroom.estL1Cost"] = l1Cost.toString();
+                spanAttributes["gasEst.headroom.l1GasPrice"] = estimation.l1GasPrice.toString();
+                spanAttributes["gasEst.headroom.l1Cost"] = estimation.l1Cost.toString();
             }
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
@@ -227,7 +226,10 @@ export async function dryrun({
         // sender output which is already called above
         if (config.gasCoveragePercentage !== "0") {
             const headroom = (Number(config.gasCoveragePercentage) * 1.03).toFixed();
-            spanAttributes["headroom.minExpected"] = gasCost.mul(headroom).div("100").toString();
+            spanAttributes["gasEst.headroom.minBountyExpected"] = gasCost
+                .mul(headroom)
+                .div("100")
+                .toString();
             task.evaluable.bytecode = await parseRainlang(
                 await getBountyEnsureRainlang(
                     ethers.utils.parseUnits(ethPrice),
@@ -252,13 +254,12 @@ export async function dryrun({
                     .div(100);
                 rawtx.gas = gasLimit.toBigInt();
                 gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
-                spanAttributes["actual.estGasLimit"] = estimation.gas.toString();
-                spanAttributes["actual.estTotalCost"] = estimation.totalGasCost.toString();
-                spanAttributes["actual.gasPrice"] = estimation.gasPrice.toString();
+                spanAttributes["gasEst.final.gasLimit"] = estimation.gas.toString();
+                spanAttributes["gasEst.final.totalCost"] = estimation.totalGasCost.toString();
+                spanAttributes["gasEst.final.gasPrice"] = estimation.gasPrice.toString();
                 if (config.isSpecialL2) {
-                    spanAttributes["actual.l1GasPrice"] = estimation.l1GasPrice.toString();
-                    spanAttributes["actual.estL1GasLimit"] = estimation.l1Gas.toString();
-                    spanAttributes["actual.estL1Cost"] = l1Cost.toString();
+                    spanAttributes["gasEst.final.l1GasPrice"] = estimation.l1GasPrice.toString();
+                    spanAttributes["gasEst.final.l1Cost"] = estimation.l1Cost.toString();
                 }
                 task.evaluable.bytecode = await parseRainlang(
                     await getBountyEnsureRainlang(
@@ -275,7 +276,7 @@ export async function dryrun({
                     takeOrdersConfigStruct,
                     task,
                 ]);
-                spanAttributes["actual.minExpected"] = gasCost
+                spanAttributes["gasEst.final.minBountyExpected"] = gasCost
                     .mul(config.gasCoveragePercentage)
                     .div("100")
                     .toString();
