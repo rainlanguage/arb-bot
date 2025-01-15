@@ -467,6 +467,8 @@ export async function processPair(args: {
         symbol: orderPairObject.buyTokenSymbol,
     });
 
+    // eslint-disable-next-line no-console
+    console.log(config.quoteGas);
     try {
         await quoteSingleOrder(
             orderPairObject,
