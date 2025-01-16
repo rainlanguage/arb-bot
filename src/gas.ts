@@ -129,7 +129,7 @@ export async function getQuoteGas(
             functionName: "gasEstimateL1Component",
             args: [multicallAddress, false, calldata],
         });
-        return config.quoteGas + (result?.result[0] ?? 0n);
+        return config.quoteGas + result.result[0];
     } else {
         return config.quoteGas;
     }
