@@ -29,6 +29,8 @@ export const TakeOrdersConfigV3 =
     `(uint256 minimumInput, uint256 maximumInput, uint256 maximumIORatio, ${TakeOrderConfigV3}[] orders, bytes data)` as const;
 export const ClearConfig =
     "(uint256 aliceInputIOIndex, uint256 aliceOutputIOIndex, uint256 bobInputIOIndex, uint256 bobOutputIOIndex, uint256 aliceBountyVaultId, uint256 bobBountyVaultId)" as const;
+export const Quote =
+    `(${OrderV3} order, uint256 inputIOIndex, uint256 outputIOIndex, ${SignedContextV1}[] signedContext)` as const;
 
 /**
  * Minimal ABI for Orderbook contract only including vaultBalance() function
@@ -48,6 +50,7 @@ export const orderbookAbi = [
     `function takeOrders2(${TakeOrdersConfigV3} memory config) external returns (uint256 totalInput, uint256 totalOutput)`,
     `function clear2(${OrderV3} memory aliceOrder, ${OrderV3} memory bobOrder, ${ClearConfig} calldata clearConfig, ${SignedContextV1}[] memory aliceSignedContext, ${SignedContextV1}[] memory bobSignedContext) external`,
     `event TakeOrderV2(address sender, ${TakeOrderConfigV3} config, uint256 input, uint256 output)`,
+    `function quote(${Quote} calldata quoteConfig) external view returns (bool, uint256, uint256)`,
 ] as const;
 
 /**
@@ -104,3 +107,50 @@ export const DefaultArbEvaluable = {
 } as const;
 
 export const TakeOrderV2EventAbi = parseAbi([orderbookAbi[13]]);
+export const OrderbookQuoteAbi = parseAbi([orderbookAbi[14]]);
+
+/**
+ * Arbitrum node interface address, used to get L1 gas limit.
+ * This is not an actual deployed smart contract, it is only
+ * available to be called through an Arbitrum RPC node, and not
+ * as normally other smart contracts are called.
+ */
+export const ArbitrumNodeInterfaceAddress: `0x${string}` =
+    "0x00000000000000000000000000000000000000C8" as const;
+
+/**
+ * Arbitrum node interface abi, used to get L1 gas limit
+ */
+export const ArbitrumNodeInterfaceAbi = [
+    {
+        inputs: [
+            { internalType: "address", name: "to", type: "address" },
+            { internalType: "bool", name: "contractCreation", type: "bool" },
+            { internalType: "bytes", name: "data", type: "bytes" },
+        ],
+        name: "gasEstimateComponents",
+        outputs: [
+            { internalType: "uint64", name: "gasEstimate", type: "uint64" },
+            { internalType: "uint64", name: "gasEstimateForL1", type: "uint64" },
+            { internalType: "uint256", name: "baseFee", type: "uint256" },
+            { internalType: "uint256", name: "l1BaseFeeEstimate", type: "uint256" },
+        ],
+        stateMutability: "payable",
+        type: "function",
+    },
+    {
+        inputs: [
+            { internalType: "address", name: "to", type: "address" },
+            { internalType: "bool", name: "contractCreation", type: "bool" },
+            { internalType: "bytes", name: "data", type: "bytes" },
+        ],
+        name: "gasEstimateL1Component",
+        outputs: [
+            { internalType: "uint64", name: "gasEstimateForL1", type: "uint64" },
+            { internalType: "uint256", name: "baseFee", type: "uint256" },
+            { internalType: "uint256", name: "l1BaseFeeEstimate", type: "uint256" },
+        ],
+        stateMutability: "payable",
+        type: "function",
+    },
+] as const;

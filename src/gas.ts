@@ -1,6 +1,10 @@
+import { ChainId } from "sushi";
 import { BigNumber } from "ethers";
+import { getQuoteConfig } from "./utils";
+import { encodeFunctionData, multicall3Abi, toHex } from "viem";
 import { publicActionsL2, walletActionsL2 } from "viem/op-stack";
-import { BotConfig, OperationState, RawTx, ViemClient } from "./types";
+import { BotConfig, BundledOrders, OperationState, RawTx, ViemClient } from "./types";
+import { ArbitrumNodeInterfaceAbi, ArbitrumNodeInterfaceAddress, OrderbookQuoteAbi } from "./abis";
 
 /**
  * Estimates gas cost of the given tx, also takes into account L1 gas cost if the chain is a special L2.
@@ -83,5 +87,52 @@ export async function getGasPrice(config: BotConfig, state: OperationState) {
     }
     if (l1GasPriceResult?.status === "fulfilled") {
         state.l1GasPrice = l1GasPriceResult.value;
+    }
+}
+
+/**
+ * Calculates the gas limit that used for quoting orders
+ */
+export async function getQuoteGas(
+    config: BotConfig,
+    orderDetails: BundledOrders,
+    multicallAddressOverride?: string,
+): Promise<bigint> {
+    if (config.chain.id === ChainId.ARBITRUM) {
+        // build the calldata of a quote call
+        const quoteConfig = getQuoteConfig(orderDetails.takeOrders[0]) as any;
+        quoteConfig.inputIOIndex = BigInt(quoteConfig.inputIOIndex);
+        quoteConfig.outputIOIndex = BigInt(quoteConfig.outputIOIndex);
+        quoteConfig.order.evaluable.bytecode = toHex(quoteConfig.order.evaluable.bytecode);
+        const multicallConfig = {
+            target: orderDetails.orderbook as `0x${string}`,
+            allowFailure: true,
+            callData: encodeFunctionData({
+                abi: OrderbookQuoteAbi,
+                functionName: "quote",
+                args: [quoteConfig],
+            }),
+        };
+        const calldata = encodeFunctionData({
+            abi: multicall3Abi,
+            functionName: "aggregate3",
+            args: [[multicallConfig] as const],
+        });
+
+        const multicallAddress =
+            (multicallAddressOverride as `0x${string}` | undefined) ??
+            config.viemClient.chain?.contracts?.multicall3?.address;
+        if (!multicallAddress) throw "unknown multicall address";
+
+        // call Arbitrum Node Interface for the calldata to get L1 gas
+        const result = await config.viemClient.simulateContract({
+            abi: ArbitrumNodeInterfaceAbi,
+            address: ArbitrumNodeInterfaceAddress,
+            functionName: "gasEstimateL1Component",
+            args: [multicallAddress, false, calldata],
+        });
+        return config.quoteGas + result.result[0];
+    } else {
+        return config.quoteGas;
     }
 }

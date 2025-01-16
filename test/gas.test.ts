@@ -1,6 +1,8 @@
 import { assert } from "chai";
+import { orderPairObject1 } from "./data";
 import { OperationState, ViemClient } from "../src/types";
-import { estimateGasCost, getGasPrice, getL1Fee, getTxFee } from "../src/gas";
+import { estimateGasCost, getGasPrice, getL1Fee, getQuoteGas, getTxFee } from "../src/gas";
+import { ChainId } from "sushi";
 
 describe("Test gas", async function () {
     it("should estimate gas correctly for L1 and L2 chains", async function () {
@@ -125,5 +127,32 @@ describe("Test gas", async function () {
         await getGasPrice(config, state2);
         assert.equal(state2.gasPrice, gasPrice);
         assert.equal(state2.l1GasPrice, l1GasPrice);
+    });
+
+    it("should get quote gas", async function () {
+        const limitGas = 1_000_000n;
+        const arbitrumL1Gas = 2_000_000n;
+        const multicallAddress = "0x" + "1".repeat(40);
+
+        // mock order and bot config and viem client
+        const orderDetails = orderPairObject1;
+        const config = {
+            chain: {
+                id: ChainId.ARBITRUM,
+            },
+            quoteGas: limitGas,
+            viemClient: {
+                simulateContract: async () => ({ result: [arbitrumL1Gas, 1_500_000n, 123_000n] }),
+            },
+        } as any;
+
+        // arbitrum chain
+        let result = await getQuoteGas(config, orderDetails, multicallAddress);
+        assert.equal(result, limitGas + arbitrumL1Gas);
+
+        // other chains
+        config.chain.id = 1;
+        result = await getQuoteGas(config, orderDetails, multicallAddress);
+        assert.equal(result, limitGas);
     });
 });

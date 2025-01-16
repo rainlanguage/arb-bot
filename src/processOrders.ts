@@ -1,5 +1,6 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
+import { getQuoteGas } from "./gas";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
@@ -435,7 +436,7 @@ export async function processPair(args: {
         orderbooksOrders,
         state,
     } = args;
-
+    const isE2eTest = (config as any).isTest;
     const spanAttributes: SpanAttrs = {};
     const result: ProcessPairResult = {
         reason: undefined,
@@ -470,9 +471,9 @@ export async function processPair(args: {
     try {
         await quoteSingleOrder(
             orderPairObject,
-            (config as any).isTest ? (config as any).quoteRpc : config.rpc,
+            isE2eTest ? (config as any).quoteRpc : config.rpc,
             undefined,
-            config.quoteGas,
+            isE2eTest ? config.quoteGas : await getQuoteGas(config, orderPairObject),
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {
@@ -508,7 +509,7 @@ export async function processPair(args: {
                 fetchPoolsTimeout: 90000,
             };
             // pin block number for test case
-            if ((config as any).isTest && (config as any).testBlockNumber) {
+            if (isE2eTest && (config as any).testBlockNumber) {
                 (options as any).blockNumber = (config as any).testBlockNumber;
             }
             await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
@@ -544,7 +545,7 @@ export async function processPair(args: {
             fetchPoolsTimeout: 30000,
         };
         // pin block number for test case
-        if ((config as any).isTest && (config as any).testBlockNumber) {
+        if (isE2eTest && (config as any).testBlockNumber) {
             (options as any).blockNumber = (config as any).testBlockNumber;
         }
         inputToEthPrice = await getEthPrice(
