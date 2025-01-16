@@ -214,6 +214,20 @@ export async function dryrun({
             return Promise.reject(result);
         }
     }
+    if (gasLimit.isZero()) {
+        spanAttributes["stage"] = 2;
+        spanAttributes["isNodeError"] = true;
+        spanAttributes["error"] =
+            "Failed to estimated gas, rpc returned 0 for gasEstimate call without rejection";
+        spanAttributes["rawtx"] = JSON.stringify(
+            {
+                ...rawtx,
+                from: signer.account.address,
+            },
+            withBigintSerializer,
+        );
+        return Promise.reject(result);
+    }
     rawtx.gas = gasLimit.toBigInt();
 
     // if reached here, it means there was a success and found opp
