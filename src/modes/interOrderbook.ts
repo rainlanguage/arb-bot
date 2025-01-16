@@ -1,9 +1,9 @@
 import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
-import { BaseError, PublicClient } from "viem";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
+import { BaseError, ExecutionRevertedError, PublicClient } from "viem";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
     ONE18,
@@ -175,6 +175,12 @@ export async function dryrun({
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
+            if (gasLimit.isZero()) {
+                throw new ExecutionRevertedError({
+                    message:
+                        "Failed to estimated gas, rpc returned 0 for gasEstimate call without rejection",
+                });
+            }
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
             task.evaluable.bytecode = await parseRainlang(
@@ -213,20 +219,6 @@ export async function dryrun({
             }
             return Promise.reject(result);
         }
-    }
-    if (gasLimit.isZero()) {
-        spanAttributes["stage"] = 2;
-        spanAttributes["isNodeError"] = true;
-        spanAttributes["error"] =
-            "Failed to estimated gas, rpc returned 0 for gasEstimate call without rejection";
-        spanAttributes["rawtx"] = JSON.stringify(
-            {
-                ...rawtx,
-                from: signer.account.address,
-            },
-            withBigintSerializer,
-        );
-        return Promise.reject(result);
     }
     rawtx.gas = gasLimit.toBigInt();
 
