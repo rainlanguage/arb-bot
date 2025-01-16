@@ -1,10 +1,10 @@
 import { ChainId } from "sushi";
 import { BigNumber } from "ethers";
 import { getQuoteConfig } from "./utils";
+import { encodeFunctionData, multicall3Abi, toHex } from "viem";
 import { publicActionsL2, walletActionsL2 } from "viem/op-stack";
-import { encodeFunctionData, multicall3Abi, parseAbi, toHex } from "viem";
 import { BotConfig, BundledOrders, OperationState, RawTx, ViemClient } from "./types";
-import { ArbitrumNodeInterfaceAbi, ArbitrumNodeInterfaceAddress, orderbookAbi } from "./abis";
+import { ArbitrumNodeInterfaceAbi, ArbitrumNodeInterfaceAddress, OrderbookQuoteAbi } from "./abis";
 
 /**
  * Estimates gas cost of the given tx, also takes into account L1 gas cost if the chain is a special L2.
@@ -99,15 +99,16 @@ export async function getQuoteGas(
     multicallAddressOverride?: string,
 ): Promise<bigint> {
     if (config.chain.id === ChainId.ARBITRUM) {
+        // build the calldata of a quote call
         const quoteConfig = getQuoteConfig(orderDetails.takeOrders[0]) as any;
         quoteConfig.inputIOIndex = BigInt(quoteConfig.inputIOIndex);
         quoteConfig.outputIOIndex = BigInt(quoteConfig.outputIOIndex);
         quoteConfig.order.evaluable.bytecode = toHex(quoteConfig.order.evaluable.bytecode);
         const multicallConfig = {
             target: orderDetails.orderbook as `0x${string}`,
-            allowFailure: false,
+            allowFailure: true,
             callData: encodeFunctionData({
-                abi: parseAbi([orderbookAbi[14]]),
+                abi: OrderbookQuoteAbi,
                 functionName: "quote",
                 args: [quoteConfig],
             }),
@@ -123,9 +124,10 @@ export async function getQuoteGas(
             config.viemClient.chain?.contracts?.multicall3?.address;
         if (!multicallAddress) throw "unknown multicall address";
 
+        // call Arbitrum Node Interface for the calldata to get L1 gas
         const result = await config.viemClient.simulateContract({
-            address: ArbitrumNodeInterfaceAddress,
             abi: ArbitrumNodeInterfaceAbi,
+            address: ArbitrumNodeInterfaceAddress,
             functionName: "gasEstimateL1Component",
             args: [multicallAddress, false, calldata],
         });

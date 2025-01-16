@@ -107,6 +107,7 @@ export const DefaultArbEvaluable = {
 } as const;
 
 export const TakeOrderV2EventAbi = parseAbi([orderbookAbi[13]]);
+export const OrderbookQuoteAbi = parseAbi([orderbookAbi[14]]);
 
 /**
  * Arbitrum node interface address, used to get L1 gas limit.
