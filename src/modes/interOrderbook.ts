@@ -1,9 +1,9 @@
 import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
-import { BaseError, PublicClient } from "viem";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
+import { BaseError, ExecutionRevertedError, PublicClient } from "viem";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
     ONE18,
@@ -196,6 +196,17 @@ export async function dryrun({
             gasLimit = ethers.BigNumber.from(estimation.gas)
                 .mul(config.gasLimitMultiplier)
                 .div(100);
+            if (gasLimit.isZero()) {
+                throw new ExecutionRevertedError({
+                    cause: new BaseError("RPC returned 0 for eth_estimateGas", {
+                        cause: new Error(
+                            "Failed to estimated gas, RPC returned 0 for eth_estimateGas call without rejection",
+                        ),
+                    }),
+                    message:
+                        "Failed to estimated gas, RPC returned 0 for eth_estimateGas call without rejection",
+                });
+            }
             rawtx.gas = gasLimit.toBigInt();
             gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
 
