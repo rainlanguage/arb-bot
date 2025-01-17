@@ -613,9 +613,6 @@ export const main = async (argv: any, version?: string) => {
         }
     });
 
-    // periodically fetch and set gas price in state (once every 20 seconds)
-    setInterval(() => getGasPrice(config, state), 20_000);
-
     const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
         skip: 0,
