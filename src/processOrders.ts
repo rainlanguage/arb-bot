@@ -640,6 +640,7 @@ export async function processPair(args: {
         }
     } catch (e: any) {
         // record all span attributes
+        e.spanAttributes = JSON.parse(e.spanAttributes.attrs);
         for (const attrKey in e.spanAttributes) {
             spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
