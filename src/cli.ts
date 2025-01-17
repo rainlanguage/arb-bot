@@ -889,14 +889,14 @@ export const main = async (argv: any, version?: string) => {
                     }
                 }
 
-                // in case there are new orders or removed order, re evaluate owners limits
-                if (ordersDidChange) {
-                    await downscaleProtection(
-                        orderbooksOwnersProfileMap,
-                        config.viemClient as any as ViemClient,
-                        options.ownerProfile,
-                    );
-                }
+                // // in case there are new orders or removed order, re evaluate owners limits
+                // if (ordersDidChange) {
+                //     await downscaleProtection(
+                //         orderbooksOwnersProfileMap,
+                //         config.viemClient as any as ViemClient,
+                //         options.ownerProfile,
+                //     );
+                // }
             } catch {
                 /**/
             }
