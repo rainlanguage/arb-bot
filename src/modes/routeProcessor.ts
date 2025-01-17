@@ -498,7 +498,7 @@ export async function findOppWithRetries({
             // ie its maxInput is the greatest
             const prom = allPromises[i];
             if (prom.status === "fulfilled") {
-                if (!choice || choice.maximumInput!.lt(prom.value.value!.maximumInput!)) {
+                if (!choice || choice.estimatedProfit.lt(prom.value.value!.estimatedProfit)) {
                     // record the attributes of the choosing one
                     for (const attrKey in prom.value.spanAttributes) {
                         spanAttributes[attrKey] = prom.value.spanAttributes[attrKey];

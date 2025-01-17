@@ -1,8 +1,8 @@
 import { assert } from "chai";
+import { ChainId } from "sushi";
 import { orderPairObject1 } from "./data";
 import { OperationState, ViemClient } from "../src/types";
 import { estimateGasCost, getGasPrice, getL1Fee, getQuoteGas, getTxFee } from "../src/gas";
-import { ChainId } from "sushi";
 
 describe("Test gas", async function () {
     it("should estimate gas correctly for L1 and L2 chains", async function () {
@@ -80,7 +80,9 @@ describe("Test gas", async function () {
 
     it("should get tx fee", async function () {
         // mock config and receipt
-        const config = {} as any;
+        const config = {
+            chain: { id: 137 },
+        } as any;
         const receipt = {
             effectiveGasPrice: 10n,
             gasUsed: 5n,
@@ -102,6 +104,7 @@ describe("Test gas", async function () {
         const l1GasPrice = 2n;
         // mock config and viem client
         const config = {
+            chain: { id: 137 },
             isSpecialL2: false,
             gasPriceMultiplier: 100n,
             viemClient: { getGasPrice: async () => gasPrice },
