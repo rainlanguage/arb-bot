@@ -243,8 +243,13 @@ export async function dryrun({
                     .div(100);
                 if (gasLimit.isZero()) {
                     throw new ExecutionRevertedError({
+                        cause: new BaseError("RPC returned 0 for eth_estimateGas", {
+                            cause: new Error(
+                                "Failed to estimated gas, RPC returned 0 for eth_estimateGas call without rejection",
+                            ),
+                        }),
                         message:
-                            "Failed to estimated gas, rpc returned 0 for gasEstimate call without rejection",
+                            "Failed to estimated gas, RPC returned 0 for eth_estimateGas call without rejection",
                     });
                 }
                 rawtx.gas = gasLimit.toBigInt();
