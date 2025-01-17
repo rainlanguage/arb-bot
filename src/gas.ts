@@ -1,10 +1,13 @@
 import { ChainId } from "sushi";
 import { BigNumber } from "ethers";
 import { getQuoteConfig } from "./utils";
+import { publicActionsL2 } from "viem/op-stack";
 import { encodeFunctionData, multicall3Abi, toHex } from "viem";
-import { publicActionsL2, walletActionsL2 } from "viem/op-stack";
 import { BotConfig, BundledOrders, OperationState, RawTx, ViemClient } from "./types";
 import { ArbitrumNodeInterfaceAbi, ArbitrumNodeInterfaceAddress, OrderbookQuoteAbi } from "./abis";
+
+// default gas price for bsc chain, 1 gwei
+export const BSC_DEFAULT_GAS_PRICE = 1_000_000_000n as const;
 
 /**
  * Estimates gas cost of the given tx, also takes into account L1 gas cost if the chain is a special L2.
@@ -29,9 +32,7 @@ export async function estimateGasCost(
     };
     if (config.isSpecialL2) {
         try {
-            const l1Signer_ = l1Signer
-                ? l1Signer
-                : signer.extend(walletActionsL2()).extend(publicActionsL2());
+            const l1Signer_ = l1Signer ? l1Signer : signer.extend(publicActionsL2());
             if (typeof l1GasPrice !== "bigint") {
                 l1GasPrice = (await l1Signer_.getL1BaseFee()) as bigint;
             }
@@ -83,7 +84,11 @@ export async function getGasPrice(config: BotConfig, state: OperationState) {
     }
     const [gasPriceResult, l1GasPriceResult = undefined] = await Promise.allSettled(promises);
     if (gasPriceResult.status === "fulfilled") {
-        state.gasPrice = (gasPriceResult.value * BigInt(config.gasPriceMultiplier)) / 100n;
+        let gasPrice = gasPriceResult.value;
+        if (config.chain.id === ChainId.BSC && gasPrice < BSC_DEFAULT_GAS_PRICE) {
+            gasPrice = BSC_DEFAULT_GAS_PRICE;
+        }
+        state.gasPrice = (gasPrice * BigInt(config.gasPriceMultiplier)) / 100n;
     }
     if (l1GasPriceResult?.status === "fulfilled") {
         state.l1GasPrice = l1GasPriceResult.value;
