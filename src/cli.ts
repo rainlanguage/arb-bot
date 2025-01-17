@@ -24,7 +24,7 @@ import {
     getBatchEthBalance,
 } from "./account";
 import {
-    downscaleProtection,
+    // downscaleProtection,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
     handleAddOrderbookOwnersProfileMap,
@@ -846,7 +846,7 @@ export const main = async (argv: any, version?: string) => {
                         startTime: lastReadOrdersTimestamp,
                     }),
                 );
-                let ordersDidChange = false;
+                // let ordersDidChange = false;
                 const results = await Promise.allSettled(
                     lastReadOrdersMap.map((v) =>
                         getOrderChanges(
@@ -861,9 +861,9 @@ export const main = async (argv: any, version?: string) => {
                 for (let i = 0; i < results.length; i++) {
                     const res = results[i];
                     if (res.status === "fulfilled") {
-                        if (res.value.addOrders.length || res.value.removeOrders.length) {
-                            ordersDidChange = true;
-                        }
+                        // if (res.value.addOrders.length || res.value.removeOrders.length) {
+                        //     ordersDidChange = true;
+                        // }
                         lastReadOrdersMap[i].skip += res.value.count;
                         try {
                             await handleAddOrderbookOwnersProfileMap(
