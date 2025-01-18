@@ -450,7 +450,6 @@ export async function processPair(args: {
             sellToken: orderPairObject.sellToken,
         },
     };
-    const gasPrice = ethers.BigNumber.from(state.gasPrice);
 
     spanAttributes["details.orders"] = orderPairObject.takeOrders.map((v) => v.id);
     spanAttributes["details.pair"] = pair;
@@ -500,6 +499,7 @@ export async function processPair(args: {
     });
 
     await getGasPrice(config, state);
+    const gasPrice = ethers.BigNumber.from(state.gasPrice);
 
     // get pool details
     if (
