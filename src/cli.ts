@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import { isAddress } from "viem";
-import { getGasPrice } from "./gas";
+import { getGasPrice } from "./tx";
 import { Command } from "commander";
 import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";

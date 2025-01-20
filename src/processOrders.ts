@@ -1,6 +1,6 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
-import { getGasPrice, getQuoteGas } from "./gas";
+import { getGasPrice, getQuoteGas } from "./tx";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { createViemClient } from "./config";
