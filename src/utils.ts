@@ -751,7 +751,7 @@ export async function quoteOrders(
     orderDetails: BundledOrders[][],
     rpcs: string[],
     blockNumber?: bigint,
-    gas?: bigint,
+    // gas?: bigint,
     multicallAddressOverride?: string,
 ): Promise<BundledOrders[][]> {
     let quoteResults: any[] = [];
@@ -770,7 +770,7 @@ export async function quoteOrders(
                 targets,
                 rpc,
                 blockNumber,
-                gas,
+                // gas,
                 multicallAddressOverride,
             );
             break;
@@ -828,7 +828,7 @@ export async function quoteSingleOrder(
     orderDetails: BundledOrders,
     rpcs: string[],
     blockNumber?: bigint,
-    gas?: bigint,
+    // gas?: bigint,
     multicallAddressOverride?: string,
 ) {
     for (let i = 0; i < rpcs.length; i++) {
@@ -844,7 +844,7 @@ export async function quoteSingleOrder(
                     ] as any as QuoteTarget[],
                     rpc,
                     blockNumber,
-                    gas,
+                    // gas,
                     multicallAddressOverride,
                 )
             )[0];
