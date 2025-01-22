@@ -659,6 +659,7 @@ export async function quoteSingleOrder(
     gas?: bigint,
     multicallAddressOverride?: string,
 ) {
+    gas;
     for (let i = 0; i < rpcs.length; i++) {
         const rpc = rpcs[i];
         try {
@@ -672,7 +673,7 @@ export async function quoteSingleOrder(
                     ] as any as QuoteTarget[],
                     rpc,
                     blockNumber,
-                    gas,
+                    // gas,
                     multicallAddressOverride,
                 )
             )[0];
