@@ -1,10 +1,15 @@
 import { ethers } from "ethers";
 import { SgOrder } from "./query";
 import { Span } from "@opentelemetry/api";
-import { OrderV3, VaultBalanceAbi } from "./abis";
-import { decodeAbiParameters, erc20Abi, parseAbiParameters } from "viem";
-import { doQuoteTargets, QuoteTarget } from "@rainlanguage/orderbook/quote";
+import { OrderbookQuoteAbi, OrderV3, VaultBalanceAbi } from "./abis";
 import { shuffleArray, sleep, addWatchedToken, getQuoteConfig } from "./utils";
+import {
+    erc20Abi,
+    encodeFunctionData,
+    parseAbiParameters,
+    decodeAbiParameters,
+    decodeFunctionResult,
+} from "viem";
 import {
     Pair,
     Order,
@@ -648,47 +653,39 @@ export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
 /**
  * Quotes a single order
  * @param orderDetails - Order details to quote
- * @param rpcs - RPC urls
+ * @param viemClient - Viem client
  * @param blockNumber - Optional block number
- * @param multicallAddressOverride - Optional multicall address
+ * @param gas - Optional read gas
  */
 export async function quoteSingleOrder(
     orderDetails: BundledOrders,
-    rpcs: string[],
+    viemClient: ViemClient,
     blockNumber?: bigint,
     gas?: bigint,
-    multicallAddressOverride?: string,
 ) {
-    for (let i = 0; i < rpcs.length; i++) {
-        const rpc = rpcs[i];
-        try {
-            const quoteResult = (
-                await doQuoteTargets(
-                    [
-                        {
-                            orderbook: orderDetails.orderbook,
-                            quoteConfig: getQuoteConfig(orderDetails.takeOrders[0]),
-                        },
-                    ] as any as QuoteTarget[],
-                    rpc,
-                    blockNumber,
-                    gas,
-                    multicallAddressOverride,
-                )
-            )[0];
-            if (typeof quoteResult !== "string") {
-                orderDetails.takeOrders[0].quote = {
-                    maxOutput: ethers.BigNumber.from(quoteResult.maxOutput),
-                    ratio: ethers.BigNumber.from(quoteResult.ratio),
-                };
-                return;
-            } else {
-                return Promise.reject(`failed to quote order, reason: ${quoteResult}`);
-            }
-        } catch (e) {
-            // throw only after every available rpc has been tried and failed
-            if (i === rpcs.length - 1) throw (e as Error)?.message;
-        }
+    const { data } = await viemClient.call({
+        to: orderDetails.orderbook as `0x${string}`,
+        data: encodeFunctionData({
+            abi: OrderbookQuoteAbi,
+            functionName: "quote",
+            args: [getQuoteConfig(orderDetails.takeOrders[0])],
+        }),
+        blockNumber,
+        gas,
+    });
+    if (typeof data !== "undefined") {
+        const quoteResult = decodeFunctionResult({
+            abi: OrderbookQuoteAbi,
+            functionName: "quote",
+            data,
+        });
+        orderDetails.takeOrders[0].quote = {
+            maxOutput: ethers.BigNumber.from(quoteResult[1]),
+            ratio: ethers.BigNumber.from(quoteResult[2]),
+        };
+        return;
+    } else {
+        return Promise.reject(`Failed to quote order, reason: reqtured no data`);
     }
 }
 

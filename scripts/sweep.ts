@@ -8,8 +8,8 @@ import { routeProcessor3Abi } from "../src/abis";
 import { setWatchedTokens } from "../src/account";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
-import { createViemClient, getDataFetcher } from "../src/config";
-import { getRpSwap, PoolBlackList, processLps, sleep } from "../src/utils";
+import { getRpSwap, PoolBlackList, sleep } from "../src/utils";
+import { createViemClient, getDataFetcher, processLps } from "../src/config";
 import { HDAccount, mnemonicToAccount, PrivateKeyAccount } from "viem/accounts";
 
 /**

@@ -191,7 +191,7 @@ describe("Test order", async function () {
                                     vaultId: ethers.BigNumber.from("1"),
                                 },
                             ],
-                            nonce: "1",
+                            nonce: `0x${"1".repeat(64)}`,
                         },
                         inputIOIndex: 0,
                         outputIOIndex: 0,
@@ -200,13 +200,22 @@ describe("Test order", async function () {
                 },
             ],
         };
-        // mock response with encoded data
-        await mockServer
-            .forPost("/rpc")
-            .thenSendJsonRpcResult(
-                encodeQuoteResponse([[true, ethers.BigNumber.from(1), ethers.BigNumber.from(2)]]),
-            );
-        await quoteSingleOrder(orderDetails, [mockServer.url + "/rpc"]);
+        const viemClient = {
+            call: async (args) => {
+                if (args?.data?.includes("0xe0e530b7")) {
+                    return {
+                        data: encodeQuoteResponse([
+                            true,
+                            ethers.BigNumber.from(1),
+                            ethers.BigNumber.from(2),
+                        ]),
+                    };
+                } else {
+                    return;
+                }
+            },
+        };
+        await quoteSingleOrder(orderDetails, viemClient);
         const expected = {
             maxOutput: ethers.BigNumber.from(1),
             ratio: ethers.BigNumber.from(2),

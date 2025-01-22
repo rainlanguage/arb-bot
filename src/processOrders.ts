@@ -1,11 +1,11 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
-import { getGasPrice, getQuoteGas } from "./gas";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
 import { createViemClient } from "./config";
 import { arbAbis, orderbookAbi } from "./abis";
+import { getGasPrice, getQuoteGas } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -441,7 +441,7 @@ export async function processPair(args: {
     try {
         await quoteSingleOrder(
             orderPairObject,
-            isE2eTest ? (config as any).quoteRpc : config.rpc,
+            viemClient as any as ViemClient,
             undefined,
             isE2eTest ? config.quoteGas : await getQuoteGas(config, orderPairObject),
         );

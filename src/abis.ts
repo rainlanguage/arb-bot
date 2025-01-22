@@ -97,6 +97,7 @@ export const DefaultArbEvaluable = {
 export const TakeOrderV2EventAbi = parseAbi([orderbookAbi[13]]);
 export const OrderbookQuoteAbi = parseAbi([orderbookAbi[14]]);
 export const VaultBalanceAbi = parseAbi([orderbookAbi[3]]);
+export const AfterClearAbi = parseAbi([orderbookAbi[2]]);
 export const DeployerAbi = parseAbi(deployerAbi);
 export const MulticallAbi = parseAbi(multicall3Abi);
 

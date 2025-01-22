@@ -1,12 +1,12 @@
-import { orderbookAbi } from "./abis";
 import { ChainId } from "sushi/chain";
+import { AfterClearAbi } from "./abis";
 import { RouteLeg } from "sushi/tines";
 import { Token, Type } from "sushi/currency";
 import BlackList from "./pool-blacklist.json";
-import { erc20Abi, TransactionReceipt } from "viem";
 import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
-import { BotConfig, TakeOrder, TokenDetails, ViemClient } from "./types";
+import { erc20Abi, parseEventLogs, TransactionReceipt } from "viem";
+import { BotConfig, TakeOrderDetails, TokenDetails, ViemClient } from "./types";
 import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
 
 /**
@@ -14,22 +14,21 @@ import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sus
  */
 export const ONE18 = 1_000_000_000_000_000_000n as const;
 
+export const PoolBlackList = new Set(BlackList);
 export function RPoolFilter(pool: any) {
     return !BlackList.includes(pool.address) && !BlackList.includes(pool.address.toLowerCase());
 }
-
-export const PoolBlackList = new Set(BlackList);
 
 /**
  * Waits for provided miliseconds
  * @param ms - Miliseconds to wait
  */
-export const sleep = async (ms: number, msg = "") => {
+export async function sleep(ms: number, msg = "") {
     let _timeoutReference: string | number | NodeJS.Timeout | undefined;
     return new Promise(
         (resolve) => (_timeoutReference = setTimeout(() => resolve(msg), ms)),
     ).finally(() => clearTimeout(_timeoutReference));
-};
+}
 
 /**
  * Extracts the income (received token value) from transaction receipt
@@ -38,34 +37,29 @@ export const sleep = async (ms: number, msg = "") => {
  * @param token - The token address that was transfered
  * @returns The income value or undefined if cannot find any valid value
  */
-export const getIncome = (
+export function getIncome(
     signerAddress: string,
     receipt: TransactionReceipt,
     token: string,
-): BigNumber | undefined => {
-    let result: BigNumber | undefined;
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
+): BigNumber | undefined {
     try {
-        if (receipt.logs)
-            result = receipt.logs
-                .filter(
-                    (v) =>
-                        (v.address && token ? ethers.BigNumber.from(v.address).eq(token) : true) &&
-                        v.topics[2] &&
-                        ethers.BigNumber.from(v.topics[2]).eq(signerAddress),
-                )
-                .map((v) => {
-                    try {
-                        return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-                    } catch {
-                        return undefined;
-                    }
-                })?.[0]?.value;
-    } catch {
-        /**/
-    }
-    return result;
-};
+        const logs = parseEventLogs({
+            abi: erc20Abi,
+            eventName: "Transfer",
+            logs: receipt.logs,
+        });
+        for (const log of logs) {
+            if (
+                log.eventName === "Transfer" &&
+                (log.address && token ? BigNumber.from(log.address).eq(token) : true) &&
+                BigNumber.from(log.args.to).eq(signerAddress)
+            ) {
+                return BigNumber.from(log.args.value);
+            }
+        }
+    } catch {}
+    return undefined;
+}
 
 /**
  * Extracts the actual clear amount (received token value) from transaction receipt
@@ -74,90 +68,82 @@ export const getIncome = (
  * @param receipt - The transaction receipt
  * @returns The actual clear amount
  */
-export const getActualClearAmount = (
+export function getActualClearAmount(
     toAddress: string,
     obAddress: string,
     receipt: TransactionReceipt,
-): BigNumber | undefined => {
+): BigNumber | undefined {
     if (toAddress.toLowerCase() !== obAddress.toLowerCase()) {
-        const erc20Interface = new ethers.utils.Interface(erc20Abi);
         try {
-            if (receipt.logs)
-                return receipt.logs
-                    .map((v) => {
-                        try {
-                            return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-                        } catch {
-                            return undefined;
-                        }
-                    })
-                    .filter(
-                        (v) =>
-                            v !== undefined &&
-                            BigNumber.from(v.to).eq(toAddress) &&
-                            BigNumber.from(v.from).eq(obAddress),
-                    )[0]?.value;
-            else return undefined;
-        } catch {
-            return undefined;
-        }
+            const logs = parseEventLogs({
+                abi: erc20Abi,
+                eventName: "Transfer",
+                logs: receipt.logs,
+            });
+            for (const log of logs) {
+                if (
+                    log.eventName === "Transfer" &&
+                    BigNumber.from(log.args.to).eq(toAddress) &&
+                    BigNumber.from(log.args.from).eq(obAddress)
+                ) {
+                    return BigNumber.from(log.args.value);
+                }
+            }
+        } catch {}
+        return undefined;
     } else {
-        const obInterface = new ethers.utils.Interface(orderbookAbi);
         try {
-            if (receipt.logs)
-                return receipt.logs
-                    .map((v) => {
-                        try {
-                            return obInterface.decodeEventLog("AfterClear", v.data, v.topics);
-                        } catch {
-                            return undefined;
-                        }
-                    })
-                    .filter((v) => v !== undefined)[0]?.clearStateChange?.aliceOutput;
-            else return undefined;
-        } catch {
-            return undefined;
-        }
+            const logs = parseEventLogs({
+                abi: AfterClearAbi,
+                eventName: "AfterClear",
+                logs: receipt.logs,
+            });
+            for (const log of logs) {
+                if (log.eventName === "AfterClear") {
+                    return BigNumber.from(log.args.clearStateChange.aliceOutput);
+                }
+            }
+        } catch {}
+        return undefined;
     }
-};
+}
 
 /**
  * Calculates the actual clear price from transactioin event
  * @param receipt - The transaction receipt
  * @param orderbook - The Orderbook contract address
  * @param arb - The Arb contract address
- * @param amount - The clear amount
- * @param buyDecimals - The buy token decimals
+ * @param clearAmount - The clear amount
+ * @param tokenDecimals - The buy token decimals
  * @returns The actual clear price or undefined if necessary info not found in transaction events
  */
-export const getActualPrice = (
+export function getActualPrice(
     receipt: TransactionReceipt,
     orderbook: string,
     arb: string,
-    amount: string,
-    buyDecimals: number,
-): string | undefined => {
-    const erc20Interface = new ethers.utils.Interface(erc20Abi);
-    const eventObj = receipt.logs
-        ?.map((v) => {
-            try {
-                return erc20Interface.decodeEventLog("Transfer", v.data, v.topics);
-            } catch {
-                return undefined;
+    clearAmount: string,
+    tokenDecimals: number,
+): string | undefined {
+    try {
+        const logs = parseEventLogs({
+            abi: erc20Abi,
+            eventName: "Transfer",
+            logs: receipt.logs,
+        });
+        for (const log of logs) {
+            if (
+                log.eventName === "Transfer" &&
+                BigNumber.from(log.args.to).eq(arb) &&
+                !BigNumber.from(log.args.from).eq(orderbook)
+            ) {
+                return ethers.utils.formatUnits(
+                    scale18(log.args.value, tokenDecimals).mul(ONE18).div(clearAmount),
+                );
             }
-        })
-        .filter(
-            (v) =>
-                v &&
-                !ethers.BigNumber.from(v.from).eq(orderbook) &&
-                ethers.BigNumber.from(v.to).eq(arb),
-        );
-    if (eventObj[0] && eventObj[0]?.value)
-        return ethers.utils.formatUnits(
-            scale18(eventObj[0].value, buyDecimals).mul(ONE18).div(amount),
-        );
-    else return undefined;
-};
+        }
+    } catch {}
+    return undefined;
+}
 
 /**
  * Gets token price against ETH
@@ -168,7 +154,7 @@ export const getActualPrice = (
  * @param dataFetcher - (optional) The DataFetcher instance
  * @param options - (optional) The DataFetcher options
  */
-export const getEthPrice = async (
+export async function getEthPrice(
     config: any,
     targetTokenAddress: string,
     targetTokenDecimals: number,
@@ -176,7 +162,7 @@ export const getEthPrice = async (
     dataFetcher: DataFetcher,
     options?: DataFetcherOptions,
     fetchPools = true,
-): Promise<string | undefined> => {
+): Promise<string | undefined> {
     if (targetTokenAddress.toLowerCase() == config.nativeWrappedToken.address.toLowerCase()) {
         return "1";
     }
@@ -221,44 +207,14 @@ export const getEthPrice = async (
             );
         else return undefined;
     } else return ethers.utils.formatUnits(route.amountOutBI);
-};
-
-/**
- * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
- * @param liquidityProviders - List of liquidity providers
- */
-export const processLps = (liquidityProviders?: string[]) => {
-    const LP = Object.values(LiquidityProviders);
-    if (
-        !liquidityProviders ||
-        !Array.isArray(liquidityProviders) ||
-        !liquidityProviders.length ||
-        !liquidityProviders.every((v) => typeof v === "string")
-    ) {
-        // exclude curve since it is currently in audit, unless it is explicitly specified
-        // exclude camelot
-        return LP.filter(
-            (v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot,
-        );
-    }
-    const _lps: LiquidityProviders[] = [];
-    for (let i = 0; i < liquidityProviders.length; i++) {
-        const index = LP.findIndex(
-            (v) => v.toLowerCase() === liquidityProviders[i].toLowerCase().trim(),
-        );
-        if (index > -1 && !_lps.includes(LP[index])) _lps.push(LP[index]);
-    }
-    return _lps.length
-        ? _lps
-        : LP.filter((v) => v !== LiquidityProviders.CurveSwap && v !== LiquidityProviders.Camelot);
-};
+}
 
 /**
  * Method to shorten data fields of items that are logged and optionally hide sensitive data
  * @param scrub - Option to scrub sensitive data
  * @param data - The optinnal data to hide
  */
-export const appGlobalLogger = (scrub: boolean, ...data: any[]) => {
+export function appGlobalLogger(scrub: boolean, ...data: any[]) {
     // const largeDataPattern = /0x[a-fA-F0-9]{128,}/g;
     const consoleMethods = ["log", "warn", "error", "info", "debug"];
 
@@ -368,7 +324,7 @@ export const appGlobalLogger = (scrub: boolean, ...data: any[]) => {
             orgConsole.apply(console, modifiedParams);
         };
     });
-};
+}
 
 /**
  * Method to put a timeout on a promise, throws the exception if promise is not settled within the time
@@ -378,17 +334,17 @@ export const appGlobalLogger = (scrub: boolean, ...data: any[]) => {
  * @returns A new promise that gets settled with initial promise settlement or rejected with exception value
  * if the time runs out before the main promise settlement
  */
-export const promiseTimeout = async (
+export async function promiseTimeout(
     promise: Promise<any>,
     time: number,
     exception: string | number | bigint | symbol | boolean,
-) => {
+) {
     let timer: string | number | NodeJS.Timeout | undefined;
     return Promise.race([
         promise,
         new Promise((_res, _rej) => (timer = setTimeout(_rej, time, exception))),
     ]).finally(() => clearTimeout(timer));
-};
+}
 
 /**
  * Method to visualize the routes, returns array of route strings sorted from highest to lowest percentage
@@ -396,7 +352,7 @@ export const promiseTimeout = async (
  * @param toToken - The to token address
  * @param legs - The legs of the route
  */
-export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[]): string[] => {
+export function visualizeRoute(fromToken: Token, toToken: Token, legs: RouteLeg[]): string[] {
     return [
         // direct
         ...legs
@@ -462,13 +418,13 @@ export const visualizeRoute = (fromToken: Token, toToken: Token, legs: RouteLeg[
                     )
                     .join(" >> "),
         );
-};
+}
 
 /**
  * Shuffles an array
  * @param array - The array
  */
-export const shuffleArray = (array: any[]) => {
+export function shuffleArray(array: any[]) {
     let currentIndex = array.length;
     let randomIndex = 0;
 
@@ -483,38 +439,40 @@ export const shuffleArray = (array: any[]) => {
     }
 
     return array;
-};
+}
 
 /**
  * Get a TakeOrder type consumable by orderbook Quote lib for quoting orders
  */
-export function getQuoteConfig(orderDetails: any): TakeOrder {
+export function getQuoteConfig(orderDetails: TakeOrderDetails) {
     return {
         order: {
-            owner: orderDetails.takeOrder.order.owner,
-            nonce: orderDetails.takeOrder.order.nonce,
+            owner: orderDetails.takeOrder.order.owner as `0x${string}`,
+            nonce: orderDetails.takeOrder.order.nonce as `0x${string}`,
             evaluable: {
-                interpreter: orderDetails.takeOrder.order.evaluable.interpreter,
-                store: orderDetails.takeOrder.order.evaluable.store,
-                bytecode: ethers.utils.arrayify(orderDetails.takeOrder.order.evaluable.bytecode),
+                interpreter: orderDetails.takeOrder.order.evaluable.interpreter as `0x${string}`,
+                store: orderDetails.takeOrder.order.evaluable.store as `0x${string}`,
+                bytecode: orderDetails.takeOrder.order.evaluable.bytecode as `0x${string}`,
             },
             validInputs: orderDetails.takeOrder.order.validInputs.map((input: any) => ({
-                token: input.token,
+                token: input.token as `0x${string}`,
                 decimals: input.decimals,
-                vaultId:
+                vaultId: BigInt(
                     typeof input.vaultId == "string" ? input.vaultId : input.vaultId.toHexString(),
+                ),
             })),
             validOutputs: orderDetails.takeOrder.order.validOutputs.map((output: any) => ({
-                token: output.token,
+                token: output.token as `0x${string}`,
                 decimals: output.decimals,
-                vaultId:
+                vaultId: BigInt(
                     typeof output.vaultId == "string"
                         ? output.vaultId
                         : output.vaultId.toHexString(),
+                ),
             })),
         },
-        inputIOIndex: orderDetails.takeOrder.inputIOIndex,
-        outputIOIndex: orderDetails.takeOrder.outputIOIndex,
+        inputIOIndex: BigInt(orderDetails.takeOrder.inputIOIndex),
+        outputIOIndex: BigInt(orderDetails.takeOrder.outputIOIndex),
         signedContext: orderDetails.takeOrder.signedContext,
     };
 }
@@ -525,8 +483,8 @@ export function getQuoteConfig(orderDetails: any): TakeOrder {
  * @returns A new copy of the object
  */
 export function clone<T>(obj: any): T {
-    if (obj instanceof ethers.BigNumber) {
-        return ethers.BigNumber.from(obj.toString()) as T;
+    if (obj instanceof BigNumber) {
+        return BigNumber.from(obj.toString()) as T;
     } else if (Array.isArray(obj)) {
         return obj.map((item) => clone(item)) as T;
     } else if (typeof obj === "object") {
@@ -684,7 +642,7 @@ export function estimateProfit(
  * @param dataFetcher - The DataFetcher instance
  * @param gasPrice - Gas price
  */
-export const getRpSwap = async (
+export async function getRpSwap(
     chainId: number,
     sellAmount: BigNumber,
     fromToken: Type,
@@ -694,7 +652,7 @@ export const getRpSwap = async (
     dataFetcher: DataFetcher,
     gasPrice: BigNumber,
     lps?: LiquidityProviders[],
-) => {
+) {
     const amountIn = sellAmount.toBigInt();
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
@@ -720,7 +678,7 @@ export const getRpSwap = async (
         );
         return { rpParams, route };
     }
-};
+}
 
 /**
  * Checks if a route exists between 2 tokens using sushi router
@@ -734,7 +692,7 @@ export async function routeExists(
     try {
         await getRpSwap(
             config.chain.id,
-            ethers.BigNumber.from("1" + "0".repeat(fromToken.decimals)),
+            BigNumber.from("1" + "0".repeat(fromToken.decimals)),
             fromToken,
             toToken,
             "0x" + "1".repeat(40),
@@ -815,6 +773,9 @@ export function isBigNumberish(value: any): value is BigNumberish {
     );
 }
 
+/**
+ * Helper function to log memory usage
+ */
 export function memory(msg: string) {
     // eslint-disable-next-line no-console
     console.log(msg);

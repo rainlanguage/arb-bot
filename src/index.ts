@@ -3,7 +3,6 @@ import { ethers } from "ethers";
 import { ChainId } from "sushi";
 import { versions } from "process";
 import { PublicClient } from "viem";
-import { processLps } from "./utils";
 import { DeployerAbi } from "./abis";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
@@ -21,6 +20,7 @@ import {
     OperationState,
 } from "./types";
 import {
+    processLps,
     getChainConfig,
     getDataFetcher,
     onFetchRequest,
