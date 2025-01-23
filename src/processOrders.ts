@@ -5,7 +5,7 @@ import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
 import { createViemClient } from "./config";
 import { arbAbis, orderbookAbi } from "./abis";
-import { getGasPrice, getQuoteGas } from "./gas";
+import { getGasPrice } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -442,8 +442,8 @@ export async function processPair(args: {
         await quoteSingleOrder(
             orderPairObject,
             viemClient as any as ViemClient,
-            undefined,
-            isE2eTest ? config.quoteGas : await getQuoteGas(config, orderPairObject),
+            // undefined,
+            // isE2eTest ? config.quoteGas : await getQuoteGas(config, orderPairObject),
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {
