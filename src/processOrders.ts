@@ -465,8 +465,8 @@ export async function processPair(args: {
         await quoteSingleOrder(
             orderPairObject,
             (config as any).isTest ? (config as any).quoteRpc : config.rpc,
-            // undefined,
-            // config.quoteGas,
+            undefined,
+            config.quoteGas,
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
             result.report = {
