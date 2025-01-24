@@ -254,10 +254,8 @@ export async function getOrderChanges(
     subgraph: string,
     startTimestamp: number,
     skip: number,
-    timeout?: number,
     span?: Span,
 ) {
-    timeout;
     let skip_ = skip;
     let count = 0;
     const allResults: SgTx[] = [];

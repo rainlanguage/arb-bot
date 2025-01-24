@@ -852,13 +852,7 @@ export const main = async (argv: any, version?: string) => {
                 let ordersDidChange = false;
                 const results = await Promise.allSettled(
                     lastReadOrdersMap.map((v) =>
-                        getOrderChanges(
-                            v.sg,
-                            lastReadOrdersTimestamp,
-                            v.skip,
-                            options.timeout,
-                            roundSpan,
-                        ),
+                        getOrderChanges(v.sg, lastReadOrdersTimestamp, v.skip, roundSpan),
                     ),
                 );
                 for (let i = 0; i < results.length; i++) {
