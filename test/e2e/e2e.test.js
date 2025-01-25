@@ -30,8 +30,6 @@ const {
     deployOrderBookNPE2,
     rainterpreterNPE2Deploy,
     rainterpreterStoreNPE2Deploy,
-    rainterpreterParserNPE2Deploy,
-    rainterpreterExpressionDeployerNPE2Deploy,
 } = require("../utils");
 
 // run tests on each network in the provided data
@@ -118,12 +116,6 @@ for (let i = 0; i < testData.length; i++) {
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
-                const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    parser: parser.address,
-                });
                 const orderbook = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
@@ -266,11 +258,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
-                config.dispair = {
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    deployer: deployer.address,
-                };
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
@@ -396,12 +383,6 @@ for (let i = 0; i < testData.length; i++) {
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
-                const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    parser: parser.address,
-                });
                 const orderbook1 = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
@@ -597,11 +578,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
-                config.dispair = {
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    deployer: deployer.address,
-                };
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
@@ -757,12 +733,6 @@ for (let i = 0; i < testData.length; i++) {
                 // deploy contracts
                 const interpreter = await rainterpreterNPE2Deploy();
                 const store = await rainterpreterStoreNPE2Deploy();
-                const parser = await rainterpreterParserNPE2Deploy();
-                const deployer = await rainterpreterExpressionDeployerNPE2Deploy({
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    parser: parser.address,
-                });
                 const orderbook = !orderbookAddress
                     ? await deployOrderBookNPE2()
                     : await ethers.getContractAt(orderbookAbi, orderbookAddress);
@@ -970,11 +940,6 @@ for (let i = 0; i < testData.length; i++) {
                 config.quoteRpc = [mockServer.url + "/rpc"];
                 config.gasPriceMultiplier = 107;
                 config.gasLimitMultiplier = 100;
-                config.dispair = {
-                    interpreter: interpreter.address,
-                    store: store.address,
-                    deployer: deployer.address,
-                };
                 orders = prepareOrdersForRound(
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,

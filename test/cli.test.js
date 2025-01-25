@@ -56,8 +56,6 @@ describe("Test cli", async function () {
 
     it("test cli startup", async function () {
         process.env.CLI_STARTUP_TEST = true;
-        const deployer = "0xE7116BC05C8afe25e5B54b813A74F916B5D42aB1";
-
         try {
             await startup(["", ""]);
             assert.fail("expected to fail, but resolved");
@@ -172,54 +170,6 @@ describe("Test cli", async function () {
             assert.equal(error, expected);
         }
 
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--orderbook-address",
-                `0x${"0".repeat(64)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "undefined dispair address";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--orderbook-address",
-                `0x${"2".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "failed to get dispair interpreter address";
-            assert.equal(error, expected);
-        }
-
         const result = await startup([
             "",
             "",
@@ -242,12 +192,10 @@ describe("Test cli", async function () {
             "--quote-gas",
             "7777",
             "--rp-only",
-            "--dispair",
-            deployer,
         ]);
         const expected = {
             roundGap: 10000,
-            poolUpdateInterval: 0,
+            poolUpdateInterval: 900000,
             config: {
                 chain: { id: 137 },
                 rpc: ["https://rpc.ankr.com/polygon"],
@@ -256,8 +204,8 @@ describe("Test cli", async function () {
                 route: "single",
                 rpcRecords: {
                     "https://rpc.ankr.com/polygon/": {
-                        req: 4,
-                        success: 4,
+                        req: 2,
+                        success: 2,
                         failure: 0,
                         cache: {},
                     },
@@ -267,11 +215,6 @@ describe("Test cli", async function () {
                 txGas: "123456789",
                 quoteGas: 7777n,
                 rpOnly: true,
-                dispair: {
-                    interpreter: "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D",
-                    store: "0xFA4989F5D49197FD9673cE4B7Fe2A045A0F2f9c8",
-                    deployer,
-                },
             },
             options: {
                 botMinBalance: "0.123",
@@ -280,7 +223,6 @@ describe("Test cli", async function () {
                 txGas: "123456789",
                 quoteGas: 7777n,
                 rpOnly: true,
-                dispair: deployer,
             },
         };
         await sleep(1000);
@@ -302,7 +244,5 @@ describe("Test cli", async function () {
         assert.equal(result.config.quoteGas, expected.config.quoteGas);
         assert.equal(result.options.rpOnly, expected.options.rpOnly);
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
-        assert.deepEqual(result.options.dispair, expected.options.dispair);
-        assert.deepEqual(result.config.dispair, expected.config.dispair);
     });
 });
