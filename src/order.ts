@@ -311,7 +311,7 @@ export function prepareOrdersForRound(
                     orderProfile.takeOrders.length > 0
                 ) {
                     const consumingOrderPairs = orderProfile.takeOrders.splice(0, remainingLimit);
-                    remainingLimit -= consumingOrderPairs.length;
+                    remainingLimit -= consumingOrderPairs.length; 
                     orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
                     gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
                 }
