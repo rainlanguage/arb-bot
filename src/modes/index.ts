@@ -119,21 +119,21 @@ export async function findOpp({
         if ((allResults[0] as any)?.reason?.spanAttributes) {
             extendSpanAttributes(
                 spanAttributes,
-                (allResults[0] as any).reason.spanAttributes,
+                JSON.stringify((allResults[0] as any).reason.spanAttributes),
                 "routeProcessor",
             );
         }
         if ((allResults[1] as any)?.reason?.spanAttributes) {
             extendSpanAttributes(
                 spanAttributes,
-                (allResults[1] as any).reason.spanAttributes,
+                JSON.stringify((allResults[1] as any).reason.spanAttributes),
                 "intraOrderbook",
             );
         }
         if ((allResults[2] as any)?.reason?.spanAttributes) {
             extendSpanAttributes(
                 spanAttributes,
-                (allResults[2] as any).reason.spanAttributes,
+                JSON.stringify((allResults[2] as any).reason.spanAttributes),
                 "interOrderbook",
             );
         }

@@ -328,7 +328,11 @@ export async function findOpp({
             });
         } catch (e: any) {
             allNoneNodeErrors.push(e?.value?.noneNodeError);
-            extendSpanAttributes(spanAttributes, e.spanAttributes, "intraOrderbook." + i);
+            extendSpanAttributes(
+                spanAttributes,
+                JSON.stringify(e.spanAttributes),
+                "intraOrderbook." + i,
+            );
         }
     }
     const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);

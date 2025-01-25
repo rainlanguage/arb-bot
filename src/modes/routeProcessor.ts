@@ -365,7 +365,7 @@ export async function findOpp({
         // the fail reason can only be no route in case all hops fail reasons are no route
         if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
         allNoneNodeErrors.push(e?.value?.noneNodeError);
-        extendSpanAttributes(spanAttributes, e.spanAttributes, "full");
+        extendSpanAttributes(spanAttributes, JSON.stringify(e.spanAttributes), "full");
     }
     if (!hasPriceMatch.value) {
         const maxTradeSize = findMaxInput({
@@ -398,7 +398,7 @@ export async function findOpp({
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
-                extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
+                extendSpanAttributes(spanAttributes, JSON.stringify(e.spanAttributes), "partial");
             }
         }
     }
