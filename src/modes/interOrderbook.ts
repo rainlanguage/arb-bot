@@ -129,7 +129,7 @@ export async function dryrun({
         // include dryrun headroom gas estimation in otel logs
         extendSpanAttributes(
             spanAttributes,
-            {
+            JSON.stringify({
                 gasLimit: estimation.gas.toString(),
                 totalCost: estimation.totalGasCost.toString(),
                 gasPrice: estimation.gasPrice.toString(),
@@ -139,7 +139,7 @@ export async function dryrun({
                           l1GasPrice: estimation.l1GasPrice.toString(),
                       }
                     : {}),
-            },
+            }),
             "gasEst.headroom",
         );
     } catch (e) {
@@ -213,7 +213,7 @@ export async function dryrun({
             // include dryrun final gas estimation in otel logs
             extendSpanAttributes(
                 spanAttributes,
-                {
+                JSON.stringify({
                     gasLimit: estimation.gas.toString(),
                     totalCost: estimation.totalGasCost.toString(),
                     gasPrice: estimation.gasPrice.toString(),
@@ -223,7 +223,7 @@ export async function dryrun({
                               l1GasPrice: estimation.l1GasPrice.toString(),
                           }
                         : {}),
-                },
+                }),
                 "gasEst.final",
             );
             task.evaluable.bytecode = await parseRainlang(
@@ -425,7 +425,7 @@ export async function findOpp({
         for (let i = 0; i < e.errors.length; i++) {
             extendSpanAttributes(
                 spanAttributes,
-                e.errors[i].spanAttributes,
+                JSON.stringify(e.errors[i].spanAttributes),
                 "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
             );
         }
