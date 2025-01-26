@@ -1411,9 +1411,9 @@ export function extendSpanAttributes(
 ) {
     for (const attrKey in newAttributes) {
         if (!excludeHeaderForKeys.includes(attrKey)) {
-            spanAttributes[header + "." + attrKey] = newAttributes[attrKey];
+            Object.assign(spanAttributes, { [header + "." + attrKey]: newAttributes[attrKey] });
         } else {
-            spanAttributes[attrKey] = newAttributes[attrKey];
+            Object.assign(spanAttributes, { [attrKey]: newAttributes[attrKey] });
         }
     }
 }
