@@ -302,9 +302,8 @@ export function prepareOrdersForRound(
         for (const [, ownerProfile] of ownersProfileMap) {
             let remainingLimit = ownerProfile.limit;
             // consume orders limits
-            const allOrders = Array.from(ownerProfile.orders).flatMap(
-                ([, orderProfile]) => orderProfile.takeOrders,
-            );
+            const allOrders: Pair[] = [];
+            ownerProfile.orders.forEach((v) => allOrders.push(...v.takeOrders));
             const consumingOrders = allOrders.splice(ownerProfile.lastIndex, remainingLimit);
             remainingLimit -= consumingOrders.length;
             ownerProfile.lastIndex += consumingOrders.length;
