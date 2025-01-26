@@ -228,16 +228,15 @@ export const processOrders = async (
     }
 
     for (const { settle, pair, orderPairObject } of results) {
+        // instantiate a span for this pair
+        const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+        span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
         try {
             // settle the process results
             // this will return the report of the operation and in case
             // there was a revert tx, it will try to simulate it and find
             // the root cause as well
             const result = await settle();
-
-            // instantiate a span for this pair
-            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
-            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
 
             // keep track of avg gas cost
             if (result.gasCost) {
@@ -265,12 +264,7 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
-            span.end();
         } catch (e: any) {
-            // instantiate a span for this pair
-            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
-            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
-
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
@@ -393,8 +387,8 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
             }
-            span.end();
         }
+        span.end();
     }
     return {
         reports,
