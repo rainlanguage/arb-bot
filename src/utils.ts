@@ -1412,9 +1412,10 @@ export function extendSpanAttributes(
     const attrs = JSON.parse(newAttributes);
     for (const attrKey in attrs) {
         if (!excludeHeaderForKeys.includes(attrKey)) {
-            Object.assign(spanAttributes, { [header + "." + attrKey]: attrs[attrKey] });
+            spanAttributes[header + "." + attrKey] = attrs[attrKey];
         } else {
-            Object.assign(spanAttributes, { [attrKey]: attrs[attrKey] });
+            spanAttributes[attrKey] = attrs[attrKey];
         }
+        delete attrs[attrKey];
     }
 }
