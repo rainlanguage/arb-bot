@@ -665,7 +665,6 @@ describe("Test order", async function () {
                     {
                         active: true,
                         order: orderStruct1,
-                        consumedTakeOrders: [],
                         takeOrders: [
                             {
                                 buyToken: orderStruct1.validInputs[0].token,
@@ -675,16 +674,20 @@ describe("Test order", async function () {
                                 sellTokenSymbol: order1.outputs[0].token.symbol,
                                 sellTokenDecimals: orderStruct1.validOutputs[0].decimals,
                                 takeOrder: {
-                                    order: orderStruct1,
-                                    inputIOIndex: 0,
-                                    outputIOIndex: 0,
-                                    signedContext: [],
+                                    id: order1.orderHash.toLowerCase(),
+                                    takeOrder: {
+                                        order: orderStruct1,
+                                        inputIOIndex: 0,
+                                        outputIOIndex: 0,
+                                        signedContext: [],
+                                    },
                                 },
                             },
                         ],
                     },
                 ],
             ]),
+            lastIndex: 0,
         });
         ownerMap.set(order2.owner.toLowerCase(), {
             limit: 25,
@@ -694,38 +697,59 @@ describe("Test order", async function () {
                     {
                         active: true,
                         order: orderStruct2,
-                        consumedTakeOrders: [],
                         takeOrders: [
                             {
-                                buyToken: orderStruct2.validInputs[0].token,
-                                buyTokenSymbol: order2.inputs[0].token.symbol,
-                                buyTokenDecimals: orderStruct2.validInputs[0].decimals,
+                                buyToken: orderStruct2.validInputs[1].token,
+                                buyTokenSymbol: order2.inputs[1].token.symbol,
+                                buyTokenDecimals: orderStruct2.validInputs[1].decimals,
                                 sellToken: orderStruct2.validOutputs[0].token,
                                 sellTokenSymbol: order2.outputs[0].token.symbol,
                                 sellTokenDecimals: orderStruct2.validOutputs[0].decimals,
                                 takeOrder: {
-                                    order: orderStruct2,
-                                    inputIOIndex: 0,
-                                    outputIOIndex: 0,
-                                    signedContext: [],
+                                    id: order2.orderHash.toLowerCase(),
+                                    takeOrder: {
+                                        order: orderStruct2,
+                                        inputIOIndex: 1,
+                                        outputIOIndex: 0,
+                                        signedContext: [],
+                                    },
+                                },
+                            },
+                            {
+                                buyToken: orderStruct2.validInputs[0].token,
+                                buyTokenSymbol: order2.inputs[0].token.symbol,
+                                buyTokenDecimals: orderStruct2.validInputs[0].decimals,
+                                sellToken: orderStruct2.validOutputs[1].token,
+                                sellTokenSymbol: order2.outputs[1].token.symbol,
+                                sellTokenDecimals: orderStruct2.validOutputs[1].decimals,
+                                takeOrder: {
+                                    id: order2.orderHash.toLowerCase(),
+                                    takeOrder: {
+                                        order: orderStruct2,
+                                        inputIOIndex: 0,
+                                        outputIOIndex: 1,
+                                        signedContext: [],
+                                    },
                                 },
                             },
                         ],
                     },
                 ],
             ]),
+            lastIndex: 0,
         });
         const expected = new Map([]);
         expected.set(`0x${"2".repeat(40)}`, ownerMap);
 
         const resultAsArray = Array.from(result).map((v) => [
             v[0],
-            Array.from(v[1]).map((e) => [e[0], Array.from(e[1])]),
+            Array.from(v[1]).map((e) => [e[0], { ...e[1], orders: Array.from(e[1].orders) }]),
         ]);
-        const expectedAsArray = Array.from(result).map((v) => [
+        const expectedAsArray = Array.from(expected).map((v) => [
             v[0],
-            Array.from(v[1]).map((e) => [e[0], Array.from(e[1])]),
+            Array.from(v[1]).map((e) => [e[0], { ...e[1], orders: Array.from(e[1].orders) }]),
         ]);
+
         assert.deepEqual(resultAsArray, expectedAsArray);
     });
 

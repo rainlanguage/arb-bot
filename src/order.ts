@@ -175,7 +175,6 @@ export async function handleAddOrderbookOwnersProfileMap(
                             tokens,
                             orderDetails,
                         ),
-                        consumedTakeOrders: [],
                     });
                 } else {
                     if (!order.active) order.active = true;
@@ -192,11 +191,11 @@ export async function handleAddOrderbookOwnersProfileMap(
                         tokens,
                         orderDetails,
                     ),
-                    consumedTakeOrders: [],
                 });
                 orderbookOwnerProfileItem.set(orderStruct.owner.toLowerCase(), {
                     limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                     orders: ordersProfileMap,
+                    lastIndex: 0,
                 });
             }
         } else {
@@ -211,12 +210,12 @@ export async function handleAddOrderbookOwnersProfileMap(
                     tokens,
                     orderDetails,
                 ),
-                consumedTakeOrders: [],
             });
             const ownerProfileMap: OwnersProfileMap = new Map();
             ownerProfileMap.set(orderStruct.owner.toLowerCase(), {
                 limit: ownerLimits?.[orderStruct.owner.toLowerCase()] ?? DEFAULT_OWNER_LIMIT,
                 orders: ordersProfileMap,
+                lastIndex: 0,
             });
             orderbooksOwnersProfileMap.set(orderbook, ownerProfileMap);
         }
@@ -302,42 +301,20 @@ export function prepareOrdersForRound(
         const orderbookBundledOrders: BundledOrders[] = [];
         for (const [, ownerProfile] of ownersProfileMap) {
             let remainingLimit = ownerProfile.limit;
-            const ordersProfilesArr = Array.from(ownerProfile.orders);
             // consume orders limits
-            for (const [orderHash, orderProfile] of ordersProfilesArr) {
-                if (
-                    remainingLimit > 0 &&
-                    orderProfile.active &&
-                    orderProfile.takeOrders.length > 0
-                ) {
-                    const consumingOrderPairs = orderProfile.takeOrders.splice(0, remainingLimit);
-                    remainingLimit -= consumingOrderPairs.length;
-                    orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                    gatherPairs(orderbook, orderHash, consumingOrderPairs, orderbookBundledOrders);
-                }
+            const allOrders: Pair[] = [];
+            ownerProfile.orders.forEach((v) => allOrders.push(...v.takeOrders));
+            const consumingOrders = allOrders.splice(ownerProfile.lastIndex, remainingLimit);
+            remainingLimit -= consumingOrders.length;
+            ownerProfile.lastIndex += consumingOrders.length;
+            if (remainingLimit) {
+                ownerProfile.lastIndex = 0;
+                const remainingConsumingOrders = allOrders.splice(0, remainingLimit);
+                ownerProfile.lastIndex += remainingConsumingOrders.length;
+                consumingOrders.push(...remainingConsumingOrders);
             }
-            // if all orders are consumed and still there is limit remaining,
-            // reset and start consuming again from top until limit is reached
-            if (remainingLimit > 0) {
-                for (const [orderHash, orderProfile] of ordersProfilesArr) {
-                    if (orderProfile.active) {
-                        orderProfile.takeOrders.push(...orderProfile.consumedTakeOrders.splice(0));
-                        if (remainingLimit > 0) {
-                            const consumingOrderPairs = orderProfile.takeOrders.splice(
-                                0,
-                                remainingLimit,
-                            );
-                            remainingLimit -= consumingOrderPairs.length;
-                            orderProfile.consumedTakeOrders.push(...consumingOrderPairs);
-                            gatherPairs(
-                                orderbook,
-                                orderHash,
-                                consumingOrderPairs,
-                                orderbookBundledOrders,
-                            );
-                        }
-                    }
-                }
+            for (const order of consumingOrders) {
+                gatherPairs(orderbook, order.takeOrder.id, [order], orderbookBundledOrders);
             }
         }
         if (shuffle) {
