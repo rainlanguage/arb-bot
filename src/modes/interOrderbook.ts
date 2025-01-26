@@ -360,7 +360,7 @@ export async function findOpp({
         for (let i = 0; i < e.errors.length; i++) {
             extendSpanAttributes(
                 spanAttributes,
-                JSON.stringify(e.errors[i].spanAttributes),
+                e.errors[i].spanAttributes,
                 "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
             );
         }
