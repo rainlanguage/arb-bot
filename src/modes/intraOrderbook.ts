@@ -3,8 +3,8 @@ import { estimateGasCost } from "../gas";
 import { BigNumber, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getWithdrawEnsureRainlang, parseRainlang } from "../task";
+import { estimateProfit, scale18, withBigintSerializer } from "../utils";
 import { BaseError, erc20Abi, ExecutionRevertedError, PublicClient } from "viem";
-import { estimateProfit, scale18, withBigintSerializer, extendSpanAttributes } from "../utils";
 import {
     SpanAttrs,
     BotConfig,
@@ -119,21 +119,13 @@ export async function dryrun({
         gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
 
         // include dryrun headroom gas estimation in otel logs
-        extendSpanAttributes(
-            spanAttributes,
-            JSON.stringify({
-                gasLimit: estimation.gas.toString(),
-                totalCost: estimation.totalGasCost.toString(),
-                gasPrice: estimation.gasPrice.toString(),
-                ...(config.isSpecialL2
-                    ? {
-                          l1Cost: estimation.l1Cost.toString(),
-                          l1GasPrice: estimation.l1GasPrice.toString(),
-                      }
-                    : {}),
-            }),
-            "gasEst.headroom",
-        );
+        spanAttributes["gasEst.headroom.gasLimit"] = estimation.gas.toString();
+        spanAttributes["gasEst.headroom.totalCost"] = estimation.totalGasCost.toString();
+        spanAttributes["gasEst.headroom.gasPrice"] = estimation.gasPrice.toString();
+        if (config.isSpecialL2) {
+            spanAttributes["gasEst.headroom.l1Cost"] = estimation.l1Cost.toString();
+            spanAttributes["gasEst.headroom.l1GasPrice"] = estimation.l1GasPrice.toString();
+        }
     } catch (e) {
         // reason, code, method, transaction, error, stack, message
         const isNodeError = containsNodeError(e as BaseError);
@@ -213,21 +205,13 @@ export async function dryrun({
             gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
 
             // include dryrun final gas estimation in otel logs
-            extendSpanAttributes(
-                spanAttributes,
-                JSON.stringify({
-                    gasLimit: estimation.gas.toString(),
-                    totalCost: estimation.totalGasCost.toString(),
-                    gasPrice: estimation.gasPrice.toString(),
-                    ...(config.isSpecialL2
-                        ? {
-                              l1Cost: estimation.l1Cost.toString(),
-                              l1GasPrice: estimation.l1GasPrice.toString(),
-                          }
-                        : {}),
-                }),
-                "gasEst.final",
-            );
+            spanAttributes["gasEst.final.gasLimit"] = estimation.gas.toString();
+            spanAttributes["gasEst.final.totalCost"] = estimation.totalGasCost.toString();
+            spanAttributes["gasEst.final.gasPrice"] = estimation.gasPrice.toString();
+            if (config.isSpecialL2) {
+                spanAttributes["gasEst.final.l1Cost"] = estimation.l1Cost.toString();
+                spanAttributes["gasEst.final.l1GasPrice"] = estimation.l1GasPrice.toString();
+            }
             task.evaluable.bytecode = await parseRainlang(
                 await getWithdrawEnsureRainlang(
                     signer.account.address,
@@ -357,6 +341,7 @@ export async function findOpp({
         );
     if (!opposingOrders || !opposingOrders.length) throw undefined;
 
+    const allErrorAttributes: string[] = [];
     const allNoneNodeErrors: (string | undefined)[] = [];
     const inputBalance = scale18(
         await viemClient.readContract({
@@ -393,13 +378,10 @@ export async function findOpp({
             });
         } catch (e: any) {
             allNoneNodeErrors.push(e?.value?.noneNodeError);
-            extendSpanAttributes(
-                spanAttributes,
-                JSON.stringify(e.spanAttributes),
-                "intraOrderbook." + i,
-            );
+            allErrorAttributes.push(JSON.stringify(e.spanAttributes));
         }
     }
+    spanAttributes["intraOrderbook"] = allErrorAttributes;
     const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
     if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
         result.value = {

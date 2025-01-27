@@ -6,7 +6,6 @@ import { findOpp as findInterObOpp } from "./interOrderbook";
 import { findOpp as findIntraObOpp } from "./intraOrderbook";
 import { findOppWithRetries as findRpOpp } from "./routeProcessor";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
-import { extendSpanAttributes } from "../utils";
 
 /**
  * The main entrypoint for the main logic to find opps.
@@ -117,24 +116,18 @@ export async function findOpp({
             noneNodeError: undefined,
         };
         if ((allResults[0] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
-                JSON.stringify((allResults[0] as any).reason.spanAttributes),
-                "routeProcessor",
+            spanAttributes["routeProcessor"] = JSON.stringify(
+                (allResults[0] as any).reason.spanAttributes,
             );
         }
         if ((allResults[1] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
-                JSON.stringify((allResults[1] as any).reason.spanAttributes),
-                "intraOrderbook",
+            spanAttributes["intraOrderbook"] = JSON.stringify(
+                (allResults[1] as any).reason.spanAttributes["intraOrderbook"],
             );
         }
         if ((allResults[2] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
-                JSON.stringify((allResults[2] as any).reason.spanAttributes),
-                "interOrderbook",
+            spanAttributes["interOrderbook"] = JSON.stringify(
+                (allResults[2] as any).reason.spanAttributes,
             );
         }
         if ((allResults[0] as any)?.reason?.value?.noneNodeError) {
