@@ -144,10 +144,10 @@ export type OrderProfile = {
     active: boolean;
     order: Order;
     takeOrders: Pair[];
-    consumedTakeOrders: Pair[];
 };
 export type OwnerProfile = {
     limit: number;
+    lastIndex: number;
     orders: OrdersProfileMap;
 };
 export type OrdersProfileMap = Map<string, OrderProfile>;
