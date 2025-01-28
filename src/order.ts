@@ -633,8 +633,8 @@ export function getOrdersTokens(ordersDetails: SgOrder[]): TokenDetails[] {
 export async function quoteSingleOrder(
     orderDetails: BundledOrders,
     viemClient: ViemClient,
-    blockNumber?: bigint,
     gas?: bigint,
+    blockNumber?: bigint,
 ) {
     const { data } = await viemClient.call({
         to: orderDetails.orderbook as `0x${string}`,

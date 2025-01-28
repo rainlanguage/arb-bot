@@ -436,7 +436,6 @@ export async function processPair(args: {
         await quoteSingleOrder(
             orderPairObject,
             viemClient as any as ViemClient,
-            undefined,
             isE2eTest ? config.quoteGas : await getQuoteGas(config, orderPairObject),
         );
         if (orderPairObject.takeOrders[0].quote?.maxOutput.isZero()) {
