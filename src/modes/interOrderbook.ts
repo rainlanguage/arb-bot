@@ -1,17 +1,12 @@
+import { recordGasEstAttrs } from ".";
 import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
 import { BaseError, ExecutionRevertedError, PublicClient } from "viem";
+import { ONE18, scale18To, estimateProfit, withBigintSerializer } from "../utils";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
-import {
-    ONE18,
-    scale18To,
-    estimateProfit,
-    withBigintSerializer,
-    extendSpanAttributes,
-} from "../utils";
 
 /**
  * Executes a extimateGas call for an inter-orderbook arb() tx, to determine if the tx is successfull ot not
@@ -127,21 +122,7 @@ export async function dryrun({
         gasLimit = ethers.BigNumber.from(estimation.gas).mul(config.gasLimitMultiplier).div(100);
 
         // include dryrun headroom gas estimation in otel logs
-        extendSpanAttributes(
-            spanAttributes,
-            {
-                gasLimit: estimation.gas.toString(),
-                totalCost: estimation.totalGasCost.toString(),
-                gasPrice: estimation.gasPrice.toString(),
-                ...(config.isSpecialL2
-                    ? {
-                          l1Cost: estimation.l1Cost.toString(),
-                          l1GasPrice: estimation.l1GasPrice.toString(),
-                      }
-                    : {}),
-            },
-            "gasEst.headroom",
-        );
+        recordGasEstAttrs(spanAttributes, estimation, config, true);
     } catch (e) {
         const isNodeError = containsNodeError(e as BaseError);
         const errMsg = errorSnapshot("", e);
@@ -211,21 +192,7 @@ export async function dryrun({
             gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
 
             // include dryrun final gas estimation in otel logs
-            extendSpanAttributes(
-                spanAttributes,
-                {
-                    gasLimit: estimation.gas.toString(),
-                    totalCost: estimation.totalGasCost.toString(),
-                    gasPrice: estimation.gasPrice.toString(),
-                    ...(config.isSpecialL2
-                        ? {
-                              l1Cost: estimation.l1Cost.toString(),
-                              l1GasPrice: estimation.l1GasPrice.toString(),
-                          }
-                        : {}),
-                },
-                "gasEst.final",
-            );
+            recordGasEstAttrs(spanAttributes, estimation, config, false);
             task.evaluable.bytecode = await parseRainlang(
                 await getBountyEnsureRainlang(
                     ethers.utils.parseUnits(inputToEthPrice),
@@ -422,13 +389,12 @@ export async function findOpp({
         // } catch {
         //     /**/
         // }
+        const allOrderbooksAttributes: any = {};
         for (let i = 0; i < e.errors.length; i++) {
-            extendSpanAttributes(
-                spanAttributes,
-                e.errors[i].spanAttributes,
-                "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
-            );
+            allOrderbooksAttributes[opposingOrderbookOrders[i].orderbook] =
+                e.errors[i].spanAttributes;
         }
+        spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
         const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
         if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
             result.value = {

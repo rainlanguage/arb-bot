@@ -1,3 +1,4 @@
+import { recordGasEstAttrs } from ".";
 import { Token } from "sushi/currency";
 import { estimateGasCost } from "../gas";
 import { ChainId, DataFetcher, Router } from "sushi";
@@ -14,7 +15,6 @@ import {
     estimateProfit,
     visualizeRoute,
     withBigintSerializer,
-    extendSpanAttributes,
 } from "../utils";
 
 /**
@@ -191,21 +191,7 @@ export async function dryrun({
                 .div(100);
 
             // include dryrun headroom gas estimation in otel logs
-            extendSpanAttributes(
-                spanAttributes,
-                {
-                    gasLimit: estimation.gas.toString(),
-                    totalCost: estimation.totalGasCost.toString(),
-                    gasPrice: estimation.gasPrice.toString(),
-                    ...(config.isSpecialL2
-                        ? {
-                              l1Cost: estimation.l1Cost.toString(),
-                              l1GasPrice: estimation.l1GasPrice.toString(),
-                          }
-                        : {}),
-                },
-                "gasEst.headroom",
-            );
+            recordGasEstAttrs(spanAttributes, estimation, config, true);
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
             const isNodeError = containsNodeError(e as BaseError);
@@ -277,21 +263,7 @@ export async function dryrun({
                 gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
 
                 // include dryrun final gas estimation in otel logs
-                extendSpanAttributes(
-                    spanAttributes,
-                    {
-                        gasLimit: estimation.gas.toString(),
-                        totalCost: estimation.totalGasCost.toString(),
-                        gasPrice: estimation.gasPrice.toString(),
-                        ...(config.isSpecialL2
-                            ? {
-                                  l1Cost: estimation.l1Cost.toString(),
-                                  l1GasPrice: estimation.l1GasPrice.toString(),
-                              }
-                            : {}),
-                    },
-                    "gasEst.final",
-                );
+                recordGasEstAttrs(spanAttributes, estimation, config, false);
                 task.evaluable.bytecode = await parseRainlang(
                     await getBountyEnsureRainlang(
                         ethers.utils.parseUnits(ethPrice),
@@ -430,7 +402,7 @@ export async function findOpp({
         // the fail reason can only be no route in case all hops fail reasons are no route
         if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
         allNoneNodeErrors.push(e?.value?.noneNodeError);
-        extendSpanAttributes(spanAttributes, e.spanAttributes, "full");
+        spanAttributes["full"] = JSON.stringify(e.spanAttributes);
     }
     if (!hasPriceMatch.value) {
         const maxTradeSize = findMaxInput({
@@ -463,7 +435,7 @@ export async function findOpp({
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
-                extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
+                spanAttributes["partial"] = JSON.stringify(e.spanAttributes);
             }
         }
     }
