@@ -117,24 +117,18 @@ export async function findOpp({
             noneNodeError: undefined,
         };
         if ((allResults[0] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
+            spanAttributes["routeProcessor"] = JSON.stringify(
                 (allResults[0] as any).reason.spanAttributes,
-                "routeProcessor",
             );
         }
         if ((allResults[1] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
-                (allResults[1] as any).reason.spanAttributes,
-                "intraOrderbook",
+            spanAttributes["intraOrderbook"] = JSON.stringify(
+                (allResults[1] as any).reason.spanAttributes["intraOrderbook"],
             );
         }
         if ((allResults[2] as any)?.reason?.spanAttributes) {
-            extendSpanAttributes(
-                spanAttributes,
+            spanAttributes["interOrderbook"] = JSON.stringify(
                 (allResults[2] as any).reason.spanAttributes,
-                "interOrderbook",
             );
         }
         if ((allResults[0] as any)?.reason?.value?.noneNodeError) {
@@ -151,5 +145,24 @@ export async function findOpp({
             result.noneNodeError = (allResults[2] as any).reason.value.noneNodeError;
         }
         throw result;
+    }
+}
+
+/**
+ * Records gas estimates for otel span attributes
+ */
+export function recordGasEstAttrs(
+    spanAttributes: Record<string, any>,
+    estimation: any,
+    config: BotConfig,
+    headroom: boolean,
+) {
+    const header = headroom ? "headroom" : "final";
+    spanAttributes[`gasEst.${header}.gasLimit`] = estimation.gas.toString();
+    spanAttributes[`gasEst.${header}.totalCost`] = estimation.totalGasCost.toString();
+    spanAttributes[`gasEst.${header}.gasPrice`] = estimation.gasPrice.toString();
+    if (config.isSpecialL2) {
+        spanAttributes[`gasEst.${header}.l1Cost`] = estimation.l1Cost.toString();
+        spanAttributes[`gasEst.${header}.l1GasPrice`] = estimation.l1GasPrice.toString();
     }
 }
