@@ -10,7 +10,7 @@ import {
     scale18To,
     estimateProfit,
     withBigintSerializer,
-    extendSpanAttributes,
+    // extendSpanAttributes,
 } from "../utils";
 
 /**
@@ -369,13 +369,17 @@ export async function findOpp({
         // } catch {
         //     /**/
         // }
+        const allOrderbooksAttributes: any = {};
         for (let i = 0; i < e.errors.length; i++) {
-            extendSpanAttributes(
-                spanAttributes,
-                e.errors[i].spanAttributes,
-                "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
-            );
+            allOrderbooksAttributes[opposingOrderbookOrders[i].orderbook] =
+                e.errors[i].spanAttributes;
+            // extendSpanAttributes(
+            //     spanAttributes,
+            //     e.errors[i].spanAttributes,
+            //     "againstOrderbooks." + opposingOrderbookOrders[i].orderbook,
+            // );
         }
+        spanAttributes["againstOrderbooks"] = JSON.stringify(allOrderbooksAttributes);
         const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
         if (allNoneNodeErrors.length && noneNodeErrors.length / allNoneNodeErrors.length > 0.5) {
             result.value = {
