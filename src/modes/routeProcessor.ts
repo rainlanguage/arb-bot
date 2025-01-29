@@ -4,7 +4,7 @@ import { BaseError, PublicClient } from "viem";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { getBountyEnsureRainlang, parseRainlang } from "../task";
+import { getBountyEnsureRainlang, parseRainlang } from "../config";
 import { SpanAttrs, BotConfig, ViemClient, DryrunResult, BundledOrders } from "../types";
 import {
     ONE18,

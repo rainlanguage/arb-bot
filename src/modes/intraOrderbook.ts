@@ -3,7 +3,7 @@ import { estimateGasCost } from "../gas";
 import { BigNumber, ethers } from "ethers";
 import { BaseError, erc20Abi, PublicClient } from "viem";
 import { containsNodeError, errorSnapshot } from "../error";
-import { getWithdrawEnsureRainlang, parseRainlang } from "../task";
+import { getWithdrawEnsureRainlang, parseRainlang } from "../config";
 import { estimateProfit, scale18, withBigintSerializer } from "../utils";
 import {
     SpanAttrs,

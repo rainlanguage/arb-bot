@@ -3,7 +3,7 @@ import { estimateGasCost } from "../gas";
 import { BaseError, PublicClient } from "viem";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
-import { getBountyEnsureRainlang, parseRainlang } from "../task";
+import { getBountyEnsureRainlang, parseRainlang } from "../config";
 import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
     ONE18,
