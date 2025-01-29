@@ -1,5 +1,5 @@
 import { getSgOrderbooks } from "./sg";
-// import { sendTransaction } from "./tx";
+import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
@@ -136,9 +136,9 @@ export async function createViemClient(
 
     // set injected properties
     client.BUSY = false;
-    // client.sendTx = async (tx) => {
-    //     return await sendTransaction(client, tx);
-    // };
+    client.sendTx = async (tx) => {
+        return await sendTransaction(client, tx);
+    };
 
     return client;
 }
