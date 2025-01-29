@@ -228,16 +228,15 @@ export const processOrders = async (
     }
 
     for (const { settle, pair, orderPairObject } of results) {
+        // instantiate a span for this pair
+        const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
+        span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
         try {
             // settle the process results
             // this will return the report of the operation and in case
             // there was a revert tx, it will try to simulate it and find
             // the root cause as well
             const result = await settle();
-
-            // instantiate a span for this pair
-            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
-            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
 
             // keep track of avg gas cost
             if (result.gasCost) {
@@ -265,12 +264,7 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message: "unexpected error" });
             }
-            span.end();
         } catch (e: any) {
-            // instantiate a span for this pair
-            const span = tracer.startSpan(`order_${pair}`, undefined, ctx);
-            span.setAttribute("details.owner", orderPairObject.takeOrders[0].takeOrder.order.owner);
-
             // set the span attributes with the values gathered at processPair()
             span.setAttributes(e.spanAttributes);
 
@@ -393,8 +387,8 @@ export const processOrders = async (
                 span.setAttribute("severity", ErrorSeverity.HIGH);
                 span.setStatus({ code: SpanStatusCode.ERROR, message });
             }
-            span.end();
         }
+        span.end();
     }
     return {
         reports,
@@ -636,9 +630,40 @@ export async function processPair(args: {
             }
         }
     } catch (e: any) {
-        // record all span attributes
+        // record all span attributes in their scopes
         for (const attrKey in e.spanAttributes) {
-            spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
+            if (attrKey === "routeProcessor") {
+                const rpAttrs = JSON.parse(e.spanAttributes[attrKey]);
+                for (const key in rpAttrs) {
+                    const innerAttrs = JSON.parse(rpAttrs[key]);
+                    for (const innerKey in innerAttrs) {
+                        spanAttributes["details.routeProcessor." + key + "." + innerKey] =
+                            innerAttrs[innerKey];
+                    }
+                }
+            } else if (attrKey === "intraOrderbook") {
+                const intraAttrs = JSON.parse(e.spanAttributes[attrKey]);
+                for (let i = 0; i < intraAttrs.length; i++) {
+                    const innerAttrs = JSON.parse(intraAttrs[i]);
+                    for (const innerKey in innerAttrs) {
+                        spanAttributes["details.intraOrderbook." + i + "." + innerKey] =
+                            innerAttrs[innerKey];
+                    }
+                }
+            } else if (attrKey === "interOrderbook") {
+                const interAttrs = JSON.parse(
+                    JSON.parse(e.spanAttributes[attrKey])["againstOrderbooks"],
+                );
+                for (const key in interAttrs) {
+                    for (const innerKey in interAttrs[key]) {
+                        spanAttributes[
+                            "details.interOrderbook.againstOrderbooks." + key + "." + innerKey
+                        ] = interAttrs[key][innerKey];
+                    }
+                }
+            } else {
+                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
+            }
         }
         if (e.noneNodeError) {
             spanAttributes["details.noneNodeError"] = true;

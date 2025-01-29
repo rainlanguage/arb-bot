@@ -14,7 +14,7 @@ import {
     estimateProfit,
     visualizeRoute,
     withBigintSerializer,
-    extendSpanAttributes,
+    // extendSpanAttributes,
 } from "../utils";
 
 /**
@@ -377,7 +377,8 @@ export async function findOpp({
         // the fail reason can only be no route in case all hops fail reasons are no route
         if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
         allNoneNodeErrors.push(e?.value?.noneNodeError);
-        extendSpanAttributes(spanAttributes, e.spanAttributes, "full");
+        spanAttributes["full"] = JSON.stringify(e.spanAttributes);
+        // extendSpanAttributes(spanAttributes, e.spanAttributes, "full");
     }
     if (!hasPriceMatch.value) {
         const maxTradeSize = findMaxInput({
@@ -410,7 +411,8 @@ export async function findOpp({
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
-                extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
+                spanAttributes["partial"] = JSON.stringify(e.spanAttributes);
+                // extendSpanAttributes(spanAttributes, e.spanAttributes, "partial");
             }
         }
     }

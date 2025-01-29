@@ -856,7 +856,7 @@ export const main = async (argv: any, version?: string) => {
                             v.sg,
                             lastReadOrdersTimestamp,
                             v.skip,
-                            options.timeout,
+                            // options.timeout,
                             roundSpan,
                         ),
                     ),
