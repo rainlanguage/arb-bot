@@ -636,10 +636,20 @@ export async function processPair(args: {
             if (attrKey === "routeProcessor") {
                 const rpAttrs = JSON.parse(e.spanAttributes[attrKey]);
                 for (const key in rpAttrs) {
-                    const innerAttrs = JSON.parse(rpAttrs[key]);
-                    for (const innerKey in innerAttrs) {
-                        spanAttributes["details.routeProcessor." + key + "." + innerKey] =
-                            innerAttrs[innerKey];
+                    const innerAttrs = (() => {
+                        try {
+                            return JSON.parse(rpAttrs[key]);
+                        } catch (error) {
+                            return rpAttrs[key];
+                        }
+                    })();
+                    if (typeof innerAttrs === "object") {
+                        for (const innerKey in innerAttrs) {
+                            spanAttributes["details.routeProcessor." + key + "." + innerKey] =
+                                innerAttrs[innerKey];
+                        }
+                    } else {
+                        spanAttributes["details.routeProcessor." + key] = innerAttrs;
                     }
                 }
             } else if (attrKey === "intraOrderbook") {
