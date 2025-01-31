@@ -464,7 +464,7 @@ import { parseAbi, stringToHex } from "viem";
 import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
 
 const metaStore = new MetaStore(false);
-export const TaskEntryPoint = ["main"] as const;
+// export const TaskEntryPoint = ["main"] as const;
 export const EnsureBountyDotrain = readFileSync("./tasks/ensure-bounty.rain", {
     encoding: "utf8",
 });
@@ -485,26 +485,21 @@ export async function getBountyEnsureRainlang(
     minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
-    const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
+    // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
+    //     ["sender", sender],
+    //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+    //     ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+    //     ["minimum-expected", utils.formatUnits(minimumExpected)],
+    // ]);
+    // const res = await rd.compose(["main"]);
+    // rd.free();
+    // return res;
+    return await RainDocument.composeText(EnsureBountyDotrain, ["main"], metaStore, [
         ["sender", sender],
         ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
         ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
         ["minimum-expected", utils.formatUnits(minimumExpected)],
     ]);
-    const res = await rd.compose(TaskEntryPoint as any as string[]);
-    rd.free();
-    return res;
-    // return await RainDocument.composeText(
-    //     EnsureBountyDotrain,
-    //     TaskEntryPoint as any as string[],
-    //     metaStore,
-    //     [
-    //         ["sender", sender],
-    //         ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-    //         ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-    //         ["minimum-expected", utils.formatUnits(minimumExpected)],
-    //     ],
-    // );
 }
 
 /**
@@ -530,7 +525,21 @@ export async function getWithdrawEnsureRainlang(
     minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
-    const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
+    // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
+    //     ["sender", sender],
+    //     ["bot-address", botAddress],
+    //     ["input-token", inputToken],
+    //     ["output-token", outputToken],
+    //     ["minimum-expected", utils.formatUnits(minimumExpected)],
+    //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+    //     ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+    //     ["org-input-balance", utils.formatUnits(orgInputBalance)],
+    //     ["org-output-balance", utils.formatUnits(orgOutputBalance)],
+    // ]);
+    // const res = await rd.compose(["main"]);
+    // rd.free();
+    // return res;
+    return await RainDocument.composeText(WithdrawEnsureBountyDotrain, ["main"], metaStore, [
         ["sender", sender],
         ["bot-address", botAddress],
         ["input-token", inputToken],
@@ -541,25 +550,6 @@ export async function getWithdrawEnsureRainlang(
         ["org-input-balance", utils.formatUnits(orgInputBalance)],
         ["org-output-balance", utils.formatUnits(orgOutputBalance)],
     ]);
-    const res = await rd.compose(TaskEntryPoint as any as string[]);
-    rd.free();
-    return res;
-    // return await RainDocument.composeText(
-    //     WithdrawEnsureBountyDotrain,
-    //     TaskEntryPoint as any as string[],
-    //     metaStore,
-    //     [
-    //         ["sender", sender],
-    //         ["bot-address", botAddress],
-    //         ["input-token", inputToken],
-    //         ["output-token", outputToken],
-    //         ["minimum-expected", utils.formatUnits(minimumExpected)],
-    //         ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-    //         ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-    //         ["org-input-balance", utils.formatUnits(orgInputBalance)],
-    //         ["org-output-balance", utils.formatUnits(orgOutputBalance)],
-    //     ],
-    // );
 }
 
 /**
