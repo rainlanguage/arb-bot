@@ -21,6 +21,7 @@ import {
     walletActions,
     PrivateKeyAccount,
     createWalletClient,
+    encodeFunctionData,
 } from "viem";
 import {
     STABLES,
@@ -560,10 +561,20 @@ export async function parseRainlang(
     viemClient: ViemClient | PublicClient,
     dispair: Dispair,
 ): Promise<string> {
-    return await viemClient.readContract({
-        address: dispair.deployer as `0x${string}`,
-        abi: parseAbi(deployerAbi),
-        functionName: "parse2",
-        args: [stringToHex(rainlang)],
+    const res = await viemClient.call({
+        to: dispair.deployer as `0x${string}`,
+        data: encodeFunctionData({
+            abi: parseAbi(deployerAbi),
+            functionName: "parse2",
+            args: [stringToHex(rainlang)],
+        }),
     });
+    if (!res.data) return "0x";
+    else return res.data;
+    // return await viemClient.readContract({
+    //     address: dispair.deployer as `0x${string}`,
+    //     abi: parseAbi(deployerAbi),
+    //     functionName: "parse2",
+    //     args: [stringToHex(rainlang)],
+    // });
 }
