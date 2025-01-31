@@ -457,7 +457,7 @@ export const fallbackRpcs: Record<number, readonly string[]> = {
     ],
 } as const;
 
-import { readFileSync } from "fs";
+// import { readFileSync } from "fs";
 import { deployerAbi } from "./abis";
 import { BigNumber, utils } from "ethers";
 import { Dispair } from "./types";
@@ -466,12 +466,12 @@ import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
 
 const metaStore = new MetaStore(false);
 // export const TaskEntryPoint = ["main"] as const;
-export const EnsureBountyDotrain = readFileSync("./tasks/ensure-bounty.rain", {
-    encoding: "utf8",
-});
-export const WithdrawEnsureBountyDotrain = readFileSync("./tasks/withdraw-ensure-bounty.rain", {
-    encoding: "utf8",
-});
+// export const EnsureBountyDotrain = readFileSync("./tasks/ensure-bounty.rain", {
+//     encoding: "utf8",
+// });
+// export const WithdrawEnsureBountyDotrain = readFileSync("./tasks/withdraw-ensure-bounty.rain", {
+//     encoding: "utf8",
+// });
 
 /**
  * Get the bounty check ensure task rainlang
@@ -486,6 +486,26 @@ export async function getBountyEnsureRainlang(
     minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
+    const x = `---
+#sender ! msg sender
+#input-to-eth-price ! input token to eth price
+#output-to-eth-price ! output token to eth price
+#minimum-expected ! minimum expected bounty
+
+#main
+:ensure(equal-to(sender context<0 0>()) "unknown sender"),
+total-bounty-eth: add(
+    mul(input-to-eth-price context<1 0>())
+    mul(output-to-eth-price context<1 1>())
+),
+:ensure(
+    greater-than-or-equal-to(
+        total-bounty-eth
+        minimum-expected
+    )
+    "minimum sender output"
+);
+`;
     // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
     //     ["sender", sender],
     //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
@@ -495,7 +515,7 @@ export async function getBountyEnsureRainlang(
     // const res = await rd.compose(["main"]);
     // rd.free();
     // return res;
-    return await RainDocument.composeText(EnsureBountyDotrain, ["main"], metaStore, [
+    return await RainDocument.composeText(x, ["main"], metaStore, [
         ["sender", sender],
         ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
         ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
@@ -526,6 +546,39 @@ export async function getWithdrawEnsureRainlang(
     minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
+    const x = `---
+#sender ! msg sender
+#bot-address ! bot wallet adddress as bounty vault owner
+#input-token ! input token address
+#output-token ! input token address
+#input-to-eth-price ! input token to eth price
+#output-to-eth-price ! output token to eth price
+#org-input-balance ! original balance of the bot input token before clear
+#org-output-balance ! original balance of the bot output token before clear
+#minimum-expected ! minimum expected bounty
+
+#main
+:ensure(equal-to(sender context<0 0>()) "unknown sender"),
+input-bounty: sub(
+    erc20-balance-of(input-token bot-address)
+    org-input-balance
+),
+output-bounty: sub(
+    erc20-balance-of(output-token bot-address)
+    org-output-balance
+),
+total-bounty-eth: add(
+    mul(input-bounty input-to-eth-price)
+    mul(output-bounty output-to-eth-price)
+),
+:ensure(
+    greater-than-or-equal-to(
+        total-bounty-eth
+        minimum-expected
+    )
+    "minimum sender output"
+);
+`;
     // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
     //     ["sender", sender],
     //     ["bot-address", botAddress],
@@ -540,7 +593,7 @@ export async function getWithdrawEnsureRainlang(
     // const res = await rd.compose(["main"]);
     // rd.free();
     // return res;
-    return await RainDocument.composeText(WithdrawEnsureBountyDotrain, ["main"], metaStore, [
+    return await RainDocument.composeText(x, ["main"], metaStore, [
         ["sender", sender],
         ["bot-address", botAddress],
         ["input-token", inputToken],
