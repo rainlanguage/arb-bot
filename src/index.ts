@@ -25,8 +25,8 @@ import {
     onFetchRequest,
     onFetchResponse,
     createViemClient,
-    parseRainlang,
-    getBountyEnsureRainlang,
+    // parseRainlang,
+    // getBountyEnsureRainlang,
 } from "./config";
 import { deployerAbi } from "./abis";
 
@@ -256,26 +256,26 @@ export async function getConfig(
     config.mainAccount = mainAccount;
     config.accounts = accounts;
 
-    const data = {
-        inputPrice: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        outputPrice: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        minimum: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        signer: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        buyToken: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        sellToken: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        inputBalance: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        outputBalance: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        botAddress: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-    };
-    const res = await parseRainlang(
-        await getBountyEnsureRainlang(data.inputPrice, data.outputPrice, data.minimum, data.signer),
-        config.viemClient,
-        config.dispair,
-    );
-    config.rainlang = {
-        ...data,
-        rainlang: res,
-    };
+    // const data = {
+    //     inputPrice: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     outputPrice: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     minimum: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     signer: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     buyToken: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     sellToken: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     inputBalance: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     outputBalance: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    //     botAddress: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    // };
+    // const res = await parseRainlang(
+    //     await getBountyEnsureRainlang(data.inputPrice, data.outputPrice, data.minimum, data.signer),
+    //     config.viemClient,
+    //     config.dispair,
+    // );
+    // config.rainlang = {
+    //     ...data,
+    //     rainlang: res,
+    // };
 
     return config;
 }

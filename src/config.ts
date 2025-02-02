@@ -481,9 +481,9 @@ import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
  * @param sender - The msg sender
  */
 export async function getBountyEnsureRainlang(
-    inputToEthPrice: string,
-    outputToEthPrice: string,
-    minimumExpected: string,
+    inputToEthPrice: BigNumber,
+    outputToEthPrice: BigNumber,
+    minimumExpected: BigNumber,
     sender: string,
 ): Promise<string> {
     const x = `---
@@ -506,24 +506,25 @@ total-bounty-eth: add(
     "minimum sender output"
 );
 `;
-    // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
+    const metaStore = new MetaStore(false);
+    const rd = RainDocument.create(x, metaStore, [
+        ["sender", sender],
+        ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+        ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+        ["minimum-expected", utils.formatUnits(minimumExpected)],
+    ]);
+    const res = await rd.compose(["main"]);
+    rd.free();
+    metaStore.free();
+    return res;
+    // const res = await RainDocument.composeText(x, ["main"], metaStore, [
     //     ["sender", sender],
     //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
     //     ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
     //     ["minimum-expected", utils.formatUnits(minimumExpected)],
     // ]);
-    // const res = await rd.compose(["main"]);
-    // rd.free();
+    // metaStore.free();
     // return res;
-    const metaStore = new MetaStore(false);
-    const res = await RainDocument.composeText(x, ["main"], metaStore, [
-        ["sender", sender],
-        ["input-to-eth-price", inputToEthPrice],
-        ["output-to-eth-price", outputToEthPrice],
-        ["minimum-expected", minimumExpected],
-    ]);
-    metaStore.free();
-    return res;
 }
 
 /**
@@ -582,22 +583,8 @@ total-bounty-eth: add(
     "minimum sender output"
 );
 `;
-    // const rd = RainDocument.create(EnsureBountyDotrain, metaStore, [
-    //     ["sender", sender],
-    //     ["bot-address", botAddress],
-    //     ["input-token", inputToken],
-    //     ["output-token", outputToken],
-    //     ["minimum-expected", utils.formatUnits(minimumExpected)],
-    //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-    //     ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-    //     ["org-input-balance", utils.formatUnits(orgInputBalance)],
-    //     ["org-output-balance", utils.formatUnits(orgOutputBalance)],
-    // ]);
-    // const res = await rd.compose(["main"]);
-    // rd.free();
-    // return res;
     const metaStore = new MetaStore(false);
-    const res = await RainDocument.composeText(x, ["main"], metaStore, [
+    const rd = RainDocument.create(x, metaStore, [
         ["sender", sender],
         ["bot-address", botAddress],
         ["input-token", inputToken],
@@ -608,8 +595,22 @@ total-bounty-eth: add(
         ["org-input-balance", utils.formatUnits(orgInputBalance)],
         ["org-output-balance", utils.formatUnits(orgOutputBalance)],
     ]);
+    const res = await rd.compose(["main"]);
+    rd.free();
     metaStore.free();
     return res;
+    // const res = await RainDocument.composeText(x, ["main"], metaStore, [
+    //     ["sender", sender],
+    //     ["bot-address", botAddress],
+    //     ["input-token", inputToken],
+    //     ["output-token", outputToken],
+    //     ["minimum-expected", utils.formatUnits(minimumExpected)],
+    //     ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
+    //     ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
+    //     ["org-input-balance", utils.formatUnits(orgInputBalance)],
+    //     ["org-output-balance", utils.formatUnits(orgOutputBalance)],
+    // ]);
+    // return res;
 }
 
 /**
