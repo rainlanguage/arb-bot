@@ -203,6 +203,18 @@ export type BotConfig = {
     quoteGas: bigint;
     rpOnly?: boolean;
     dispair: Dispair;
+    rainlang: {
+        inputPrice: string;
+        outputPrice: string;
+        minimum: string;
+        signer: string;
+        buyToken: string;
+        sellToken: string;
+        inputBalance: string;
+        outputBalance: string;
+        botAddress: string;
+        rainlang: string;
+    };
     onFetchRequest?: (request: Request) => void;
     onFetchResponse?: (request: Response) => void;
 };

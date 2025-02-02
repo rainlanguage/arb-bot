@@ -95,9 +95,9 @@ export async function dryrun({
                     ? "0x"
                     : await parseRainlang(
                           await getBountyEnsureRainlang(
-                              ethers.utils.parseUnits(inputToEthPrice),
-                              ethers.utils.parseUnits(outputToEthPrice),
-                              ethers.constants.Zero,
+                              ethers.utils.parseUnits(inputToEthPrice).toHexString(),
+                              ethers.utils.parseUnits(outputToEthPrice).toHexString(),
+                              ethers.constants.Zero.toHexString(),
                               signer.account.address,
                           ),
                           config.viemClient,
@@ -155,9 +155,9 @@ export async function dryrun({
         const headroom = (Number(config.gasCoveragePercentage) * 1.03).toFixed();
         task.evaluable.bytecode = await parseRainlang(
             await getBountyEnsureRainlang(
-                ethers.utils.parseUnits(inputToEthPrice),
-                ethers.utils.parseUnits(outputToEthPrice),
-                gasCost.mul(headroom).div("100"),
+                ethers.utils.parseUnits(inputToEthPrice).toHexString(),
+                ethers.utils.parseUnits(outputToEthPrice).toHexString(),
+                gasCost.mul(headroom).div("100").toHexString(),
                 signer.account.address,
             ),
             config.viemClient,
@@ -179,9 +179,9 @@ export async function dryrun({
             gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
             task.evaluable.bytecode = await parseRainlang(
                 await getBountyEnsureRainlang(
-                    ethers.utils.parseUnits(inputToEthPrice),
-                    ethers.utils.parseUnits(outputToEthPrice),
-                    gasCost.mul(config.gasCoveragePercentage).div("100"),
+                    ethers.utils.parseUnits(inputToEthPrice).toHexString(),
+                    ethers.utils.parseUnits(outputToEthPrice).toHexString(),
+                    gasCost.mul(config.gasCoveragePercentage).div("100").toHexString(),
                     signer.account.address,
                 ),
                 config.viemClient,

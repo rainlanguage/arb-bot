@@ -459,7 +459,7 @@ export const fallbackRpcs: Record<number, readonly string[]> = {
 
 // import { readFileSync } from "fs";
 import { deployerAbi } from "./abis";
-import { BigNumber, utils } from "ethers";
+import { BigNumber, ethers, utils } from "ethers";
 import { Dispair } from "./types";
 import { parseAbi, stringToHex } from "viem";
 import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
@@ -481,9 +481,9 @@ import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
  * @param sender - The msg sender
  */
 export async function getBountyEnsureRainlang(
-    inputToEthPrice: BigNumber,
-    outputToEthPrice: BigNumber,
-    minimumExpected: BigNumber,
+    inputToEthPrice: string,
+    outputToEthPrice: string,
+    minimumExpected: string,
     sender: string,
 ): Promise<string> {
     const x = `---
@@ -518,9 +518,9 @@ total-bounty-eth: add(
     const metaStore = new MetaStore(false);
     const res = await RainDocument.composeText(x, ["main"], metaStore, [
         ["sender", sender],
-        ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
-        ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
-        ["minimum-expected", utils.formatUnits(minimumExpected)],
+        ["input-to-eth-price", inputToEthPrice],
+        ["output-to-eth-price", outputToEthPrice],
+        ["minimum-expected", minimumExpected],
     ]);
     metaStore.free();
     return res;
@@ -636,4 +636,29 @@ export async function parseRainlang(
     //     functionName: "parse2",
     //     args: [stringToHex(rainlang)],
     // });
+}
+
+export function getBountyEnsureRainlangg(
+    config: BotConfig,
+    inputToEthPrice: BigNumber,
+    outputToEthPrice: BigNumber,
+    minimumExpected: BigNumber,
+    sender: string,
+): string {
+    let rainlang = config.rainlang.rainlang;
+    const inputPrice = inputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const outputPrice = outputToEthPrice.toHexString().substring(2).padStart(64, "0");
+    const minimum = minimumExpected.toHexString().substring(2).padStart(64, "0");
+    const signer = ethers.BigNumber.from(sender).toHexString().substring(2).padStart(64, "0");
+    rainlang = rainlang.replaceAll(config.rainlang.signer.substring(2).padStart(64, "0"), signer);
+    rainlang = rainlang.replaceAll(
+        config.rainlang.inputPrice.substring(2).padStart(64, "0"),
+        inputPrice,
+    );
+    rainlang = rainlang.replaceAll(
+        config.rainlang.outputPrice.substring(2).padStart(64, "0"),
+        outputPrice,
+    );
+    rainlang = rainlang.replaceAll(config.rainlang.minimum.substring(2).padStart(64, "0"), minimum);
+    return rainlang;
 }
