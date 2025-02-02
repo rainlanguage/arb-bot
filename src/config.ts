@@ -464,7 +464,7 @@ import { Dispair } from "./types";
 import { parseAbi, stringToHex } from "viem";
 import { MetaStore, RainDocument } from "@rainlanguage/dotrain";
 
-const metaStore = new MetaStore(false);
+// const metaStore = new MetaStore(false);
 // export const TaskEntryPoint = ["main"] as const;
 // export const EnsureBountyDotrain = readFileSync("./tasks/ensure-bounty.rain", {
 //     encoding: "utf8",
@@ -515,12 +515,15 @@ total-bounty-eth: add(
     // const res = await rd.compose(["main"]);
     // rd.free();
     // return res;
-    return await RainDocument.composeText(x, ["main"], metaStore, [
+    const metaStore = new MetaStore(false);
+    const res = await RainDocument.composeText(x, ["main"], metaStore, [
         ["sender", sender],
         ["input-to-eth-price", utils.formatUnits(inputToEthPrice)],
         ["output-to-eth-price", utils.formatUnits(outputToEthPrice)],
         ["minimum-expected", utils.formatUnits(minimumExpected)],
     ]);
+    metaStore.free();
+    return res;
 }
 
 /**
@@ -593,7 +596,8 @@ total-bounty-eth: add(
     // const res = await rd.compose(["main"]);
     // rd.free();
     // return res;
-    return await RainDocument.composeText(x, ["main"], metaStore, [
+    const metaStore = new MetaStore(false);
+    const res = await RainDocument.composeText(x, ["main"], metaStore, [
         ["sender", sender],
         ["bot-address", botAddress],
         ["input-token", inputToken],
@@ -604,6 +608,8 @@ total-bounty-eth: add(
         ["org-input-balance", utils.formatUnits(orgInputBalance)],
         ["org-output-balance", utils.formatUnits(orgOutputBalance)],
     ]);
+    metaStore.free();
+    return res;
 }
 
 /**
