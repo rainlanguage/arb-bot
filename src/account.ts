@@ -1083,8 +1083,22 @@ export async function checkOwnedOrders(
     orderDetails.flat().forEach((v) => {
         v.takeOrders.forEach((order) => {
             if (
+                // owner check
                 order.takeOrder.order.owner.toLowerCase() ===
                     config.mainAccount.account.address.toLowerCase() &&
+                // self fund config check
+                !!(config.selfFundOrders ?? []).find(
+                    (e) =>
+                        e.token.toLowerCase() ===
+                            order.takeOrder.order.validOutputs[
+                                order.takeOrder.outputIOIndex
+                            ].token.toLowerCase() &&
+                        BigNumber.from(
+                            order.takeOrder.order.validOutputs[order.takeOrder.outputIOIndex]
+                                .vaultId,
+                        ).eq(e.vaultId),
+                ) &&
+                // repetition check
                 !ownedOrders.find(
                     (e) =>
                         e.orderbook.toLowerCase() === v.orderbook.toLowerCase() &&
