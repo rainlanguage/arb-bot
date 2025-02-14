@@ -602,40 +602,9 @@ export async function processPair(args: {
             }
         }
     } catch (e: any) {
-        // record all span attributes in their scopes
+        // record all span attributes
         for (const attrKey in e.spanAttributes) {
-            if (attrKey === "routeProcessor") {
-                const rpAttrs = JSON.parse(e.spanAttributes[attrKey]);
-                for (const key in rpAttrs) {
-                    const innerAttrs = JSON.parse(rpAttrs[key]);
-                    for (const innerKey in innerAttrs) {
-                        spanAttributes["details.routeProcessor." + key + "." + innerKey] =
-                            innerAttrs[innerKey];
-                    }
-                }
-            } else if (attrKey === "intraOrderbook") {
-                const intraAttrs = JSON.parse(e.spanAttributes[attrKey]);
-                for (let i = 0; i < intraAttrs.length; i++) {
-                    const innerAttrs = JSON.parse(intraAttrs[i]);
-                    for (const innerKey in innerAttrs) {
-                        spanAttributes["details.intraOrderbook." + i + "." + innerKey] =
-                            innerAttrs[innerKey];
-                    }
-                }
-            } else if (attrKey === "interOrderbook") {
-                const interAttrs = JSON.parse(
-                    JSON.parse(e.spanAttributes[attrKey])["againstOrderbooks"],
-                );
-                for (const key in interAttrs) {
-                    for (const innerKey in interAttrs[key]) {
-                        spanAttributes[
-                            "details.interOrderbook.againstOrderbooks." + key + "." + innerKey
-                        ] = interAttrs[key][innerKey];
-                    }
-                }
-            } else {
-                spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
-            }
+            spanAttributes["details." + attrKey] = e.spanAttributes[attrKey];
         }
         if (e.noneNodeError) {
             spanAttributes["details.noneNodeError"] = true;

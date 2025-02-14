@@ -14,6 +14,7 @@ import {
     estimateProfit,
     visualizeRoute,
     withBigintSerializer,
+    extendSpanAttributes,
 } from "../utils";
 
 /**
@@ -190,13 +191,21 @@ export async function dryrun({
                 .div(100);
 
             // include dryrun headroom gas estimation in otel logs
-            spanAttributes["gasEst.headroom.gasLimit"] = estimation.gas.toString();
-            spanAttributes["gasEst.headroom.totalCost"] = estimation.totalGasCost.toString();
-            spanAttributes["gasEst.headroom.gasPrice"] = estimation.gasPrice.toString();
-            if (config.isSpecialL2) {
-                spanAttributes["gasEst.headroom.l1Cost"] = estimation.l1Cost.toString();
-                spanAttributes["gasEst.headroom.l1GasPrice"] = estimation.l1GasPrice.toString();
-            }
+            extendSpanAttributes(
+                spanAttributes,
+                JSON.stringify({
+                    gasLimit: estimation.gas.toString(),
+                    totalCost: estimation.totalGasCost.toString(),
+                    gasPrice: estimation.gasPrice.toString(),
+                    ...(config.isSpecialL2
+                        ? {
+                              l1Cost: estimation.l1Cost.toString(),
+                              l1GasPrice: estimation.l1GasPrice.toString(),
+                          }
+                        : {}),
+                }),
+                "gasEst.headroom",
+            );
         } catch (e) {
             // reason, code, method, transaction, error, stack, message
             const isNodeError = containsNodeError(e as BaseError);
@@ -268,13 +277,21 @@ export async function dryrun({
                 gasCost = gasLimit.mul(gasPrice).add(estimation.l1Cost);
 
                 // include dryrun final gas estimation in otel logs
-                spanAttributes["gasEst.final.gasLimit"] = estimation.gas.toString();
-                spanAttributes["gasEst.final.totalCost"] = estimation.totalGasCost.toString();
-                spanAttributes["gasEst.final.gasPrice"] = estimation.gasPrice.toString();
-                if (config.isSpecialL2) {
-                    spanAttributes["gasEst.final.l1Cost"] = estimation.l1Cost.toString();
-                    spanAttributes["gasEst.final.l1GasPrice"] = estimation.l1GasPrice.toString();
-                }
+                extendSpanAttributes(
+                    spanAttributes,
+                    JSON.stringify({
+                        gasLimit: estimation.gas.toString(),
+                        totalCost: estimation.totalGasCost.toString(),
+                        gasPrice: estimation.gasPrice.toString(),
+                        ...(config.isSpecialL2
+                            ? {
+                                  l1Cost: estimation.l1Cost.toString(),
+                                  l1GasPrice: estimation.l1GasPrice.toString(),
+                              }
+                            : {}),
+                    }),
+                    "gasEst.final",
+                );
                 task.evaluable.bytecode = await parseRainlang(
                     await getBountyEnsureRainlang(
                         ethers.utils.parseUnits(ethPrice),
@@ -413,7 +430,7 @@ export async function findOpp({
         // the fail reason can only be no route in case all hops fail reasons are no route
         if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
         allNoneNodeErrors.push(e?.value?.noneNodeError);
-        spanAttributes["full"] = JSON.stringify(e.spanAttributes);
+        extendSpanAttributes(spanAttributes, JSON.stringify(e.spanAttributes), "full");
     }
     if (!hasPriceMatch.value) {
         const maxTradeSize = findMaxInput({
@@ -446,7 +463,7 @@ export async function findOpp({
                 // the fail reason can only be no route in case all hops fail reasons are no route
                 if (e.reason !== RouteProcessorDryrunHaltReason.NoRoute) noRoute = false;
                 allNoneNodeErrors.push(e?.value?.noneNodeError);
-                spanAttributes["partial"] = JSON.stringify(e.spanAttributes);
+                extendSpanAttributes(spanAttributes, JSON.stringify(e.spanAttributes), "partial");
             }
         }
     }
