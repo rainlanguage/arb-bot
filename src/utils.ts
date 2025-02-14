@@ -816,18 +816,16 @@ export function scale18To(value: BigNumberish, targetDecimals: BigNumberish): Bi
  */
 export function extendSpanAttributes(
     spanAttributes: Record<string, any>,
-    newAttributes: string,
+    newAttributes: Record<string, any>,
     header: string,
     excludeHeaderForKeys: string[] = [],
 ) {
-    const attrs = JSON.parse(newAttributes);
-    for (const attrKey in attrs) {
+    for (const attrKey in newAttributes) {
         if (!excludeHeaderForKeys.includes(attrKey)) {
-            spanAttributes[header + "." + attrKey] = attrs[attrKey];
+            Object.assign(spanAttributes, { [header + "." + attrKey]: newAttributes[attrKey] });
         } else {
-            spanAttributes[attrKey] = attrs[attrKey];
+            Object.assign(spanAttributes, { [attrKey]: newAttributes[attrKey] });
         }
-        delete attrs[attrKey];
     }
 }
 
