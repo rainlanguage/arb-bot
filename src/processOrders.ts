@@ -1,11 +1,11 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
+import { getQuoteGas } from "./gas";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
 import { createViemClient } from "./config";
 import { arbAbis, orderbookAbi } from "./abis";
-import { getGasPrice, getQuoteGas } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -463,9 +463,7 @@ export async function processPair(args: {
         ratio: ethers.utils.formatUnits(orderPairObject.takeOrders[0].quote!.ratio),
     });
 
-    await getGasPrice(config, state);
-    const gasPrice = ethers.BigNumber.from(state.gasPrice);
-
+    const gasPrice = BigNumber.from(state.gasPrice);
     // get pool details
     if (
         !dataFetcher.fetchedPairPools.includes(pair) ||
