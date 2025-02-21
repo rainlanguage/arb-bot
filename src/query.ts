@@ -61,24 +61,15 @@ export type SgOtherEvent = {
  * @returns the query string
  */
 export function getQueryPaginated(skip: number, filters?: SgFilter): string {
-    const incOwnerFilter = filters?.includeOwners
-        ? `, owner_in: [${filters.includeOwners.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
-    const exOwnerFilter = filters?.excludeOwners
-        ? `, owner_not_in: [${filters.excludeOwners.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
-    const incOrderFilter = filters?.includeOrders
-        ? `, orderHash_in: [${filters.includeOrders.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
-    const exOrderFilter = filters?.excludeOrders
-        ? `, orderHash_not_in: [${filters.excludeOrders.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
-    const incOrderbookFilter = filters?.includeOrderbooks
-        ? `, orderbook_in: [${filters.includeOrderbooks.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
-    const exOrderbookFilter = filters?.excludeOrderbooks
-        ? `, orderbook_not_in: [${filters.excludeOrderbooks.map((v) => `"${v.toLowerCase()}"`).join(",")}]`
-        : "";
+    const getFilterVar = (header: string, f?: string[]) =>
+        f ? `${header}: [${f.map((v) => `"${v.toLowerCase()}"`).join(", ")}], ` : "";
+
+    const incOwnerFilter = getFilterVar("owner_in", filters?.includeOwners);
+    const exOwnerFilter = getFilterVar("owner_not_in", filters?.excludeOwners);
+    const incOrderFilter = getFilterVar("orderHash_in", filters?.includeOrders);
+    const exOrderFilter = getFilterVar("orderHash_not_in", filters?.excludeOrders);
+    const incOrderbookFilter = getFilterVar("orderbook_in", filters?.includeOrderbooks);
+    const exOrderbookFilter = getFilterVar("orderbook_not_in", filters?.excludeOrderbooks);
 
     return `{
     orders(
@@ -312,7 +303,7 @@ export async function getOrderChanges(
                                 timestamp: Number(tx.timestamp),
                             };
                             if (applyFilters(newOrder, filters)) {
-                                addOrders.push();
+                                addOrders.push(newOrder);
                             }
                         }
                     }
