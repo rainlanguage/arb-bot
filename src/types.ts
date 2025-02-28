@@ -316,8 +316,8 @@ export type SgFilter = {
     includeOwners?: string[];
     excludeOrders?: string[];
     excludeOwners?: string[];
-    includeOrderbooks: string[];
-    excludeOrderbooks: string[];
+    includeOrderbooks?: string[];
+    excludeOrderbooks?: string[];
 };
 
 export type RpcRecord = {
