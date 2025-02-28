@@ -54,6 +54,7 @@ export type SgOtherEvent = {
     __typename: "Withdrawal" | "Deposit";
 };
 
+console.log(getQueryPaginated(1, {excludeOrders: ["0x7805cad5e84757ee3e28945bd36a6ff7273c58440153793efcaf641b84c8d247"]}));
 /**
  * Method to get the subgraph query body with optional filters
  * @param skip - Number of results to skip
@@ -77,7 +78,15 @@ export function getQueryPaginated(skip: number, filters?: SgFilter): string {
         skip: ${skip},
         orderBy: timestampAdded,
         orderDirection: desc,
-        where: {active: true${incOwnerFilter}${exOwnerFilter}${incOrderFilter}${exOrderFilter}${incOrderbookFilter}${exOrderbookFilter}}
+        where: {
+            ${incOwnerFilter}
+            ${exOwnerFilter}
+            ${incOrderFilter}
+            ${exOrderFilter}
+            ${incOrderbookFilter}
+            ${exOrderbookFilter}
+            active: true
+        }
     ) {
         id
         owner
