@@ -349,11 +349,14 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         );
 
         if (resetDataFetcher) {
-            config.dataFetcher = await getDataFetcher(
-                viemClient as any as PublicClient,
-                config.lps,
-                config.publicRpc,
-            );
+            config.dataFetcher.reset();
+            config.dataFetcher.fetchedPairPools = [];
+            config.dataFetcher.web3Client = viemClient as any as PublicClient;
+            // config.dataFetcher = await getDataFetcher(
+            //     viemClient as any as PublicClient,
+            //     config.lps,
+            //     config.publicRpc,
+            // );
         } else {
             config.dataFetcher.web3Client = viemClient as any as PublicClient;
         }
