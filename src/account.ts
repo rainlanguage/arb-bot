@@ -952,8 +952,6 @@ export async function fundOwnedOrders(
                                 rp4Address,
                                 config.dataFetcher,
                                 gasPrice,
-                                undefined,
-                                true,
                             );
                             const initSellAmount = ethers.BigNumber.from(route.amountOutBI);
                             let sellAmount: BigNumber;
@@ -969,8 +967,6 @@ export async function fundOwnedOrders(
                                     rp4Address,
                                     config.dataFetcher,
                                     gasPrice,
-                                    undefined,
-                                    true,
                                 );
                                 if (topupAmount.lte(route.amountOutBI)) {
                                     finalRpParams = rpParams;

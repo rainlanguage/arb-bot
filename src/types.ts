@@ -56,8 +56,8 @@ export type CliOptions = {
     includeOwners?: string[];
     excludeOrders?: string[];
     excludeOwners?: string[];
-    includeOrderbooks: string[];
-    excludeOrderbooks: string[];
+    includeOrderbooks?: string[];
+    excludeOrderbooks?: string[];
     sleep: number;
     maxRatio: boolean;
     timeout?: number;

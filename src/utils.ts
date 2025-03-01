@@ -652,12 +652,8 @@ export async function getRpSwap(
     dataFetcher: DataFetcher,
     gasPrice: BigNumber,
     lps?: LiquidityProviders[],
-    fetchPools = false,
 ) {
     const amountIn = sellAmount.toBigInt();
-    if (fetchPools) {
-        await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList);
-    }
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
