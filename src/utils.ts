@@ -7,7 +7,7 @@ import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, parseEventLogs, TransactionReceipt } from "viem";
 import { BotConfig, TakeOrderDetails, TokenDetails, ViemClient } from "./types";
-import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
+import { RainDataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
 
 /**
  * One ether which equals to 1e18
@@ -159,7 +159,7 @@ export async function getEthPrice(
     targetTokenAddress: string,
     targetTokenDecimals: number,
     gasPrice: BigNumber,
-    dataFetcher: DataFetcher,
+    dataFetcher: RainDataFetcher,
     options?: DataFetcherOptions,
     fetchPools = true,
 ): Promise<string | undefined> {
@@ -649,11 +649,15 @@ export async function getRpSwap(
     toToken: Type,
     receiverAddress: string,
     routeProcessorAddress: string,
-    dataFetcher: DataFetcher,
+    dataFetcher: RainDataFetcher,
     gasPrice: BigNumber,
     lps?: LiquidityProviders[],
+    fetchPools = false,
 ) {
     const amountIn = sellAmount.toBigInt();
+    if (fetchPools) {
+        await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList);
+    }
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,
