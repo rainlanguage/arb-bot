@@ -473,23 +473,23 @@ export async function processPair(args: {
 
     const gasPrice = BigNumber.from(state.gasPrice);
 
-    // update pools by events watching until current block
-    try {
-        if (dataFetcher.fetchedPairPools?.length) {
-            let blockNumber;
-            if (isE2eTest && (config as any).testBlockNumberTemp) {
-                (config as any).testBlockNumberTemp += 10n;
-                blockNumber = (config as any).testBlockNumberTemp;
-            }
-            await dataFetcher.updatePools(blockNumber);
-        }
-    } catch (e) {
-        result.reason = ProcessPairHaltReason.FailedToUpdatePools;
-        result.error = e;
-        return async () => {
-            throw result;
-        };
-    }
+    // // update pools by events watching until current block
+    // try {
+    //     if (dataFetcher.fetchedPairPools?.length) {
+    //         let blockNumber;
+    //         if (isE2eTest && (config as any).testBlockNumberTemp) {
+    //             (config as any).testBlockNumberTemp += 10n;
+    //             blockNumber = (config as any).testBlockNumberTemp;
+    //         }
+    //         await dataFetcher.updatePools(blockNumber);
+    //     }
+    // } catch (e) {
+    //     result.reason = ProcessPairHaltReason.FailedToUpdatePools;
+    //     result.error = e;
+    //     return async () => {
+    //         throw result;
+    //     };
+    // }
 
     // get pool details
     if (
