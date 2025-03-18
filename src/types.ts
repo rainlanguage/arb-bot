@@ -1,7 +1,7 @@
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
-import { RainDataFetcher, LiquidityProviders } from "sushi/router";
+import { DataFetcher, LiquidityProviders } from "sushi/router";
 import {
     Chain,
     Account,
@@ -184,7 +184,7 @@ export type TestViemClient = TestClient<"hardhat"> &
         ) => Promise<`0x${string}`>;
     };
 
-export type BotDataFetcher = RainDataFetcher & { fetchedPairPools: string[] };
+export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
 
 export type ChainConfig = {
     chain: Chain;
