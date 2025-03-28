@@ -31,7 +31,7 @@ import {
 } from "./account";
 import {
     getOrdersTokens,
-    downscaleProtection,
+    // downscaleProtection,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
     handleAddOrderbookOwnersProfileMap,
@@ -957,15 +957,15 @@ export const main = async (argv: any, version?: string) => {
                         }
                     }
                 }
-
-                // in case there are new orders or removed order, re evaluate owners limits
-                if (ordersDidChange) {
-                    await downscaleProtection(
-                        orderbooksOwnersProfileMap,
-                        config.viemClient as any as ViemClient,
-                        options.ownerProfile,
-                    );
-                }
+                ordersDidChange;
+                // // in case there are new orders or removed order, re evaluate owners limits
+                // if (ordersDidChange) {
+                //     await downscaleProtection(
+                //         orderbooksOwnersProfileMap,
+                //         config.viemClient as any as ViemClient,
+                //         options.ownerProfile,
+                //     );
+                // }
             } catch {
                 /**/
             }
