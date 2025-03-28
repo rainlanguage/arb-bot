@@ -150,6 +150,19 @@ module.exports = [
         ["1", "10000", "10000", "10000"],
     ],
     [
+        // unique test for aerodrome slipstream
+        ChainId.BASE,
+        process?.env?.TEST_BASE_RPC,
+        16418720,
+        [WNATIVE[ChainId.BASE], USDC[ChainId.BASE]],
+        [
+            "0x2B8804c2b652f05F7FDD8e0a02F01eE58F01667E",
+            "0x336307F2d8390035Ba926a61a86b45CA9dC91E57",
+        ],
+        [LiquidityProviders.AerodromeSlipstream],
+        ["1", "10000"],
+    ],
+    [
         ChainId.BSC,
         process?.env?.TEST_BSC_RPC,
         40393189,
