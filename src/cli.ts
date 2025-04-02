@@ -6,7 +6,7 @@ import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { sleep, isBigNumberish } from "./utils";
-import { getOrderChanges, SgOrder } from "./query";
+import { SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
@@ -31,11 +31,11 @@ import {
 } from "./account";
 import {
     getOrdersTokens,
-    // downscaleProtection,
+    downscaleProtection,
     prepareOrdersForRound,
     getOrderbookOwnersProfileMapFromSg,
-    handleAddOrderbookOwnersProfileMap,
-    handleRemoveOrderbookOwnersProfileMap,
+    // handleAddOrderbookOwnersProfileMap,
+    // handleRemoveOrderbookOwnersProfileMap,
 } from "./order";
 import {
     diag,
@@ -660,8 +660,8 @@ export const main = async (argv: any, version?: string) => {
         poolUpdateInterval,
         config,
         orderbooksOwnersProfileMap,
-        tokens,
-        lastReadOrdersTimestamp,
+        // tokens,
+        // lastReadOrdersTimestamp,
         state,
     } = await tracer.startActiveSpan("startup", async (startupSpan) => {
         const ctx = trace.setSpan(context.active(), startupSpan);
@@ -686,12 +686,12 @@ export const main = async (argv: any, version?: string) => {
     });
 
     // periodically fetch and set gas price in state (once every 20 seconds)
-    setInterval(() => getGasPrice(config, state), 20_000);
+    // setInterval(() => getGasPrice(config, state), 20_000);
 
-    const lastReadOrdersMap = options.subgraph.map((v) => ({
-        sg: v,
-        skip: 0,
-    }));
+    // const lastReadOrdersMap = options.subgraph.map((v) => ({
+    //     sg: v,
+    //     skip: 0,
+    // }));
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
     let lastInterval = Date.now() + poolUpdateInterval;
@@ -769,6 +769,7 @@ export const main = async (argv: any, version?: string) => {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 await rotateProviders(config, update);
                 roundSpan.setAttribute("details.rpc", config.rpc);
+                await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
                     roundCtx,
@@ -913,59 +914,58 @@ export const main = async (argv: any, version?: string) => {
             }
 
             try {
-                // handle order changes (add/remove)
-                roundSpan.setAttribute(
-                    "watch-new-orders",
-                    JSON.stringify({
-                        hasRead: lastReadOrdersMap,
-                        startTime: lastReadOrdersTimestamp,
-                    }),
-                );
-                let ordersDidChange = false;
-                const results = await Promise.allSettled(
-                    lastReadOrdersMap.map((v) =>
-                        getOrderChanges(v.sg, lastReadOrdersTimestamp, v.skip, roundSpan),
-                    ),
-                );
-                for (let i = 0; i < results.length; i++) {
-                    const res = results[i];
-                    if (res.status === "fulfilled") {
-                        if (res.value.addOrders.length || res.value.removeOrders.length) {
-                            ordersDidChange = true;
-                        }
-                        lastReadOrdersMap[i].skip += res.value.count;
-                        try {
-                            await handleAddOrderbookOwnersProfileMap(
-                                orderbooksOwnersProfileMap,
-                                res.value.addOrders.map((v) => v.order),
-                                config.viemClient as any as ViemClient,
-                                tokens,
-                                options.ownerProfile,
-                                roundSpan,
-                            );
-                        } catch {
-                            /**/
-                        }
-                        try {
-                            await handleRemoveOrderbookOwnersProfileMap(
-                                orderbooksOwnersProfileMap,
-                                res.value.removeOrders.map((v) => v.order),
-                                roundSpan,
-                            );
-                        } catch {
-                            /**/
-                        }
-                    }
-                }
-                ordersDidChange;
-                // // in case there are new orders or removed order, re evaluate owners limits
-                // if (ordersDidChange) {
-                //     await downscaleProtection(
-                //         orderbooksOwnersProfileMap,
-                //         config.viemClient as any as ViemClient,
-                //         options.ownerProfile,
-                //     );
+                // // handle order changes (add/remove)
+                // roundSpan.setAttribute(
+                //     "watch-new-orders",
+                //     JSON.stringify({
+                //         hasRead: lastReadOrdersMap,
+                //         startTime: lastReadOrdersTimestamp,
+                //     }),
+                // );
+                const ordersDidChange = false;
+                // const results = await Promise.allSettled(
+                //     lastReadOrdersMap.map((v) =>
+                //         getOrderChanges(v.sg, lastReadOrdersTimestamp, v.skip, roundSpan),
+                //     ),
+                // );
+                // for (let i = 0; i < results.length; i++) {
+                //     const res = results[i];
+                //     if (res.status === "fulfilled") {
+                //         if (res.value.addOrders.length || res.value.removeOrders.length) {
+                //             ordersDidChange = true;
+                //         }
+                //         lastReadOrdersMap[i].skip += res.value.count;
+                //         try {
+                //             await handleAddOrderbookOwnersProfileMap(
+                //                 orderbooksOwnersProfileMap,
+                //                 res.value.addOrders.map((v) => v.order),
+                //                 config.viemClient as any as ViemClient,
+                //                 tokens,
+                //                 options.ownerProfile,
+                //                 roundSpan,
+                //             );
+                //         } catch {
+                //             /**/
+                //         }
+                //         try {
+                //             await handleRemoveOrderbookOwnersProfileMap(
+                //                 orderbooksOwnersProfileMap,
+                //                 res.value.removeOrders.map((v) => v.order),
+                //                 roundSpan,
+                //             );
+                //         } catch {
+                //             /**/
+                //         }
+                //     }
                 // }
+                // in case there are new orders or removed order, re evaluate owners limits
+                if (ordersDidChange) {
+                    await downscaleProtection(
+                        orderbooksOwnersProfileMap,
+                        config.viemClient as any as ViemClient,
+                        options.ownerProfile,
+                    );
+                }
             } catch {
                 /**/
             }
