@@ -96,7 +96,6 @@ export type BundledOrders = {
 
 export type TakeOrderDetails = {
     id: string;
-    // active: boolean;
     quote?: {
         maxOutput: BigNumber;
         ratio: BigNumber;

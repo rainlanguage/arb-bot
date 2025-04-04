@@ -620,9 +620,6 @@ export const main = async (argv: any, version?: string) => {
         }
     });
 
-    // periodically fetch and set gas price in state (once every 20 seconds)
-    setInterval(() => getGasPrice(config, state), 20_000);
-
     const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
         skip: 0,
@@ -704,6 +701,7 @@ export const main = async (argv: any, version?: string) => {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 await rotateProviders(config, update);
                 roundSpan.setAttribute("details.rpc", config.rpc);
+                await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
                     roundCtx,
