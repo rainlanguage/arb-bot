@@ -132,7 +132,6 @@ export async function createViemClient(
               account,
               chain: publicClientConfig[chainId]?.chain,
               transport,
-              ccipRead: false,
           }).extend(publicActions) as any as ViemClient);
 
     // set injected properties

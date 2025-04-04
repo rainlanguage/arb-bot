@@ -310,12 +310,21 @@ export type OwnedOrder = {
     vaultBalance: BigNumber;
 };
 
+/**
+ * Filter criteria for subgraph queries
+ */
 export type SgFilter = {
+    /** Order hashes to include */
     includeOrders?: string[];
+    /** Owner addresses to include */
     includeOwners?: string[];
+    /** Order hashes to exclude (takes precedence over includeOrders) */
     excludeOrders?: string[];
+    /** Owner addresses to exclude (takes precedence over includeOwners) */
     excludeOwners?: string[];
+    /** Orderbook addresses to include */
     includeOrderbooks?: string[];
+    /** Orderbook addresses to exclude (takes precedence over includeOrderbooks) */
     excludeOrderbooks?: string[];
 };
 
