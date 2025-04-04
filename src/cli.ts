@@ -54,7 +54,7 @@ import {
 
 config();
 
-/** Solidty hash pattern */
+/** Solidity hash pattern */
 const HASH_PATTERN = /^(0x)?[a-fA-F0-9]{64}$/;
 
 /**
