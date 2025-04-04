@@ -434,9 +434,6 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         throw "undefined wallet, only one of key or mnemonic should be specified";
     }
     if (options.mnemonic) {
-        if (!ethers.utils.isValidMnemonic(options.mnemonic)) {
-            throw "provided mnemonic key is not valid";
-        }
         if (!options.walletCount || !options.topupAmount) {
             throw "--wallet-count and --toptup-amount are required when using mnemonic option";
         }

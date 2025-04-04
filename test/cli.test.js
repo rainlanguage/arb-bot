@@ -88,14 +88,6 @@ describe("Test cli", async function () {
         }
 
         try {
-            await startup(["", "", "-m", "some invalid mnemonic"]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "provided mnemonic key is not valid";
-            assert.equal(error, expected);
-        }
-
-        try {
             await startup([
                 "",
                 "",
