@@ -54,6 +54,9 @@ import {
 
 config();
 
+/** Solidty hash pattern */
+const HASH_PATTERN = /^(0x)?[a-fA-F0-9]{64}$/;
+
 /**
  * Options specified in env variables
  */
@@ -328,52 +331,22 @@ const getOptions = async (argv: any, version?: string) => {
         });
     }
     if (cmdOptions.includeOrders) {
-        cmdOptions.includeOrders = cmdOptions.includeOrders.map((v: string) => {
-            if (!/^(0x)?[a-fA-F0-9]{64}$/.test(v)) {
-                throw `${v} is not a valid order hash`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.includeOrders = cmdOptions.includeOrders.map(validateHash);
     }
     if (cmdOptions.excludeOrders) {
-        cmdOptions.excludeOrders = cmdOptions.excludeOrders.map((v: string) => {
-            if (!/^(0x)?[a-fA-F0-9]{64}$/.test(v)) {
-                throw `${v} is not a valid order hash`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.excludeOrders = cmdOptions.excludeOrders.map(validateHash);
     }
     if (cmdOptions.includeOwners) {
-        cmdOptions.includeOwners = cmdOptions.includeOwners.map((v: string) => {
-            if (!ethers.utils.isAddress(v)) {
-                throw `${v} is not a valid address`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.includeOwners = cmdOptions.includeOwners.map(validateAddress);
     }
     if (cmdOptions.excludeOwners) {
-        cmdOptions.excludeOwners = cmdOptions.excludeOwners.map((v: string) => {
-            if (!ethers.utils.isAddress(v)) {
-                throw `${v} is not a valid address`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.excludeOwners = cmdOptions.excludeOwners.map(validateAddress);
     }
     if (cmdOptions.includeOrderbooks) {
-        cmdOptions.includeOrderbooks = cmdOptions.includeOrderbooks.map((v: string) => {
-            if (!ethers.utils.isAddress(v)) {
-                throw `${v} is not a valid address`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.includeOrderbooks = cmdOptions.includeOrderbooks.map(validateAddress);
     }
     if (cmdOptions.excludeOrderbooks) {
-        cmdOptions.excludeOrderbooks = cmdOptions.excludeOrderbooks.map((v: string) => {
-            if (!ethers.utils.isAddress(v)) {
-                throw `${v} is not a valid address`;
-            }
-            return v.toLowerCase();
-        });
+        cmdOptions.excludeOrderbooks = cmdOptions.excludeOrderbooks.map(validateAddress);
     }
     return cmdOptions;
 };
@@ -477,7 +450,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         }
     }
     if (options.key) {
-        if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
+        if (!HASH_PATTERN.test(options.key)) throw "invalid wallet private key";
     }
     if (!options.rpc) throw "undefined RPC URL";
     if (options.writeRpc) {
@@ -1015,6 +988,22 @@ function getEnv(value: any): any {
     return undefined;
 }
 
-function parseArrayFromEnv(value?: string): string[] | undefined {
+export function parseArrayFromEnv(value?: string): string[] | undefined {
     return value ? Array.from(value.matchAll(/[^,\s]+/g)).map((v) => v[0]) : undefined;
+}
+
+export function validateAddress(value?: unknown): string {
+    if (typeof value !== "string") throw "expected string";
+    if (!ethers.utils.isAddress(value)) {
+        throw `${value} is not a valid address`;
+    }
+    return value.toLowerCase();
+}
+
+export function validateHash(value?: unknown): string {
+    if (typeof value !== "string") throw "expected string";
+    if (!HASH_PATTERN.test(value)) {
+        throw `${value} is not a valid hash`;
+    }
+    return value.toLowerCase();
 }

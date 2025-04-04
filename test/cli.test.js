@@ -1,12 +1,18 @@
 require("dotenv").config();
 const { assert } = require("chai");
+const { sleep } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
-const { arbRound, startup } = require("../src/cli");
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { sleep } = require("../src/utils");
+const {
+    startup,
+    arbRound,
+    validateHash,
+    validateAddress,
+    parseArrayFromEnv,
+} = require("../src/cli");
 
 describe("Test cli", async function () {
     beforeEach(() => mockServer.start(8080));
@@ -244,7 +250,7 @@ describe("Test cli", async function () {
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = `0x${"2".repeat(40)} is not a valid order hash`;
+            const expected = `0x${"2".repeat(40)} is not a valid hash`;
             assert.equal(error, expected);
         }
 
@@ -270,7 +276,7 @@ describe("Test cli", async function () {
             ]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = `0x${"2".repeat(40)} is not a valid order hash`;
+            const expected = `0x${"2".repeat(40)} is not a valid hash`;
             assert.equal(error, expected);
         }
 
@@ -489,5 +495,57 @@ describe("Test cli", async function () {
         assert.deepEqual(result.options.excludeOwners, expected.options.excludeOwners);
         assert.deepEqual(result.options.includeOrderbooks, expected.options.includeOrderbooks);
         assert.deepEqual(result.options.excludeOrderbooks, expected.options.excludeOrderbooks);
+    });
+
+    it("test get array from env", async function () {
+        let result = parseArrayFromEnv("a, b,c, d");
+        let expected = ["a", "b", "c", "d"];
+        assert.deepEqual(result, expected);
+
+        result = parseArrayFromEnv("  abcd   ");
+        expected = ["abcd"];
+        assert.deepEqual(result, expected);
+
+        result = parseArrayFromEnv("");
+        expected = undefined;
+        assert.deepEqual(result, expected);
+
+        result = parseArrayFromEnv();
+        expected = undefined;
+        assert.deepEqual(result, expected);
+    });
+
+    it("test validate address", async function () {
+        assert.ok(validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D"));
+
+        assert.throws(() => validateAddress(), "expected string");
+        assert.throws(() => validateAddress(0x1234567), "expected string");
+        assert.throws(() => validateAddress(""), " is not a valid address");
+        assert.throws(
+            () => validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8"),
+            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8 is not a valid address",
+        );
+        assert.throws(
+            () => validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG"),
+            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG is not a valid address",
+        );
+    });
+
+    it("test validate hash", async function () {
+        assert.ok(
+            validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8DeDd866204eE07f8DeDd86620"),
+        );
+
+        assert.throws(() => validateHash(), "expected string");
+        assert.throws(() => validateHash(0x1234567), "expected string");
+        assert.throws(() => validateHash(""), " is not a valid hash");
+        assert.throws(
+            () => validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8"),
+            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8 is not a valid hash",
+        );
+        assert.throws(
+            () => validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG"),
+            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG is not a valid hash",
+        );
     });
 });
