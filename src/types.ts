@@ -52,12 +52,7 @@ export type CliOptions = {
     subgraph: string[];
     lps?: string[];
     gasCoverage: string;
-    includeOrders?: string[];
-    includeOwners?: string[];
-    excludeOrders?: string[];
-    excludeOwners?: string[];
-    includeOrderbooks?: string[];
-    excludeOrderbooks?: string[];
+    sgFilter?: SgFilter;
     sleep: number;
     maxRatio: boolean;
     timeout?: number;

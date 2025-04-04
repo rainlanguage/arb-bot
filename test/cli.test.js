@@ -452,12 +452,14 @@ describe("Test cli", async function () {
                 quoteGas: 7777n,
                 rpOnly: true,
                 dispair: deployer,
-                includeOrders: [`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`],
-                excludeOrders: [`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`],
-                includeOwners: [`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`],
-                excludeOwners: [`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`],
-                includeOrderbooks: [`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`],
-                excludeOrderbooks: [`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`],
+                sgFilter: {
+                    includeOrders: [`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`],
+                    excludeOrders: [`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`],
+                    includeOwners: [`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`],
+                    excludeOwners: [`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`],
+                    includeOrderbooks: [`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`],
+                    excludeOrderbooks: [`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`],
+                },
             },
         };
         await sleep(1000);
@@ -481,12 +483,7 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
-        assert.deepEqual(result.options.includeOrders, expected.options.includeOrders);
-        assert.deepEqual(result.options.excludeOrders, expected.options.excludeOrders);
-        assert.deepEqual(result.options.includeOwners, expected.options.includeOwners);
-        assert.deepEqual(result.options.excludeOwners, expected.options.excludeOwners);
-        assert.deepEqual(result.options.includeOrderbooks, expected.options.includeOrderbooks);
-        assert.deepEqual(result.options.excludeOrderbooks, expected.options.excludeOrderbooks);
+        assert.deepEqual(result.options.sgFilter, expected.options.sgFilter);
     });
 
     it("test get array from env", async function () {

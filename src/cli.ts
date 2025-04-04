@@ -21,6 +21,7 @@ import {
     BundledOrders,
     OperationState,
     ProcessPairReportStatus,
+    SgFilter,
 } from "./types";
 import {
     sweepToEth,
@@ -330,24 +331,45 @@ const getOptions = async (argv: any, version?: string) => {
             };
         });
     }
+
+    // handle sg filters
+    const sgFilter: SgFilter = {
+        includeOrders: undefined,
+        excludeOrders: undefined,
+        includeOwners: undefined,
+        excludeOwners: undefined,
+        includeOrderbooks: undefined,
+        excludeOrderbooks: undefined,
+    };
     if (cmdOptions.includeOrders) {
-        cmdOptions.includeOrders = cmdOptions.includeOrders.map(validateHash);
+        sgFilter.includeOrders = cmdOptions.includeOrders.map(validateHash);
+        delete cmdOptions.includeOrders;
     }
     if (cmdOptions.excludeOrders) {
-        cmdOptions.excludeOrders = cmdOptions.excludeOrders.map(validateHash);
+        sgFilter.excludeOrders = cmdOptions.excludeOrders.map(validateHash);
+        delete cmdOptions.excludeOrders;
     }
     if (cmdOptions.includeOwners) {
-        cmdOptions.includeOwners = cmdOptions.includeOwners.map(validateAddress);
+        sgFilter.includeOwners = cmdOptions.includeOwners.map(validateAddress);
+        delete cmdOptions.includeOwners;
     }
     if (cmdOptions.excludeOwners) {
-        cmdOptions.excludeOwners = cmdOptions.excludeOwners.map(validateAddress);
+        sgFilter.excludeOwners = cmdOptions.excludeOwners.map(validateAddress);
+        delete cmdOptions.excludeOwners;
     }
     if (cmdOptions.includeOrderbooks) {
-        cmdOptions.includeOrderbooks = cmdOptions.includeOrderbooks.map(validateAddress);
+        sgFilter.includeOrderbooks = cmdOptions.includeOrderbooks.map(validateAddress);
+        delete cmdOptions.includeOrderbooks;
     }
     if (cmdOptions.excludeOrderbooks) {
-        cmdOptions.excludeOrderbooks = cmdOptions.excludeOrderbooks.map(validateAddress);
+        sgFilter.excludeOrderbooks = cmdOptions.excludeOrderbooks.map(validateAddress);
+        delete cmdOptions.excludeOrderbooks;
     }
+    // include if any of the fields are set
+    if (Object.values(sgFilter).some((v) => typeof v !== "undefined")) {
+        cmdOptions.sgFilter = sgFilter;
+    }
+
     return cmdOptions;
 };
 
@@ -536,14 +558,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     if (!process?.env?.CLI_STARTUP_TEST) {
         for (let i = 0; i < 3; i++) {
             try {
-                ordersDetails = await getOrderDetails(options.subgraph, {
-                    includeOrders: options.includeOrders,
-                    includeOwners: options.includeOwners,
-                    excludeOrders: options.excludeOrders,
-                    excludeOwners: options.excludeOwners,
-                    includeOrderbooks: options.includeOrderbooks,
-                    excludeOrderbooks: options.excludeOrderbooks,
-                });
+                ordersDetails = await getOrderDetails(options.subgraph, options.sgFilter);
                 break;
             } catch (e) {
                 if (i != 2) await sleep(10000 * (i + 1));
@@ -894,7 +909,13 @@ export const main = async (argv: any, version?: string) => {
                 let ordersDidChange = false;
                 const results = await Promise.allSettled(
                     lastReadOrdersMap.map((v) =>
-                        getOrderChanges(v.sg, lastReadOrdersTimestamp, v.skip, roundSpan),
+                        getOrderChanges(
+                            v.sg,
+                            lastReadOrdersTimestamp,
+                            v.skip,
+                            roundSpan,
+                            options.sgFilter,
+                        ),
                     ),
                 );
                 for (let i = 0; i < results.length; i++) {
