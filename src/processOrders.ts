@@ -1,11 +1,11 @@
 import { ChainId } from "sushi";
 import { findOpp } from "./modes";
-import { getQuoteGas } from "./gas";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
 import { createViemClient } from "./config";
 import { arbAbis, orderbookAbi } from "./abis";
+import { getGasPrice, getQuoteGas } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
@@ -564,6 +564,7 @@ export async function processPair(args: {
     }
 
     // record gas price for otel
+    await getGasPrice(config, state);
     spanAttributes["details.gasPrice"] = state.gasPrice.toString();
     if (state.l1GasPrice) {
         spanAttributes["details.gasPriceL1"] = state.l1GasPrice.toString();
