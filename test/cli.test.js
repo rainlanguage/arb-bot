@@ -453,12 +453,12 @@ describe("Test cli", async function () {
                 rpOnly: true,
                 dispair: deployer,
                 sgFilter: {
-                    includeOrders: [`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`],
-                    excludeOrders: [`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`],
-                    includeOwners: [`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`],
-                    excludeOwners: [`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`],
-                    includeOrderbooks: [`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`],
-                    excludeOrderbooks: [`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`],
+                    includeOrders: new Set([`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`]),
+                    excludeOrders: new Set([`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`]),
+                    includeOwners: new Set([`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`]),
+                    excludeOwners: new Set([`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`]),
+                    includeOrderbooks: new Set([`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`]),
+                    excludeOrderbooks: new Set([`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`]),
                 },
             },
         };

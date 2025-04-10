@@ -309,17 +309,17 @@ export type OwnedOrder = {
  */
 export type SgFilter = {
     /** Order hashes to include */
-    includeOrders?: string[];
+    includeOrders?: Set<string>;
     /** Owner addresses to include */
-    includeOwners?: string[];
+    includeOwners?: Set<string>;
     /** Order hashes to exclude (takes precedence over includeOrders) */
-    excludeOrders?: string[];
+    excludeOrders?: Set<string>;
     /** Owner addresses to exclude (takes precedence over includeOwners) */
-    excludeOwners?: string[];
+    excludeOwners?: Set<string>;
     /** Orderbook addresses to include */
-    includeOrderbooks?: string[];
+    includeOrderbooks?: Set<string>;
     /** Orderbook addresses to exclude (takes precedence over includeOrderbooks) */
-    excludeOrderbooks?: string[];
+    excludeOrderbooks?: Set<string>;
 };
 
 export type RpcRecord = {
