@@ -21,6 +21,7 @@ import {
     BundledOrders,
     OperationState,
     ProcessPairReportStatus,
+    RpcRecord,
 } from "./types";
 import {
     sweepToEth,
@@ -912,12 +913,20 @@ export const main = async (argv: any, version?: string) => {
                         "request-count": record.req,
                         "success-count": record.success,
                         "failure-count": record.failure,
-                        "timeout-count": record.req - (record.success + record.failure),
+                        "timeout-count": RpcRecord.timeoutCount(record),
+                        "request-interval": record.requestIntervals,
                     });
+                    if (record.requestIntervals.length) {
+                        span.setAttribute(
+                            "avg-request-interval",
+                            RpcRecord.avgRequestIntervals(record),
+                        );
+                    }
                     record.req = 0;
                     record.success = 0;
                     record.failure = 0;
                     record.cache = {};
+                    record.requestIntervals = [];
                     span.end();
                 });
             }

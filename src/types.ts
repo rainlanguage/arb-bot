@@ -312,12 +312,50 @@ export type SgFilter = {
     orderbook?: string;
 };
 
+/**
+ * Holds details about a RPC consumption
+ */
 export type RpcRecord = {
+    /** Number of requests */
     req: number;
+    /** Number of successful requests */
     success: number;
+    /** Number of unsuccessful requests */
     failure: number;
+    /** An utility cache, that can hold any data betwen separate requests */
     cache: Record<number, any>;
+    /** Time between 2 consecutive requests in milliseconds */
+    requestIntervals: number[];
+    /** Last request timestamp in milliseconds unix format */
+    lastRequestTimestamp: number;
 };
+/**
+ * Provides helper functions for RpcRecord type
+ */
+export namespace RpcRecord {
+    /**
+     * Get the timeout count of a rpc record
+     * @param rec - The rpc record
+     */
+    export function timeoutCount(rec: RpcRecord): number {
+        return rec.req - (rec.success + rec.failure);
+    }
+
+    /**
+     * Get the average request intervals of a rpc record,
+     * throws as error if there are no intervals records
+     * @param rec - The rpc record
+     */
+    export function avgRequestIntervals(rec: RpcRecord): number {
+        if (!rec.requestIntervals.length) {
+            throw "found no request interval records";
+        } else {
+            return Math.floor(
+                rec.requestIntervals.reduce((a, b) => a + b, 0) / rec.requestIntervals.length,
+            );
+        }
+    }
+}
 
 export type Dispair = {
     deployer: string;

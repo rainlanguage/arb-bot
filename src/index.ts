@@ -164,6 +164,7 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
+    // init placeholder record for all rpcs
     const rpcRecords: Record<string, RpcRecord> = {};
     rpcUrls.forEach(
         (v) =>
@@ -172,6 +173,8 @@ export async function getConfig(
                 success: 0,
                 failure: 0,
                 cache: {},
+                lastRequestTimestamp: 0,
+                requestIntervals: [],
             }),
     );
     config.onFetchRequest = (request: Request) => {

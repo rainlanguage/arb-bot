@@ -290,7 +290,6 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
         assert.equal(result.config.route, expected.config.route);
-        assert.deepEqual(result.config.rpcRecords, expected.config.rpcRecords);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
         assert.equal(result.options.gasPriceMultiplier, expected.options.gasPriceMultiplier);
         assert.equal(result.config.gasPriceMultiplier, expected.config.gasPriceMultiplier);
@@ -304,5 +303,22 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
+        for (const url in result.config.rpcRecords) {
+            assert.equal(result.config.rpcRecords[url].req, expected.config.rpcRecords[url].req);
+            assert.equal(
+                result.config.rpcRecords[url].success,
+                expected.config.rpcRecords[url].success,
+            );
+            assert.equal(
+                result.config.rpcRecords[url].failure,
+                expected.config.rpcRecords[url].failure,
+            );
+            assert.deepEqual(
+                result.config.rpcRecords[url].cache,
+                expected.config.rpcRecords[url].cache,
+            );
+            assert.notEqual(result.config.rpcRecords[url].lastRequestTimestamp, 0);
+            assert.isNotEmpty(result.config.rpcRecords[url].requestIntervals);
+        }
     });
 });
