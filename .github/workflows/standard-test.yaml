@@ -1,6 +1,10 @@
 name: Standard Test
 on: [push]
 
+concurrency:
+  group: ${{ github.ref }}-rainix
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   unit-test:
     name: unit tests
