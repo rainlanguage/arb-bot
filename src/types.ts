@@ -343,7 +343,7 @@ export namespace RpcRecord {
 
     /**
      * Get the average request intervals of a rpc record,
-     * throws as error if there are no intervals records
+     * throws an error if there are no intervals records
      * @param rec - The rpc record
      */
     export function avgRequestIntervals(rec: RpcRecord): number {

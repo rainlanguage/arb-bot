@@ -914,7 +914,7 @@ export const main = async (argv: any, version?: string) => {
                         "success-count": record.success,
                         "failure-count": record.failure,
                         "timeout-count": RpcRecord.timeoutCount(record),
-                        "request-interval": record.requestIntervals,
+                        "request-intervals": record.requestIntervals,
                     });
                     if (record.requestIntervals.length) {
                         span.setAttribute(
