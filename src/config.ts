@@ -152,13 +152,24 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
     let record = rpcRecords[url];
     if (!record) {
         record = rpcRecords[url] = {
-            req: 0,
+            req: 1,
             success: 0,
             failure: 0,
             cache: {},
+            lastRequestTimestamp: Date.now(),
+            requestIntervals: [],
         };
+    } else {
+        record.req++;
+        const now = Date.now();
+        if (!record.lastRequestTimestamp) {
+            record.lastRequestTimestamp = now;
+        } else {
+            const prevRequestTimestamp = record.lastRequestTimestamp;
+            record.lastRequestTimestamp = now;
+            record.requestIntervals.push(now - prevRequestTimestamp);
+        }
     }
-    record.req++;
 }
 
 /**
@@ -174,6 +185,8 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             success: 0,
             failure: 0,
             cache: {},
+            lastRequestTimestamp: Date.now(),
+            requestIntervals: [],
         };
     }
     if (response.status !== 200) record.failure++;
