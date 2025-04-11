@@ -7,7 +7,7 @@ import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, parseEventLogs, TransactionReceipt } from "viem";
 import { BotConfig, TakeOrderDetails, TokenDetails, ViemClient } from "./types";
-import { DataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
+import { RainDataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
 
 /**
  * One ether which equals to 1e18
@@ -151,15 +151,15 @@ export function getActualPrice(
  * @param targetTokenAddress - The token address
  * @param targetTokenDecimals - The token decimals
  * @param gasPrice - The network gas price
- * @param dataFetcher - (optional) The DataFetcher instance
- * @param options - (optional) The DataFetcher options
+ * @param dataFetcher - (optional) The RainDataFetcher instance
+ * @param options - (optional) The RainDataFetcher options
  */
 export async function getEthPrice(
     config: any,
     targetTokenAddress: string,
     targetTokenDecimals: number,
     gasPrice: BigNumber,
-    dataFetcher: DataFetcher,
+    dataFetcher: RainDataFetcher,
     options?: DataFetcherOptions,
     fetchPools = true,
 ): Promise<string | undefined> {
@@ -639,7 +639,7 @@ export function estimateProfit(
  * @param toToken - The to token address
  * @param receiverAddress - The address of the receiver
  * @param routeProcessorAddress - The address of the RouteProcessor contract
- * @param dataFetcher - The DataFetcher instance
+ * @param dataFetcher - The RainDataFetcher instance
  * @param gasPrice - Gas price
  */
 export async function getRpSwap(
@@ -649,11 +649,15 @@ export async function getRpSwap(
     toToken: Type,
     receiverAddress: string,
     routeProcessorAddress: string,
-    dataFetcher: DataFetcher,
+    dataFetcher: RainDataFetcher,
     gasPrice: BigNumber,
     lps?: LiquidityProviders[],
+    fetchPools = false,
 ) {
     const amountIn = sellAmount.toBigInt();
+    if (fetchPools) {
+        await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList);
+    }
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(
         pcMap,

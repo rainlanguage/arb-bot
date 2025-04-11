@@ -54,23 +54,13 @@ module.exports = [
         ChainId.ARBITRUM,
         process?.env?.TEST_ARBITRUM_RPC,
         226810501,
-        [
-            WNATIVE[ChainId.ARBITRUM],
-            USDT[ChainId.ARBITRUM],
-            new Token({
-                chainId: ChainId.ARBITRUM,
-                address: "0x9cAAe40DCF950aFEA443119e51E821D6FE2437ca",
-                decimals: 18,
-                symbol: "BJ",
-            }),
-        ],
+        [WNATIVE[ChainId.ARBITRUM], USDT[ChainId.ARBITRUM]],
         [
             "0xc3e5607cd4ca0d5fe51e09b60ed97a0ae6f874dd",
             "0x8f9c79B9De8b0713dCAC3E535fc5A1A92DB6EA2D",
-            "0x9f29801ac82befe279786e5691b0399b637c560c",
         ],
-        [LiquidityProviders.UniswapV3, LiquidityProviders.Camelot],
-        ["1", "100", "100"],
+        [LiquidityProviders.UniswapV3, LiquidityProviders.UniswapV2],
+        ["1", "100"],
     ],
     [
         ChainId.FLARE,
