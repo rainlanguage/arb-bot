@@ -323,7 +323,7 @@ export type RpcRecord = {
     /** Number of unsuccessful requests */
     failure: number;
     /** An utility cache, that can hold any data betwen separate requests */
-    cache: Record<number, any>;
+    cache: Record<string, any>;
     /** Time between 2 consecutive requests in milliseconds */
     requestIntervals: number[];
     /** Last request timestamp in milliseconds unix format */
@@ -333,6 +333,41 @@ export type RpcRecord = {
  * Provides helper functions for RpcRecord type
  */
 export namespace RpcRecord {
+    /**
+     * Creates a new instance
+     */
+    export function init(doSet?: boolean): RpcRecord {
+        const record = {
+            req: 0,
+            success: 0,
+            failure: 0,
+            cache: {},
+            lastRequestTimestamp: 0,
+            requestIntervals: [],
+        };
+        if (doSet) {
+            record.req++;
+            record.lastRequestTimestamp = Date.now();
+        }
+        return record;
+    }
+
+    /**
+     * Handles a new incoming request
+     * @param record - The rpc record instance
+     */
+    export function recordNewRequest(record: RpcRecord) {
+        record.req++;
+        const now = Date.now();
+        if (!record.lastRequestTimestamp) {
+            record.lastRequestTimestamp = now;
+        } else {
+            const prevRequestTimestamp = record.lastRequestTimestamp;
+            record.lastRequestTimestamp = now;
+            record.requestIntervals.push(now - prevRequestTimestamp);
+        }
+    }
+
     /**
      * Get the timeout count of a rpc record
      * @param rec - The rpc record

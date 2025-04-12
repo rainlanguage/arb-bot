@@ -166,17 +166,7 @@ export async function getConfig(
 
     // init placeholder record for all rpcs
     const rpcRecords: Record<string, RpcRecord> = {};
-    rpcUrls.forEach(
-        (v) =>
-            (rpcRecords[v.endsWith("/") ? v : v + "/"] = {
-                req: 0,
-                success: 0,
-                failure: 0,
-                cache: {},
-                lastRequestTimestamp: 0,
-                requestIntervals: [],
-            }),
-    );
+    rpcUrls.forEach((v) => (rpcRecords[v.endsWith("/") ? v : v + "/"] = RpcRecord.init()));
     config.onFetchRequest = (request: Request) => {
         onFetchRequest(request, rpcRecords);
     };

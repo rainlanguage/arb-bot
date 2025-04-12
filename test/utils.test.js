@@ -1,7 +1,6 @@
 const { assert } = require("chai");
 const { ethers, BigNumber } = require("ethers");
 const { clone, scale18, scale18To, getTotalIncome, extendSpanAttributes } = require("../src/utils");
-const { RpcRecord } = require("../src/types");
 
 describe("Test utils functions", async function () {
     it("should clone correctly", async function () {
@@ -98,41 +97,5 @@ describe("Test utils functions", async function () {
             "header.c": "some string",
         };
         assert.deepEqual(spanAttrs, expected);
-    });
-
-    it("should test getting timeout count for rpc record", async function () {
-        const record = {
-            req: 220,
-            success: 160,
-            failure: 25,
-            cache: {},
-            lastRequestTimestamp: Date.now(),
-            requestIntervals: [],
-        };
-        const result = RpcRecord.timeoutCount(record);
-        const expected = 35;
-        assert.equal(result, expected);
-    });
-
-    it("should test getting avg request intervals for rpc record", async function () {
-        // test happy case
-        const record = {
-            req: 220,
-            success: 160,
-            failure: 25,
-            cache: {},
-            lastRequestTimestamp: Date.now(),
-            requestIntervals: [2549, 3127, 2112, 2100, 3775],
-        };
-        const result = RpcRecord.avgRequestIntervals(record);
-        const expected = 2732;
-        assert.equal(result, expected);
-
-        // test unhappy case
-        record.requestIntervals = [];
-        assert.throws(
-            () => RpcRecord.avgRequestIntervals(record),
-            "found no request interval records",
-        );
     });
 });

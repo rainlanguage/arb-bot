@@ -925,7 +925,6 @@ export const main = async (argv: any, version?: string) => {
                     record.req = 0;
                     record.success = 0;
                     record.failure = 0;
-                    record.cache = {};
                     record.requestIntervals = [];
                     span.end();
                 });
