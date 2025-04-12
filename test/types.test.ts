@@ -14,7 +14,7 @@ describe("Test types functionalities", async function () {
         assert.equal(result.avgRequestIntervals, 0);
         assert.exists(result.reset);
         assert.exists(result.recordRequest);
-        assert.exists(result.recordReponse);
+        assert.exists(result.recordResponse);
     });
 
     it("should record new request", async function () {
@@ -46,7 +46,7 @@ describe("Test types functionalities", async function () {
         result.recordRequest();
 
         // record success
-        result.recordReponse(true);
+        result.recordResponse(true);
         assert.equal(result.req, 2);
         assert.equal(result.success, 1);
         assert.equal(result.failure, 0);
@@ -57,7 +57,7 @@ describe("Test types functionalities", async function () {
         assert.ok(result.avgRequestIntervals >= 0);
 
         // record failure
-        result.recordReponse(false);
+        result.recordResponse(false);
         assert.equal(result.req, 2);
         assert.equal(result.success, 1);
         assert.equal(result.failure, 1);

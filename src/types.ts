@@ -344,9 +344,9 @@ export type RpcRecord = {
     recordRequest(): void;
     /**
      * Handles a response
-     * @param success - Whether or not the response is successful or not
+     * @param success - Whether or not the response is successful
      */
-    recordReponse(success: boolean): void;
+    recordResponse(success: boolean): void;
 };
 /**
  * Provides helper functions for RpcRecord type
@@ -393,7 +393,7 @@ export namespace RpcRecord {
                     this.requestIntervals.push(now - prevRequestTimestamp);
                 }
             },
-            recordReponse(success: boolean) {
+            recordResponse(success: boolean) {
                 if (success) {
                     this.success++;
                 } else {
