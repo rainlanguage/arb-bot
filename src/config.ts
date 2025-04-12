@@ -169,7 +169,7 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         record = rpcRecords[url] = RpcRecord.init();
         record.recordRequest();
     }
-    if (response.status !== 200) record.recordResponse(false);
+    if (response.status !== 200) record.recordFailure();
 
     // for clearing the cache we need to explicitly parse the results even
     // if response status was not 200 but still can hold valid rpc obj id
@@ -178,13 +178,13 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         .then((v) => {
             if (isRpcResponse(v)) {
                 if (response.status === 200) {
-                    if ("result" in v) record.recordResponse(true);
-                    else record.recordResponse(false);
+                    if ("result" in v) record.recordSuccess();
+                    else record.recordFailure();
                 }
-            } else if (response.status === 200) record.recordResponse(false);
+            } else if (response.status === 200) record.recordFailure();
         })
         .catch(() => {
-            if (response.status === 200) record.recordResponse(false);
+            if (response.status === 200) record.recordFailure();
         });
 }
 

@@ -334,19 +334,14 @@ export type RpcRecord = {
     /** Average request intervals */
     get avgRequestIntervals(): number;
 
-    /**
-     * Resets the records
-     */
+    /** Resets the records */
     reset(): void;
-    /**
-     * Handles a request
-     */
+    /** Handles a request */
     recordRequest(): void;
-    /**
-     * Handles a response
-     * @param success - Whether or not the response is successful
-     */
-    recordResponse(success: boolean): void;
+    /** Records a success response */
+    recordSuccess(): void;
+    /** Records a failure response */
+    recordFailure(): void;
 };
 /**
  * Provides helper functions for RpcRecord type
@@ -393,12 +388,11 @@ export namespace RpcRecord {
                     this.requestIntervals.push(now - prevRequestTimestamp);
                 }
             },
-            recordResponse(success: boolean) {
-                if (success) {
-                    this.success++;
-                } else {
-                    this.failure++;
-                }
+            recordSuccess() {
+                this.success++;
+            },
+            recordFailure() {
+                this.failure++;
             },
         };
     }

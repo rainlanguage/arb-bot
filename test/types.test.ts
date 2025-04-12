@@ -14,12 +14,14 @@ describe("Test types functionalities", async function () {
         assert.equal(result.avgRequestIntervals, 0);
         assert.exists(result.reset);
         assert.exists(result.recordRequest);
-        assert.exists(result.recordResponse);
+        assert.exists(result.recordSuccess);
     });
 
     it("should record new request", async function () {
         const result = RpcRecord.init();
+
         result.recordRequest();
+
         assert.equal(result.req, 1);
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
@@ -30,6 +32,7 @@ describe("Test types functionalities", async function () {
         assert.equal(result.avgRequestIntervals, 0);
 
         result.recordRequest();
+
         assert.equal(result.req, 2);
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
@@ -40,29 +43,33 @@ describe("Test types functionalities", async function () {
         assert.ok(result.avgRequestIntervals >= 0);
     });
 
-    it("should record new response", async function () {
+    it("should record successful response", async function () {
         const result = RpcRecord.init();
         result.recordRequest();
-        result.recordRequest();
 
-        // record success
-        result.recordResponse(true);
-        assert.equal(result.req, 2);
+        result.recordSuccess();
+
+        assert.equal(result.req, 1);
         assert.equal(result.success, 1);
         assert.equal(result.failure, 0);
         assert.deepEqual(result.cache, {});
-        assert.ok(result.requestIntervals.length === 1);
+        assert.ok(result.requestIntervals.length === 0);
         assert.ok(result.lastRequestTimestamp > 0);
-        assert.equal(result.timeout, 1);
+        assert.equal(result.timeout, 0);
         assert.ok(result.avgRequestIntervals >= 0);
+    });
 
-        // record failure
-        result.recordResponse(false);
-        assert.equal(result.req, 2);
-        assert.equal(result.success, 1);
+    it("should record failure response", async function () {
+        const result = RpcRecord.init();
+        result.recordRequest();
+
+        result.recordFailure();
+
+        assert.equal(result.req, 1);
+        assert.equal(result.success, 0);
         assert.equal(result.failure, 1);
         assert.deepEqual(result.cache, {});
-        assert.ok(result.requestIntervals.length === 1);
+        assert.ok(result.requestIntervals.length === 0);
         assert.ok(result.lastRequestTimestamp > 0);
         assert.equal(result.timeout, 0);
         assert.ok(result.avgRequestIntervals >= 0);
@@ -76,6 +83,7 @@ describe("Test types functionalities", async function () {
         record.requestIntervals = [1, 2, 3];
 
         record.reset();
+
         assert.equal(record.req, 0);
         assert.equal(record.success, 0);
         assert.equal(record.failure, 0);
