@@ -151,10 +151,9 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
     if (!request.url.endsWith("/")) url = url + "/";
     let record = rpcRecords[url];
     if (!record) {
-        record = rpcRecords[url] = RpcRecord.init(true);
-    } else {
-        RpcRecord.recordNewRequest(record);
+        record = rpcRecords[url] = RpcRecord.init();
     }
+    record.recordNewRequest();
 }
 
 /**
@@ -165,9 +164,12 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
     if (!response.url.endsWith("/")) url = url + "/";
     let record = rpcRecords[url];
     if (!record) {
-        record = rpcRecords[url] = RpcRecord.init(true);
+        // this cannot really happen, but just to be sure,
+        // initialize this rpc record if its not already
+        record = rpcRecords[url] = RpcRecord.init();
+        record.recordNewRequest();
     }
-    if (response.status !== 200) record.failure++;
+    if (response.status !== 200) record.recordReponse(false);
 
     // for clearing the cache we need to explicitly parse the results even
     // if response status was not 200 but still can hold valid rpc obj id
@@ -176,13 +178,13 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         .then((v) => {
             if (isRpcResponse(v)) {
                 if (response.status === 200) {
-                    if ("result" in v) record.success++;
-                    else record.failure++;
+                    if ("result" in v) record.recordReponse(true);
+                    else record.recordReponse(false);
                 }
-            } else if (response.status === 200) record.failure++;
+            } else if (response.status === 200) record.recordReponse(false);
         })
         .catch(() => {
-            if (response.status === 200) record.failure++;
+            if (response.status === 200) record.recordReponse(false);
         });
 }
 

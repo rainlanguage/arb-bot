@@ -328,6 +328,25 @@ export type RpcRecord = {
     requestIntervals: number[];
     /** Last request timestamp in milliseconds unix format */
     lastRequestTimestamp: number;
+
+    /** Number of timeout requests */
+    get timeout(): number;
+    /** Average request intervals */
+    get avgRequestIntervals(): number;
+
+    /**
+     * Resets the records
+     */
+    reset(): void;
+    /**
+     * Handles a new incoming request
+     */
+    recordNewRequest(): void;
+    /**
+     * Handles a response
+     * @param success - Whether or not the response is sucessful or not
+     */
+    recordReponse(success: boolean): void;
 };
 /**
  * Provides helper functions for RpcRecord type
@@ -335,61 +354,53 @@ export type RpcRecord = {
 export namespace RpcRecord {
     /**
      * Creates a new instance
-     * @param withRequest - (optional) Whether or not this instantiation includes a new request
      */
-    export function init(withRequest?: boolean): RpcRecord {
-        const record = {
+    export function init(): RpcRecord {
+        return {
             req: 0,
             success: 0,
             failure: 0,
             cache: {},
             lastRequestTimestamp: 0,
             requestIntervals: [],
+            get timeout() {
+                return this.req - (this.success + this.failure);
+            },
+            get avgRequestIntervals() {
+                if (!this.requestIntervals.length) {
+                    return 0;
+                } else {
+                    return Math.floor(
+                        this.requestIntervals.reduce((a, b) => a + b, 0) /
+                            this.requestIntervals.length,
+                    );
+                }
+            },
+            reset() {
+                this.req = 0;
+                this.success = 0;
+                this.failure = 0;
+                this.requestIntervals = [];
+            },
+            recordNewRequest() {
+                this.req++;
+                const now = Date.now();
+                if (!this.lastRequestTimestamp) {
+                    this.lastRequestTimestamp = now;
+                } else {
+                    const prevRequestTimestamp = this.lastRequestTimestamp;
+                    this.lastRequestTimestamp = now;
+                    this.requestIntervals.push(now - prevRequestTimestamp);
+                }
+            },
+            recordReponse(success: boolean) {
+                if (success) {
+                    this.success++;
+                } else {
+                    this.failure++;
+                }
+            },
         };
-        if (withRequest) {
-            record.req++;
-            record.lastRequestTimestamp = Date.now();
-        }
-        return record;
-    }
-
-    /**
-     * Handles a new incoming request
-     * @param record - The rpc record instance
-     */
-    export function recordNewRequest(record: RpcRecord) {
-        record.req++;
-        const now = Date.now();
-        if (!record.lastRequestTimestamp) {
-            record.lastRequestTimestamp = now;
-        } else {
-            const prevRequestTimestamp = record.lastRequestTimestamp;
-            record.lastRequestTimestamp = now;
-            record.requestIntervals.push(now - prevRequestTimestamp);
-        }
-    }
-
-    /**
-     * Get the timeout count of a rpc record
-     * @param rec - The rpc record
-     */
-    export function timeoutCount(rec: RpcRecord): number {
-        return rec.req - (rec.success + rec.failure);
-    }
-
-    /**
-     * Get the average request intervals of a rpc record,
-     * throws an error if there are no intervals records
-     * @param rec - The rpc record
-     */
-    export function avgRequestIntervals(rec: RpcRecord): number {
-        if (!rec.requestIntervals.length) {
-            throw "found no request interval records";
-        } else {
-            return Math.floor(
-                rec.requestIntervals.reduce((a, b) => a + b, 0) / rec.requestIntervals.length,
-            );
-        }
     }
 }
 
