@@ -322,7 +322,7 @@ export type RpcRecord = {
     success: number;
     /** Number of unsuccessful requests */
     failure: number;
-    /** An utility cache, that can hold any data betwen separate requests */
+    /** A utility cache, that can hold any data betwen separate requests */
     cache: Record<string, any>;
     /** Time between 2 consecutive requests in milliseconds */
     requestIntervals: number[];
