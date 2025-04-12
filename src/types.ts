@@ -335,8 +335,9 @@ export type RpcRecord = {
 export namespace RpcRecord {
     /**
      * Creates a new instance
+     * @param withRequest - (optional) Whether or not this instantiation includes a new request
      */
-    export function init(doSet?: boolean): RpcRecord {
+    export function init(withRequest?: boolean): RpcRecord {
         const record = {
             req: 0,
             success: 0,
@@ -345,7 +346,7 @@ export namespace RpcRecord {
             lastRequestTimestamp: 0,
             requestIntervals: [],
         };
-        if (doSet) {
+        if (withRequest) {
             record.req++;
             record.lastRequestTimestamp = Date.now();
         }
