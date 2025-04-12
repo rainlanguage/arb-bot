@@ -182,15 +182,26 @@ describe("Test RpcMetrics", async function () {
         metrics.cache["testKey"] = "testValue";
         metrics.cache["complexKey"] = { nested: "object" };
 
-        assert.equal(metrics.cache["testKey"], "testValue");
-        assert.deepEqual(metrics.cache["complexKey"], { nested: "object" });
+        const expected = {
+            testKey: "testValue",
+            complexKey: { nested: "object" },
+        };
+        assert.deepEqual(metrics.cache, expected);
 
         // Ensure cache persists through request recording
         metrics.recordRequest();
-        assert.equal(metrics.cache["testKey"], "testValue");
+        assert.deepEqual(metrics.cache, expected);
 
-        // Ensure reset clears the cache
+        // Ensure cache persists through response recording
+        metrics.recordSuccess();
+        assert.deepEqual(metrics.cache, expected);
+
+        // Ensure cache persists through response recording
+        metrics.recordFailure();
+        assert.deepEqual(metrics.cache, expected);
+
+        // Ensure cache persists through reset
         metrics.reset();
-        assert.deepEqual(metrics.cache, {});
+        assert.deepEqual(metrics.cache, expected);
     });
 });
