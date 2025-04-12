@@ -1,16 +1,10 @@
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
+import { RpcMetrics, RpcState } from "./rpc";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
-import {
-    BotConfig,
-    RpcRecord,
-    ViemClient,
-    ChainConfig,
-    isRpcResponse,
-    BotDataFetcher,
-} from "./types";
+import { BotConfig, ViemClient, ChainConfig, isRpcResponse, BotDataFetcher } from "./types";
 import {
     http,
     fallback,
@@ -146,12 +140,12 @@ export async function createViemClient(
 /**
  * Keeps record of http fetch requests for a http viem client
  */
-export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcRecord>) {
+export function onFetchRequest(request: Request, rpcState: RpcState) {
     let url = request.url;
     if (!request.url.endsWith("/")) url = url + "/";
-    let record = rpcRecords[url];
+    let record = rpcState.metrics[url];
     if (!record) {
-        record = rpcRecords[url] = RpcRecord.init();
+        record = rpcState.metrics[url] = new RpcMetrics();
     }
     record.recordRequest();
 }
@@ -159,14 +153,14 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
 /**
  * Keeps record of http fetch responses for a http viem client
  */
-export function onFetchResponse(response: Response, rpcRecords: Record<string, RpcRecord>) {
+export function onFetchResponse(response: Response, rpcState: RpcState) {
     let url = response.url;
     if (!response.url.endsWith("/")) url = url + "/";
-    let record = rpcRecords[url];
+    let record = rpcState.metrics[url];
     if (!record) {
         // this cannot really happen, but just to be sure,
         // initialize this rpc record if its not already
-        record = rpcRecords[url] = RpcRecord.init();
+        record = rpcState.metrics[url] = new RpcMetrics();
         record.recordRequest();
     }
     if (response.status !== 200) record.recordFailure();

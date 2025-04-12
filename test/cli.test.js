@@ -254,12 +254,14 @@ describe("Test cli", async function () {
                 orderbookAddress: `0x${"2".repeat(40)}`,
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
-                rpcRecords: {
-                    "https://rpc.ankr.com/polygon/": {
-                        req: 4,
-                        success: 4,
-                        failure: 0,
-                        cache: {},
+                rpcState: {
+                    metrics: {
+                        "https://rpc.ankr.com/polygon/": {
+                            req: 4,
+                            success: 4,
+                            failure: 0,
+                            cache: {},
+                        },
                     },
                 },
                 gasPriceMultiplier: 120,
@@ -303,22 +305,25 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
-        for (const url in result.config.rpcRecords) {
-            assert.equal(result.config.rpcRecords[url].req, expected.config.rpcRecords[url].req);
+        for (const url in result.config.rpcState.metrics) {
             assert.equal(
-                result.config.rpcRecords[url].success,
-                expected.config.rpcRecords[url].success,
+                result.config.rpcState.metrics[url].req,
+                expected.config.rpcState.metrics[url].req,
             );
             assert.equal(
-                result.config.rpcRecords[url].failure,
-                expected.config.rpcRecords[url].failure,
+                result.config.rpcState.metrics[url].success,
+                expected.config.rpcState.metrics[url].success,
+            );
+            assert.equal(
+                result.config.rpcState.metrics[url].failure,
+                expected.config.rpcState.metrics[url].failure,
             );
             assert.deepEqual(
-                result.config.rpcRecords[url].cache,
-                expected.config.rpcRecords[url].cache,
+                result.config.rpcState.metrics[url].cache,
+                expected.config.rpcState.metrics[url].cache,
             );
-            assert.notEqual(result.config.rpcRecords[url].lastRequestTimestamp, 0);
-            assert.isNotEmpty(result.config.rpcRecords[url].requestIntervals);
+            assert.notEqual(result.config.rpcState.metrics[url].lastRequestTimestamp, 0);
+            assert.isNotEmpty(result.config.rpcState.metrics[url].requestIntervals);
         }
     });
 });

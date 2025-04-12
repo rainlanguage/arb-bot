@@ -904,9 +904,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // report rpcs performance for round
-            for (const rpc in config.rpcRecords) {
+            for (const rpc in config.rpcState.metrics) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                    const record = config.rpcRecords[rpc];
+                    const record = config.rpcState.metrics[rpc];
                     span.setAttributes({
                         "rpc-url": rpc,
                         "request-count": record.req,
@@ -914,10 +914,8 @@ export const main = async (argv: any, version?: string) => {
                         "failure-count": record.failure,
                         "timeout-count": record.timeout,
                         "request-intervals": record.requestIntervals,
+                        "avg-request-interval": record.avgRequestIntervals,
                     });
-                    if (record.requestIntervals.length) {
-                        span.setAttribute("avg-request-interval", record.avgRequestIntervals);
-                    }
                     record.reset();
                     span.end();
                 });

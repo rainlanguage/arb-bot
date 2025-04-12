@@ -1,3 +1,4 @@
+import { RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
@@ -216,7 +217,7 @@ export type BotConfig = {
     publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";
-    rpcRecords: Record<string, RpcRecord>;
+    rpcState: RpcState;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
@@ -311,92 +312,6 @@ export type SgFilter = {
     orderOwner?: string;
     orderbook?: string;
 };
-
-/**
- * Holds details about a RPC consumption
- */
-export type RpcRecord = {
-    /** Number of requests */
-    req: number;
-    /** Number of successful requests */
-    success: number;
-    /** Number of unsuccessful requests */
-    failure: number;
-    /** A utility cache, that can hold any data betwen separate requests */
-    cache: Record<string, any>;
-    /** Time between 2 consecutive requests in milliseconds */
-    requestIntervals: number[];
-    /** Last request timestamp in milliseconds unix format */
-    lastRequestTimestamp: number;
-
-    /** Number of timeout requests */
-    get timeout(): number;
-    /** Average request intervals */
-    get avgRequestIntervals(): number;
-
-    /** Resets the records */
-    reset(): void;
-    /** Handles a request */
-    recordRequest(): void;
-    /** Records a success response */
-    recordSuccess(): void;
-    /** Records a failure response */
-    recordFailure(): void;
-};
-/**
- * Provides helper functions for RpcRecord type
- */
-export namespace RpcRecord {
-    /**
-     * Creates a new instance
-     */
-    export function init(): RpcRecord {
-        return {
-            req: 0,
-            success: 0,
-            failure: 0,
-            cache: {},
-            lastRequestTimestamp: 0,
-            requestIntervals: [],
-            get timeout() {
-                return this.req - (this.success + this.failure);
-            },
-            get avgRequestIntervals() {
-                if (!this.requestIntervals.length) {
-                    return 0;
-                } else {
-                    return Math.floor(
-                        this.requestIntervals.reduce((a, b) => a + b, 0) /
-                            this.requestIntervals.length,
-                    );
-                }
-            },
-            reset() {
-                this.req = 0;
-                this.success = 0;
-                this.failure = 0;
-                this.requestIntervals = [];
-            },
-            recordRequest() {
-                this.req++;
-                const now = Date.now();
-                if (!this.lastRequestTimestamp) {
-                    this.lastRequestTimestamp = now;
-                } else {
-                    const prevRequestTimestamp = this.lastRequestTimestamp;
-                    this.lastRequestTimestamp = now;
-                    this.requestIntervals.push(now - prevRequestTimestamp);
-                }
-            },
-            recordSuccess() {
-                this.success++;
-            },
-            recordFailure() {
-                this.failure++;
-            },
-        };
-    }
-}
 
 export type Dispair = {
     deployer: string;

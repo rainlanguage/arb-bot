@@ -1,9 +1,23 @@
 import { assert } from "chai";
-import { RpcRecord } from "../src/types";
+import { RpcMetrics, RpcState } from "../src/rpc";
 
-describe("Test types functionalities", async function () {
-    it("should test RpcRecord init", async function () {
-        const result = RpcRecord.init();
+describe("Test RpcState", async function () {
+    it("should init RpcState", async function () {
+        const urls = ["https://example1.com/", "https://example2.com/"];
+        const metrics = {
+            [urls[0]]: new RpcMetrics(),
+            [urls[1]]: new RpcMetrics(),
+        };
+
+        const result = new RpcState(urls);
+        const expected = { urls, metrics } as any;
+        assert.deepEqual(result, expected);
+    });
+});
+
+describe("Test RpcMetrics", async function () {
+    it("should init RpcMetrics", async function () {
+        const result = new RpcMetrics();
         assert.equal(result.req, 0);
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
@@ -18,7 +32,7 @@ describe("Test types functionalities", async function () {
     });
 
     it("should record new request", async function () {
-        const result = RpcRecord.init();
+        const result = new RpcMetrics();
 
         result.recordRequest();
 
@@ -44,7 +58,7 @@ describe("Test types functionalities", async function () {
     });
 
     it("should record successful response", async function () {
-        const result = RpcRecord.init();
+        const result = new RpcMetrics();
         result.recordRequest();
 
         result.recordSuccess();
@@ -60,7 +74,7 @@ describe("Test types functionalities", async function () {
     });
 
     it("should record failure response", async function () {
-        const result = RpcRecord.init();
+        const result = new RpcMetrics();
         result.recordRequest();
 
         result.recordFailure();
@@ -76,7 +90,7 @@ describe("Test types functionalities", async function () {
     });
 
     it("should reset rpc record", async function () {
-        const record = RpcRecord.init();
+        const record = new RpcMetrics();
         record.req = 10;
         record.success = 5;
         record.failure = 2;
@@ -95,7 +109,7 @@ describe("Test types functionalities", async function () {
     });
 
     it("should test getting timeout count for rpc record", async function () {
-        const record = RpcRecord.init();
+        const record = new RpcMetrics();
         record.req = 10;
         record.success = 5;
         record.failure = 2;
@@ -106,12 +120,17 @@ describe("Test types functionalities", async function () {
     });
 
     it("should test getting avg request intervals for rpc record", async function () {
-        const record = RpcRecord.init();
+        const record = new RpcMetrics();
 
-        // empty case
+        record.requestIntervals = [];
         assert.equal(record.avgRequestIntervals, 0);
 
-        // not empty case
+        record.requestIntervals = [3775];
+        assert.equal(record.avgRequestIntervals, 3775);
+
+        record.requestIntervals = [3775, 2556];
+        assert.equal(record.avgRequestIntervals, 3165);
+
         record.requestIntervals = [2549, 3127, 2112, 2100, 3775];
         assert.equal(record.avgRequestIntervals, 2732);
     });
