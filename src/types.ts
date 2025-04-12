@@ -344,7 +344,7 @@ export type RpcRecord = {
     recordRequest(): void;
     /**
      * Handles a response
-     * @param success - Whether or not the response is sucessful or not
+     * @param success - Whether or not the response is successful or not
      */
     recordReponse(success: boolean): void;
 };
