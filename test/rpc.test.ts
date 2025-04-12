@@ -1,5 +1,6 @@
 import { assert } from "chai";
 import { RpcMetrics, RpcState } from "../src/rpc";
+import { sleep } from "../src/utils";
 
 describe("Test RpcState", async function () {
     it("should init RpcState", async function () {
@@ -34,6 +35,7 @@ describe("Test RpcMetrics", async function () {
     it("should record new request", async function () {
         const result = new RpcMetrics();
 
+        // record a request
         result.recordRequest();
 
         assert.equal(result.req, 1);
@@ -45,6 +47,8 @@ describe("Test RpcMetrics", async function () {
         assert.equal(result.timeout, 1);
         assert.equal(result.avgRequestIntervals, 0);
 
+        // wait 2 seconds and then record another request
+        await sleep(2000);
         result.recordRequest();
 
         assert.equal(result.req, 2);
@@ -52,9 +56,25 @@ describe("Test RpcMetrics", async function () {
         assert.equal(result.failure, 0);
         assert.deepEqual(result.cache, {});
         assert.ok(result.requestIntervals.length === 1);
+        assert.ok(result.requestIntervals[0] >= 2000);
         assert.ok(result.lastRequestTimestamp > 0);
         assert.equal(result.timeout, 2);
-        assert.ok(result.avgRequestIntervals >= 0);
+        assert.ok(result.avgRequestIntervals >= 2000);
+
+        // wait 3 seconds and then record yet another request
+        await sleep(3000);
+        result.recordRequest();
+
+        assert.equal(result.req, 3);
+        assert.equal(result.success, 0);
+        assert.equal(result.failure, 0);
+        assert.deepEqual(result.cache, {});
+        assert.isOk((result.requestIntervals.length as number) === 2);
+        assert.ok(result.requestIntervals[0] >= 2000);
+        assert.ok(result.requestIntervals[1] >= 3000);
+        assert.ok(result.lastRequestTimestamp > 0);
+        assert.equal(result.timeout, 3);
+        assert.ok(result.avgRequestIntervals >= 2500);
     });
 
     it("should record successful response", async function () {
