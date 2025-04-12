@@ -1,6 +1,6 @@
 import { assert } from "chai";
-import { RpcMetrics, RpcState } from "../src/rpc";
 import { sleep } from "../src/utils";
+import { normalizeUrl, RpcMetrics, RpcState } from "../src/rpc";
 
 describe("Test RpcState", async function () {
     it("should init RpcState", async function () {
@@ -13,6 +13,16 @@ describe("Test RpcState", async function () {
         const result = new RpcState(urls);
         const expected = { urls, metrics } as any;
         assert.deepEqual(result, expected);
+    });
+
+    it("should normalize url", async function () {
+        const url1 = "https://example1.com/";
+        const result1 = normalizeUrl(url1);
+        assert.equal(result1, "https://example1.com/");
+
+        const url2 = "https://example2.com";
+        const result2 = normalizeUrl(url2);
+        assert.equal(result2, "https://example2.com/");
     });
 });
 

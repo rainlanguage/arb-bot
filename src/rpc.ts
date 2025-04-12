@@ -13,7 +13,7 @@ export class RpcState {
      */
     constructor(rpcUrls: string[]) {
         // set normalized urls
-        this.urls = rpcUrls.map((v) => (v.endsWith("/") ? v : `${v}/`));
+        this.urls = rpcUrls.map((v) => normalizeUrl(v));
 
         // init metrics for each url as k/v
         this.metrics = {};
@@ -84,4 +84,11 @@ export class RpcMetrics {
     recordFailure() {
         this.failure++;
     }
+}
+
+/**
+ * Normalizes the given url
+ */
+export function normalizeUrl(url: string): string {
+    return url.endsWith("/") ? url : `${url}/`;
 }
