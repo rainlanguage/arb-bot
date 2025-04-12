@@ -339,9 +339,9 @@ export type RpcRecord = {
      */
     reset(): void;
     /**
-     * Handles a new incoming request
+     * Handles a request
      */
-    recordNewRequest(): void;
+    recordRequest(): void;
     /**
      * Handles a response
      * @param success - Whether or not the response is sucessful or not
@@ -382,7 +382,7 @@ export namespace RpcRecord {
                 this.failure = 0;
                 this.requestIntervals = [];
             },
-            recordNewRequest() {
+            recordRequest() {
                 this.req++;
                 const now = Date.now();
                 if (!this.lastRequestTimestamp) {

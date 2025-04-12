@@ -153,7 +153,7 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
     if (!record) {
         record = rpcRecords[url] = RpcRecord.init();
     }
-    record.recordNewRequest();
+    record.recordRequest();
 }
 
 /**
@@ -167,7 +167,7 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         // this cannot really happen, but just to be sure,
         // initialize this rpc record if its not already
         record = rpcRecords[url] = RpcRecord.init();
-        record.recordNewRequest();
+        record.recordRequest();
     }
     if (response.status !== 200) record.recordReponse(false);
 

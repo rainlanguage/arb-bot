@@ -13,13 +13,13 @@ describe("Test types functionalities", async function () {
         assert.equal(result.timeout, 0);
         assert.equal(result.avgRequestIntervals, 0);
         assert.exists(result.reset);
-        assert.exists(result.recordNewRequest);
+        assert.exists(result.recordRequest);
         assert.exists(result.recordReponse);
     });
 
     it("should record new request", async function () {
         const result = RpcRecord.init();
-        result.recordNewRequest();
+        result.recordRequest();
         assert.equal(result.req, 1);
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
@@ -29,7 +29,7 @@ describe("Test types functionalities", async function () {
         assert.equal(result.timeout, 1);
         assert.equal(result.avgRequestIntervals, 0);
 
-        result.recordNewRequest();
+        result.recordRequest();
         assert.equal(result.req, 2);
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
@@ -42,8 +42,8 @@ describe("Test types functionalities", async function () {
 
     it("should record new response", async function () {
         const result = RpcRecord.init();
-        result.recordNewRequest();
-        result.recordNewRequest();
+        result.recordRequest();
+        result.recordRequest();
 
         // record success
         result.recordReponse(true);
