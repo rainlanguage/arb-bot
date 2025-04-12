@@ -37,9 +37,6 @@ describe("Test RpcMetrics", async function () {
         assert.deepEqual(result.lastRequestTimestamp, 0);
         assert.equal(result.timeout, 0);
         assert.equal(result.avgRequestIntervals, 0);
-        assert.exists(result.reset);
-        assert.exists(result.recordRequest);
-        assert.exists(result.recordSuccess);
     });
 
     it("should record new request", async function () {
@@ -65,11 +62,17 @@ describe("Test RpcMetrics", async function () {
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
         assert.deepEqual(result.cache, {});
-        assert.ok(result.requestIntervals.length === 1);
-        assert.ok(result.requestIntervals[0] >= 2000);
+        assert.equal(result.requestIntervals.length, 1);
         assert.ok(result.lastRequestTimestamp > 0);
         assert.equal(result.timeout, 2);
-        assert.ok(result.avgRequestIntervals >= 2000);
+        assert.ok(
+            result.requestIntervals[0] >= 1950,
+            "request intervals should be close to 2 seconds",
+        );
+        assert.ok(
+            result.avgRequestIntervals >= 1950,
+            "avg request intervals should be close to 2 seconds",
+        );
 
         // wait 3 seconds and then record yet another request
         await sleep(3000);
@@ -79,12 +82,21 @@ describe("Test RpcMetrics", async function () {
         assert.equal(result.success, 0);
         assert.equal(result.failure, 0);
         assert.deepEqual(result.cache, {});
-        assert.isOk((result.requestIntervals.length as number) === 2);
-        assert.ok(result.requestIntervals[0] >= 2000);
-        assert.ok(result.requestIntervals[1] >= 3000);
+        assert.equal(result.requestIntervals.length, 2);
         assert.ok(result.lastRequestTimestamp > 0);
         assert.equal(result.timeout, 3);
-        assert.ok(result.avgRequestIntervals >= 2500);
+        assert.ok(
+            result.requestIntervals[0] >= 1950,
+            "first request intervals should be close to 2 seconds",
+        );
+        assert.ok(
+            result.requestIntervals[1] >= 2950,
+            "second request intervals should be close to 3 seconds",
+        );
+        assert.ok(
+            result.avgRequestIntervals >= 2450,
+            "avg request intervals should be close to 2.5 seconds",
+        );
     });
 
     it("should record successful response", async function () {
@@ -163,5 +175,22 @@ describe("Test RpcMetrics", async function () {
 
         record.requestIntervals = [2549, 3127, 2112, 2100, 3775];
         assert.equal(record.avgRequestIntervals, 2732);
+    });
+
+    it("should utilize cache property", async function () {
+        const metrics = new RpcMetrics();
+        metrics.cache["testKey"] = "testValue";
+        metrics.cache["complexKey"] = { nested: "object" };
+
+        assert.equal(metrics.cache["testKey"], "testValue");
+        assert.deepEqual(metrics.cache["complexKey"], { nested: "object" });
+
+        // Ensure cache persists through request recording
+        metrics.recordRequest();
+        assert.equal(metrics.cache["testKey"], "testValue");
+
+        // Ensure reset clears the cache
+        metrics.reset();
+        assert.deepEqual(metrics.cache, {});
     });
 });

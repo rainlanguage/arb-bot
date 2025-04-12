@@ -1,8 +1,8 @@
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
-import { RpcMetrics, RpcState } from "./rpc";
 import { ChainId, ChainKey } from "sushi/chain";
+import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, ViemClient, ChainConfig, isRpcResponse, BotDataFetcher } from "./types";
 import {
@@ -141,8 +141,7 @@ export async function createViemClient(
  * Keeps record of http fetch requests for a http viem client
  */
 export function onFetchRequest(request: Request, rpcState: RpcState) {
-    let url = request.url;
-    if (!request.url.endsWith("/")) url = url + "/";
+    const url = normalizeUrl(request.url);
     let record = rpcState.metrics[url];
     if (!record) {
         record = rpcState.metrics[url] = new RpcMetrics();
@@ -154,8 +153,7 @@ export function onFetchRequest(request: Request, rpcState: RpcState) {
  * Keeps record of http fetch responses for a http viem client
  */
 export function onFetchResponse(response: Response, rpcState: RpcState) {
-    let url = response.url;
-    if (!response.url.endsWith("/")) url = url + "/";
+    const url = normalizeUrl(response.url);
     let record = rpcState.metrics[url];
     if (!record) {
         // this cannot really happen, but just to be sure,
