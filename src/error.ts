@@ -381,6 +381,7 @@ export function shouldThrow(error: Error) {
         if (
             error.code === TransactionRejectedRpcError.code ||
             error.code === UserRejectedRequestError.code ||
+            error.code === 3 ||
             error.code === 5000 // CAIP UserRejectedRequestError
         )
             return true;
