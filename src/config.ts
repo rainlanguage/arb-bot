@@ -1,16 +1,11 @@
+/* eslint-disable no-console */
+import { shouldThrow } from "./error";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { DataFetcher, LiquidityProviders } from "sushi/router";
-import {
-    BotConfig,
-    RpcRecord,
-    ViemClient,
-    ChainConfig,
-    isRpcResponse,
-    BotDataFetcher,
-} from "./types";
+import { BotConfig, RpcRecord, ViemClient, ChainConfig, BotDataFetcher } from "./types";
 import {
     http,
     fallback,
@@ -176,23 +171,47 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             cache: {},
         };
     }
-    if (response.status !== 200) record.failure++;
+    if (!response.ok) {
+        record.failure++;
+        return;
+    }
 
-    // for clearing the cache we need to explicitly parse the results even
-    // if response status was not 200 but still can hold valid rpc obj id
-    response
-        .json()
-        .then((v) => {
-            if (isRpcResponse(v)) {
-                if (response.status === 200) {
-                    if ("result" in v) record.success++;
-                    else record.failure++;
+    const handleResponse = (res: any) => {
+        if ("result" in res) {
+            record.success++;
+            return;
+        } else if ("error" in res) {
+            if (shouldThrow(res.error)) {
+                record.success++;
+                return;
+            }
+        }
+        record.failure++;
+    };
+    if (response.headers.get("Content-Type")?.startsWith("application/json")) {
+        response
+            .json()
+            .then((res: any) => {
+                handleResponse(res);
+            })
+            .catch(() => {
+                record.failure++;
+            });
+    } else {
+        response
+            .text()
+            .then((text) => {
+                try {
+                    const res = JSON.parse(text || "{}");
+                    handleResponse(res);
+                } catch (err) {
+                    record.failure++;
                 }
-            } else if (response.status === 200) record.failure++;
-        })
-        .catch(() => {
-            if (response.status === 200) record.failure++;
-        });
+            })
+            .catch(() => {
+                record.failure++;
+            });
+    }
 }
 
 /**
