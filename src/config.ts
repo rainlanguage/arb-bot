@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import { shouldThrow } from "./error";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
@@ -24,7 +25,6 @@ import {
     ROUTE_PROCESSOR_3_1_ADDRESS,
     ROUTE_PROCESSOR_3_2_ADDRESS,
 } from "sushi/config";
-import { shouldThrow } from "./error";
 
 /**
  * List of liquidity provider that are excluded
