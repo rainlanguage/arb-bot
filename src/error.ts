@@ -25,6 +25,8 @@ import {
     TransactionNotFoundError,
     TransactionReceiptNotFoundError,
     WaitForTransactionReceiptTimeoutError,
+    TransactionRejectedRpcError,
+    UserRejectedRequestError,
     // InvalidInputRpcError,
     // TransactionRejectedRpcError,
 } from "viem";
@@ -368,4 +370,20 @@ export async function hasFrontrun(
         }
     } catch {}
     return undefined;
+}
+
+/**
+ * Determines if this fetch reponse is a throwable node error
+ * @param error - The error
+ */
+export function shouldThrow(error: Error) {
+    if ("code" in error && typeof error.code === "number") {
+        if (
+            error.code === TransactionRejectedRpcError.code ||
+            error.code === UserRejectedRequestError.code ||
+            error.code === 5000 // CAIP UserRejectedRequestError
+        )
+            return true;
+    }
+    return false;
 }
