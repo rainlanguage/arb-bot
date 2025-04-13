@@ -15,7 +15,6 @@ import {
     isHex,
     BaseError,
     TimeoutError,
-    RpcRequestError,
     FeeCapTooLowError,
     decodeErrorResult,
     TransactionReceipt,
@@ -146,7 +145,7 @@ export function containsNodeError(err: BaseError, circuitBreaker = 0): boolean {
             err instanceof FeeCapTooLowError ||
             err instanceof ExecutionRevertedError ||
             err instanceof InsufficientFundsError ||
-            (err instanceof RpcRequestError && err.code === ExecutionRevertedError.code) ||
+            ("code" in err && err.code === ExecutionRevertedError.code) ||
             (snapshot.includes("exceeds allowance") && !snapshot.includes("out of gas")) ||
             ("cause" in err && containsNodeError(err.cause as any, ++circuitBreaker))
         );
@@ -379,9 +378,9 @@ export async function hasFrontrun(
 export function shouldThrow(error: Error) {
     if ("code" in error && typeof error.code === "number") {
         if (
-            error.code === TransactionRejectedRpcError.code ||
+            error.code === ExecutionRevertedError.code ||
             error.code === UserRejectedRequestError.code ||
-            error.code === 3 ||
+            error.code === TransactionRejectedRpcError.code ||
             error.code === 5000 // CAIP UserRejectedRequestError
         )
             return true;

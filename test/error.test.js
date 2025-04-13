@@ -120,11 +120,17 @@ describe("Test error", async function () {
         const error = { code: -32003 };
         assert(shouldThrow(error));
 
+        error.code = 3;
+        assert(shouldThrow(error));
+
         error.code = 4001;
         assert(shouldThrow(error));
 
         error.code = 5000;
         assert(shouldThrow(error));
+
+        error.code = -32006;
+        assert(!shouldThrow(error));
 
         delete error.code;
         assert(!shouldThrow(error));
