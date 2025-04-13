@@ -316,7 +316,7 @@ export type RpcRecord = {
     req: number;
     success: number;
     failure: number;
-    cache: Record<number, any>;
+    cache: Record<string, any>;
 };
 
 export type Dispair = {

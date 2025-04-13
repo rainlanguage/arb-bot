@@ -171,7 +171,7 @@ export async function getConfig(
                 req: 0,
                 success: 0,
                 failure: 0,
-                cache: {},
+                cache: { debug: [] },
             }),
     );
     config.onFetchRequest = (request: Request) => {

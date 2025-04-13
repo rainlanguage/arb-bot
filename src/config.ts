@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
@@ -156,7 +157,7 @@ export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcR
             req: 0,
             success: 0,
             failure: 0,
-            cache: {},
+            cache: { debug: [] },
         };
     }
     record.req++;
@@ -174,7 +175,7 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             req: 0,
             success: 0,
             failure: 0,
-            cache: {},
+            cache: { debug: [] },
         };
     }
     if (!response.ok) {
@@ -190,6 +191,8 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             } else if ("error" in res) {
                 if (shouldThrow(res.error)) {
                     record.success++;
+                    console.log("rpcerrthrow", res.error);
+                    record.cache.debug.push({ rpcerrthrow: res.error });
                     return;
                 }
             }
@@ -199,10 +202,14 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
         } else if ("error" in res) {
             if (shouldThrow(res.error)) {
                 record.success++;
+                console.log("errthrow", res.error);
+                record.cache.debug.push({ errthrow: res.error });
                 return;
             }
         }
         record.failure++;
+        console.log("resfail", res);
+        record.cache.debug.push({ resfail: res });
     };
     if (response.headers.get("Content-Type")?.startsWith("application/json")) {
         response
@@ -210,8 +217,10 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
             .then((res: any) => {
                 handleResponse(res);
             })
-            .catch(() => {
+            .catch((e) => {
                 record.failure++;
+                console.log("jsoncatch", e);
+                record.cache.debug.push({ jsoncatch: e });
             });
     } else {
         response
@@ -222,10 +231,14 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
                     handleResponse(res);
                 } catch (err) {
                     record.failure++;
+                    console.log("textokcatch", err);
+                    record.cache.debug.push({ textokcatch: err });
                 }
             })
-            .catch(() => {
+            .catch((e) => {
                 record.failure++;
+                console.log("textcatch", e);
+                record.cache.debug.push({ textcatch: e });
             });
     }
 }
