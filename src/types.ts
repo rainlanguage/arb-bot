@@ -1,3 +1,4 @@
+import { RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
@@ -216,7 +217,7 @@ export type BotConfig = {
     publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";
-    rpcRecords: Record<string, RpcRecord>;
+    rpcState: RpcState;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
@@ -310,13 +311,6 @@ export type SgFilter = {
     orderHash?: string;
     orderOwner?: string;
     orderbook?: string;
-};
-
-export type RpcRecord = {
-    req: number;
-    success: number;
-    failure: number;
-    cache: Record<string, any>;
 };
 
 export type Dispair = {
