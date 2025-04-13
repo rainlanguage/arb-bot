@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const { BaseError, encodeFunctionData } = require("viem");
-const { tryDecodeError, parseRevertError, hasFrontrun } = require("../src/error");
+const { tryDecodeError, parseRevertError, hasFrontrun, shouldThrow } = require("../src/error");
 const { abi: arbRp4Abi } = require("./abis/RouteProcessorOrderBookV4ArbOrderTaker.json");
 
 describe("Test error", async function () {
@@ -114,5 +114,19 @@ describe("Test error", async function () {
         const result = await hasFrontrun(viemClient, rawtx, receipt, "");
 
         assert.equal(result, expectedReceipt.transactionHash);
+    });
+
+    it("should test shouldThrow", async function () {
+        const error = { code: -32003 };
+        assert(shouldThrow(error));
+
+        error.code = 4001;
+        assert(shouldThrow(error));
+
+        error.code = 5000;
+        assert(shouldThrow(error));
+
+        delete error.code;
+        assert(!shouldThrow(error));
     });
 });
