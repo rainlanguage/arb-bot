@@ -1,23 +1,123 @@
+import { randomInt } from "crypto";
+import { http, webSocket, Transport, HttpTransportConfig, WebSocketTransportConfig } from "viem";
+
+/** The rpc configurations */
+export type RpcConfig = {
+    /** The rpc url */
+    url: string;
+    /** The number of latest requests to keep track of, default is 100 */
+    trackSize?: number;
+    /** The selection weight for this rpc, default is 1 */
+    selectionWeight?: number;
+    /** Viem transport configuration */
+    transportConfig?: HttpTransportConfig | WebSocketTransportConfig;
+};
+
+export type RpcWithTransport = { transport: Transport; metrics: RpcMetrics };
+
 /**
- * Rain solver rpc state, keeps track of rpc metrics during runtime
+ * Rain solver rpc state, manages and keeps track of rpcs during runtime
  */
 export class RpcState {
     /** List of rpc urls */
     readonly urls: string[];
-    /** A key/value object keeping metrics of each rpc */
-    metrics: Record<string, RpcMetrics>;
+    /** A key/value object keeping details of each rpc */
+    rpcs: Record<string, RpcWithTransport>;
+    /** Keeps the index of the rpc that was used for the latest request */
+    lastUsedRpcIndex: number;
 
     /**
      * Creates a new instance
-     * @param rpcUrls - The rpcs urls
+     * @param configs - The list of rpc configs
      */
-    constructor(rpcUrls: string[]) {
-        // set normalized urls
-        this.urls = rpcUrls.map((v) => normalizeUrl(v));
+    constructor(public configs: RpcConfig[]) {
+        // throw if no rpc is given
+        if (!configs.length) throw "empty list, expected at least one rpc";
 
-        // init metrics for each url as k/v
-        this.metrics = {};
-        this.urls.forEach((url) => (this.metrics[url] = new RpcMetrics()));
+        // set normalized urls
+        this.urls = configs.map((v) => normalizeUrl(v.url));
+
+        // for each url as k/v
+        this.rpcs = {};
+        configs.forEach((conf, i) => {
+            let onFetchRequest;
+            let onFetchResponse;
+            if (conf.transportConfig) {
+                if ("onFetchRequest" in conf.transportConfig) {
+                    onFetchRequest = conf.transportConfig.onFetchRequest?.bind(this);
+                }
+                if ("onFetchResponse" in conf.transportConfig) {
+                    onFetchResponse = conf.transportConfig?.onFetchResponse?.bind(this);
+                }
+            }
+            this.rpcs[this.urls[i]] = {
+                metrics: new RpcMetrics(conf),
+                transport: conf.url.startsWith("ws")
+                    ? webSocket(conf.url, conf.transportConfig)
+                    : http(conf.url, {
+                          ...conf.transportConfig,
+                          onFetchRequest,
+                          onFetchResponse,
+                      }),
+            };
+        });
+
+        // set initial last used
+        this.lastUsedRpcIndex = configs.length - 1;
+    }
+
+    /**
+     * Last used rpc
+     */
+    get lastUsedRpc(): RpcWithTransport {
+        return this.rpcs[this.urls[this.lastUsedRpcIndex]];
+    }
+    /**
+     * Last used rpc url
+     */
+    get lastUsedUrl(): string {
+        return this.urls[this.lastUsedRpcIndex];
+    }
+    /**
+     * Get next rpc to use which is picked based on past performance
+     */
+    get nextRpc(): RpcWithTransport {
+        // return early if only 1 rpc is available
+        if (this.urls.length === 1) {
+            return this.lastUsedRpc;
+        }
+
+        // set the fallback rpc to the one after last used from the list
+        this.lastUsedRpcIndex = (this.lastUsedRpcIndex + 1) % this.urls.length;
+        const fallback = this.lastUsedRpc;
+
+        // rpcs selection, each range determines the probability of selecting
+        // that rpc which is just a percentage of that rpc's latest success
+        // rate, so the bigger the rate, the higher chance of being selected
+        const selectionRanges = this.urls.map(
+            (url) => this.rpcs[url].metrics.progress.selectionRate,
+        );
+
+        // pick a random int between min/max range
+        const min = 1;
+        const max = selectionRanges.reduce((a, b) => a + b, 0) + 1;
+        const pick = randomInt(min, max);
+
+        // we now match the selection rages against picked
+        // random int to get the next rpc for usage
+        let selection = fallback;
+        for (let i = 0; i < selectionRanges.length; i++) {
+            const offset = selectionRanges.slice(0, i).reduce((a, b) => a + b, 0);
+            const lowerBound = offset + 1;
+            const upperBound = offset + selectionRanges[i];
+            if (lowerBound <= pick && pick <= upperBound) {
+                selection = this.rpcs[this.urls[i]];
+                this.lastUsedRpcIndex = i;
+                break;
+            }
+        }
+
+        return selection;
     }
 }
 
@@ -37,9 +137,16 @@ export class RpcMetrics {
     requestIntervals: number[] = [];
     /** A utility cache, that can hold any data betwen separate requests */
     cache: Record<string, any> = {};
+    /** Hold progress details of this rpc */
+    progress: RpcProgress;
 
-    /** Creates a new instance */
-    constructor() {}
+    /**
+     * Creates a new instance
+     * @param config - (optional) The rpc configurations
+     */
+    constructor(config?: RpcConfig) {
+        this.progress = new RpcProgress(config);
+    }
 
     /** Number of timeout requests */
     get timeout() {
@@ -65,6 +172,7 @@ export class RpcMetrics {
     /** Handles a request */
     recordRequest() {
         this.req++;
+        this.progress.recordRequest();
         const now = Date.now();
         if (!this.lastRequestTimestamp) {
             this.lastRequestTimestamp = now;
@@ -77,12 +185,66 @@ export class RpcMetrics {
 
     /** Records a success response */
     recordSuccess() {
+        this.progress.recordSuccess();
         this.success++;
     }
 
     /** Records a failure response */
     recordFailure() {
         this.failure++;
+    }
+}
+
+/**
+ * Holds progress details of a rpc that persist during runtime rounds
+ */
+export class RpcProgress {
+    /** Number of latest requests to keep track of, default is 100 */
+    trackSize = 100;
+    /** Multiplier to selection frequency of this rpc, default is 1 */
+    selectionWeight = 1;
+    /** Number of latest requests, max possible value equals to trackSize */
+    req: number;
+    /** Number of latest successful requests, max possible value equals to trackSize */
+    success: number;
+
+    /**
+     * Creates a new instance with given configuration
+     * @param config - (optional) The rpc configurations
+     */
+    constructor(config?: RpcConfig) {
+        this.req = 0;
+        this.success = 0;
+        if (typeof config?.trackSize === "number") {
+            this.trackSize = config.trackSize;
+        }
+        if (typeof config?.selectionWeight === "number") {
+            this.selectionWeight = config.selectionWeight;
+        }
+    }
+
+    /** Current success rate in percentage */
+    get successRate() {
+        if (this.req === 0) return 100;
+        return Math.max(Math.floor((this.success / this.req) * 100), 1);
+    }
+
+    /** Current selection rate, determines the relative chance to get picked  */
+    get selectionRate() {
+        return Math.max(Math.floor(this.successRate * this.selectionWeight), 1);
+    }
+
+    /** Handles a request */
+    recordRequest() {
+        // saturates at trackSize
+        if (this.req < this.trackSize) {
+            this.req = Math.min(this.trackSize, this.req + 1);
+        }
+    }
+
+    /** Records a success response */
+    recordSuccess() {
+        this.success = Math.min(this.trackSize, this.success + 1);
     }
 }
 

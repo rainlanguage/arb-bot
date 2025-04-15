@@ -1,8 +1,8 @@
 import { config } from "dotenv";
 import { isAddress } from "viem";
+import { RpcConfig } from "./rpc";
 import { getGasPrice } from "./gas";
 import { Command } from "commander";
-import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { sleep, isBigNumberish } from "./utils";
@@ -11,9 +11,11 @@ import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { getDataFetcher, getMetaInfo, onFetchRequest, onFetchResponse } from "./config";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 import {
     BotConfig,
     CliOptions,
@@ -22,13 +24,6 @@ import {
     OperationState,
     ProcessPairReportStatus,
 } from "./types";
-import {
-    sweepToEth,
-    manageAccounts,
-    rotateProviders,
-    sweepToMainWallet,
-    getBatchEthBalance,
-} from "./account";
 import {
     getOrdersTokens,
     downscaleProtection,
@@ -111,7 +106,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-r, --rpc <url...>",
-            "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables",
+            "RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each seperated by semi, example: https://example.com;{weight};{trackSize} . Will override the 'RPC_URL' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
@@ -417,13 +412,23 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     if (options.key) {
         if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
     }
-    if (!options.rpc) throw "undefined RPC URL";
+    if (!options.rpc) {
+        throw "undefined RPC URL";
+    } else {
+        const rpcConfigs = getRpcConfig(options.rpc);
+        options.rpc = rpcConfigs.map((v) => v.url);
+        options.rpcConfigs = rpcConfigs;
+    }
     if (options.writeRpc) {
         if (
             !Array.isArray(options.writeRpc) ||
             options.writeRpc.some((v) => typeof v !== "string")
         ) {
             throw `Invalid write rpcs: ${options.writeRpc}`;
+        } else {
+            const writeRpcConfigs = getRpcConfig(options.writeRpc);
+            options.writeRpc = writeRpcConfigs.map((v) => v.url);
+            options.writeRpcConfigs = writeRpcConfigs;
         }
     }
     if (!options.arbAddress) throw "undefined arb contract address";
@@ -520,21 +525,21 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const tokens = getOrdersTokens(ordersDetails);
     options.tokens = tokens;
 
+    // init raw state
+    const state = OperationState.init(options.rpcConfigs, options.writeRpcConfigs);
+
     // get config
     const config = await getConfig(
         options.rpc,
         options.key ?? options.mnemonic,
         options.arbAddress,
         options as CliOptions,
+        state,
         tracer,
         ctx,
     );
 
     // fetch initial gas price on startup
-    const state: OperationState = {
-        gasPrice: 0n,
-        l1GasPrice: 0n,
-    };
     await getGasPrice(config, state);
 
     return {
@@ -699,8 +704,10 @@ export const main = async (argv: any, version?: string) => {
             }
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
-                await rotateProviders(config, update);
-                roundSpan.setAttribute("details.rpc", config.rpc);
+                if (update) {
+                    await getDataFetcher(config.viemClient, state.rpc, config.lps);
+                }
+                roundSpan.setAttribute("details.rpc", state.rpc.urls);
                 await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
@@ -904,9 +911,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // report rpcs performance for round
-            for (const rpc in config.rpcState.metrics) {
+            for (const rpc in state.rpc.rpcs) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                    const record = config.rpcState.metrics[rpc];
+                    const record = state.rpc.rpcs[rpc].metrics;
                     span.setAttributes({
                         "rpc-url": rpc,
                         "request-count": record.req,
@@ -919,6 +926,25 @@ export const main = async (argv: any, version?: string) => {
                     record.reset();
                     span.end();
                 });
+            }
+            // report write rpcs performance
+            if (state.writeRpc) {
+                for (const rpc in state.writeRpc.rpcs) {
+                    await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
+                        const record = state.writeRpc!.rpcs[rpc].metrics;
+                        span.setAttributes({
+                            "rpc-url": rpc,
+                            "request-count": record.req,
+                            "success-count": record.success,
+                            "failure-count": record.failure,
+                            "timeout-count": record.timeout,
+                            "request-intervals": record.requestIntervals,
+                            "avg-request-interval": record.avgRequestIntervals,
+                        });
+                        record.reset();
+                        span.end();
+                    });
+                }
             }
 
             // eslint-disable-next-line no-console
@@ -945,4 +971,60 @@ function getEnv(value: any): any {
         } else return value;
     }
     return undefined;
+}
+
+export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
+    return cliRpcArgs.map((v: string) => {
+        const [url, weight = undefined, track = undefined, ...rest] = v.split(";");
+        if (!url) {
+            throw "invalid rpc url: " + url;
+        }
+        if (rest.length) {
+            throw "invalid rpc argument: " + v;
+        }
+        const selectionWeight = (() => {
+            if (!weight) return 1;
+            else {
+                const result = parseFloat(weight);
+                if (isNaN(result)) {
+                    throw `invalid rpc weight: "${weight}", expected a number greater than equal to 0`;
+                }
+                return result;
+            }
+        })();
+        const trackSize = (() => {
+            if (!track) return 100;
+            else {
+                const result = parseInt(track);
+                if (isNaN(result)) {
+                    throw `invalid track size: "${track}", expected an integer greater than equal to 0`;
+                }
+                return result;
+            }
+        })();
+
+        if (url.startsWith("ws")) {
+            // websocket config
+            return {
+                url,
+                trackSize,
+                selectionWeight,
+                transportConfig: {
+                    keepAlive: true,
+                    reconnect: true,
+                },
+            };
+        } else {
+            // http config
+            return {
+                url,
+                trackSize,
+                selectionWeight,
+                transportConfig: {
+                    onFetchRequest,
+                    onFetchResponse,
+                },
+            };
+        }
+    });
 }

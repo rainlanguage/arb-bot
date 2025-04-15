@@ -87,7 +87,7 @@ node arb-bot <OPTIONS>
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
-- `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
+- `-r` or `--rpc`, RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each seperated by semi, example: example: https://example.com;{weight};{trackSize} . Will override the 'RPC_URL' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
@@ -184,9 +184,10 @@ BOT_WALLET_PRIVATEKEY="123..."
 # mnemonic phrase
 MNEMONIC=""
 
-# RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
+# RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each seperated by semi
+# example: https://example.com;{weight};{trackSize}
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
-RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
+RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY};2.5, https://drpc.com;1.5;85"
 
 # Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""

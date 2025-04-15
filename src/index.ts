@@ -1,7 +1,6 @@
 import axios from "axios";
 import { ethers } from "ethers";
 import { ChainId } from "sushi";
-import { RpcState } from "./rpc";
 import { versions } from "process";
 import { PublicClient } from "viem";
 import { DeployerAbi } from "./abis";
@@ -11,6 +10,7 @@ import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
+import { processLps, getChainConfig, getDataFetcher, createViemClient } from "./config";
 import {
     SgFilter,
     BotConfig,
@@ -19,14 +19,6 @@ import {
     BundledOrders,
     OperationState,
 } from "./types";
-import {
-    processLps,
-    getChainConfig,
-    getDataFetcher,
-    onFetchRequest,
-    onFetchResponse,
-    createViemClient,
-} from "./config";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -100,6 +92,7 @@ export async function getConfig(
     walletKey: string,
     arbAddress: string,
     options: CliOptions,
+    state: OperationState,
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
@@ -164,30 +157,15 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
-    // init rpc state
-    const rpcState = new RpcState(rpcUrls);
-    config.onFetchRequest = (request: Request) => {
-        onFetchRequest(request, rpcState);
-    };
-    config.onFetchResponse = (response: Response) => {
-        onFetchResponse(response.clone(), rpcState);
-    };
-
     const lps = processLps(options.lps);
     const viemClient = await createViemClient(
         chainId,
-        rpcUrls,
-        options.publicRpc,
+        state.rpc,
         undefined,
         options.timeout,
         undefined,
-        config,
     );
-    const dataFetcher = await getDataFetcher(
-        viemClient as any as PublicClient,
-        lps,
-        options.publicRpc,
-    );
+    const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, state.rpc, lps);
 
     const interpreter = await (async () => {
         try {
@@ -229,7 +207,6 @@ export async function getConfig(
     config.publicRpc = options.publicRpc;
     config.walletKey = walletKey;
     config.route = route;
-    config.rpcState = rpcState;
     config.gasPriceMultiplier = options.gasPriceMultiplier;
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;
@@ -242,7 +219,14 @@ export async function getConfig(
     };
 
     // init accounts
-    const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
+    const { mainAccount, accounts } = await initAccounts(
+        walletKey,
+        config,
+        state,
+        options,
+        tracer,
+        ctx,
+    );
     config.mainAccount = mainAccount;
     config.accounts = accounts;
 

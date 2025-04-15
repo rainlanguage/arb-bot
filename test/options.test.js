@@ -2,10 +2,11 @@ const { assert } = require("chai");
 const { getConfig } = require("../src");
 const { assertError } = require("./utils");
 const { LiquidityProviders } = require("sushi");
+const { RpcState } = require("../src/rpc");
 
 describe("Test app options", async function () {
     it("should use defaults", async function () {
-        const rpcs = ["https://rpc.ankr.com/polygon", "https://polygon-rpc.com"];
+        const rpcs = ["https://polygon.drpc.org", "https://polygon-rpc.com"];
         const config = await getConfig(
             rpcs,
             "0x" + "1".repeat(64), // wallet key
@@ -14,6 +15,7 @@ describe("Test app options", async function () {
                 lps: ["SUShIswapV2", "bIsWaP"],
                 dispair: "0xE7116BC05C8afe25e5B54b813A74F916B5D42aB1",
             },
+            { rpc: new RpcState([{ url: "https://polygon.drpc.org" }]) },
         );
 
         assert.deepEqual(config.lps, [LiquidityProviders.SushiSwapV2, LiquidityProviders.Biswap]);
@@ -29,7 +31,7 @@ describe("Test app options", async function () {
     it("should error if retries is not between 1-3", async function () {
         const configPromise = async () =>
             await getConfig(
-                ["https://rpc.ankr.com/polygon"],
+                ["https://polygon.drpc.org"],
                 "0x" + "1".repeat(64),
                 "0x" + "3".repeat(40),
                 { retries: 5 },

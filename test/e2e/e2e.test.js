@@ -10,11 +10,11 @@ const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const { publicActions, walletActions } = require("viem");
-const { ProcessPairReportStatus } = require("../../src/types");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { getChainConfig, getDataFetcher } = require("../../src/config");
+const { ProcessPairReportStatus, OperationState } = require("../../src/types");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
@@ -74,7 +74,8 @@ for (let i = 0; i < testData.length; i++) {
         const tracer = provider.getTracer("arb-bot-tracer");
 
         config.rpc = [rpc];
-        const dataFetcherPromise = getDataFetcher(config, liquidityProviders, true);
+        const state = OperationState.init([{ url: rpc }]);
+        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders);
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {
@@ -248,9 +249,7 @@ for (let i = 0; i < testData.length; i++) {
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -575,9 +574,7 @@ for (let i = 0; i < testData.length; i++) {
                         });
                     });
                 });
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -926,9 +923,7 @@ for (let i = 0; i < testData.length; i++) {
                         });
                     });
                 });
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
