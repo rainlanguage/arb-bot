@@ -11,7 +11,7 @@ export type RpcConfig = {
     /** The selection weight for this rpc, default is 1 */
     selectionWeight?: number;
     /** Viem transport configuration */
-    transportConfig?: Omit<HttpTransportConfig, "onFetchRequest" | "onFetchResponse">;
+    transportConfig?: Pick<HttpTransportConfig, "key" | "name" | "batch" | "fetchOptions">;
 };
 
 export type RpcWithTransport = { transport: Transport; metrics: RpcMetrics };

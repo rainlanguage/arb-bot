@@ -1,4 +1,5 @@
 import { RpcState } from "./rpc";
+import { shouldThrow } from "./error";
 import { createTransport, Transport, TransportConfig } from "viem";
 
 /** Rain solver transport configurations */
@@ -21,33 +22,39 @@ export type RainSolverTransport = Transport<"RainSolverTransport">;
 /**
  * RainSolver viem Transport that can be used for any viem client,
  * the `rpcState.nextRpc` dictates which rpc is used for any incoming requests.
- * @param rpcState - The rpc state
+ * @param state - The rpc state
  * @param config - Configurations
  */
 export function rainSolverTransport(
-    rpcState: RpcState,
+    state: RpcState,
     config: RainSolverTransportConfig = {},
 ): RainSolverTransport {
     const {
+        timeout,
+        retryDelay,
+        retryCount = 1,
         key = "RainSolverTransport",
         name = "Rain Solver Transport",
-        retryCount = 1,
-        retryDelay,
-        timeout,
     } = config;
     return (({ chain }) => {
         return createTransport({
             key,
             name,
-            retryCount,
-            retryDelay,
             timeout,
+            retryDelay,
+            retryCount,
             type: "RainSolverTransport",
-            async request({ method, params }) {
-                return rpcState.nextRpc({ chain }).request({
-                    method,
-                    params,
-                }) as any;
+            async request(args) {
+                const req = async (tryNext = true): Promise<any> => {
+                    try {
+                        return await state.nextRpc({ chain, retryCount: 0 }).request(args);
+                    } catch (error: any) {
+                        if (shouldThrow(error)) throw error;
+                        if (tryNext) return await req(false);
+                        throw error;
+                    }
+                };
+                return req();
             },
         });
     }) as RainSolverTransport;

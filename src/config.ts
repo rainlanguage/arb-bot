@@ -70,7 +70,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
  * @param chainId - The chain id
  * @param rpcState - rpc state
  * @param account - If fallback RPCs should be used as well or not
- * @param timeout
+ * @param timeout - The timeout in milliseconds
  */
 export async function createViemClient(
     chainId: ChainId,
@@ -79,7 +79,7 @@ export async function createViemClient(
     timeout?: number,
     testClient?: any,
 ): Promise<ViemClient> {
-    const configuration = { rank: false, retryCount: 3, timeout };
+    const configuration = { timeout };
     const transport = rainSolverTransport(rpcState, configuration);
 
     const client = testClient
