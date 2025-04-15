@@ -106,9 +106,9 @@ export async function createViemClient(
  */
 export function onFetchRequest(this: RpcState, request: Request) {
     const url = normalizeUrl(request.url);
-    let record = this.rpcs[url].metrics;
+    let record = this.metrics[url];
     if (!record) {
-        record = this.rpcs[url].metrics = new RpcMetrics();
+        record = this.metrics[url] = new RpcMetrics();
     }
     record.recordRequest();
 }
@@ -119,11 +119,11 @@ export function onFetchRequest(this: RpcState, request: Request) {
 export function onFetchResponse(this: RpcState, response: Response) {
     const _response = response.clone();
     const url = normalizeUrl(_response.url);
-    let record = this.rpcs[url].metrics;
+    let record = this.metrics[url];
     if (!record) {
         // this cannot really happen, but just to be sure,
         // initialize this rpc record if its not already
-        record = this.rpcs[url].metrics = new RpcMetrics();
+        record = this.metrics[url] = new RpcMetrics();
         record.recordRequest();
     }
 

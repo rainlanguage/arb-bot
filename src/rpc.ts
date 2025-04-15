@@ -1,5 +1,6 @@
 import { randomInt } from "crypto";
-import { http, webSocket, Transport, HttpTransportConfig, WebSocketTransportConfig } from "viem";
+import { onFetchRequest, onFetchResponse } from "./config";
+import { http, Transport, HttpTransportConfig } from "viem";
 
 /** The rpc configurations */
 export type RpcConfig = {
@@ -10,7 +11,7 @@ export type RpcConfig = {
     /** The selection weight for this rpc, default is 1 */
     selectionWeight?: number;
     /** Viem transport configuration */
-    transportConfig?: HttpTransportConfig | WebSocketTransportConfig;
+    transportConfig?: Omit<HttpTransportConfig, "onFetchRequest" | "onFetchResponse">;
 };
 
 export type RpcWithTransport = { transport: Transport; metrics: RpcMetrics };
@@ -21,8 +22,10 @@ export type RpcWithTransport = { transport: Transport; metrics: RpcMetrics };
 export class RpcState {
     /** List of rpc urls */
     readonly urls: string[];
-    /** A key/value object keeping details of each rpc */
-    rpcs: Record<string, RpcWithTransport>;
+    /** A key/value object keeping metrics of each rpc */
+    metrics: Record<string, RpcMetrics>;
+    /** A key/value object keeping viem transport of each rpc */
+    transports: Record<string, Transport>;
     /** Keeps the index of the rpc that was used for the latest request */
     lastUsedRpcIndex: number;
 
@@ -36,41 +39,26 @@ export class RpcState {
 
         // set normalized urls
         this.urls = configs.map((v) => normalizeUrl(v.url));
+        this.lastUsedRpcIndex = configs.length - 1;
 
         // for each url as k/v
-        this.rpcs = {};
+        this.metrics = {};
+        this.transports = {};
         configs.forEach((conf, i) => {
-            let onFetchRequest;
-            let onFetchResponse;
-            if (conf.transportConfig) {
-                if ("onFetchRequest" in conf.transportConfig) {
-                    onFetchRequest = conf.transportConfig.onFetchRequest?.bind(this);
-                }
-                if ("onFetchResponse" in conf.transportConfig) {
-                    onFetchResponse = conf.transportConfig?.onFetchResponse?.bind(this);
-                }
-            }
-            this.rpcs[this.urls[i]] = {
-                metrics: new RpcMetrics(conf),
-                transport: conf.url.startsWith("ws")
-                    ? webSocket(conf.url, conf.transportConfig)
-                    : http(conf.url, {
-                          ...conf.transportConfig,
-                          onFetchRequest,
-                          onFetchResponse,
-                      }),
-            };
+            this.metrics[this.urls[i]] = new RpcMetrics(conf);
+            this.transports[this.urls[i]] = http(conf.url, {
+                ...conf.transportConfig,
+                onFetchRequest: onFetchRequest.bind(this),
+                onFetchResponse: onFetchResponse.bind(this),
+            });
         });
-
-        // set initial last used
-        this.lastUsedRpcIndex = configs.length - 1;
     }
 
     /**
      * Last used rpc
      */
-    get lastUsedRpc(): RpcWithTransport {
-        return this.rpcs[this.urls[this.lastUsedRpcIndex]];
+    get lastUsedRpc(): Transport {
+        return this.transports[this.lastUsedUrl];
     }
     /**
      * Last used rpc url
@@ -81,7 +69,7 @@ export class RpcState {
     /**
      * Get next rpc to use which is picked based on past performance
      */
-    get nextRpc(): RpcWithTransport {
+    get nextRpc(): Transport {
         // return early if only 1 rpc is available
         if (this.urls.length === 1) {
             return this.lastUsedRpc;
@@ -94,9 +82,7 @@ export class RpcState {
         // rpcs selection, each range determines the probability of selecting
         // that rpc which is just a percentage of that rpc's latest success
         // rate, so the bigger the rate, the higher chance of being selected
-        const selectionRanges = this.urls.map(
-            (url) => this.rpcs[url].metrics.progress.selectionRate,
-        );
+        const selectionRanges = this.urls.map((url) => this.metrics[url].progress.selectionRate);
 
         // pick a random int between min/max range
         const min = 1;
@@ -111,7 +97,7 @@ export class RpcState {
             const lowerBound = offset + 1;
             const upperBound = offset + selectionRanges[i];
             if (lowerBound <= pick && pick <= upperBound) {
-                selection = this.rpcs[this.urls[i]];
+                selection = this.transports[this.urls[i]];
                 this.lastUsedRpcIndex = i;
                 break;
             }

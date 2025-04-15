@@ -11,7 +11,7 @@ import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { getDataFetcher, getMetaInfo, onFetchRequest, onFetchResponse } from "./config";
+import { getDataFetcher, getMetaInfo } from "./config";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
@@ -911,9 +911,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // report rpcs performance for round
-            for (const rpc in state.rpc.rpcs) {
+            for (const rpc in state.rpc.metrics) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                    const record = state.rpc.rpcs[rpc].metrics;
+                    const record = state.rpc.metrics[rpc];
                     span.setAttributes({
                         "rpc-url": rpc,
                         "request-count": record.req,
@@ -929,9 +929,9 @@ export const main = async (argv: any, version?: string) => {
             }
             // report write rpcs performance
             if (state.writeRpc) {
-                for (const rpc in state.writeRpc.rpcs) {
+                for (const rpc in state.writeRpc.metrics) {
                     await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                        const record = state.writeRpc!.rpcs[rpc].metrics;
+                        const record = state.writeRpc!.metrics[rpc];
                         span.setAttributes({
                             "rpc-url": rpc,
                             "request-count": record.req,
@@ -986,8 +986,7 @@ export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
             throw "invalid rpc argument: " + v;
         }
         const selectionWeight = (() => {
-            if (!weight) return 1;
-            else {
+            if (weight) {
                 const result = parseFloat(weight);
                 if (isNaN(result)) {
                     throw `invalid rpc weight: "${weight}", expected a number greater than equal to 0`;
@@ -996,8 +995,7 @@ export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
             }
         })();
         const trackSize = (() => {
-            if (!track) return 100;
-            else {
+            if (track) {
                 const result = parseInt(track);
                 if (isNaN(result)) {
                     throw `invalid track size: "${track}", expected an integer greater than equal to 0`;
@@ -1006,28 +1004,10 @@ export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
             }
         })();
 
-        if (url.startsWith("ws")) {
-            // websocket config
-            return {
-                url,
-                trackSize,
-                selectionWeight,
-                transportConfig: {
-                    keepAlive: true,
-                    reconnect: true,
-                },
-            };
-        } else {
-            // http config
-            return {
-                url,
-                trackSize,
-                selectionWeight,
-                transportConfig: {
-                    onFetchRequest,
-                    onFetchResponse,
-                },
-            };
-        }
+        return {
+            url,
+            trackSize,
+            selectionWeight,
+        };
     });
 }

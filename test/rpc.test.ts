@@ -23,11 +23,11 @@ describe("Test RpcState", async function () {
         const expected = {
             urls,
             configs,
-            rpcs: {
-                [urls[0]]: { metrics: new RpcMetrics() },
-                [urls[1]]: { metrics: new RpcMetrics() },
-                [urls[2]]: { metrics: new RpcMetrics() },
-                [urls[3]]: { metrics: new RpcMetrics() },
+            metrics: {
+                [urls[0]]: new RpcMetrics(),
+                [urls[1]]: new RpcMetrics(),
+                [urls[2]]: new RpcMetrics(),
+                [urls[3]]: new RpcMetrics(),
             },
             lastUsedRpcIndex: 3,
         } as any;
@@ -36,10 +36,11 @@ describe("Test RpcState", async function () {
         assert.deepEqual(result.urls, expected.urls);
         assert.deepEqual(result.configs, expected.configs);
         assert.deepEqual(result.lastUsedRpcIndex, expected.lastUsedRpcIndex);
+        assert.deepEqual(result.metrics, expected.metrics);
         assert.deepEqual(result.lastUsedUrl, urls[3]);
-        for (const item in result.rpcs) {
-            assert.deepEqual(result.rpcs[item].metrics, expected.rpcs[item].metrics);
-        }
+
+        // unhappy init
+        assert.throws(() => new RpcState([]), "empty list, expected at least one rpc");
     });
 
     it("test next rpc from state", async function () {
@@ -48,20 +49,20 @@ describe("Test RpcState", async function () {
 
         // set arbitrary req and success for each rpc
         // 40% success rate
-        state.rpcs[urls[0]].metrics.progress.req = 100;
-        state.rpcs[urls[0]].metrics.progress.success = 40;
+        state.metrics[urls[0]].progress.req = 100;
+        state.metrics[urls[0]].progress.success = 40;
 
         // 30% success rate
-        state.rpcs[urls[1]].metrics.progress.req = 100;
-        state.rpcs[urls[1]].metrics.progress.success = 30;
+        state.metrics[urls[1]].progress.req = 100;
+        state.metrics[urls[1]].progress.success = 30;
 
         // 20% success rate
-        state.rpcs[urls[2]].metrics.progress.req = 100;
-        state.rpcs[urls[2]].metrics.progress.success = 20;
+        state.metrics[urls[2]].progress.req = 100;
+        state.metrics[urls[2]].progress.success = 20;
 
         // 10% success rate
-        state.rpcs[urls[3]].metrics.progress.req = 100;
-        state.rpcs[urls[3]].metrics.progress.success = 10;
+        state.metrics[urls[3]].progress.req = 100;
+        state.metrics[urls[3]].progress.success = 10;
 
         const results = {
             [urls[0]]: 0,

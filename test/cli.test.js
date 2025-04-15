@@ -5,7 +5,6 @@ const mockServer = require("mockttp").getLocal();
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { arbRound, startup, getRpcConfig } = require("../src/cli");
-const { onFetchRequest, onFetchResponse } = require("../src/config");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
@@ -306,25 +305,25 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
-        for (const url in result.state.rpc.rpcs) {
+        for (const url in result.state.rpc.metrics) {
             assert.equal(
-                result.state.rpc.rpcs[url].metrics.req,
+                result.state.rpc.metrics[url].req,
                 expected.config.rpcState.metrics[url].req,
             );
             assert.equal(
-                result.state.rpc.rpcs[url].metrics.success,
+                result.state.rpc.metrics[url].success,
                 expected.config.rpcState.metrics[url].success,
             );
             assert.equal(
-                result.state.rpc.rpcs[url].metrics.failure,
+                result.state.rpc.metrics[url].failure,
                 expected.config.rpcState.metrics[url].failure,
             );
             assert.deepEqual(
-                result.state.rpc.rpcs[url].metrics.cache,
+                result.state.rpc.metrics[url].cache,
                 expected.config.rpcState.metrics[url].cache,
             );
-            assert.notEqual(result.state.rpc.rpcs[url].metrics.lastRequestTimestamp, 0);
-            assert.isNotEmpty(result.state.rpc.rpcs[url].metrics.requestIntervals);
+            assert.notEqual(result.state.rpc.metrics[url].lastRequestTimestamp, 0);
+            assert.isNotEmpty(result.state.rpc.metrics[url].requestIntervals);
         }
     });
 
@@ -339,39 +338,23 @@ describe("Test cli", async function () {
         const expected = [
             {
                 url: "https://example1.com",
-                trackSize: 100,
-                selectionWeight: 1,
-                transportConfig: {
-                    onFetchRequest,
-                    onFetchResponse,
-                },
+                trackSize: undefined,
+                selectionWeight: undefined,
             },
             {
                 url: "https://example2.com",
                 trackSize: 50,
                 selectionWeight: 2.5,
-                transportConfig: {
-                    onFetchRequest,
-                    onFetchResponse,
-                },
             },
             {
                 url: "wss://example3.com",
-                trackSize: 100,
+                trackSize: undefined,
                 selectionWeight: 1.5,
-                transportConfig: {
-                    keepAlive: true,
-                    reconnect: true,
-                },
             },
             {
                 url: "https://example4.com",
                 trackSize: 200,
-                selectionWeight: 1,
-                transportConfig: {
-                    onFetchRequest,
-                    onFetchResponse,
-                },
+                selectionWeight: undefined,
             },
         ];
 

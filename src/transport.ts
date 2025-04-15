@@ -44,7 +44,7 @@ export function rainSolverTransport(
             timeout,
             type: "RainSolverTransport",
             async request({ method, params }) {
-                return rpcState.nextRpc.transport({ chain }).request({
+                return rpcState.nextRpc({ chain }).request({
                     method,
                     params,
                 }) as any;
