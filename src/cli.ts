@@ -973,6 +973,9 @@ function getEnv(value: any): any {
     return undefined;
 }
 
+/**
+ * Parses the cli rpc arguments to an array of RpcConfig
+ */
 export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
     return cliRpcArgs.map((v: string) => {
         const [url, weight = undefined, track = undefined, ...rest] = v.split(";");
