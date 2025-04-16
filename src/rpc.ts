@@ -75,35 +75,28 @@ export class RpcState {
             return this.lastUsedRpc;
         }
 
-        // set the fallback rpc to the one after last used from the list
-        this.lastUsedRpcIndex = (this.lastUsedRpcIndex + 1) % this.urls.length;
-        const fallback = this.lastUsedRpc;
+        // rpcs selection ranges, each range determines the probability of
+        // selecting that rpc which is just a percentage of that rpc's latest
+        // success rate, so the bigger the rate, the higher chance of being selected
+        let zerosRatesCount = 0;
+        let selectionRanges = this.urls.map((url) => {
+            const rate = this.metrics[url].progress.selectionRate;
+            if (!rate) zerosRatesCount++;
+            return rate;
+        });
 
-        // rpcs selection, each range determines the probability of selecting
-        // that rpc which is just a percentage of that rpc's latest success
-        // rate, so the bigger the rate, the higher chance of being selected
-        const selectionRanges = this.urls.map((url) => this.metrics[url].progress.selectionRate);
-
-        // pick a random int between min/max range
-        const min = 1;
-        const max = selectionRanges.reduce((a, b) => a + b, 0) + 1;
-        const pick = randomInt(min, max);
-
-        // we now match the selection rages against picked
-        // random int to get the next rpc for usage
-        let selection = fallback;
-        for (let i = 0; i < selectionRanges.length; i++) {
-            const offset = selectionRanges.slice(0, i).reduce((a, b) => a + b, 0);
-            const lowerBound = offset + 1;
-            const upperBound = offset + selectionRanges[i];
-            if (lowerBound <= pick && pick <= upperBound) {
-                selection = this.transports[this.urls[i]];
-                this.lastUsedRpcIndex = i;
-                break;
-            }
+        // set 1% for each zero success rate rpc in order for them to have a slim chance
+        // of being picked again so their rates wont get stuck once they hit zero rate
+        if (zerosRatesCount) {
+            const acc = selectionRanges.reduce((a, b) => a + b, 0);
+            const zeroRange = Math.ceil(acc / (100 - zerosRatesCount));
+            selectionRanges = selectionRanges.map((v) => (!v ? zeroRange : v));
         }
 
-        return selection;
+        // pick a random rpc based on their past performnace rates
+        const index = selectRandom(selectionRanges);
+        this.lastUsedRpcIndex = index;
+        return this.transports[this.urls[index]];
     }
 }
 
@@ -186,8 +179,8 @@ export class RpcMetrics {
  * Holds progress details of a rpc that persist during runtime rounds
  */
 export class RpcProgress {
-    /** Number of latest requests to keep track of, default is 100 */
-    trackSize = 100;
+    /** Number of latest requests to keep track of, default is 1000 */
+    trackSize = 1000;
     /** Multiplier to selection frequency of this rpc, default is 1 */
     selectionWeight = 1;
     /** Number of latest requests, max possible value equals to trackSize */
@@ -210,15 +203,15 @@ export class RpcProgress {
         }
     }
 
-    /** Current success rate in percentage */
+    /** Current success rate in 2 fixed decimal points percentage */
     get successRate() {
-        if (this.req === 0) return 100;
-        return Math.max(Math.floor((this.success / this.req) * 100), 1);
+        if (this.req === 0) return 10_000;
+        return Math.ceil((this.success / this.req) * 10_000);
     }
 
     /** Current selection rate, determines the relative chance to get picked  */
     get selectionRate() {
-        return Math.max(Math.floor(this.successRate * this.selectionWeight), 1);
+        return Math.ceil(this.successRate * this.selectionWeight);
     }
 
     /** Handles a request */
@@ -247,4 +240,36 @@ export class RpcProgress {
  */
 export function normalizeUrl(url: string): string {
     return url.endsWith("/") ? url : `${url}/`;
+}
+
+/**
+ * Picks a item randomly from the given array of probability ranges
+ * @param selectionRanges - The array of probability ranges to select from
+ * @returns The index of the picked item from the array
+ */
+export function selectRandom(selectionRanges: number[]): number {
+    // pick a random int between min/max range
+    const max = selectionRanges.reduce((a, b) => a + b, 1);
+    const pick = randomInt(1, max);
+
+    // we now match the selection rages against
+    // picked random int to get picked index
+    let fallback = 0;
+    for (let i = 0; i < selectionRanges.length; i++) {
+        if (selectionRanges[i] > fallback) {
+            // fallback set to the one with biggest range, this cant really happen
+            // but for the purpose of type saftey and assurance of always returning
+            // a valid value we'll use it
+            fallback = selectionRanges[i];
+        }
+        const offset = selectionRanges.slice(0, i).reduce((a, b) => a + b, 0);
+        const lowerBound = offset + 1;
+        const upperBound = offset + selectionRanges[i];
+        if (lowerBound <= pick && pick <= upperBound) {
+            return i;
+        }
+    }
+
+    // unreachable, but added for type saftey
+    return fallback;
 }

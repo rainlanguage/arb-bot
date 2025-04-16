@@ -1,6 +1,13 @@
 import { assert } from "chai";
 import { sleep } from "../src/utils";
-import { normalizeUrl, RpcConfig, RpcMetrics, RpcProgress, RpcState } from "../src/rpc";
+import {
+    RpcState,
+    RpcConfig,
+    RpcMetrics,
+    RpcProgress,
+    normalizeUrl,
+    selectRandom,
+} from "../src/rpc";
 
 describe("Test RpcState", async function () {
     const configs: RpcConfig[] = [
@@ -93,16 +100,6 @@ describe("Test RpcState", async function () {
         assert.closeTo(results[urls[1]], 30, 2.5); // close to 30%
         assert.closeTo(results[urls[2]], 20, 2.5); // close to 20%
         assert.closeTo(results[urls[3]], 10, 2.5); // close to 10%
-    });
-
-    it("should normalize url", async function () {
-        const url1 = "https://example1.com/";
-        const result1 = normalizeUrl(url1);
-        assert.equal(result1, "https://example1.com/");
-
-        const url2 = "https://example2.com";
-        const result2 = normalizeUrl(url2);
-        assert.equal(result2, "https://example2.com/");
     });
 });
 
@@ -346,36 +343,36 @@ describe("Test RpcProgress", async function () {
         const result = new RpcProgress();
         assert.equal(result.req, 0);
         assert.equal(result.success, 0);
-        assert.equal(result.successRate, 100);
+        assert.equal(result.successRate, 10000);
 
         result.recordRequest();
         assert.equal(result.req, 1);
         assert.equal(result.success, 0);
-        assert.equal(result.successRate, 1);
+        assert.equal(result.successRate, 0);
 
         result.recordRequest();
         result.recordSuccess();
         assert.equal(result.req, 2);
         assert.equal(result.success, 1);
-        assert.equal(result.successRate, 50);
+        assert.equal(result.successRate, 5000);
     });
 
     it("should record get selection rate", async function () {
         const result1 = new RpcProgress();
         assert.equal(result1.req, 0);
         assert.equal(result1.success, 0);
-        assert.equal(result1.selectionRate, 100);
+        assert.equal(result1.selectionRate, 10000);
 
         result1.recordRequest();
         assert.equal(result1.req, 1);
         assert.equal(result1.success, 0);
-        assert.equal(result1.selectionRate, 1);
+        assert.equal(result1.selectionRate, 0);
 
         result1.recordRequest();
         result1.recordSuccess();
         assert.equal(result1.req, 2);
         assert.equal(result1.success, 1);
-        assert.equal(result1.selectionRate, 50);
+        assert.equal(result1.selectionRate, 5000);
 
         const result2 = new RpcProgress({
             selectionWeight: 2.5,
@@ -383,17 +380,51 @@ describe("Test RpcProgress", async function () {
         });
         assert.equal(result2.req, 0);
         assert.equal(result2.success, 0);
-        assert.equal(result2.selectionRate, 250);
+        assert.equal(result2.selectionRate, 25000);
 
         result2.recordRequest();
         assert.equal(result2.req, 1);
         assert.equal(result2.success, 0);
-        assert.equal(result2.selectionRate, 2);
+        assert.equal(result2.selectionRate, 0);
 
         result2.recordRequest();
         result2.recordSuccess();
         assert.equal(result2.req, 2);
         assert.equal(result2.success, 1);
-        assert.equal(result2.selectionRate, 125);
+        assert.equal(result2.selectionRate, 12500);
+    });
+});
+
+describe("Test rpc helpers", async function () {
+    it("should normalize url", async function () {
+        const url1 = "https://example1.com/";
+        const result1 = normalizeUrl(url1);
+        assert.equal(result1, "https://example1.com/");
+
+        const url2 = "https://example2.com";
+        const result2 = normalizeUrl(url2);
+        assert.equal(result2, "https://example2.com/");
+    });
+
+    it("should test selectRandom", async function () {
+        const selectionRange = [60, 30, 10];
+        const result = {
+            first: 0,
+            second: 0,
+            third: 0,
+        };
+
+        // run 10000 times to get a accurate distribution of results for test
+        for (let i = 0; i < 10000; i++) {
+            const rand = selectRandom(selectionRange);
+            if (rand === 0) result.first++;
+            else if (rand === 1) result.second++;
+            else if (rand === 2) result.third++;
+            else throw "picked a random item out of range";
+        }
+
+        assert.closeTo(result.first, 6000, 100);
+        assert.closeTo(result.second, 3000, 100);
+        assert.closeTo(result.third, 1000, 100);
     });
 });
