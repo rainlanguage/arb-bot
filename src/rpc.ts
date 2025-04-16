@@ -1,7 +1,7 @@
 import { randomInt } from "crypto";
+import { promiseTimeout, sleep } from "./utils";
 import { onFetchRequest, onFetchResponse } from "./config";
 import { http, Transport, HttpTransportConfig } from "viem";
-import { promiseTimeout, sleep } from "./utils";
 import { RainSolverTransportTimeoutError } from "./transport";
 
 /** The rpc configurations */
