@@ -20,8 +20,10 @@ export type RainSolverTransportConfig = {
 export type RainSolverTransport = Transport<"RainSolverTransport">;
 
 /**
- * RainSolver viem Transport that can be used for any viem client,
- * the `rpcState.nextRpc` dictates which rpc is used for any incoming requests.
+ * RainSolver viem Transport that can be used for any viem client, it operates on
+ * the given `RpcState` with as many number of desired urls, incoming requests are
+ * passed to any transport that `RpcState.nextRpc` provides at the time, so the
+ * `RpcState.nextRpc` inner logic dictates which rpc is used for any incoming requests.
  * @param state - The rpc state
  * @param config - Configurations
  */

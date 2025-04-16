@@ -177,6 +177,7 @@ export class RpcMetrics {
 
     /** Records a failure response */
     recordFailure() {
+        this.progress.recordFailure();
         this.failure++;
     }
 }
@@ -231,6 +232,13 @@ export class RpcProgress {
     /** Records a success response */
     recordSuccess() {
         this.success = Math.min(this.trackSize, this.success + 1);
+    }
+
+    /** Records a failure response */
+    recordFailure() {
+        if (this.req === this.trackSize) {
+            this.success = Math.max(0, this.success - 1);
+        }
     }
 }
 
