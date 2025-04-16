@@ -337,7 +337,7 @@ export function appGlobalLogger(scrub: boolean, ...data: any[]) {
 export async function promiseTimeout(
     promise: Promise<any>,
     time: number,
-    exception: string | number | bigint | symbol | boolean,
+    exception: Error | string | number | bigint | symbol | boolean,
 ) {
     let timer: string | number | NodeJS.Timeout | undefined;
     return Promise.race([

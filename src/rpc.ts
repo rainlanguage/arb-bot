@@ -1,6 +1,8 @@
 import { randomInt } from "crypto";
 import { onFetchRequest, onFetchResponse } from "./config";
 import { http, Transport, HttpTransportConfig } from "viem";
+import { promiseTimeout, sleep } from "./utils";
+import { RainSolverTransportTimeoutError } from "./transport";
 
 /** The rpc configurations */
 export type RpcConfig = {
@@ -13,8 +15,6 @@ export type RpcConfig = {
     /** Viem transport configuration */
     transportConfig?: Pick<HttpTransportConfig, "key" | "name" | "batch" | "fetchOptions">;
 };
-
-export type RpcWithTransport = { transport: Transport; metrics: RpcMetrics };
 
 /**
  * Rain solver rpc state, manages and keeps track of rpcs during runtime
@@ -66,37 +66,39 @@ export class RpcState {
     get lastUsedUrl(): string {
         return this.urls[this.lastUsedRpcIndex];
     }
+
     /**
      * Get next rpc to use which is picked based on past performance
      */
-    get nextRpc(): Transport {
-        // return early if only 1 rpc is available
-        if (this.urls.length === 1) {
-            return this.lastUsedRpc;
-        }
+    async nextRpc({
+        timeout = 10_000,
+        pollingInterval = 250,
+    }: {
+        timeout?: number;
+        pollingInterval?: number;
+    }): Promise<Transport> {
+        return await promiseTimeout(
+            (async () => {
+                for (;;) {
+                    // rpcs selection rate, each rate determines the probability of selecting that
+                    // rpc which is just a percentage of that rpc's latest success rate in 2 fixed
+                    // point decimals relative to other rpcs sucess rates, so the bigger the rate,
+                    // the higher chance of being selected
+                    const rates = this.urls.map((url) => this.metrics[url].progress.selectionRate);
 
-        // rpcs selection ranges, each range determines the probability of
-        // selecting that rpc which is just a percentage of that rpc's latest
-        // success rate, so the bigger the rate, the higher chance of being selected
-        let zerosRatesCount = 0;
-        let selectionRanges = this.urls.map((url) => {
-            const rate = this.metrics[url].progress.selectionRate;
-            if (!rate) zerosRatesCount++;
-            return rate;
-        });
-
-        // set 1% for each zero success rate rpc in order for them to have a slim chance
-        // of being picked again so their rates wont get stuck once they hit zero rate
-        if (zerosRatesCount) {
-            const acc = selectionRanges.reduce((a, b) => a + b, 0);
-            const zeroRange = Math.ceil(acc / (100 - zerosRatesCount));
-            selectionRanges = selectionRanges.map((v) => (!v ? zeroRange : v));
-        }
-
-        // pick a random rpc based on their past performnace rates
-        const index = selectRandom(selectionRanges);
-        this.lastUsedRpcIndex = index;
-        return this.transports[this.urls[index]];
+                    // pick a random one
+                    const index = selectRandom(rates);
+                    if (isNaN(index)) {
+                        await sleep(pollingInterval);
+                    } else {
+                        this.lastUsedRpcIndex = index;
+                        return this.transports[this.urls[index]];
+                    }
+                }
+            })(),
+            timeout,
+            new RainSolverTransportTimeoutError(timeout),
+        );
     }
 }
 
@@ -243,33 +245,30 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * Picks a item randomly from the given array of probability ranges
- * @param selectionRanges - The array of probability ranges to select from
- * @returns The index of the picked item from the array
+ * Picks a item randomly from the given array of success rates,
+ * rates are in 2 fixed point decimals
+ * @param rates - The array of success rates to select from
+ * @returns The index of the picked item from the array or NaN if out-of-range
  */
-export function selectRandom(selectionRanges: number[]): number {
+export function selectRandom(rates: number[]): number {
     // pick a random int between min/max range
-    const max = selectionRanges.reduce((a, b) => a + b, 1);
+    const max = 10_000 * rates.length + 1;
     const pick = randomInt(1, max);
 
     // we now match the selection rages against
     // picked random int to get picked index
-    let fallback = 0;
-    for (let i = 0; i < selectionRanges.length; i++) {
-        if (selectionRanges[i] > fallback) {
-            // fallback set to the one with biggest range, this cant really happen
-            // but for the purpose of type saftey and assurance of always returning
-            // a valid value we'll use it
-            fallback = selectionRanges[i];
-        }
-        const offset = selectionRanges.slice(0, i).reduce((a, b) => a + b, 0);
+    for (let i = 0; i < rates.length; i++) {
+        const offset = 10_000 * i;
         const lowerBound = offset + 1;
-        const upperBound = offset + selectionRanges[i];
+        // set 1% for each zero success rate in order for them to have a slim chance
+        // of being picked again so their rates wont get stuck once they hit zero rate
+        // in case of 2 fixed point decimal, 1% equals to 100
+        const upperBound = offset + Math.max(rates[i], 100);
         if (lowerBound <= pick && pick <= upperBound) {
             return i;
         }
     }
 
-    // unreachable, but added for type saftey
-    return fallback;
+    // out-of-range
+    return NaN;
 }

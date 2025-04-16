@@ -1,5 +1,6 @@
 import { assert } from "chai";
 import { sleep } from "../src/utils";
+import { RainSolverTransportTimeoutError } from "../src/transport";
 import {
     RpcState,
     RpcConfig,
@@ -50,7 +51,7 @@ describe("Test RpcState", async function () {
         assert.throws(() => new RpcState([]), "empty list, expected at least one rpc");
     });
 
-    it("test next rpc from state", async function () {
+    it("test next rpc from state happy", async function () {
         const urls = configs.map((v) => v.url);
         const state = new RpcState(configs);
 
@@ -80,7 +81,7 @@ describe("Test RpcState", async function () {
 
         // run next rpc 10000 times
         for (let i = 0; i < 10000; i++) {
-            state.nextRpc;
+            await state.nextRpc({ pollingInterval: 0, timeout: 600000 });
             const next = state.lastUsedUrl;
             if (next === urls[0]) results[urls[0]]++;
             if (next === urls[1]) results[urls[1]]++;
@@ -100,6 +101,24 @@ describe("Test RpcState", async function () {
         assert.closeTo(results[urls[1]], 30, 2.5); // close to 30%
         assert.closeTo(results[urls[2]], 20, 2.5); // close to 20%
         assert.closeTo(results[urls[3]], 10, 2.5); // close to 10%
+    });
+
+    it("test next rpc from state unhappy", async function () {
+        const urls = configs.map((v) => v.url);
+        const state = new RpcState(configs);
+
+        // set arbitrary req count
+        for (const url of urls) {
+            state.metrics[url].progress.req = 100;
+        }
+
+        try {
+            await state.nextRpc({ pollingInterval: 0, timeout: 0 });
+            throw "expected to fail, but fulfilled";
+        } catch (error) {
+            if (error === "expected to fail, but fulfilled") throw error;
+            assert.deepEqual(error, new RainSolverTransportTimeoutError(0));
+        }
     });
 });
 
@@ -407,11 +426,16 @@ describe("Test rpc helpers", async function () {
     });
 
     it("should test selectRandom", async function () {
-        const selectionRange = [60, 30, 10];
+        const selectionRange = [
+            6000, // 60% succes rate, equals to 20% of all probabilities
+            3000, // 30% succes rate, equals to 10% of all probabilities
+            1000, // 10% succes rate, equals to 3.33% of all probabilities
+        ];
         const result = {
             first: 0,
             second: 0,
             third: 0,
+            outOfRange: 0,
         };
 
         // run 10000 times to get a accurate distribution of results for test
@@ -420,11 +444,18 @@ describe("Test rpc helpers", async function () {
             if (rand === 0) result.first++;
             else if (rand === 1) result.second++;
             else if (rand === 2) result.third++;
-            else throw "picked a random item out of range";
+            else result.outOfRange++;
         }
 
-        assert.closeTo(result.first, 6000, 100);
-        assert.closeTo(result.second, 3000, 100);
-        assert.closeTo(result.third, 1000, 100);
+        // convert to percentage
+        result.first /= 100;
+        result.second /= 100;
+        result.third /= 100;
+        result.outOfRange /= 100;
+
+        assert.closeTo(result.first, 20, 2);
+        assert.closeTo(result.second, 10, 2);
+        assert.closeTo(result.third, 3.33, 2);
+        assert.closeTo(result.outOfRange, 66.66, 2);
     });
 });
