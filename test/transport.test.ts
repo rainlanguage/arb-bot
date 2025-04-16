@@ -4,6 +4,7 @@ import { getLocal } from "mockttp";
 import { polygon } from "viem/chains";
 import { normalizeUrl, RpcConfig, RpcState } from "../src/rpc";
 import { rainSolverTransport, RainSolverTransportConfig } from "../src/transport";
+import { sleep } from "../src/utils";
 
 describe("Test transport", async function () {
     it("should get RainSolver transport", async function () {
@@ -47,40 +48,39 @@ describe("Test transport", async function () {
                     .forPost()
                     .once()
                     .withBodyIncluding("eth_blockNumber")
-                    .thenReply(200, JSON.stringify({ jsonrpc: "2.0", id: i, result: 1234 }));
+                    .thenSendJsonRpcResult(1234);
                 await mockServer2
                     .forPost()
                     .once()
                     .withBodyIncluding("eth_blockNumber")
-                    .thenReply(200, JSON.stringify({ jsonrpc: "2.0", id: i, result: 1234 }));
+                    .thenSendJsonRpcResult(1234);
             } else {
                 await mockServer1
                     .forPost()
                     .once()
                     .withBodyIncluding("eth_blockNumber")
                     .thenSendJsonRpcError({
-                        jsonrpc: "2.0",
-                        id: i,
-                        error: { code: -32000, message: "ratelimit exceeded" },
+                        code: -32000,
+                        message: "ratelimit exceeded",
                     });
                 await mockServer2
                     .forPost()
                     .once()
                     .withBodyIncluding("eth_blockNumber")
                     .thenSendJsonRpcError({
-                        jsonrpc: "2.0",
-                        id: i,
-                        error: { code: -32000, message: "ratelimit exceeded" },
+                        code: -32000,
+                        message: "ratelimit exceeded",
                     });
             }
             try {
                 const result = await transport.request({ method: "eth_blockNumber" });
                 assert.equal(result, 1234);
             } catch (error) {
-                if (error?.cause?.error?.code) {
-                    assert.equal(error.cause.error.code, -32000);
+                if (error?.code) {
+                    assert.equal(error.code, -32000);
                 }
             }
+            await sleep(20);
         }
 
         // both rpcs should have been used equally close to each other with close success rate
