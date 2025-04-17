@@ -180,8 +180,8 @@ export class RpcMetrics {
  * Holds progress details of a rpc that persist during runtime rounds
  */
 export class RpcProgress {
-    /** Number of latest requests to keep track of, default is 1000 */
-    trackSize = 1000;
+    /** Number of latest requests to keep track of, default is 100 */
+    trackSize = 100;
     /** Multiplier to selection frequency of this rpc, default is 1 */
     selectionWeight = 1;
     /** Number of latest requests, max possible value equals to trackSize */
@@ -254,10 +254,10 @@ export function selectRandom(rates: number[]): number {
     for (let i = 0; i < rates.length; i++) {
         const offset = 10_000 * i;
         const lowerBound = offset + 1;
-        // set 0.1% for each zero success rate in order for them to have a slim chance
+        // set 0.25% for each zero success rate in order for them to have a slim chance
         // of being picked again so their rates wont get stuck once they hit zero rate,
-        // in case of 2 fixed point decimal, 0.1% equals to 10
-        const upperBound = offset + Math.max(rates[i], 10);
+        // in case of 2 fixed point decimal, 0.25% equals to 25
+        const upperBound = offset + Math.max(rates[i], 25);
         if (lowerBound <= pick && pick <= upperBound) {
             return i;
         }
