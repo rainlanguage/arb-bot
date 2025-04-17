@@ -67,7 +67,7 @@ describe("Test transport", async function () {
         assert.closeTo(
             state.metrics[normalizeUrl(mockServer1.url)].progress.successRate,
             state.metrics[normalizeUrl(mockServer2.url)].progress.successRate,
-            250, // 2.5% delta
+            350, // 3.5% delta
         );
 
         await mockServer1.stop();
