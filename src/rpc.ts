@@ -249,7 +249,7 @@ export function selectRandom(rates: number[]): number {
     const max = 10_000 * rates.length + 1;
     const pick = randomInt(1, max);
 
-    // we now match the selection rages against
+    // we now match the selection rates against
     // picked random int to get picked index
     for (let i = 0; i < rates.length; i++) {
         const offset = 10_000 * i;
