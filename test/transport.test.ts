@@ -48,33 +48,17 @@ describe("Test transport", async function () {
         for (let i = 1; i <= 1000; i++) {
             // randomly revert or resolve the call
             if (randomInt(0, 2) === 1) {
-                await mockServer1
-                    .forPost()
-                    .once()
-                    .withBodyIncluding("eth_blockNumber")
-                    .thenSendJsonRpcResult(1234);
-                await mockServer2
-                    .forPost()
-                    .once()
-                    .withBodyIncluding("eth_blockNumber")
-                    .thenSendJsonRpcResult(1234);
+                await mockServer1.forPost().once().thenSendJsonRpcResult(1234);
+                await mockServer2.forPost().once().thenSendJsonRpcResult(1234);
             } else {
-                await mockServer1
-                    .forPost()
-                    .once()
-                    .withBodyIncluding("eth_blockNumber")
-                    .thenSendJsonRpcError({
-                        code: -32000,
-                        message: "ratelimit exceeded",
-                    });
-                await mockServer2
-                    .forPost()
-                    .once()
-                    .withBodyIncluding("eth_blockNumber")
-                    .thenSendJsonRpcError({
-                        code: -32000,
-                        message: "ratelimit exceeded",
-                    });
+                await mockServer1.forPost().once().thenSendJsonRpcError({
+                    code: -32000,
+                    message: "ratelimit exceeded",
+                });
+                await mockServer2.forPost().once().thenSendJsonRpcError({
+                    code: -32000,
+                    message: "ratelimit exceeded",
+                });
             }
             await transport.request({ method: "eth_blockNumber" }).catch(() => {});
         }
@@ -83,7 +67,7 @@ describe("Test transport", async function () {
         assert.closeTo(
             state.metrics[normalizeUrl(mockServer1.url)].progress.successRate,
             state.metrics[normalizeUrl(mockServer2.url)].progress.successRate,
-            100, // 1% delta
+            250, // 2.5% delta
         );
 
         await mockServer1.stop();

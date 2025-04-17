@@ -2,6 +2,19 @@ import { RpcState } from "./rpc";
 import { shouldThrow } from "./error";
 import { BaseError, createTransport, Transport, TransportConfig } from "viem";
 
+/**
+ * RainSolver transport default configurations
+ */
+export namespace RainSolverTransportDefaults {
+    export const RETRY_COUNT = 1 as const;
+    export const TIMEOUT = 10_000 as const;
+    export const RETRY_DELAY = 150 as const;
+    export const POLLING_INTERVAL = 250 as const;
+    export const POLLING_TIMEOUT = 10_000 as const;
+    export const KEY = "RainSolverTransport" as const;
+    export const NAME = "Rain Solver Transport" as const;
+}
+
 /** Rain solver transport configurations */
 export type RainSolverTransportConfig = {
     /** The key of the transport */
@@ -32,7 +45,7 @@ export type TimeoutErrorType = RainSolverTransportTimeoutError & {
  */
 export class RainSolverTransportTimeoutError extends BaseError {
     constructor(timeout: number) {
-        super("Timed out while waiting for next available rpc.", {
+        super("Timed out while waiting for next RPC to become available.", {
             details: "No RPC available for the moment",
             metaMessages: [`timed out in: ${timeout} ms`],
             name: "RainSolverTransportTimeoutError",
@@ -56,13 +69,13 @@ export function rainSolverTransport(
     config: RainSolverTransportConfig = {},
 ): RainSolverTransport {
     const {
-        retryDelay,
-        retryCount = 1,
-        timeout = 10_000,
-        pollingInterval = 250,
-        pollingTimeout = 10_000,
-        key = "RainSolverTransport",
-        name = "Rain Solver Transport",
+        key = RainSolverTransportDefaults.KEY,
+        name = RainSolverTransportDefaults.NAME,
+        timeout = RainSolverTransportDefaults.TIMEOUT,
+        retryCount = RainSolverTransportDefaults.RETRY_COUNT,
+        retryDelay = RainSolverTransportDefaults.RETRY_DELAY,
+        pollingTimeout = RainSolverTransportDefaults.POLLING_TIMEOUT,
+        pollingInterval = RainSolverTransportDefaults.POLLING_INTERVAL,
     } = config;
     return (({
         chain,

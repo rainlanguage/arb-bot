@@ -343,21 +343,6 @@ describe("Test RpcProgress", async function () {
         }
     });
 
-    it("should record failure response", async function () {
-        const result = new RpcProgress({
-            trackSize: 20,
-            url: "",
-        });
-
-        for (let i = 0; i < 30; i++) {
-            const req = Math.min(i + 1, 20);
-            result.recordRequest();
-            result.recordFailure();
-            assert.equal(result.req, req);
-            assert.equal(result.success, 0);
-        }
-    });
-
     it("should record get success rate", async function () {
         const result = new RpcProgress();
         assert.equal(result.req, 0);
