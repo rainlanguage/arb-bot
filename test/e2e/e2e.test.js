@@ -85,6 +85,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -334,6 +335,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -672,6 +674,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
