@@ -255,7 +255,7 @@ export function selectRandom(rates: number[]): number {
         const offset = 10_000 * i;
         const lowerBound = offset + 1;
         // set 1% for each zero success rate in order for them to have a slim chance
-        // of being picked again so their rates wont get stuck once they hit zero rate
+        // of being picked again so their rates wont get stuck once they hit zero rate,
         // in case of 2 fixed point decimal, 1% equals to 100
         const upperBound = offset + Math.max(rates[i], 100);
         if (lowerBound <= pick && pick <= upperBound) {
