@@ -199,13 +199,13 @@ export class RpcProgress {
      */
     constructor(config?: RpcConfig) {
         this.success = 0;
+        this.buffer = [];
         if (typeof config?.trackSize === "number") {
             this.trackSize = config.trackSize;
         }
         if (typeof config?.selectionWeight === "number") {
             this.selectionWeight = config.selectionWeight;
         }
-        this.buffer = Array(this.selectionWeight).fill(RpcResponseType.Failure);
     }
 
     /** Current success rate in 2 fixed decimals points percentage */
