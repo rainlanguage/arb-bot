@@ -109,7 +109,7 @@ export function rainSolverTransport(
                         }).request(args);
                     } catch (error: any) {
                         if (shouldThrow(error)) throw error;
-                        if (tryNext) return req(false);
+                        if (tryNext) return await req(false);
                         throw error;
                     }
                 };
