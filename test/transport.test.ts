@@ -95,7 +95,7 @@ describe("Test transport", async function () {
         ];
         const state = new RpcState(rpcConfigs);
         for (const url in state.metrics) {
-            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Faulire);
+            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Failure);
         }
         const config: RainSolverTransportConfig = {
             retryCount: 0,

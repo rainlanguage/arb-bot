@@ -177,7 +177,7 @@ export class RpcMetrics {
 /** A helper enum type for a rpc response */
 export enum RpcResponseType {
     Success,
-    Faulire,
+    Failure,
 }
 
 /**
@@ -230,7 +230,7 @@ export class RpcProgress {
         // to success when the success response gets recorded
         //
         // buffer length saturates at trackSize
-        this.buffer.push(RpcResponseType.Faulire);
+        this.buffer.push(RpcResponseType.Failure);
         if (this.buffer.length > this.trackSize) {
             // knock first itme out
             const ko = this.buffer.shift();
@@ -241,7 +241,7 @@ export class RpcProgress {
     /** Records a success response */
     recordSuccess() {
         // set the latest item in buffer to success
-        const index = this.buffer.lastIndexOf(RpcResponseType.Faulire);
+        const index = this.buffer.lastIndexOf(RpcResponseType.Failure);
         if (index > -1) {
             this.success++;
             this.buffer[index] = RpcResponseType.Success;
