@@ -172,8 +172,15 @@ export class RpcMetrics {
 
     /** Records a failure response */
     recordFailure() {
+        // this.progress.recordFailure();
         this.failure++;
     }
+}
+
+/** A helper enum type for a rpc response */
+export enum RpcResponseType {
+    Success,
+    Faulire,
 }
 
 /**
@@ -184,17 +191,17 @@ export class RpcProgress {
     trackSize = 100;
     /** Multiplier to selection frequency of this rpc, default is 1 */
     selectionWeight = 1;
-    /** Number of latest requests, max possible value equals to trackSize */
-    req: number;
     /** Number of latest successful requests, max possible value equals to trackSize */
     success: number;
+    /** The buffer that keeps the latest response types with the length of trackSize */
+    buffer: RpcResponseType[];
 
     /**
      * Creates a new instance with given configuration
      * @param config - (optional) The rpc configurations
      */
     constructor(config?: RpcConfig) {
-        this.req = 0;
+        this.buffer = [];
         this.success = 0;
         if (typeof config?.trackSize === "number") {
             this.trackSize = config.trackSize;
@@ -206,8 +213,8 @@ export class RpcProgress {
 
     /** Current success rate in 2 fixed decimal points percentage */
     get successRate() {
-        if (this.req === 0) return 10_000;
-        return Math.ceil((this.success / this.req) * 10_000);
+        if (this.buffer.length === 0) return 10_000;
+        return Math.ceil((this.success / this.buffer.length) * 10_000);
     }
 
     /** Current selection rate, determines the relative chance to get picked  */
@@ -217,17 +224,24 @@ export class RpcProgress {
 
     /** Handles a request */
     recordRequest() {
-        // saturates at trackSize
-        if (this.req < this.trackSize) {
-            this.req = Math.min(this.trackSize, this.req + 1);
-        } else {
-            this.success = Math.max(0, this.success - 1);
+        // we consider every req a failure, it only gets changed
+        // to success when the success response gets recorded
+        //
+        // buffer length saturates at trackSize
+        this.buffer.push(RpcResponseType.Faulire);
+        if (this.buffer.length > this.trackSize) {
+            // knock first itme out
+            const ko = this.buffer.shift();
+            if (ko === RpcResponseType.Success) this.success--;
         }
     }
 
     /** Records a success response */
     recordSuccess() {
-        this.success = Math.min(this.trackSize, this.success + 1);
+        this.success++;
+        // set the latest item in buffer to success
+        this.buffer.pop();
+        this.buffer.push(RpcResponseType.Success);
     }
 }
 

@@ -8,6 +8,7 @@ import {
     RpcProgress,
     normalizeUrl,
     selectRandom,
+    RpcResponseType,
 } from "../src/rpc";
 
 describe("Test RpcState", async function () {
@@ -55,21 +56,22 @@ describe("Test RpcState", async function () {
         const urls = configs.map((v) => v.url);
         const state = new RpcState(configs);
 
-        // set arbitrary req and success for each rpc
+        // set arbitrary buffer and success for each rpc
+        const arr = Array(100).fill(RpcResponseType.Faulire);
         // 40% success rate
-        state.metrics[urls[0]].progress.req = 100;
+        state.metrics[urls[0]].progress.buffer = arr;
         state.metrics[urls[0]].progress.success = 40;
 
         // 30% success rate
-        state.metrics[urls[1]].progress.req = 100;
+        state.metrics[urls[1]].progress.buffer = arr;
         state.metrics[urls[1]].progress.success = 30;
 
         // 20% success rate
-        state.metrics[urls[2]].progress.req = 100;
+        state.metrics[urls[2]].progress.buffer = arr;
         state.metrics[urls[2]].progress.success = 20;
 
         // 10% success rate
-        state.metrics[urls[3]].progress.req = 100;
+        state.metrics[urls[3]].progress.buffer = arr;
         state.metrics[urls[3]].progress.success = 10;
 
         const results = {
@@ -107,9 +109,9 @@ describe("Test RpcState", async function () {
         const urls = configs.map((v) => v.url);
         const state = new RpcState(configs);
 
-        // set arbitrary req count
+        // set arbitrary buffer count
         for (const url of urls) {
-            state.metrics[url].progress.req = 100;
+            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Faulire);
         }
 
         try {
@@ -309,7 +311,7 @@ describe("Test RpcProgress", async function () {
             trackSize: 50,
             url: "",
         });
-        assert.equal(result.req, 0);
+        assert.deepEqual(result.buffer, []);
         assert.equal(result.success, 0);
         assert.equal(result.trackSize, 50);
         assert.equal(result.selectionWeight, 2);
@@ -320,11 +322,11 @@ describe("Test RpcProgress", async function () {
 
         // record a request
         result.recordRequest();
-        assert.equal(result.req, 1);
+        assert.deepEqual(result.buffer, Array(1).fill(RpcResponseType.Faulire));
         assert.equal(result.success, 0);
 
         result.recordRequest();
-        assert.equal(result.req, 2);
+        assert.deepEqual(result.buffer, Array(2).fill(RpcResponseType.Faulire));
         assert.equal(result.success, 0);
     });
 
@@ -335,46 +337,47 @@ describe("Test RpcProgress", async function () {
         });
 
         for (let i = 0; i < 30; i++) {
-            const expected = Math.min(i + 1, 20);
+            const expectedSuccesss = Math.min(i + 1, 20);
+            const expectedStack = Array(Math.min(i + 1, 20)).fill(RpcResponseType.Success);
             result.recordRequest();
             result.recordSuccess();
-            assert.equal(result.req, expected);
-            assert.equal(result.success, expected);
+            assert.deepEqual(result.buffer, expectedStack);
+            assert.equal(result.success, expectedSuccesss);
         }
     });
 
-    it("should record get success rate", async function () {
+    it("should test success rate", async function () {
         const result = new RpcProgress();
-        assert.equal(result.req, 0);
+        assert.deepEqual(result.buffer, []);
         assert.equal(result.success, 0);
         assert.equal(result.successRate, 10000);
 
         result.recordRequest();
-        assert.equal(result.req, 1);
+        assert.deepEqual(result.buffer, Array(1).fill(RpcResponseType.Faulire));
         assert.equal(result.success, 0);
         assert.equal(result.successRate, 0);
 
         result.recordRequest();
         result.recordSuccess();
-        assert.equal(result.req, 2);
+        assert.deepEqual(result.buffer, [RpcResponseType.Faulire, RpcResponseType.Success]);
         assert.equal(result.success, 1);
         assert.equal(result.successRate, 5000);
     });
 
-    it("should record get selection rate", async function () {
+    it("should test selection rate", async function () {
         const result1 = new RpcProgress();
-        assert.equal(result1.req, 0);
+        assert.deepEqual(result1.buffer, []);
         assert.equal(result1.success, 0);
         assert.equal(result1.selectionRate, 10000);
 
         result1.recordRequest();
-        assert.equal(result1.req, 1);
+        assert.deepEqual(result1.buffer, [RpcResponseType.Faulire]);
         assert.equal(result1.success, 0);
         assert.equal(result1.selectionRate, 0);
 
         result1.recordRequest();
         result1.recordSuccess();
-        assert.equal(result1.req, 2);
+        assert.deepEqual(result1.buffer, [RpcResponseType.Faulire, RpcResponseType.Success]);
         assert.equal(result1.success, 1);
         assert.equal(result1.selectionRate, 5000);
 
@@ -382,18 +385,18 @@ describe("Test RpcProgress", async function () {
             selectionWeight: 2.5,
             url: "",
         });
-        assert.equal(result2.req, 0);
+        assert.deepEqual(result2.buffer, []);
         assert.equal(result2.success, 0);
         assert.equal(result2.selectionRate, 25000);
 
         result2.recordRequest();
-        assert.equal(result2.req, 1);
+        assert.deepEqual(result2.buffer, [RpcResponseType.Faulire]);
         assert.equal(result2.success, 0);
         assert.equal(result2.selectionRate, 0);
 
         result2.recordRequest();
         result2.recordSuccess();
-        assert.equal(result2.req, 2);
+        assert.deepEqual(result2.buffer, [RpcResponseType.Faulire, RpcResponseType.Success]);
         assert.equal(result2.success, 1);
         assert.equal(result2.selectionRate, 12500);
     });

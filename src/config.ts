@@ -116,7 +116,7 @@ export function onFetchRequest(this: RpcState, request: Request) {
 /**
  * Keeps record of http fetch responses for a http viem client
  */
-export function onFetchResponse(this: RpcState, response: Response) {
+export async function onFetchResponse(this: RpcState, response: Response) {
     const _response = response.clone();
     const url = normalizeUrl(_response.url);
     let record = this.metrics[url];
@@ -145,7 +145,7 @@ export function onFetchResponse(this: RpcState, response: Response) {
         record.recordFailure();
     };
     if (_response.headers.get("Content-Type")?.startsWith("application/json")) {
-        _response
+        await _response
             .json()
             .then((res: any) => {
                 handleResponse(res);
@@ -154,7 +154,7 @@ export function onFetchResponse(this: RpcState, response: Response) {
                 record.recordFailure();
             });
     } else {
-        _response
+        await _response
             .text()
             .then((text) => {
                 try {

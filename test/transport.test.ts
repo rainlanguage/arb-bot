@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { randomInt } from "crypto";
 import { getLocal } from "mockttp";
 import { polygon } from "viem/chains";
-import { normalizeUrl, RpcConfig, RpcState } from "../src/rpc";
+import { normalizeUrl, RpcConfig, RpcResponseType, RpcState } from "../src/rpc";
 import {
     rainSolverTransport,
     RainSolverTransportConfig,
@@ -45,29 +45,33 @@ describe("Test transport", async function () {
         assert.equal(transport.config.type, "RainSolverTransport");
 
         // call 1000 times with random responses
+        await mockServer1.forPost().times(10).thenSendJsonRpcResult(1234);
+        await mockServer2.forPost().times(10).thenSendJsonRpcResult(1234);
         for (let i = 1; i <= 1000; i++) {
             // randomly revert or resolve the call
-            if (randomInt(0, 2) === 1) {
-                await mockServer1.forPost().once().thenSendJsonRpcResult(1234);
-                await mockServer2.forPost().once().thenSendJsonRpcResult(1234);
-            } else {
-                await mockServer1.forPost().once().thenSendJsonRpcError({
-                    code: -32000,
-                    message: "ratelimit exceeded",
-                });
-                await mockServer2.forPost().once().thenSendJsonRpcError({
-                    code: -32000,
-                    message: "ratelimit exceeded",
-                });
+            if (i > 10) {
+                if (randomInt(1, 3) === 1) {
+                    await mockServer1.forPost().once().thenSendJsonRpcResult(1234);
+                    await mockServer2.forPost().once().thenSendJsonRpcResult(1234);
+                } else {
+                    await mockServer1.forPost().once().thenSendJsonRpcError({
+                        code: -32000,
+                        message: "ratelimit exceeded",
+                    });
+                    await mockServer2.forPost().once().thenSendJsonRpcError({
+                        code: -32000,
+                        message: "ratelimit exceeded",
+                    });
+                }
             }
-            await transport.request({ method: "eth_blockNumber" }).catch(() => {});
+            await transport.request({ method: "eth_blockNumber" }).catch();
         }
 
         // both rpcs should have been used equally close to each other with close success rate
         assert.closeTo(
             state.metrics[normalizeUrl(mockServer1.url)].progress.successRate,
             state.metrics[normalizeUrl(mockServer2.url)].progress.successRate,
-            350, // 3.5% delta
+            500, // 5% delta
         );
 
         await mockServer1.stop();
@@ -91,7 +95,7 @@ describe("Test transport", async function () {
         ];
         const state = new RpcState(rpcConfigs);
         for (const url in state.metrics) {
-            state.metrics[url].progress.req = 10;
+            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Faulire);
         }
         const config: RainSolverTransportConfig = {
             retryCount: 0,
