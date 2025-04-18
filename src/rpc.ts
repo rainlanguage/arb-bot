@@ -85,7 +85,7 @@ export class RpcState {
             (async () => {
                 for (;;) {
                     // pick a random one
-                    const index = selectRandom(rates);
+                    const index = probablyPicksNext(rates);
                     if (isNaN(index)) {
                         await sleep(pollingInterval);
                     } else {
@@ -198,7 +198,6 @@ export class RpcProgress {
      * @param config - (optional) The rpc configurations
      */
     constructor(config?: RpcConfig) {
-        this.buffer = [];
         this.success = 0;
         if (typeof config?.trackSize === "number") {
             this.trackSize = config.trackSize;
@@ -206,6 +205,7 @@ export class RpcProgress {
         if (typeof config?.selectionWeight === "number") {
             this.selectionWeight = config.selectionWeight;
         }
+        this.buffer = Array(this.selectionWeight).fill(RpcResponseType.Failure);
     }
 
     /** Current success rate in 2 fixed decimals points percentage */
@@ -232,9 +232,9 @@ export class RpcProgress {
         // buffer length saturates at trackSize
         this.buffer.push(RpcResponseType.Failure);
         if (this.buffer.length > this.trackSize) {
-            // knock first itme out
-            const ko = this.buffer.shift();
-            if (ko === RpcResponseType.Success) this.success--;
+            // knock the first itme out
+            if (this.buffer[0] === RpcResponseType.Success) this.success--;
+            this.buffer = this.buffer.slice(1);
         }
     }
 
@@ -257,12 +257,12 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * Picks a item randomly from the given array of success rates,
+ * Probably picks an item from the given array of success rates as probablities,
  * rates are in 2 fixed point decimalss
  * @param rates - The array of success rates to select from
  * @returns The index of the picked item from the array or NaN if out-of-range
  */
-export function selectRandom(rates: number[]): number {
+export function probablyPicksNext(rates: number[]): number {
     // pick a random int from [1, max] range
     const max = 10_000 * rates.length;
     const pick = Math.floor(Math.random() * max) + 1;
@@ -278,6 +278,6 @@ export function selectRandom(rates: number[]): number {
         }
     }
 
-    // out-of-range, no pick
+    // out-of-range, picked value didnt match an item from the given list
     return NaN;
 }

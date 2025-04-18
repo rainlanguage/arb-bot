@@ -7,7 +7,7 @@ import {
     RpcMetrics,
     RpcProgress,
     normalizeUrl,
-    selectRandom,
+    probablyPicksNext,
     RpcResponseType,
 } from "../src/rpc";
 
@@ -413,7 +413,7 @@ describe("Test rpc helpers", async function () {
         assert.equal(result2, "https://example2.com/");
     });
 
-    it("should test selectRandom", async function () {
+    it("should test probablyPicksNext", async function () {
         const selectionRange = [
             6000, // 60% succes rate, equals to 20% of all probabilities
             3000, // 30% succes rate, equals to 10% of all probabilities
@@ -428,7 +428,7 @@ describe("Test rpc helpers", async function () {
 
         // run 10000 times to get a accurate distribution of results for test
         for (let i = 0; i < 10000; i++) {
-            const rand = selectRandom(selectionRange);
+            const rand = probablyPicksNext(selectionRange);
             if (rand === 0) result.first++;
             else if (rand === 1) result.second++;
             else if (rand === 2) result.third++;
