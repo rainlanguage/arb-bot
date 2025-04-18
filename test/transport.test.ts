@@ -64,7 +64,7 @@ describe("Test transport", async function () {
                     });
                 }
             }
-            await transport.request({ method: "eth_blockNumber" }).catch();
+            await transport.request({ method: "eth_blockNumber" }).catch(() => {});
         }
 
         // both rpcs should have been used equally close to each other with close success rate

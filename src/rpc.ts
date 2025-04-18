@@ -82,7 +82,7 @@ export class RpcState {
                 for (;;) {
                     // rpcs selection rate, each rate determines the probability of selecting that
                     // rpc which is just a percentage of that rpc's latest success rate in 2 fixed
-                    // point decimals relative to other rpcs sucess rates, so the bigger the rate,
+                    // point decimalss relative to other rpcs sucess rates, so the bigger the rate,
                     // the higher chance of being selected
                     const rates = this.urls.map((url) => this.metrics[url].progress.selectionRate);
 
@@ -189,7 +189,7 @@ export enum RpcResponseType {
 export class RpcProgress {
     /** Number of latest requests to keep track of, default is 100 */
     trackSize = 100;
-    /** Multiplier to selection frequency of this rpc, default is 1 */
+    /** Multiplier to selection rate of this rpc, default is 1 */
     selectionWeight = 1;
     /** Number of latest successful requests, max possible value equals to trackSize */
     success: number;
@@ -211,15 +211,20 @@ export class RpcProgress {
         }
     }
 
-    /** Current success rate in 2 fixed decimal points percentage */
+    /** Current success rate in 2 fixed decimals points percentage */
     get successRate() {
         if (this.buffer.length === 0) return 10_000;
         return Math.ceil((this.success / this.buffer.length) * 10_000);
     }
 
-    /** Current selection rate, determines the relative chance to get picked  */
+    /**
+     * Current selection rate, determines the relative chance to get picked.
+     * min of 0.25% if zero success rate, in order to allow for a slim chance of
+     * being picked again so it doesnt get stuck at zero rate forever, in case
+     * of 2 fixed point decimals, 0.25% equates to 25
+     */
     get selectionRate() {
-        return Math.ceil(this.successRate * this.selectionWeight);
+        return Math.max(Math.ceil(this.successRate * this.selectionWeight), 25);
     }
 
     /** Handles a request */
@@ -254,7 +259,7 @@ export function normalizeUrl(url: string): string {
 
 /**
  * Picks a item randomly from the given array of success rates,
- * rates are in 2 fixed point decimals
+ * rates are in 2 fixed point decimalss
  * @param rates - The array of success rates to select from
  * @returns The index of the picked item from the array or NaN if out-of-range
  */
@@ -268,10 +273,7 @@ export function selectRandom(rates: number[]): number {
     for (let i = 0; i < rates.length; i++) {
         const offset = 10_000 * i;
         const lowerBound = offset + 1;
-        // set 0.25% for each zero success rate in order for them to have a slim chance
-        // of being picked again so their rates wont get stuck once they hit zero rate,
-        // in case of 2 fixed point decimal, 0.25% equals to 25
-        const upperBound = offset + Math.max(rates[i], 25);
+        const upperBound = offset + rates[i];
         if (lowerBound <= pick && pick <= upperBound) {
             return i;
         }

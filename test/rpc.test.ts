@@ -373,7 +373,7 @@ describe("Test RpcProgress", async function () {
         result1.recordRequest();
         assert.deepEqual(result1.buffer, [RpcResponseType.Faulire]);
         assert.equal(result1.success, 0);
-        assert.equal(result1.selectionRate, 0);
+        assert.equal(result1.selectionRate, 25);
 
         result1.recordRequest();
         result1.recordSuccess();
@@ -392,7 +392,7 @@ describe("Test RpcProgress", async function () {
         result2.recordRequest();
         assert.deepEqual(result2.buffer, [RpcResponseType.Faulire]);
         assert.equal(result2.success, 0);
-        assert.equal(result2.selectionRate, 0);
+        assert.equal(result2.selectionRate, 25);
 
         result2.recordRequest();
         result2.recordSuccess();
