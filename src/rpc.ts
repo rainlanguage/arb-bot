@@ -1,4 +1,3 @@
-import { randomInt } from "crypto";
 import { promiseTimeout, sleep } from "./utils";
 import { onFetchRequest, onFetchResponse } from "./config";
 import { http, Transport, HttpTransportConfig } from "viem";
@@ -171,7 +170,6 @@ export class RpcMetrics {
 
     /** Records a failure response */
     recordFailure() {
-        // this.progress.recordFailure();
         this.failure++;
     }
 }
@@ -263,9 +261,9 @@ export function normalizeUrl(url: string): string {
  * @returns The index of the picked item from the array or NaN if out-of-range
  */
 export function selectRandom(rates: number[]): number {
-    // pick a random int between min/max range
-    const max = 10_000 * rates.length + 1;
-    const pick = randomInt(1, max);
+    // pick a random int from [1, max] range
+    const max = 10_000 * rates.length;
+    const pick = Math.floor(Math.random() * max) + 1;
 
     // we now match the selection rates against
     // picked random int to get picked index
@@ -278,6 +276,6 @@ export function selectRandom(rates: number[]): number {
         }
     }
 
-    // out-of-range
+    // out-of-range, no pick
     return NaN;
 }

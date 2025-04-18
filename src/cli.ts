@@ -922,6 +922,9 @@ export const main = async (argv: any, version?: string) => {
                         "timeout-count": record.timeout,
                         "avg-request-interval": record.avgRequestIntervals,
                         "latest-success-rate": record.progress.successRate,
+                        buffer: record.progress.buffer,
+                        "buff-len": record.progress.buffer.length,
+                        "prog-success": record.progress.success,
                     });
                     record.reset();
                     span.end();
