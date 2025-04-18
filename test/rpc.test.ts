@@ -7,8 +7,8 @@ import {
     RpcMetrics,
     RpcProgress,
     normalizeUrl,
-    probablyPicksNext,
-    RpcResponseType,
+    RpcBufferType,
+    probablyPicksFrom,
 } from "../src/rpc";
 
 describe("Test RpcState", async function () {
@@ -57,7 +57,7 @@ describe("Test RpcState", async function () {
         const state = new RpcState(configs);
 
         // set arbitrary buffer and success for each rpc
-        const arr = Array(100).fill(RpcResponseType.Failure);
+        const arr = Array(100).fill(RpcBufferType.Failure);
         // 40% success rate
         state.metrics[urls[0]].progress.buffer = arr;
         state.metrics[urls[0]].progress.success = 40;
@@ -111,7 +111,7 @@ describe("Test RpcState", async function () {
 
         // set arbitrary buffer count
         for (const url of urls) {
-            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Failure);
+            state.metrics[url].progress.buffer = Array(100).fill(RpcBufferType.Failure);
         }
 
         try {
@@ -322,11 +322,11 @@ describe("Test RpcProgress", async function () {
 
         // record a request
         result.recordRequest();
-        assert.deepEqual(result.buffer, Array(1).fill(RpcResponseType.Failure));
+        assert.deepEqual(result.buffer, Array(1).fill(RpcBufferType.Failure));
         assert.equal(result.success, 0);
 
         result.recordRequest();
-        assert.deepEqual(result.buffer, Array(2).fill(RpcResponseType.Failure));
+        assert.deepEqual(result.buffer, Array(2).fill(RpcBufferType.Failure));
         assert.equal(result.success, 0);
     });
 
@@ -338,7 +338,7 @@ describe("Test RpcProgress", async function () {
 
         for (let i = 0; i < 30; i++) {
             const expectedSuccesss = Math.min(i + 1, 20);
-            const expectedStack = Array(Math.min(i + 1, 20)).fill(RpcResponseType.Success);
+            const expectedStack = Array(Math.min(i + 1, 20)).fill(RpcBufferType.Success);
             result.recordRequest();
             result.recordSuccess();
             assert.deepEqual(result.buffer, expectedStack);
@@ -353,13 +353,13 @@ describe("Test RpcProgress", async function () {
         assert.equal(result.successRate, 10000);
 
         result.recordRequest();
-        assert.deepEqual(result.buffer, Array(1).fill(RpcResponseType.Failure));
+        assert.deepEqual(result.buffer, Array(1).fill(RpcBufferType.Failure));
         assert.equal(result.success, 0);
         assert.equal(result.successRate, 0);
 
         result.recordRequest();
         result.recordSuccess();
-        assert.deepEqual(result.buffer, [RpcResponseType.Failure, RpcResponseType.Success]);
+        assert.deepEqual(result.buffer, [RpcBufferType.Failure, RpcBufferType.Success]);
         assert.equal(result.success, 1);
         assert.equal(result.successRate, 5000);
     });
@@ -371,13 +371,13 @@ describe("Test RpcProgress", async function () {
         assert.equal(result1.selectionRate, 10000);
 
         result1.recordRequest();
-        assert.deepEqual(result1.buffer, [RpcResponseType.Failure]);
+        assert.deepEqual(result1.buffer, [RpcBufferType.Failure]);
         assert.equal(result1.success, 0);
-        assert.equal(result1.selectionRate, 25);
+        assert.equal(result1.selectionRate, 10);
 
         result1.recordRequest();
         result1.recordSuccess();
-        assert.deepEqual(result1.buffer, [RpcResponseType.Failure, RpcResponseType.Success]);
+        assert.deepEqual(result1.buffer, [RpcBufferType.Failure, RpcBufferType.Success]);
         assert.equal(result1.success, 1);
         assert.equal(result1.selectionRate, 5000);
 
@@ -390,13 +390,13 @@ describe("Test RpcProgress", async function () {
         assert.equal(result2.selectionRate, 25000);
 
         result2.recordRequest();
-        assert.deepEqual(result2.buffer, [RpcResponseType.Failure]);
+        assert.deepEqual(result2.buffer, [RpcBufferType.Failure]);
         assert.equal(result2.success, 0);
-        assert.equal(result2.selectionRate, 25);
+        assert.equal(result2.selectionRate, 10);
 
         result2.recordRequest();
         result2.recordSuccess();
-        assert.deepEqual(result2.buffer, [RpcResponseType.Failure, RpcResponseType.Success]);
+        assert.deepEqual(result2.buffer, [RpcBufferType.Failure, RpcBufferType.Success]);
         assert.equal(result2.success, 1);
         assert.equal(result2.selectionRate, 12500);
     });
@@ -413,7 +413,7 @@ describe("Test rpc helpers", async function () {
         assert.equal(result2, "https://example2.com/");
     });
 
-    it("should test probablyPicksNext", async function () {
+    it("should test probablyPicksFrom", async function () {
         const selectionRange = [
             6000, // 60% succes rate, equals to 20% of all probabilities
             3000, // 30% succes rate, equals to 10% of all probabilities
@@ -428,7 +428,7 @@ describe("Test rpc helpers", async function () {
 
         // run 10000 times to get a accurate distribution of results for test
         for (let i = 0; i < 10000; i++) {
-            const rand = probablyPicksNext(selectionRange);
+            const rand = probablyPicksFrom(selectionRange);
             if (rand === 0) result.first++;
             else if (rand === 1) result.second++;
             else if (rand === 2) result.third++;

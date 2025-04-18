@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { randomInt } from "crypto";
 import { getLocal } from "mockttp";
 import { polygon } from "viem/chains";
-import { normalizeUrl, RpcConfig, RpcResponseType, RpcState } from "../src/rpc";
+import { normalizeUrl, RpcConfig, RpcBufferType, RpcState } from "../src/rpc";
 import {
     rainSolverTransport,
     RainSolverTransportConfig,
@@ -95,7 +95,7 @@ describe("Test transport", async function () {
         ];
         const state = new RpcState(rpcConfigs);
         for (const url in state.metrics) {
-            state.metrics[url].progress.buffer = Array(100).fill(RpcResponseType.Failure);
+            state.metrics[url].progress.buffer = Array(100).fill(RpcBufferType.Failure);
         }
         const config: RainSolverTransportConfig = {
             retryCount: 0,

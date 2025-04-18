@@ -85,7 +85,7 @@ export class RpcState {
             (async () => {
                 for (;;) {
                     // pick a random one
-                    const index = probablyPicksNext(rates);
+                    const index = probablyPicksFrom(rates);
                     if (isNaN(index)) {
                         await sleep(pollingInterval);
                     } else {
@@ -174,10 +174,10 @@ export class RpcMetrics {
     }
 }
 
-/** A helper enum type for a rpc response */
-export enum RpcResponseType {
-    Success,
+/** A helper enum for RpcProgress buffer item type */
+export enum RpcBufferType {
     Failure,
+    Success,
 }
 
 /**
@@ -191,7 +191,7 @@ export class RpcProgress {
     /** Number of latest successful requests, max possible value equals to trackSize */
     success: number;
     /** The buffer that keeps the latest response types with the length of trackSize */
-    buffer: RpcResponseType[];
+    buffer: RpcBufferType[];
 
     /**
      * Creates a new instance with given configuration
@@ -216,12 +216,12 @@ export class RpcProgress {
 
     /**
      * Current selection rate, determines the relative chance to get picked.
-     * min of 0.25% if zero success rate, in order to allow for a slim chance of
+     * min of 0.1% if zero success rate, in order to allow for a slim chance of
      * being picked again so it doesnt get stuck at zero rate forever, in case
-     * of 2 fixed point decimals, 0.25% equates to 25
+     * of 2 fixed point decimals, 0.1% equates to 10
      */
     get selectionRate() {
-        return Math.max(Math.ceil(this.successRate * this.selectionWeight), 25);
+        return Math.max(Math.ceil(this.successRate * this.selectionWeight), 10);
     }
 
     /** Handles a request */
@@ -230,10 +230,10 @@ export class RpcProgress {
         // to success when the success response gets recorded
         //
         // buffer length saturates at trackSize
-        this.buffer.push(RpcResponseType.Failure);
+        this.buffer.push(RpcBufferType.Failure);
         if (this.buffer.length > this.trackSize) {
             // knock the first itme out
-            if (this.buffer[0] === RpcResponseType.Success) this.success--;
+            if (this.buffer[0] === RpcBufferType.Success) this.success--;
             this.buffer = this.buffer.slice(1);
         }
     }
@@ -241,10 +241,10 @@ export class RpcProgress {
     /** Records a success response */
     recordSuccess() {
         // set the latest item in buffer to success
-        const index = this.buffer.lastIndexOf(RpcResponseType.Failure);
+        const index = this.buffer.lastIndexOf(RpcBufferType.Failure);
         if (index > -1) {
             this.success++;
-            this.buffer[index] = RpcResponseType.Success;
+            this.buffer[index] = RpcBufferType.Success;
         }
     }
 }
@@ -262,15 +262,15 @@ export function normalizeUrl(url: string): string {
  * @param rates - The array of success rates to select from
  * @returns The index of the picked item from the array or NaN if out-of-range
  */
-export function probablyPicksNext(rates: number[]): number {
+export function probablyPicksFrom(rates: number[]): number {
     // pick a random int from [1, max] range
-    const max = 10_000 * rates.length;
+    const max = rates.reduce((a, b) => a + Math.max(b, 10_000), 0);
     const pick = Math.floor(Math.random() * max) + 1;
 
     // we now match the selection rates against
     // picked random int to get picked index
     for (let i = 0; i < rates.length; i++) {
-        const offset = 10_000 * i;
+        const offset = rates.slice(0, i).reduce((a, b) => a + Math.max(b, 10_000), 0);
         const lowerBound = offset + 1;
         const upperBound = offset + rates[i];
         if (lowerBound <= pick && pick <= upperBound) {
