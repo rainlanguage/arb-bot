@@ -240,10 +240,12 @@ export class RpcProgress {
 
     /** Records a success response */
     recordSuccess() {
-        this.success++;
         // set the latest item in buffer to success
-        this.buffer.pop();
-        this.buffer.push(RpcResponseType.Success);
+        const index = this.buffer.lastIndexOf(RpcResponseType.Faulire);
+        if (index > -1) {
+            this.success++;
+            this.buffer[index] = RpcResponseType.Success;
+        }
     }
 }
 
