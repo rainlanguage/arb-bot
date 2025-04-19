@@ -12,7 +12,7 @@ const hhConfig: HardhatUserConfig = {
     networks: {
         hardhat: {
             forking: {
-                url: process?.env?.TEST_POLYGON_RPC ?? "https://rpc.ankr.com/polygon", // avalanche network to run the test on
+                url: process?.env?.TEST_POLYGON_RPC ?? "https://polygon.drpc.org", // avalanche network to run the test on
                 blockNumber: 56738134,
             },
             mining: {

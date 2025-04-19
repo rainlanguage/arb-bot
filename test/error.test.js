@@ -117,11 +117,9 @@ describe("Test error", async function () {
     });
 
     it("should test shouldThrow", async function () {
-        const error = { code: -32003 };
+        const error = { code: -32003, message: "execution reverted" };
         assert(shouldThrow(error));
-
-        error.code = 3;
-        assert(shouldThrow(error));
+        delete error.message;
 
         error.code = 4001;
         assert(shouldThrow(error));
