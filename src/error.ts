@@ -379,12 +379,16 @@ export async function hasFrontrun(
  * @param error - The error
  */
 export function shouldThrow(error: Error) {
+    const msg: (string | undefined)[] = [];
     const org = getRpcError(error);
     if (typeof org.message === "string") {
-        const msg = org.message.toLowerCase();
-        if (msg.includes("unknown reason") || msg.includes("execution reverted")) {
-            return true;
-        }
+        msg.push(org.message.toLowerCase());
+    }
+    msg.push((error as any)?.name?.toLowerCase());
+    msg.push((error as any)?.details?.toLowerCase());
+    msg.push((error as any)?.shortMessage?.toLowerCase());
+    if (msg.some((v) => v?.includes("execution reverted") || v?.includes("unknown reason"))) {
+        return true;
     }
     if (error instanceof ExecutionRevertedError) return true;
     if ("code" in error && typeof error.code === "number") {

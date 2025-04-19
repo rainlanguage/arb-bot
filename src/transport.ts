@@ -1,7 +1,6 @@
 import { RpcState } from "./rpc";
-import { getRpcError } from "./error";
+import { shouldThrow } from "./error";
 import { BaseError, createTransport, Transport, TransportConfig } from "viem";
-import { ProviderRpcErrorCode, RpcErrorCode } from "./types";
 
 /**
  * RainSolver transport default configurations
@@ -98,7 +97,6 @@ export function rainSolverTransport(
                             timeout: pollingTimeout,
                             pollingInterval: pollingInterval_ ?? pollingInterval,
                         });
-
                         // cancel inner transport retry when success rate is below 20% threshold
                         const shouldRetry =
                             state.metrics[state.lastUsedUrl].progress.successRate > 2000;
@@ -108,15 +106,7 @@ export function rainSolverTransport(
                             retryCount: resolvedRetryCount,
                         }).request(args);
                     } catch (error: any) {
-                        const org = getRpcError(error);
-                        if (typeof org.code === "number") {
-                            if (
-                                RpcErrorCode.includes(org.code as any) ||
-                                ProviderRpcErrorCode.includes(org.code as any)
-                            ) {
-                                throw error;
-                            }
-                        }
+                        if (shouldThrow(error)) throw error;
                         if (tryNext) return req(false);
                         throw error;
                     }
