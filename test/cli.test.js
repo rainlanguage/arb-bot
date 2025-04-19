@@ -204,7 +204,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "https://polygon.drpc.org",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -382,7 +382,7 @@ describe("Test cli", async function () {
             "--key",
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
             "--rpc",
-            "https://rpc.ankr.com/polygon",
+            "https://polygon.drpc.org",
             "--arb-address",
             `0x${"1".repeat(40)}`,
             "--bot-min-balance",
@@ -422,11 +422,11 @@ describe("Test cli", async function () {
             poolUpdateInterval: 0,
             config: {
                 chain: { id: 137 },
-                rpc: ["https://rpc.ankr.com/polygon"],
+                rpc: ["https://polygon.drpc.org"],
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
                 rpcRecords: {
-                    "https://rpc.ankr.com/polygon/": {
+                    "https://polygon.drpc.org/": {
                         req: 5,
                         success: 5,
                         failure: 0,
@@ -453,12 +453,12 @@ describe("Test cli", async function () {
                 rpOnly: true,
                 dispair: deployer,
                 sgFilter: {
-                    includeOrders: [`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`],
-                    excludeOrders: [`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`],
-                    includeOwners: [`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`],
-                    excludeOwners: [`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`],
-                    includeOrderbooks: [`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`],
-                    excludeOrderbooks: [`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`],
+                    includeOrders: new Set([`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`]),
+                    excludeOrders: new Set([`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`]),
+                    includeOwners: new Set([`0x${"1".repeat(40)}`, `0x${"2".repeat(40)}`]),
+                    excludeOwners: new Set([`0x${"3".repeat(40)}`, `0x${"4".repeat(40)}`]),
+                    includeOrderbooks: new Set([`0x${"5".repeat(40)}`, `0x${"6".repeat(40)}`]),
+                    excludeOrderbooks: new Set([`0x${"7".repeat(40)}`, `0x${"8".repeat(40)}`]),
                 },
             },
         };

@@ -342,27 +342,27 @@ const getOptions = async (argv: any, version?: string) => {
         excludeOrderbooks: undefined,
     };
     if (cmdOptions.includeOrders) {
-        sgFilter.includeOrders = cmdOptions.includeOrders.map(validateHash);
+        sgFilter.includeOrders = new Set(cmdOptions.includeOrders.map(validateHash));
         delete cmdOptions.includeOrders;
     }
     if (cmdOptions.excludeOrders) {
-        sgFilter.excludeOrders = cmdOptions.excludeOrders.map(validateHash);
+        sgFilter.excludeOrders = new Set(cmdOptions.excludeOrders.map(validateHash));
         delete cmdOptions.excludeOrders;
     }
     if (cmdOptions.includeOwners) {
-        sgFilter.includeOwners = cmdOptions.includeOwners.map(validateAddress);
+        sgFilter.includeOwners = new Set(cmdOptions.includeOwners.map(validateAddress));
         delete cmdOptions.includeOwners;
     }
     if (cmdOptions.excludeOwners) {
-        sgFilter.excludeOwners = cmdOptions.excludeOwners.map(validateAddress);
+        sgFilter.excludeOwners = new Set(cmdOptions.excludeOwners.map(validateAddress));
         delete cmdOptions.excludeOwners;
     }
     if (cmdOptions.includeOrderbooks) {
-        sgFilter.includeOrderbooks = cmdOptions.includeOrderbooks.map(validateAddress);
+        sgFilter.includeOrderbooks = new Set(cmdOptions.includeOrderbooks.map(validateAddress));
         delete cmdOptions.includeOrderbooks;
     }
     if (cmdOptions.excludeOrderbooks) {
-        sgFilter.excludeOrderbooks = cmdOptions.excludeOrderbooks.map(validateAddress);
+        sgFilter.excludeOrderbooks = new Set(cmdOptions.excludeOrderbooks.map(validateAddress));
         delete cmdOptions.excludeOrderbooks;
     }
     // include if any of the fields are set

@@ -61,8 +61,8 @@ export type SgOtherEvent = {
  * @returns the query string
  */
 export function getQueryPaginated(skip: number, filters?: SgFilter): string {
-    const getFilterVar = (header: string, f?: string[]) =>
-        f ? `${header}: [${f.map((v) => `"${v.toLowerCase()}"`).join(", ")}], ` : "";
+    const getFilterVar = (header: string, f?: Set<string>) =>
+        f ? `${header}: [${[...f].map((v) => `"${v.toLowerCase()}"`).join(", ")}], ` : "";
 
     const incOwnerFilter = getFilterVar("owner_in", filters?.includeOwners);
     const exOwnerFilter = getFilterVar("owner_not_in", filters?.excludeOwners);
@@ -121,9 +121,7 @@ export function getQueryPaginated(skip: number, filters?: SgFilter): string {
 /**
  * Get all active orders from a subgraph, with optional filters
  * @param subgraph - Subgraph url
- * @param orderHash - orderHash filter
- * @param owner - owner filter
- * @param orderbook - orderbook filter
+ * @param filters - Filters applied subgraph query
  * @param timeout - timeout
  */
 export async function querySgOrders(
@@ -258,7 +256,7 @@ export const getTxsQuery = (start: number, skip: number) => {
 };
 
 /**
- * Fecthes the order changes after the given time and skipping the first skip txs
+ * Fetches the order changes after the given time and skipping the first skip txs
  * @param subgraph - The subgraph url
  * @param startTimestamp - start timestamp range
  * @param skip - skip count
@@ -342,34 +340,34 @@ export function applyFilters(order: NewSgOrder, filters?: SgFilter): boolean {
     else {
         // apply include filter
         if (filters.includeOrderbooks) {
-            if (!filters.includeOrderbooks.includes(order.order.orderbook.id)) {
+            if (!filters.includeOrderbooks.has(order.order.orderbook.id)) {
                 return false;
             }
         }
         if (filters.includeOrders) {
-            if (!filters.includeOrders.includes(order.order.orderHash)) {
+            if (!filters.includeOrders.has(order.order.orderHash)) {
                 return false;
             }
         }
         if (filters.includeOwners) {
-            if (!filters.includeOwners.includes(order.order.owner)) {
+            if (!filters.includeOwners.has(order.order.owner)) {
                 return false;
             }
         }
 
         // apply exclude filters
         if (filters.excludeOrderbooks) {
-            if (filters.excludeOrderbooks.includes(order.order.orderbook.id)) {
+            if (filters.excludeOrderbooks.has(order.order.orderbook.id)) {
                 return false;
             }
         }
         if (filters.excludeOrders) {
-            if (filters.excludeOrders.includes(order.order.orderHash)) {
+            if (filters.excludeOrders.has(order.order.orderHash)) {
                 return false;
             }
         }
         if (filters.excludeOwners) {
-            if (filters.excludeOwners.includes(order.order.owner)) {
+            if (filters.excludeOwners.has(order.order.owner)) {
                 return false;
             }
         }
