@@ -89,11 +89,12 @@ export function errorSnapshot(
 ): string {
     const message = [header];
     if (err instanceof BaseError) {
-        const code = getErrorCode(err);
+        const org = getRpcError(err);
         if (err.shortMessage) message.push("Reason: " + err.shortMessage);
         if (err.name) message.push("Error: " + err.name);
         if (err.details) message.push("Details: " + err.details);
-        if (!isNaN(code)) message.push(`RPC Error Code: ${code}`);
+        if (typeof org.code === "number") message.push(`RPC Error Code: ${org.code}`);
+        if (typeof org.message === "string") message.push(`RPC Error Msg: ${org.message}`);
         if (message.some((v) => v.includes("unknown reason") || v.includes("execution reverted"))) {
             const { raw, decoded } = parseRevertError(err);
             if (decoded) {
@@ -378,36 +379,51 @@ export async function hasFrontrun(
  * @param error - The error
  */
 export function shouldThrow(error: Error) {
-    // if (breaker > 10) return false;
+    const org = getRpcError(error);
+    if (typeof org.message === "string") {
+        const msg = org.message.toLowerCase();
+        if (msg.includes("unknown reason") || msg.includes("execution reverted")) {
+            return true;
+        }
+    }
     if ("code" in error && typeof error.code === "number") {
         if (
             error.code === ExecutionRevertedError.code ||
             error.code === UserRejectedRequestError.code ||
             error.code === TransactionRejectedRpcError.code ||
             error.code === 5000 // CAIP UserRejectedRequestError
-            // RpcErrorCode.includes(error.code as any) ||
-            // ProviderRpcErrorCode.includes(error.code as any)
         )
             return true;
     }
-    // else if ("cause" in error) {
-    //     return shouldThrow(error.cause as any, breaker + 1);
-    // }
     return false;
 }
 
 /**
- * Extracts original rpc error code from the viem error
+ * Extracts original rpc error from the viem error
  * @param error - The error
  */
-export function getErrorCode(error: Error, breaker = 0): number {
-    if (breaker > 10) return NaN;
+export function getRpcError(error: Error, breaker = 0) {
+    const result: { message?: string; code?: number } = {
+        code: undefined,
+        message: undefined,
+    };
+    if (breaker > 10) return result;
     if ("cause" in error) {
-        const result = getErrorCode(error.cause as any, breaker + 1);
-        if (!isNaN(result)) return result;
+        const org = getRpcError(error.cause as any, breaker + 1);
+        if (org !== undefined) {
+            if ("code" in org && typeof org.code === "number") {
+                result.code = org.code;
+            }
+            if ("message" in org && typeof org.message === "string") {
+                result.message = org.message;
+            }
+        }
     }
-    if ("code" in error && typeof error.code === "number") {
-        return error.code;
+    if ("code" in error && typeof error.code === "number" && result.code === undefined) {
+        result.code = error.code;
     }
-    return NaN;
+    if ("message" in error && typeof error.message === "string" && result.message === undefined) {
+        result.message = error.message;
+    }
+    return result;
 }

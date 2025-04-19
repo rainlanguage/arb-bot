@@ -15,7 +15,7 @@ describe("Test app options", async function () {
                 lps: ["SUShIswapV2", "bIsWaP"],
                 dispair: "0xE7116BC05C8afe25e5B54b813A74F916B5D42aB1",
             },
-            { rpc: new RpcState([{ url: "https://polygon.drpc.org" }]) },
+            { rpc: new RpcState(rpcs.map((url) => ({ url }))) },
         );
 
         assert.deepEqual(config.lps, [LiquidityProviders.SushiSwapV2, LiquidityProviders.Biswap]);

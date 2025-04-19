@@ -1,6 +1,7 @@
 import { RpcState } from "./rpc";
-import { shouldThrow } from "./error";
+import { getRpcError } from "./error";
 import { BaseError, createTransport, Transport, TransportConfig } from "viem";
+import { ProviderRpcErrorCode, RpcErrorCode } from "./types";
 
 /**
  * RainSolver transport default configurations
@@ -102,13 +103,20 @@ export function rainSolverTransport(
                         const shouldRetry =
                             state.metrics[state.lastUsedUrl].progress.successRate > 2000;
                         const resolvedRetryCount = shouldRetry ? (retryCount_ ?? retryCount) : 0;
-
                         return await transport({
                             chain,
                             retryCount: resolvedRetryCount,
                         }).request(args);
                     } catch (error: any) {
-                        if (shouldThrow(error)) throw error;
+                        const org = getRpcError(error);
+                        if (typeof org.code === "number") {
+                            if (
+                                RpcErrorCode.includes(org.code as any) ||
+                                ProviderRpcErrorCode.includes(org.code as any)
+                            ) {
+                                throw error;
+                            }
+                        }
                         if (tryNext) return req(false);
                         throw error;
                     }
