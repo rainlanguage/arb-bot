@@ -8,6 +8,14 @@ import { abi as obAbi } from "../test/abis/OrderBook.json";
 // @ts-ignore
 import { abi as rp4Abi } from "../test/abis/RouteProcessor4.json";
 // @ts-ignore
+import { abi as i9rAbi } from "../test/abis/RainterpreterNPE2.json";
+// @ts-ignore
+import { abi as storeAbi } from "../test/abis/RainterpreterStoreNPE2.json";
+// @ts-ignore
+import { abi as parserAbi } from "../test/abis/RainterpreterParserNPE2.json";
+// @ts-ignore
+import { abi as deployerAbi } from "../test/abis/RainterpreterExpressionDeployerNPE2.json";
+// @ts-ignore
 import { abi as arbRp4Abi } from "../test/abis/RouteProcessorOrderBookV4ArbOrderTaker.json";
 // @ts-ignore
 import { abi as genericArbAbi } from "../test/abis/GenericPoolOrderBookV4ArbOrderTaker.json";
@@ -89,9 +97,12 @@ export function errorSnapshot(
 ): string {
     const message = [header];
     if (err instanceof BaseError) {
-        if (err.shortMessage) message.push("Reason: " + err.shortMessage);
-        if (err.name) message.push("Error: " + err.name);
-        if (err.details) message.push("Details: " + err.details);
+        const org = getRpcError(err);
+        if (err.shortMessage) message.push(`Reason: ${err.shortMessage}`);
+        if (err.name) message.push(`Error: ${err.name}`);
+        if (err.details) message.push(`Details: ${err.details}`);
+        if (typeof org.code === "number") message.push(`RPC Error Code: ${org.code}`);
+        if (typeof org.message === "string") message.push(`RPC Error Msg: ${org.message}`);
         if (message.some((v) => v.includes("unknown reason") || v.includes("execution reverted"))) {
             const { raw, decoded } = parseRevertError(err);
             if (decoded) {
@@ -275,39 +286,32 @@ export function tryDecodeError(data: `0x${string}`): DecodedError | undefined {
             }) ?? []
         );
     };
-    try {
-        const result = decodeErrorResult({ data, abi: rp4Abi });
-        return {
-            name: result.errorName,
-            args: handleArgs(result.args ?? []),
-        };
-    } catch {
-        try {
-            const result = decodeErrorResult({ data, abi: obAbi });
-            return {
-                name: result.errorName,
-                args: handleArgs(result.args ?? []),
-            };
-        } catch {
+    const tryDecode = (abis: any[]): DecodedError | undefined => {
+        while (abis.length) {
             try {
-                const result = decodeErrorResult({ data, abi: arbRp4Abi });
+                const result = decodeErrorResult({ data, abi: abis[abis.length - 1] });
                 return {
                     name: result.errorName,
                     args: handleArgs(result.args ?? []),
                 };
             } catch {
-                try {
-                    const result = decodeErrorResult({ data, abi: genericArbAbi });
-                    return {
-                        name: result.errorName,
-                        args: handleArgs(result.args ?? []),
-                    };
-                } catch {
-                    return undefined;
-                }
+                abis.pop();
+                if (abis.length) return tryDecode(abis);
+                else return undefined;
             }
         }
-    }
+        return undefined;
+    };
+    return tryDecode([
+        genericArbAbi,
+        storeAbi,
+        parserAbi,
+        i9rAbi,
+        deployerAbi,
+        rp4Abi,
+        arbRp4Abi,
+        obAbi,
+    ]);
 }
 
 /**
@@ -376,9 +380,21 @@ export async function hasFrontrun(
  * @param error - The error
  */
 export function shouldThrow(error: Error) {
+    const msg: string[] = [];
+    const org = getRpcError(error);
+    if (typeof org.message === "string") {
+        msg.push(org.message.toLowerCase());
+    }
+    msg.push(((error as any)?.name ?? "").toLowerCase());
+    msg.push(((error as any)?.details ?? "").toLowerCase());
+    msg.push(((error as any)?.shortMessage ?? "").toLowerCase());
+    if (msg.some((v) => v.includes("execution reverted") || v.includes("unknown reason"))) {
+        return true;
+    }
+    if (org.data !== undefined) return true;
+    if (error instanceof ExecutionRevertedError) return true;
     if ("code" in error && typeof error.code === "number") {
         if (
-            error.code === ExecutionRevertedError.code ||
             error.code === UserRejectedRequestError.code ||
             error.code === TransactionRejectedRpcError.code ||
             error.code === 5000 // CAIP UserRejectedRequestError
@@ -386,4 +402,53 @@ export function shouldThrow(error: Error) {
             return true;
     }
     return false;
+}
+
+/**
+ * Extracts original rpc error from the viem error
+ * @param error - The error
+ */
+export function getRpcError(error: Error, breaker = 0) {
+    const result: { message?: string; code?: number; data?: string | number } = {
+        data: undefined,
+        code: undefined,
+        message: undefined,
+    };
+    if (breaker > 10) return result;
+    if ("cause" in error) {
+        const org = getRpcError(error.cause as any, breaker + 1);
+        if ("code" in org && typeof org.code === "number") {
+            result.code = org.code;
+        }
+        if ("message" in org && typeof org.message === "string") {
+            result.message = org.message;
+        }
+        if ("data" in org && (typeof org.data === "string" || typeof org.data === "number")) {
+            result.data = org.data;
+        }
+    } else {
+        if ("code" in error && typeof error.code === "number" && result.code === undefined) {
+            result.code = error.code;
+            // include msg only if code exists
+            if (
+                "message" in error &&
+                typeof error.message === "string" &&
+                result.message === undefined
+            ) {
+                result.message = error.message;
+            }
+        }
+        if ("data" in error && (typeof error.data === "string" || typeof error.data === "number")) {
+            result.data = error.data;
+            // include msg only if data exists
+            if (
+                "message" in error &&
+                typeof error.message === "string" &&
+                result.message === undefined
+            ) {
+                result.message = error.message;
+            }
+        }
+    }
+    return result;
 }
