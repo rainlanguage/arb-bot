@@ -1,7 +1,19 @@
 const { assert } = require("chai");
-const { BaseError, encodeFunctionData } = require("viem");
-const { tryDecodeError, parseRevertError, hasFrontrun, shouldThrow } = require("../src/error");
 const { abi: arbRp4Abi } = require("./abis/RouteProcessorOrderBookV4ArbOrderTaker.json");
+const {
+    BaseError,
+    HttpRequestError,
+    encodeFunctionData,
+    TransactionRejectedRpcError,
+    CallExecutionError,
+} = require("viem");
+const {
+    hasFrontrun,
+    shouldThrow,
+    getRpcError,
+    tryDecodeError,
+    parseRevertError,
+} = require("../src/error");
 
 describe("Test error", async function () {
     const data = "0x963b34a500000000000000000000000000000000000000000000000340bda9d7e155feb0";
@@ -117,11 +129,9 @@ describe("Test error", async function () {
     });
 
     it("should test shouldThrow", async function () {
-        const error = { code: -32003 };
+        const error = { code: -32003, message: "execution reverted" };
         assert(shouldThrow(error));
-
-        error.code = 3;
-        assert(shouldThrow(error));
+        delete error.message;
 
         error.code = 4001;
         assert(shouldThrow(error));
@@ -134,5 +144,28 @@ describe("Test error", async function () {
 
         delete error.code;
         assert(!shouldThrow(error));
+    });
+
+    it("should test getRpcError", async function () {
+        let result = getRpcError(new HttpRequestError({ url: "https://example.com", body: {} }));
+        let expected = {
+            data: undefined,
+            code: undefined,
+            message: undefined,
+        };
+        assert.deepEqual(result, expected);
+
+        result = getRpcError(
+            new CallExecutionError(
+                new TransactionRejectedRpcError({ message: "execution reverted", code: -32003 }),
+                { account: {} },
+            ),
+        );
+        expected = {
+            data: undefined,
+            code: -32003,
+            message: "execution reverted",
+        };
+        assert.deepEqual(result, expected);
     });
 });
