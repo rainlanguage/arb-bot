@@ -202,7 +202,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "https://polygon.drpc.org",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--orderbook-address",
@@ -226,7 +226,7 @@ describe("Test cli", async function () {
             "--key",
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
             "--rpc",
-            "https://rpc.ankr.com/polygon",
+            "https://polygon.drpc.org",
             "--arb-address",
             `0x${"1".repeat(40)}`,
             "--orderbook-address",
@@ -250,13 +250,13 @@ describe("Test cli", async function () {
             poolUpdateInterval: 0,
             config: {
                 chain: { id: 137 },
-                rpc: ["https://rpc.ankr.com/polygon"],
+                rpc: ["https://polygon.drpc.org"],
                 orderbookAddress: `0x${"2".repeat(40)}`,
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
                 rpcState: {
                     metrics: {
-                        "https://rpc.ankr.com/polygon/": {
+                        "https://polygon.drpc.org/": {
                             req: 4,
                             success: 4,
                             failure: 0,
