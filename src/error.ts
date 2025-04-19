@@ -286,7 +286,7 @@ export function tryDecodeError(data: `0x${string}`): DecodedError | undefined {
             }) ?? []
         );
     };
-    const tryDecode = (abis: any[]) => {
+    const tryDecode = (abis: any[]): DecodedError | undefined => {
         while (abis.length) {
             try {
                 const result = decodeErrorResult({ data, abi: abis[abis.length - 1] });
