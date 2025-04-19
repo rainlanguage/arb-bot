@@ -414,13 +414,11 @@ export function getRpcError(error: Error, breaker = 0) {
     if (breaker > 10) return result;
     if ("cause" in error) {
         const org = getRpcError(error.cause as any, breaker + 1);
-        if (org !== undefined) {
-            if ("code" in org && typeof org.code === "number") {
-                result.code = org.code;
-            }
-            if ("message" in org && typeof org.message === "string") {
-                result.message = org.message;
-            }
+        if ("code" in org && typeof org.code === "number") {
+            result.code = org.code;
+        }
+        if ("message" in org && typeof org.message === "string") {
+            result.message = org.message;
         }
     } else {
         if ("code" in error && typeof error.code === "number" && result.code === undefined) {
