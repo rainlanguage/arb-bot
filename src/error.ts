@@ -89,9 +89,11 @@ export function errorSnapshot(
 ): string {
     const message = [header];
     if (err instanceof BaseError) {
+        const code = getErrorCode(err);
         if (err.shortMessage) message.push("Reason: " + err.shortMessage);
         if (err.name) message.push("Error: " + err.name);
         if (err.details) message.push("Details: " + err.details);
+        if (!isNaN(code)) message.push(`RPC Error Code: ${code}`);
         if (message.some((v) => v.includes("unknown reason") || v.includes("execution reverted"))) {
             const { raw, decoded } = parseRevertError(err);
             if (decoded) {
@@ -376,14 +378,36 @@ export async function hasFrontrun(
  * @param error - The error
  */
 export function shouldThrow(error: Error) {
+    // if (breaker > 10) return false;
     if ("code" in error && typeof error.code === "number") {
         if (
             error.code === ExecutionRevertedError.code ||
             error.code === UserRejectedRequestError.code ||
             error.code === TransactionRejectedRpcError.code ||
             error.code === 5000 // CAIP UserRejectedRequestError
+            // RpcErrorCode.includes(error.code as any) ||
+            // ProviderRpcErrorCode.includes(error.code as any)
         )
             return true;
     }
+    // else if ("cause" in error) {
+    //     return shouldThrow(error.cause as any, breaker + 1);
+    // }
     return false;
+}
+
+/**
+ * Extracts original rpc error code from the viem error
+ * @param error - The error
+ */
+export function getErrorCode(error: Error, breaker = 0): number {
+    if (breaker > 10) return NaN;
+    if ("cause" in error) {
+        const result = getErrorCode(error.cause as any, breaker + 1);
+        if (!isNaN(result)) return result;
+    }
+    if ("code" in error && typeof error.code === "number") {
+        return error.code;
+    }
+    return NaN;
 }
