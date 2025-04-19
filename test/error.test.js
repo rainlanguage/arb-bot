@@ -3,9 +3,9 @@ const { abi: arbRp4Abi } = require("./abis/RouteProcessorOrderBookV4ArbOrderTake
 const {
     BaseError,
     HttpRequestError,
+    CallExecutionError,
     encodeFunctionData,
     TransactionRejectedRpcError,
-    CallExecutionError,
 } = require("viem");
 const {
     hasFrontrun,
@@ -147,6 +147,7 @@ describe("Test error", async function () {
     });
 
     it("should test getRpcError", async function () {
+        // not rpc error
         let result = getRpcError(new HttpRequestError({ url: "https://example.com", body: {} }));
         let expected = {
             data: undefined,
@@ -155,6 +156,7 @@ describe("Test error", async function () {
         };
         assert.deepEqual(result, expected);
 
+        // rpc error wrapped by viem
         result = getRpcError(
             new CallExecutionError(
                 new TransactionRejectedRpcError({ message: "execution reverted", code: -32003 }),
