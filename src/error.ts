@@ -8,6 +8,14 @@ import { abi as obAbi } from "../test/abis/OrderBook.json";
 // @ts-ignore
 import { abi as rp4Abi } from "../test/abis/RouteProcessor4.json";
 // @ts-ignore
+import { abi as i9rAbi } from "../test/abis/RainterpreterNPE2.json";
+// @ts-ignore
+import { abi as storeAbi } from "../test/abis/RainterpreterStoreNPE2.json";
+// @ts-ignore
+import { abi as parserAbi } from "../test/abis/RainterpreterParserNPE2.json";
+// @ts-ignore
+import { abi as deployerAbi } from "../test/abis/RainterpreterExpressionDeployerNPE2.json";
+// @ts-ignore
 import { abi as arbRp4Abi } from "../test/abis/RouteProcessorOrderBookV4ArbOrderTaker.json";
 // @ts-ignore
 import { abi as genericArbAbi } from "../test/abis/GenericPoolOrderBookV4ArbOrderTaker.json";
@@ -90,9 +98,9 @@ export function errorSnapshot(
     const message = [header];
     if (err instanceof BaseError) {
         const org = getRpcError(err);
-        if (err.shortMessage) message.push("Reason: " + err.shortMessage);
-        if (err.name) message.push("Error: " + err.name);
-        if (err.details) message.push("Details: " + err.details);
+        if (err.shortMessage) message.push(`Reason: ${err.shortMessage}`);
+        if (err.name) message.push(`Error: ${err.name}`);
+        if (err.details) message.push(`Details: ${err.details}`);
         if (typeof org.code === "number") message.push(`RPC Error Code: ${org.code}`);
         if (typeof org.message === "string") message.push(`RPC Error Msg: ${org.message}`);
         if (message.some((v) => v.includes("unknown reason") || v.includes("execution reverted"))) {
@@ -278,39 +286,32 @@ export function tryDecodeError(data: `0x${string}`): DecodedError | undefined {
             }) ?? []
         );
     };
-    try {
-        const result = decodeErrorResult({ data, abi: rp4Abi });
-        return {
-            name: result.errorName,
-            args: handleArgs(result.args ?? []),
-        };
-    } catch {
-        try {
-            const result = decodeErrorResult({ data, abi: obAbi });
-            return {
-                name: result.errorName,
-                args: handleArgs(result.args ?? []),
-            };
-        } catch {
+    const tryDecode = (abis: any[]): DecodedError | undefined => {
+        while (abis.length) {
             try {
-                const result = decodeErrorResult({ data, abi: arbRp4Abi });
+                const result = decodeErrorResult({ data, abi: abis[abis.length - 1] });
                 return {
                     name: result.errorName,
                     args: handleArgs(result.args ?? []),
                 };
             } catch {
-                try {
-                    const result = decodeErrorResult({ data, abi: genericArbAbi });
-                    return {
-                        name: result.errorName,
-                        args: handleArgs(result.args ?? []),
-                    };
-                } catch {
-                    return undefined;
-                }
+                abis.pop();
+                if (abis.length) return tryDecode(abis);
+                else return undefined;
             }
         }
-    }
+        return undefined;
+    };
+    return tryDecode([
+        genericArbAbi,
+        storeAbi,
+        parserAbi,
+        i9rAbi,
+        deployerAbi,
+        rp4Abi,
+        arbRp4Abi,
+        obAbi,
+    ]);
 }
 
 /**
@@ -379,15 +380,15 @@ export async function hasFrontrun(
  * @param error - The error
  */
 export function shouldThrow(error: Error) {
-    const msg: (string | undefined)[] = [];
+    const msg: string[] = [];
     const org = getRpcError(error);
     if (typeof org.message === "string") {
         msg.push(org.message.toLowerCase());
     }
-    msg.push((error as any)?.name?.toLowerCase());
-    msg.push((error as any)?.details?.toLowerCase());
-    msg.push((error as any)?.shortMessage?.toLowerCase());
-    if (msg.some((v) => v?.includes("execution reverted") || v?.includes("unknown reason"))) {
+    msg.push(((error as any)?.name ?? "").toLowerCase());
+    msg.push(((error as any)?.details ?? "").toLowerCase());
+    msg.push(((error as any)?.shortMessage ?? "").toLowerCase());
+    if (msg.some((v) => v.includes("execution reverted") || v.includes("unknown reason"))) {
         return true;
     }
     if (org.data !== undefined) return true;
@@ -426,18 +427,27 @@ export function getRpcError(error: Error, breaker = 0) {
             result.data = org.data;
         }
     } else {
-        if (
-            "message" in error &&
-            typeof error.message === "string" &&
-            result.message === undefined
-        ) {
-            result.message = error.message;
-        }
         if ("code" in error && typeof error.code === "number" && result.code === undefined) {
             result.code = error.code;
+            // include msg only if code exists
+            if (
+                "message" in error &&
+                typeof error.message === "string" &&
+                result.message === undefined
+            ) {
+                result.message = error.message;
+            }
         }
         if ("data" in error && (typeof error.data === "string" || typeof error.data === "number")) {
             result.data = error.data;
+            // include msg only if data exists
+            if (
+                "message" in error &&
+                typeof error.message === "string" &&
+                result.message === undefined
+            ) {
+                result.message = error.message;
+            }
         }
     }
     return result;
