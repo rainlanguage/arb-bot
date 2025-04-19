@@ -386,9 +386,9 @@ export function shouldThrow(error: Error) {
             return true;
         }
     }
+    if (error instanceof ExecutionRevertedError) return true;
     if ("code" in error && typeof error.code === "number") {
         if (
-            error.code === ExecutionRevertedError.code ||
             error.code === UserRejectedRequestError.code ||
             error.code === TransactionRejectedRpcError.code ||
             error.code === 5000 // CAIP UserRejectedRequestError
