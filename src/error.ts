@@ -98,9 +98,9 @@ export function errorSnapshot(
     const message = [header];
     if (err instanceof BaseError) {
         const org = getRpcError(err);
-        if (err.shortMessage) message.push("Reason: " + err.shortMessage);
-        if (err.name) message.push("Error: " + err.name);
-        if (err.details) message.push("Details: " + err.details);
+        if (err.shortMessage) message.push(`Reason: ${err.shortMessage}`);
+        if (err.name) message.push(`Error: ${err.name}`);
+        if (err.details) message.push(`Details: ${err.details}`);
         if (typeof org.code === "number") message.push(`RPC Error Code: ${org.code}`);
         if (typeof org.message === "string") message.push(`RPC Error Msg: ${org.message}`);
         if (message.some((v) => v.includes("unknown reason") || v.includes("execution reverted"))) {
