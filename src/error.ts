@@ -425,9 +425,13 @@ export function getRpcError(error: Error, breaker = 0) {
     }
     if ("code" in error && typeof error.code === "number" && result.code === undefined) {
         result.code = error.code;
-    }
-    if ("message" in error && typeof error.message === "string" && result.message === undefined) {
-        result.message = error.message;
+        if (
+            "message" in error &&
+            typeof error.message === "string" &&
+            result.message === undefined
+        ) {
+            result.message = error.message;
+        }
     }
     return result;
 }
