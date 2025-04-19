@@ -390,6 +390,7 @@ export function shouldThrow(error: Error) {
     if (msg.some((v) => v?.includes("execution reverted") || v?.includes("unknown reason"))) {
         return true;
     }
+    if (org.data !== undefined) return true;
     if (error instanceof ExecutionRevertedError) return true;
     if ("code" in error && typeof error.code === "number") {
         if (
@@ -407,7 +408,8 @@ export function shouldThrow(error: Error) {
  * @param error - The error
  */
 export function getRpcError(error: Error, breaker = 0) {
-    const result: { message?: string; code?: number } = {
+    const result: { message?: string; code?: number; data?: string | number } = {
+        data: undefined,
         code: undefined,
         message: undefined,
     };
@@ -420,16 +422,22 @@ export function getRpcError(error: Error, breaker = 0) {
         if ("message" in org && typeof org.message === "string") {
             result.message = org.message;
         }
-    } else {
-        if ("code" in error && typeof error.code === "number" && result.code === undefined) {
-            result.code = error.code;
+        if ("data" in org && (typeof org.data === "string" || typeof org.data === "number")) {
+            result.data = org.data;
         }
+    } else {
         if (
             "message" in error &&
             typeof error.message === "string" &&
             result.message === undefined
         ) {
             result.message = error.message;
+        }
+        if ("code" in error && typeof error.code === "number" && result.code === undefined) {
+            result.code = error.code;
+        }
+        if ("data" in error && (typeof error.data === "string" || typeof error.data === "number")) {
+            result.data = error.data;
         }
     }
     return result;
