@@ -4,7 +4,7 @@ import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
-import { DataFetcher, LiquidityProviders } from "sushi/router";
+import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, RpcRecord, ViemClient, ChainConfig, BotDataFetcher } from "./types";
 import {
     http,

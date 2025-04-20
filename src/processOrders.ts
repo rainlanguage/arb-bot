@@ -1,4 +1,3 @@
-import { ChainId, RainDataFetcherOptions } from "sushi";
 import { findOpp } from "./modes";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
@@ -10,6 +9,7 @@ import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { ChainId, RainDataFetcherOptions } from "sushi";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { fundOwnedOrders, checkOwnedOrders } from "./account";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./types";
