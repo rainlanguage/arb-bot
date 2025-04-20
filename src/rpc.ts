@@ -114,7 +114,7 @@ export class RpcMetrics {
     lastRequestTimestamp = 0;
     /** List of times between 2 consecutive requests in milliseconds */
     requestIntervals: number[] = [];
-    /** A utility cache, that can hold any data betwen separate requests */
+    /** A utility cache, that can hold any data betwen separate requests and runtime */
     cache: Record<string, any> = {};
     /** Hold progress details of this rpc */
     progress: RpcProgress;
@@ -134,10 +134,14 @@ export class RpcMetrics {
 
     /** Average request intervals */
     get avgRequestIntervals() {
-        return Math.floor(
-            this.requestIntervals.reduce((a, b) => a + b, 0) /
-                Math.max(this.requestIntervals.length, 1),
-        );
+        if (!this.requestIntervals.length) {
+            if (!this.lastRequestTimestamp) return 0;
+            else return Date.now() - this.lastRequestTimestamp;
+        } else {
+            return Math.floor(
+                this.requestIntervals.reduce((a, b) => a + b, 0) / this.requestIntervals.length,
+            );
+        }
     }
 
     /** Resets the records */
