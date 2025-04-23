@@ -261,27 +261,27 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * Probably picks an item from the given array of success rates as probablities,
- * rates are in 2 fixed point decimalss
- * @param rates - The array of success rates to select from
+ * Probably picks an item from the given array of success rates as probablity ranges
+ * which are in 2 fixed point decimalss
+ * @param ranges - The array of success rates as ranges to randomly select from
  * @returns The index of the picked item from the array or NaN if out-of-range
  */
-export function probablyPicksFrom(rates: number[]): number {
+export function probablyPicksFrom(ranges: number[]): number {
     // pick a random int from [1, max] range
-    const max = rates.reduce((a, b) => a + Math.max(b, 10_000), 0);
+    const max = ranges.reduce((a, b) => a + Math.max(b, 10_000), 0);
     const pick = Math.floor(Math.random() * max) + 1;
 
     // we now match the selection rates against
     // picked random int to get picked index
-    for (let i = 0; i < rates.length; i++) {
-        const offset = rates.slice(0, i).reduce((a, b) => a + Math.max(b, 10_000), 0);
+    for (let i = 0; i < ranges.length; i++) {
+        const offset = ranges.slice(0, i).reduce((a, b) => a + Math.max(b, 10_000), 0);
         const lowerBound = offset + 1;
-        const upperBound = offset + rates[i];
+        const upperBound = offset + ranges[i];
         if (lowerBound <= pick && pick <= upperBound) {
             return i;
         }
     }
 
-    // out-of-range, picked value didnt match an item from the given list
+    // out-of-range, picked value didnt match any of the items from the given list
     return NaN;
 }
