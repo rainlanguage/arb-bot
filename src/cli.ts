@@ -923,6 +923,7 @@ export const main = async (argv: any, version?: string) => {
                         "avg-request-interval": record.avgRequestIntervals,
                         "latest-success-rate": record.progress.successRate / 100,
                         "latest-selection-rate": record.progress.selectionRate,
+                        "buffer-length": record.progress.buffer.length,
                     });
                     record.reset();
                     span.end();
@@ -942,6 +943,7 @@ export const main = async (argv: any, version?: string) => {
                             "avg-request-interval": record.avgRequestIntervals,
                             "latest-success-rate": record.progress.successRate / 100,
                             "latest-selection-rate": record.progress.selectionRate,
+                            "buffer-length": record.progress.buffer.length,
                         });
                         record.reset();
                         span.end();
