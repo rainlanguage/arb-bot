@@ -924,6 +924,7 @@ export const main = async (argv: any, version?: string) => {
                         "latest-success-rate": record.progress.successRate / 100,
                         "latest-selection-rate": record.progress.selectionRate,
                         "buffer-length": record.progress.buffer.length,
+                        buffer: record.progress.buffer,
                     });
                     record.reset();
                     span.end();
@@ -944,6 +945,7 @@ export const main = async (argv: any, version?: string) => {
                             "latest-success-rate": record.progress.successRate / 100,
                             "latest-selection-rate": record.progress.selectionRate,
                             "buffer-length": record.progress.buffer.length,
+                            buffer: record.progress.buffer,
                         });
                         record.reset();
                         span.end();
