@@ -1,13 +1,10 @@
 name: GitHub Actions Rain Solver Preview Deployment
 
-on:
-  push:
-    branches-ignore:
-      - main
+on: [push]
 
 concurrency:
   group: ${{ github.ref }}-deploy-preview
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   Deploy-Preview:
