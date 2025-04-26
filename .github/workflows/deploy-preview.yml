@@ -53,6 +53,7 @@ jobs:
           DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
       - name: Create GitHub Deployment
+        id: deployment
         uses: bobheadxi/deployments@v1
         with:
           step: start
@@ -68,4 +69,5 @@ jobs:
           env: preview
           status: success
           ref: ${{ github.sha }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
           env_url: https://www.hyperdx.io/search?q=%28%28service%3A%22github-preview-${{ github.sha }}%22%29%29
