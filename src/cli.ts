@@ -930,6 +930,12 @@ export const main = async (argv: any, version?: string) => {
             await sleep(3000);
         });
         counter++;
+
+        // for CI preview we only run 1 round and then exit
+        // results are logged to the otel, available as preview on github
+        if (process?.env?.IS_PREVIEW && process.env.IS_PREVIEW === "true" && counter > 1) {
+            break;
+        }
     }
 
     // flush and close the connection.
