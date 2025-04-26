@@ -931,9 +931,13 @@ export const main = async (argv: any, version?: string) => {
         });
         counter++;
 
-        // for CI preview we only run 1 round and then exit
+        // for CI preview for specified number of rounds and then exit
         // results are logged to the otel, available as preview on github
-        if (process?.env?.IS_PREVIEW && process.env.IS_PREVIEW === "true" && counter > 1) {
+        if (
+            process?.env?.IS_PREVIEW &&
+            process.env.IS_PREVIEW === "true" &&
+            counter > Number(process?.env?.PREVIEW_RUNS ?? 1)
+        ) {
             break;
         }
     }
