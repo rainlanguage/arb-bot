@@ -33,7 +33,16 @@ jobs:
       - name: Build
         run: nix develop -c npm run build
 
-      - name: Deploy
+      - name: Create GitHub Deployment
+        id: deployment
+        uses: bobheadxi/deployments@v1
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: preview
+          ref: ${{ github.sha }}
+
+      - name: Deploy Rain Solver
         run: nix develop -c node arb-bot
         env:
           IS_PREVIEW: true
@@ -52,15 +61,6 @@ jobs:
           TX_GAS: ${{ vars.PREVIEW_TX_GAS }}
           DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
-      - name: Create GitHub Deployment
-        id: deployment
-        uses: bobheadxi/deployments@v1
-        with:
-          step: start
-          token: ${{ secrets.GITHUB_TOKEN }}
-          env: preview
-          ref: ${{ github.sha }}
-
       - name: Update Deployment Status
         uses: bobheadxi/deployments@v1
         with:
@@ -69,5 +69,6 @@ jobs:
           env: preview
           status: success
           ref: ${{ github.sha }}
+          override: false
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
           env_url: https://www.hyperdx.io/search?q=%28%28service%3A%22github-preview-${{ github.sha }}%22%29%29
