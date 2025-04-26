@@ -1,20 +1,33 @@
 name: GitHub Actions Rain Solver Preview Deployment
 
-# on:
-#   pull_request:
-#     types: [opened, synchronize]
 on:
   push:
     branches-ignore:
       - main
 
 concurrency:
-  group: ${{ github.ref }}-vercel-preview
+  group: ${{ github.ref }}-deploy-preview
   cancel-in-progress: true
 
 jobs:
   Deploy-Preview:
     runs-on: ubuntu-latest
+    env:
+      IS_PREVIEW: true
+      TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
+      RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
+      HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
+      BOT_WALLET_PRIVATEKEY: ${{ secrets.PREVIEW_BOT_WALLET_PRIVATEKEY }}
+      MAX_RATIO: ${{ vars.PREVIEW_MAX_RATIO }}
+      SUBGRAPH: ${{ vars.PREVIEW_SUBGRAPH }}
+      LIQUIDITY_PROVIDERS: ${{ vars.PREVIEW_LIQUIDITY_PROVIDERS }}
+      ARB_ADDRESS: ${{ vars.ARB_ADDRESS }}
+      GENERIC_ARB_ADDRESS: ${{ vars.GENERIC_ARB_ADDRESS }}
+      BOT_MIN_BALANCE: ${{ vars.BOT_MIN_BALANCE }}
+      GAS_PRICE_MULTIPLIER: ${{ vars.GAS_PRICE_MULTIPLIER }}
+      RP_ONLY: ${{ vars.RP_ONLY }}
+      TX_GAS: ${{ vars.TX_GAS }}
+      DISPAIR: ${{ vars.DISPAIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,33 +44,13 @@ jobs:
         run: ./prep-sushi.sh
 
       - name: Install Dependencies
-        run:  nix develop -c npm install
+        run: nix develop -c npm install
 
       - name: Build
-        run:  nix develop -c npm run build
+        run: nix develop -c npm run build
 
-      - name: Build and Deploy
-        env:
-          IS_PREVIEW: true
-          TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
-          RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
-          HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
-          BOT_WALLET_PRIVATEKEY: ${{ secrets.PREVIEW_BOT_WALLET_PRIVATEKEY }}
-          MAX_RATIO: ${{ vars.PREVIEW_MAX_RATIO }}
-          SUBGRAPH: ${{ vars.PREVIEW_SUBGRAPH }}
-          LIQUIDITY_PROVIDERS: ${{ vars.PREVIEW_LIQUIDITY_PROVIDERS }}
-          ARB_ADDRESS: ${{ vars.ARB_ADDRESS }}
-          GENERIC_ARB_ADDRESS: ${{ vars.GENERIC_ARB_ADDRESS }}
-          BOT_MIN_BALANCE: ${{ vars.BOT_MIN_BALANCE }}
-          GAS_PRICE_MULTIPLIER: ${{ vars.GAS_PRICE_MULTIPLIER }}
-          RP_ONLY: ${{ vars.RP_ONLY }}
-          TX_GAS: ${{ vars.TX_GAS }}
-          DISPAIR: ${{ vars.DISPAIR }}
-        run: |
-          # Your commands to build and deploy
-          # Example: upload to a preview environment
-          nix develop -c node arb-bot
-          # echo "https://my-preview-server.com/pr-${{ github.event.pull_request.number }}" > preview_url.txt
+      - name: Deploy
+        run: nix develop -c node arb-bot
 
       - name: Create GitHub Deployment
         uses: bobheadxi/deployments@v1
@@ -66,7 +59,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           env: preview
           ref: ${{ github.sha }}
-          # logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Update Deployment Status
         uses: bobheadxi/deployments@v1
