@@ -12,22 +12,6 @@ concurrency:
 jobs:
   Deploy-Preview:
     runs-on: ubuntu-latest
-    env:
-      IS_PREVIEW: true
-      TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
-      RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
-      HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
-      BOT_WALLET_PRIVATEKEY: ${{ secrets.PREVIEW_BOT_WALLET_PRIVATEKEY }}
-      MAX_RATIO: ${{ vars.PREVIEW_MAX_RATIO }}
-      SUBGRAPH: ${{ vars.PREVIEW_SUBGRAPH }}
-      LIQUIDITY_PROVIDERS: ${{ vars.PREVIEW_LIQUIDITY_PROVIDERS }}
-      ARB_ADDRESS: ${{ vars.ARB_ADDRESS }}
-      GENERIC_ARB_ADDRESS: ${{ vars.GENERIC_ARB_ADDRESS }}
-      BOT_MIN_BALANCE: ${{ vars.BOT_MIN_BALANCE }}
-      GAS_PRICE_MULTIPLIER: ${{ vars.GAS_PRICE_MULTIPLIER }}
-      RP_ONLY: ${{ vars.RP_ONLY }}
-      TX_GAS: ${{ vars.TX_GAS }}
-      DISPAIR: ${{ vars.DISPAIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +35,22 @@ jobs:
 
       - name: Deploy
         run: nix develop -c node arb-bot
+        env:
+          IS_PREVIEW: true
+          TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
+          RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
+          HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
+          BOT_WALLET_PRIVATEKEY: ${{ secrets.PREVIEW_BOT_WALLET_PRIVATEKEY }}
+          MAX_RATIO: ${{ vars.PREVIEW_MAX_RATIO }}
+          SUBGRAPH: ${{ vars.PREVIEW_SUBGRAPH }}
+          LIQUIDITY_PROVIDERS: ${{ vars.PREVIEW_LIQUIDITY_PROVIDERS }}
+          ARB_ADDRESS: ${{ vars.PREVIEW_ARB_ADDRESS }}
+          GENERIC_ARB_ADDRESS: ${{ vars.PREVIEW_GENERIC_ARB_ADDRESS }}
+          BOT_MIN_BALANCE: ${{ vars.PREVIEW_BOT_MIN_BALANCE }}
+          GAS_PRICE_MULTIPLIER: ${{ vars.PREVIEW_GAS_PRICE_MULTIPLIER }}
+          RP_ONLY: ${{ vars.PREVIEW_RP_ONLY }}
+          TX_GAS: ${{ vars.PREVIEW_TX_GAS }}
+          DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
       - name: Create GitHub Deployment
         uses: bobheadxi/deployments@v1
