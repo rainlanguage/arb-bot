@@ -49,12 +49,10 @@ export type CliOptions = {
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
-    orderbookAddress?: string;
     subgraph: string[];
     lps?: string[];
     gasCoverage: string;
-    orderHash?: string;
-    orderOwner?: string;
+    sgFilter?: SgFilter;
     sleep: number;
     maxRatio: boolean;
     timeout?: number;
@@ -306,10 +304,22 @@ export type OwnedOrder = {
     vaultBalance: BigNumber;
 };
 
+/**
+ * Filter criteria for subgraph queries
+ */
 export type SgFilter = {
-    orderHash?: string;
-    orderOwner?: string;
-    orderbook?: string;
+    /** Order hashes to include */
+    includeOrders?: Set<string>;
+    /** Owner addresses to include */
+    includeOwners?: Set<string>;
+    /** Order hashes to exclude (takes precedence over includeOrders) */
+    excludeOrders?: Set<string>;
+    /** Owner addresses to exclude (takes precedence over includeOwners) */
+    excludeOwners?: Set<string>;
+    /** Orderbook addresses to include */
+    includeOrderbooks?: Set<string>;
+    /** Orderbook addresses to exclude (takes precedence over includeOrderbooks) */
+    excludeOrderbooks?: Set<string>;
 };
 
 export type RpcRecord = {
