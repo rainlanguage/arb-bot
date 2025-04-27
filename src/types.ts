@@ -1,7 +1,8 @@
+import { RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
-import { DataFetcher, LiquidityProviders } from "sushi/router";
+import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import {
     Chain,
     Account,
@@ -25,7 +26,8 @@ export enum ProcessPairHaltReason {
     TxFailed = 4,
     TxMineFailed = 5,
     TxReverted = 6,
-    UnexpectedError = 7,
+    FailedToUpdatePools = 7,
+    UnexpectedError = 8,
 }
 
 /**
@@ -49,12 +51,10 @@ export type CliOptions = {
     writeRpc?: string[];
     arbAddress: string;
     genericArbAddress?: string;
-    orderbookAddress?: string;
     subgraph: string[];
     lps?: string[];
     gasCoverage: string;
-    orderHash?: string;
-    orderOwner?: string;
+    sgFilter?: SgFilter;
     sleep: number;
     maxRatio: boolean;
     timeout?: number;
@@ -179,7 +179,7 @@ export type TestViemClient = TestClient<"hardhat"> &
         ) => Promise<`0x${string}`>;
     };
 
-export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
+export type BotDataFetcher = RainDataFetcher;
 
 export type ChainConfig = {
     chain: Chain;
@@ -216,7 +216,7 @@ export type BotConfig = {
     publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";
-    rpcRecords: Record<string, RpcRecord>;
+    rpcState: RpcState;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
@@ -306,17 +306,22 @@ export type OwnedOrder = {
     vaultBalance: BigNumber;
 };
 
+/**
+ * Filter criteria for subgraph queries
+ */
 export type SgFilter = {
-    orderHash?: string;
-    orderOwner?: string;
-    orderbook?: string;
-};
-
-export type RpcRecord = {
-    req: number;
-    success: number;
-    failure: number;
-    cache: Record<string, any>;
+    /** Order hashes to include */
+    includeOrders?: Set<string>;
+    /** Owner addresses to include */
+    includeOwners?: Set<string>;
+    /** Order hashes to exclude (takes precedence over includeOrders) */
+    excludeOrders?: Set<string>;
+    /** Owner addresses to exclude (takes precedence over includeOwners) */
+    excludeOwners?: Set<string>;
+    /** Orderbook addresses to include */
+    includeOrderbooks?: Set<string>;
+    /** Orderbook addresses to exclude (takes precedence over includeOrderbooks) */
+    excludeOrderbooks?: Set<string>;
 };
 
 export type Dispair = {
