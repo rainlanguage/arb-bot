@@ -931,18 +931,18 @@ export const main = async (argv: any, version?: string) => {
         });
         counter++;
 
-        // for CI preview for specified number of rounds and then exit
-        // results are logged to the otel, available as preview on github
+        // for preview CI
+        // break out of the loop if in prod preview mode
+        // after specified number of rounds are executed
         if (
             process?.env?.IS_PREVIEW === "true" &&
-            counter > Number(process?.env?.PREVIEW_RUNS ?? 1)
+            counter > Number(process?.env?.PREVIEW_ROUNDS ?? 1)
         ) {
             break;
         }
     }
 
     // flush and close the connection.
-    // eslint-disable-next-line no-unreachable
     await exporter.shutdown();
     await sleep(10000);
 };
