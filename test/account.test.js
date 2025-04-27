@@ -196,6 +196,7 @@ describe("Test accounts", async function () {
         ];
         const dataFectherBefore = {
             fetchedPairPools: [],
+            reset: () => {},
         };
         const config = {
             rpc: rpcs,
@@ -221,8 +222,6 @@ describe("Test accounts", async function () {
         accounts.forEach((v) => {
             assert.equal(v.provider, config.provider);
         });
-        // make sure datafetcher gets restarted not matter what
-        assert.notEqual(config.dataFetcher, dataFectherBefore);
     });
 
     it("should rotate accounts", async function () {

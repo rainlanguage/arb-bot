@@ -2,7 +2,7 @@ import { RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
-import { DataFetcher, LiquidityProviders } from "sushi/router";
+import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import {
     Chain,
     Account,
@@ -26,7 +26,8 @@ export enum ProcessPairHaltReason {
     TxFailed = 4,
     TxMineFailed = 5,
     TxReverted = 6,
-    UnexpectedError = 7,
+    FailedToUpdatePools = 7,
+    UnexpectedError = 8,
 }
 
 /**
@@ -178,7 +179,7 @@ export type TestViemClient = TestClient<"hardhat"> &
         ) => Promise<`0x${string}`>;
     };
 
-export type BotDataFetcher = DataFetcher & { fetchedPairPools: string[] };
+export type BotDataFetcher = RainDataFetcher;
 
 export type ChainConfig = {
     chain: Chain;

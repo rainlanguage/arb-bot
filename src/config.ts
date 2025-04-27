@@ -5,7 +5,7 @@ import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
-import { DataFetcher, LiquidityProviders } from "sushi/router";
+import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, ViemClient, ChainConfig, BotDataFetcher } from "./types";
 import {
     http,
@@ -208,17 +208,17 @@ export function onFetchResponse(response: Response, rpcState: RpcState) {
 }
 
 /**
- * Instantiates a DataFetcher
+ * Instantiates a RainDataFetcher
  * @param configOrViemClient - The network config data or a viem public client
  * @param liquidityProviders - Array of Liquidity Providers
  */
 export async function getDataFetcher(
     configOrViemClient: BotConfig | PublicClient,
-    liquidityProviders: LiquidityProviders[] = [],
+    liquidityProviders?: LiquidityProviders[],
     useFallbacks = false,
 ): Promise<BotDataFetcher> {
     try {
-        const dataFetcher = new DataFetcher(
+        const dataFetcher = await RainDataFetcher.init(
             configOrViemClient.chain!.id as ChainId,
             "transport" in configOrViemClient
                 ? (configOrViemClient as PublicClient)
@@ -229,15 +229,11 @@ export async function getDataFetcher(
                       undefined,
                       undefined,
                   )) as any as PublicClient),
+            liquidityProviders,
         );
-
-        // start and immediately stop data fetching as we only want data fetching on demand
-        dataFetcher.startDataFetching(!liquidityProviders.length ? undefined : liquidityProviders);
-        dataFetcher.stopDataFetching();
-        (dataFetcher as any).fetchedPairPools = [];
         return dataFetcher as BotDataFetcher;
     } catch (error) {
-        throw "cannot instantiate DataFetcher for this network";
+        throw "cannot instantiate RainDataFetcher for this network";
     }
 }
 
