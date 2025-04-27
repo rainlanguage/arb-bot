@@ -30,6 +30,22 @@ jobs:
       - name: Build
         run: nix develop -c npm run build
 
+      # we need to get from/to timestamp because hyperdx by default only shows the last 15 mins logs,
+      # so if a commit preview has been pushed more than 15 mins ago relative to whenever preview link
+      # gets opened by someone, it wont show the logs unless user manually increases the timeframe
+      # from hyperdx gui, so we set the 'from' and 'to' timestamps in the link's query parameters to
+      # ensure the link always opens within the exact timeframe when the job was executed
+      - name: Set Preview Link From Timestamp
+        run: |
+          # set from timestamps in envs
+          FROM_TIME=$(date +%s)
+
+          # set in github envs as milliseconds
+          echo "FROM_TIME=${FROM_TIME}000" >> $GITHUB_ENV
+
+          # log the timestamp for debug purposes
+          echo from timestamp: $FROM_TIME \($(date -d @$FROM_TIME)\)
+
       - name: Create GitHub Deployment
         id: deployment
         uses: bobheadxi/deployments@v1
@@ -59,23 +75,16 @@ jobs:
           TX_GAS: ${{ vars.PREVIEW_TX_GAS }}
           DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
-      # we need to get from/to timestamp because hyperdx by default only shows the last 15 mins logs,
-      # so if a commit preview has been pushed more than 15 mins ago relative to when link gets opened,
-      # it wont show the logs unless user manually increases the timeframe from hyperdx gui, so we set
-      # from/to timestamp in link query vars to avoid this, the timeframe is set for past 30 days which
-      # should be more than enough for any use case
-      - name: Set Preview Link Timestamps
+      # set to timestamp after bot execution has completed
+      - name: Set Preview Link To Timestamps
         run: |
-          # set from(30 days ago) to(now) timestamps in envs
-          FROM_TIME=$(date -d "30 days ago" +%s)
+          # set to timestamps in envs
           TO_TIME=$(date +%s)
 
           # set in github envs as milliseconds
-          echo "FROM_TIME=${FROM_TIME}000" >> $GITHUB_ENV
           echo "TO_TIME=${TO_TIME}000" >> $GITHUB_ENV
 
-          # log the timestamps for debug purposes
-          echo from timestamp: $FROM_TIME \($(date -d @$FROM_TIME)\)
+          # log the timestamp for debug purposes
           echo to timestamp: $TO_TIME \($(date -d @$TO_TIME)\)
 
       - name: Update Deployment Status
