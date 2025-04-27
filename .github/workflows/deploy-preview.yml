@@ -59,6 +59,25 @@ jobs:
           TX_GAS: ${{ vars.PREVIEW_TX_GAS }}
           DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
+      # we need to get from/to timestamp because hyperdx by default only shows the last 15 mins logs,
+      # so if a commit preview has been pushed more than 15 mins relative to when link get opened, it
+      # wont show the logs unless user manually increases the timeframe from hyperdx gui, so we set
+      # from/to timestamp in link query vars to avoid this, the timeframe set is for past 30 days which
+      # should be more than enough for any use case
+      - name: Get Date Timestamps
+        run: |
+          # set from(30 days ago) to(now) timestamps in envs
+          FROM_TIME=$(date -d "30 days ago" +%s)
+          TO_TIME=$(date +%s)
+
+          # set in github envs as milliseconds
+          echo "FROM_TIME=${FROM_TIME}000" >> $GITHUB_ENV
+          echo "TO_TIME=${TO_TIME}000" >> $GITHUB_ENV
+
+          # log the timestamps for debug purposes
+          echo from timestamp: $FROM_TIME \($(date -d @$FROM_TIME)\)
+          echo to timestamp: $TO_TIME \($(date -d @$TO_TIME)\)
+
       - name: Update Deployment Status
         uses: bobheadxi/deployments@v1
         with:
@@ -69,4 +88,4 @@ jobs:
           ref: ${{ github.sha }}
           override: false
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-          env_url: https://www.hyperdx.io/search?q=%28%28service%3A%22github-preview-${{ github.sha }}%22%29%29
+          env_url: https://www.hyperdx.io/search?q=%28%28service%3A%22github-preview-${{ github.sha }}%22%29%29&from=${{ env.FROM_TIME }}&to=${{ env.TO_TIME }}
