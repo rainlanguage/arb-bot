@@ -1,4 +1,3 @@
-import { ChainId } from "sushi";
 import { findOpp } from "./modes";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
@@ -10,11 +9,12 @@ import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { ChainId, RainDataFetcherOptions } from "sushi";
 import { Context, SpanStatusCode } from "@opentelemetry/api";
 import { fundOwnedOrders, checkOwnedOrders } from "./account";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./types";
 import { ErrorSeverity, errorSnapshot, isTimeout, KnownErrors } from "./error";
-import { toNumber, getEthPrice, routeExists, PoolBlackList, getMarketQuote } from "./utils";
+import { toNumber, getEthPrice, PoolBlackList, getMarketQuote } from "./utils";
 import {
     Report,
     BotConfig,
@@ -273,6 +273,14 @@ export const processOrders = async (
                         span.setAttribute("errorDetails", message);
                     }
                     span.setStatus({ code: SpanStatusCode.OK, message });
+                } else if (e.reason === ProcessPairHaltReason.FailedToUpdatePools) {
+                    let message = pair + ": failed to update pool details by event data";
+                    if (e.error) {
+                        message = errorSnapshot(message, e.error);
+                        span.recordException(e.error);
+                    }
+                    span.setAttribute("severity", ErrorSeverity.MEDIUM);
+                    span.setStatus({ code: SpanStatusCode.ERROR, message });
                 } else if (e.reason === ProcessPairHaltReason.TxFailed) {
                     // failed to submit the tx to mempool, this can happen for example when rpc rejects
                     // the tx for example because of low gas or invalid parameters, etc
@@ -462,31 +470,44 @@ export async function processPair(args: {
     });
 
     const gasPrice = BigNumber.from(state.gasPrice);
-    // get pool details
-    if (
-        !dataFetcher.fetchedPairPools.includes(pair) ||
-        !(await routeExists(config, fromToken, toToken, gasPrice))
-    ) {
-        try {
-            const options = {
-                fetchPoolsTimeout: 90000,
-            };
-            // pin block number for test case
-            if (isE2eTest && (config as any).testBlockNumber) {
-                (options as any).blockNumber = (config as any).testBlockNumber;
-            }
-            await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
-            const p1 = `${orderPairObject.buyTokenSymbol}/${orderPairObject.sellTokenSymbol}`;
-            const p2 = `${orderPairObject.sellTokenSymbol}/${orderPairObject.buyTokenSymbol}`;
-            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
-            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
-        } catch (e) {
-            result.reason = ProcessPairHaltReason.FailedToGetPools;
-            result.error = e;
-            return async () => {
-                throw result;
-            };
+
+    // get block number
+    let dataFetcherBlockNumber = await viemClient.getBlockNumber().catch(() => {
+        return undefined;
+    });
+
+    // update pools by events watching until current block
+    try {
+        if (isE2eTest && (config as any).testBlockNumberInc) {
+            (config as any).testBlockNumberInc += 10n;
+            dataFetcherBlockNumber = (config as any).testBlockNumberInc;
         }
+        await dataFetcher.updatePools(dataFetcherBlockNumber);
+    } catch (e) {
+        result.reason = ProcessPairHaltReason.FailedToUpdatePools;
+        result.error = e;
+        return async () => {
+            throw result;
+        };
+    }
+
+    // get pool details
+    try {
+        const options: RainDataFetcherOptions = {
+            fetchPoolsTimeout: 90000,
+            blockNumber: dataFetcherBlockNumber,
+        };
+        // pin block number for test case
+        if (isE2eTest && (config as any).testBlockNumber) {
+            options.blockNumber = (config as any).testBlockNumber;
+        }
+        await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
+    } catch (e) {
+        result.reason = ProcessPairHaltReason.FailedToGetPools;
+        result.error = e;
+        return async () => {
+            throw result;
+        };
     }
 
     try {
@@ -541,10 +562,6 @@ export async function processPair(args: {
                 };
             }
         } else {
-            const p1 = `${orderPairObject.buyTokenSymbol}/${config.nativeWrappedToken.symbol}`;
-            const p2 = `${orderPairObject.sellTokenSymbol}/${config.nativeWrappedToken.symbol}`;
-            if (!dataFetcher.fetchedPairPools.includes(p1)) dataFetcher.fetchedPairPools.push(p1);
-            if (!dataFetcher.fetchedPairPools.includes(p2)) dataFetcher.fetchedPairPools.push(p2);
             spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
             spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
         }

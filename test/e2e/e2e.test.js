@@ -234,6 +234,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.arbAddress = arb.address;
                 config.orderbookAddress = orderbook.address;
                 config.testBlockNumber = BigInt(blockNumber);
+                config.testBlockNumberInc = BigInt(blockNumber); // increments during test updating to new block height
                 config.gasCoveragePercentage = "1";
                 config.viemClient = viemClient;
                 config.dataFetcher = dataFetcher;

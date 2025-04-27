@@ -1,16 +1,30 @@
 name: Standard Test
 on: [push]
 
+concurrency:
+  group: ${{ github.ref }}-rainix
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   unit-test:
+    permissions:
+      id-token: write
+      contents: write
     name: unit tests
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-      - uses: DeterminateSystems/nix-installer-action@v4
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
 
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
@@ -26,6 +40,9 @@ jobs:
   
   e2e-test:
     name: e2e fork test
+    permissions:
+      id-token: write
+      contents: write
     runs-on: ubuntu-latest
     strategy:
       matrix:
