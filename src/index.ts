@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ethers } from "ethers";
 import { ChainId } from "sushi";
+import { RpcState } from "./rpc";
 import { versions } from "process";
 import { PublicClient } from "viem";
 import { DeployerAbi } from "./abis";
@@ -13,7 +14,6 @@ import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
 import {
     SgFilter,
     BotConfig,
-    RpcRecord,
     CliOptions,
     RoundReport,
     BundledOrders,
@@ -156,21 +156,13 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
-    const rpcRecords: Record<string, RpcRecord> = {};
-    rpcUrls.forEach(
-        (v) =>
-            (rpcRecords[v.endsWith("/") ? v : v + "/"] = {
-                req: 0,
-                success: 0,
-                failure: 0,
-                cache: {},
-            }),
-    );
+    // init rpc state
+    const rpcState = new RpcState(rpcUrls);
     config.onFetchRequest = (request: Request) => {
-        onFetchRequest(request, rpcRecords);
+        onFetchRequest(request, rpcState);
     };
     config.onFetchResponse = (response: Response) => {
-        onFetchResponse(response.clone(), rpcRecords);
+        onFetchResponse(response.clone(), rpcState);
     };
 
     const lps = processLps(options.lps);
@@ -229,7 +221,7 @@ export async function getConfig(
     config.publicRpc = options.publicRpc;
     config.walletKey = walletKey;
     config.route = route;
-    config.rpcRecords = rpcRecords;
+    config.rpcState = rpcState;
     config.gasPriceMultiplier = options.gasPriceMultiplier;
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;

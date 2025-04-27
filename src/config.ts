@@ -4,8 +4,9 @@ import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
+import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { RainDataFetcher, LiquidityProviders } from "sushi/router";
-import { BotConfig, RpcRecord, ViemClient, ChainConfig, BotDataFetcher } from "./types";
+import { BotConfig, ViemClient, ChainConfig, BotDataFetcher } from "./types";
 import {
     http,
     fallback,
@@ -141,52 +142,44 @@ export async function createViemClient(
 /**
  * Keeps record of http fetch requests for a http viem client
  */
-export function onFetchRequest(request: Request, rpcRecords: Record<string, RpcRecord>) {
-    let url = request.url;
-    if (!request.url.endsWith("/")) url = url + "/";
-    let record = rpcRecords[url];
+export function onFetchRequest(request: Request, rpcState: RpcState) {
+    const url = normalizeUrl(request.url);
+    let record = rpcState.metrics[url];
     if (!record) {
-        record = rpcRecords[url] = {
-            req: 0,
-            success: 0,
-            failure: 0,
-            cache: {},
-        };
+        record = rpcState.metrics[url] = new RpcMetrics();
     }
-    record.req++;
+    record.recordRequest();
 }
 
 /**
  * Keeps record of http fetch responses for a http viem client
  */
-export function onFetchResponse(response: Response, rpcRecords: Record<string, RpcRecord>) {
-    let url = response.url;
-    if (!response.url.endsWith("/")) url = url + "/";
-    let record = rpcRecords[url];
+export function onFetchResponse(response: Response, rpcState: RpcState) {
+    const url = normalizeUrl(response.url);
+    let record = rpcState.metrics[url];
     if (!record) {
-        record = rpcRecords[url] = {
-            req: 0,
-            success: 0,
-            failure: 0,
-            cache: {},
-        };
+        // this cannot really happen, but just to be sure,
+        // initialize this rpc record if its not already
+        record = rpcState.metrics[url] = new RpcMetrics();
+        record.recordRequest();
     }
+
     if (!response.ok) {
-        record.failure++;
+        record.recordFailure();
         return;
     }
 
     const handleResponse = (res: any) => {
         if ("result" in res) {
-            record.success++;
+            record.recordSuccess();
             return;
         } else if ("error" in res) {
             if (shouldThrow(res.error)) {
-                record.success++;
+                record.recordSuccess();
                 return;
             }
         }
-        record.failure++;
+        record.recordFailure();
     };
     if (response.headers.get("Content-Type")?.startsWith("application/json")) {
         response
@@ -195,7 +188,7 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
                 handleResponse(res);
             })
             .catch(() => {
-                record.failure++;
+                record.recordFailure();
             });
     } else {
         response
@@ -205,11 +198,11 @@ export function onFetchResponse(response: Response, rpcRecords: Record<string, R
                     const res = JSON.parse(text || "{}");
                     handleResponse(res);
                 } catch (err) {
-                    record.failure++;
+                    record.recordFailure();
                 }
             })
             .catch(() => {
-                record.failure++;
+                record.recordFailure();
             });
     }
 }

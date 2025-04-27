@@ -425,12 +425,14 @@ describe("Test cli", async function () {
                 rpc: ["https://polygon.drpc.org"],
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
-                rpcRecords: {
-                    "https://polygon.drpc.org/": {
-                        req: 5,
-                        success: 5,
-                        failure: 0,
-                        cache: {},
+                rpcState: {
+                    metrics: {
+                        "https://polygon.drpc.org/": {
+                            req: 5,
+                            success: 5,
+                            failure: 0,
+                            cache: {},
+                        },
                     },
                 },
                 gasPriceMultiplier: 120,
@@ -469,7 +471,6 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
         assert.equal(result.config.route, expected.config.route);
-        assert.deepEqual(result.config.rpcRecords, expected.config.rpcRecords);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
         assert.equal(result.options.gasPriceMultiplier, expected.options.gasPriceMultiplier);
         assert.equal(result.config.gasPriceMultiplier, expected.config.gasPriceMultiplier);
@@ -483,6 +484,26 @@ describe("Test cli", async function () {
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
+        for (const url in result.config.rpcState.metrics) {
+            assert.equal(
+                result.config.rpcState.metrics[url].req,
+                expected.config.rpcState.metrics[url].req,
+            );
+            assert.equal(
+                result.config.rpcState.metrics[url].success,
+                expected.config.rpcState.metrics[url].success,
+            );
+            assert.equal(
+                result.config.rpcState.metrics[url].failure,
+                expected.config.rpcState.metrics[url].failure,
+            );
+            assert.deepEqual(
+                result.config.rpcState.metrics[url].cache,
+                expected.config.rpcState.metrics[url].cache,
+            );
+            assert.notEqual(result.config.rpcState.metrics[url].lastRequestTimestamp, 0);
+            assert.isNotEmpty(result.config.rpcState.metrics[url].requestIntervals);
+        }
         assert.deepEqual(result.options.sgFilter, expected.options.sgFilter);
     });
 
