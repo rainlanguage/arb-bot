@@ -15,6 +15,9 @@ env:
 jobs:
   Deploy-Preview:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,21 +26,17 @@ jobs:
           fetch-depth: 0
 
       - name: Install Nix 1/2
-        uses: DeterminateSystems/nix-installer-action@v4
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
       - name: Install Nix 2/2
-        uses: DeterminateSystems/magic-nix-cache-action@v2
+        uses: DeterminateSystems/flakehub-cache-action@main
 
       - name: Prepare Sushi Lib
         run: ./prep-sushi.sh
 
       - name: Build Docker Image
         run: docker build -t "$TAG_BASE:$CHANNEL" --build-arg GIT_SHA=${{ github.sha }} --build-arg DOCKER_CHANNEL=$CHANNEL .
-
-      # - name: Install Dependencies
-      #   run: nix develop -c npm install
-
-      # - name: Build
-      #   run: nix develop -c npm run build
 
       # we need to get from/to timestamp because hyperdx by default only shows the last 15 mins logs,
       # so if a commit preview has been pushed more than 15 mins ago relative to whenever preview link
@@ -83,28 +82,8 @@ jobs:
           echo "TX_GAS=${{ vars.PREVIEW_TX_GAS }}" >> .env
           echo "DISPAIR=${{ vars.PREVIEW_DISPAIR }}" >> .env
 
-      - name: Run Bot Docker Image
+      - name: Run Rain Solver Docker Image
         run: docker run --rm --env-file .env $TAG_BASE:$CHANNEL
-
-      # - name: Deploy Rain Solver
-      #   run: nix develop -c node arb-bot
-      #   env:
-      #     IS_PREVIEW: true
-      #     PREVIEW_ROUNDS: ${{ vars.PREVIEW_ROUNDS }}
-      #     TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
-      #     RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
-      #     HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
-      #     BOT_WALLET_PRIVATEKEY: ${{ secrets.PREVIEW_BOT_WALLET_PRIVATEKEY }}
-      #     MAX_RATIO: ${{ vars.PREVIEW_MAX_RATIO }}
-      #     SUBGRAPH: ${{ vars.PREVIEW_SUBGRAPH }}
-      #     LIQUIDITY_PROVIDERS: ${{ vars.PREVIEW_LIQUIDITY_PROVIDERS }}
-      #     ARB_ADDRESS: ${{ vars.PREVIEW_ARB_ADDRESS }}
-      #     GENERIC_ARB_ADDRESS: ${{ vars.PREVIEW_GENERIC_ARB_ADDRESS }}
-      #     BOT_MIN_BALANCE: ${{ vars.PREVIEW_BOT_MIN_BALANCE }}
-      #     GAS_PRICE_MULTIPLIER: ${{ vars.PREVIEW_GAS_PRICE_MULTIPLIER }}
-      #     RP_ONLY: ${{ vars.PREVIEW_RP_ONLY }}
-      #     TX_GAS: ${{ vars.PREVIEW_TX_GAS }}
-      #     DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
       # set to timestamp after bot execution has completed
       - name: Set Preview Link To Timestamps
