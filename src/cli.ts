@@ -21,6 +21,7 @@ import {
     BundledOrders,
     OperationState,
     ProcessPairReportStatus,
+    SgFilter,
 } from "./types";
 import {
     sweepToEth,
@@ -54,6 +55,9 @@ import {
 
 config();
 
+/** Solidity hash pattern */
+const HASH_PATTERN = /^(0x)?[a-fA-F0-9]{64}$/;
+
 /**
  * Options specified in env variables
  */
@@ -62,11 +66,8 @@ const ENV_OPTIONS = {
     mnemonic: process?.env?.MNEMONIC,
     arbAddress: process?.env?.ARB_ADDRESS,
     genericArbAddress: process?.env?.GENERIC_ARB_ADDRESS,
-    orderbookAddress: process?.env?.ORDERBOOK_ADDRESS,
     lps: process?.env?.LIQUIDITY_PROVIDERS,
     gasCoverage: process?.env?.GAS_COVER || "100",
-    orderHash: process?.env?.ORDER_HASH,
-    orderOwner: process?.env?.ORDER_OWNER,
     sleep: process?.env?.SLEEP,
     maxRatio: process?.env?.MAX_RATIO?.toLowerCase() === "true" ? true : false,
     publicRpc: process?.env?.PUBLIC_RPC?.toLowerCase() === "true" ? true : false,
@@ -85,18 +86,16 @@ const ENV_OPTIONS = {
     route: process?.env?.ROUTE,
     dispair: process?.env?.DISPAIR,
     rpOnly: process?.env?.RP_ONLY?.toLowerCase() === "true" ? true : false,
-    ownerProfile: process?.env?.OWNER_PROFILE
-        ? Array.from(process?.env?.OWNER_PROFILE.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
-    rpc: process?.env?.RPC_URL
-        ? Array.from(process?.env?.RPC_URL.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
-    writeRpc: process?.env?.WRITE_RPC
-        ? Array.from(process?.env?.WRITE_RPC.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
-    subgraph: process?.env?.SUBGRAPH
-        ? Array.from(process?.env?.SUBGRAPH.matchAll(/[^,\s]+/g)).map((v) => v[0])
-        : undefined,
+    ownerProfile: parseArrayFromEnv(process?.env?.OWNER_PROFILE),
+    rpc: parseArrayFromEnv(process?.env?.RPC_URL),
+    writeRpc: parseArrayFromEnv(process?.env?.WRITE_RPC),
+    subgraph: parseArrayFromEnv(process?.env?.SUBGRAPH),
+    includeOrders: parseArrayFromEnv(process?.env?.INCLUDE_ORDERS),
+    includeOwners: parseArrayFromEnv(process?.env?.INCLUDE_OWNERS),
+    includeOrderbooks: parseArrayFromEnv(process?.env?.INCLUDE_ORDERBOOKS),
+    excludeOrders: parseArrayFromEnv(process?.env?.EXCLUDE_ORDERS),
+    excludeOwners: parseArrayFromEnv(process?.env?.EXCLUDE_OWNERS),
+    excludeOrderbooks: parseArrayFromEnv(process?.env?.EXCLUDE_ORDERBOOKS),
 };
 
 const getOptions = async (argv: any, version?: string) => {
@@ -116,10 +115,6 @@ const getOptions = async (argv: any, version?: string) => {
         .option(
             "-s, --subgraph <url...>",
             "Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables",
-        )
-        .option(
-            "--orderbook-address <address>",
-            "Option to filter the subgraph query results with address of the deployed orderbook contract, Will override the 'ORDERBOOK_ADDRESS' in env variables",
         )
         .option(
             "--arb-address <address>",
@@ -142,12 +137,28 @@ const getOptions = async (argv: any, version?: string) => {
             "The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables",
         )
         .option(
-            "--order-hash <hash>",
-            "Option to filter the subgraph query results with a specific order hash, Will override the 'ORDER_HASH' in env variables",
+            "--include-orders <orderhash...>",
+            "Option to only include the specified orders for processing, Will override the 'INCLUDE_ORDERS' in env variables",
         )
         .option(
-            "--order-owner <address>",
-            "Option to filter the subgraph query results with a specific order owner address, Will override the 'ORDER_OWNER' in env variables",
+            "--include-owners <address...>",
+            "Option to only include the specified owners' orders for processing, Will override the 'INCLUDE_OWNERS' in env variables",
+        )
+        .option(
+            "--include-orderbooks <address...>",
+            "Option to only include the specified orderbooks for processing, Will override the 'INCLUDE_ORDERBOOKS' in env variables",
+        )
+        .option(
+            "--exclude-orders <orderhash...>",
+            "Option to exclude the specified orders from processing, Will override the 'EXCLUDE_ORDERS' in env variables",
+        )
+        .option(
+            "--exclude-owners <address...>",
+            "Option to exclude the specified owners' orders from processing, Will override the 'EXCLUDE_OWNERS' in env variables",
+        )
+        .option(
+            "--exclude-orderbooks <address...>",
+            "Option to exclude the specified orderbooks from processing, Will override the 'EXCLUDE_ORDERBOOKS' in env variables",
         )
         .option(
             "--sleep <integer>",
@@ -245,13 +256,17 @@ const getOptions = async (argv: any, version?: string) => {
     cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
     cmdOptions.genericArbAddress =
         cmdOptions.genericArbAddress || getEnv(ENV_OPTIONS.genericArbAddress);
-    cmdOptions.orderbookAddress =
-        cmdOptions.orderbookAddress || getEnv(ENV_OPTIONS.orderbookAddress);
     cmdOptions.subgraph = cmdOptions.subgraph || getEnv(ENV_OPTIONS.subgraph);
     cmdOptions.lps = cmdOptions.lps || getEnv(ENV_OPTIONS.lps);
     cmdOptions.gasCoverage = cmdOptions.gasCoverage || getEnv(ENV_OPTIONS.gasCoverage);
-    cmdOptions.orderHash = cmdOptions.orderHash || getEnv(ENV_OPTIONS.orderHash);
-    cmdOptions.orderOwner = cmdOptions.orderOwner || getEnv(ENV_OPTIONS.orderOwner);
+    cmdOptions.includeOrders = cmdOptions.includeOrders || getEnv(ENV_OPTIONS.includeOrders);
+    cmdOptions.includeOwners = cmdOptions.includeOwners || getEnv(ENV_OPTIONS.includeOwners);
+    cmdOptions.includeOrderbooks =
+        cmdOptions.includeOrderbooks || getEnv(ENV_OPTIONS.includeOrderbooks);
+    cmdOptions.excludeOrders = cmdOptions.excludeOrders || getEnv(ENV_OPTIONS.excludeOrders);
+    cmdOptions.excludeOwners = cmdOptions.excludeOwners || getEnv(ENV_OPTIONS.excludeOwners);
+    cmdOptions.excludeOrderbooks =
+        cmdOptions.excludeOrderbooks || getEnv(ENV_OPTIONS.excludeOrderbooks);
     cmdOptions.sleep = cmdOptions.sleep || getEnv(ENV_OPTIONS.sleep);
     cmdOptions.maxRatio = cmdOptions.maxRatio || getEnv(ENV_OPTIONS.maxRatio);
     cmdOptions.timeout = cmdOptions.timeout || getEnv(ENV_OPTIONS.timeout);
@@ -316,6 +331,45 @@ const getOptions = async (argv: any, version?: string) => {
             };
         });
     }
+
+    // handle sg filters
+    const sgFilter: SgFilter = {
+        includeOrders: undefined,
+        excludeOrders: undefined,
+        includeOwners: undefined,
+        excludeOwners: undefined,
+        includeOrderbooks: undefined,
+        excludeOrderbooks: undefined,
+    };
+    if (cmdOptions.includeOrders) {
+        sgFilter.includeOrders = new Set(cmdOptions.includeOrders.map(validateHash));
+        delete cmdOptions.includeOrders;
+    }
+    if (cmdOptions.excludeOrders) {
+        sgFilter.excludeOrders = new Set(cmdOptions.excludeOrders.map(validateHash));
+        delete cmdOptions.excludeOrders;
+    }
+    if (cmdOptions.includeOwners) {
+        sgFilter.includeOwners = new Set(cmdOptions.includeOwners.map(validateAddress));
+        delete cmdOptions.includeOwners;
+    }
+    if (cmdOptions.excludeOwners) {
+        sgFilter.excludeOwners = new Set(cmdOptions.excludeOwners.map(validateAddress));
+        delete cmdOptions.excludeOwners;
+    }
+    if (cmdOptions.includeOrderbooks) {
+        sgFilter.includeOrderbooks = new Set(cmdOptions.includeOrderbooks.map(validateAddress));
+        delete cmdOptions.includeOrderbooks;
+    }
+    if (cmdOptions.excludeOrderbooks) {
+        sgFilter.excludeOrderbooks = new Set(cmdOptions.excludeOrderbooks.map(validateAddress));
+        delete cmdOptions.excludeOrderbooks;
+    }
+    // include if any of the fields are set
+    if (Object.values(sgFilter).some((v) => typeof v !== "undefined")) {
+        cmdOptions.sgFilter = sgFilter;
+    }
+
     return cmdOptions;
 };
 
@@ -415,7 +469,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         }
     }
     if (options.key) {
-        if (!/^(0x)?[a-fA-F0-9]{64}$/.test(options.key)) throw "invalid wallet private key";
+        if (!HASH_PATTERN.test(options.key)) throw "invalid wallet private key";
     }
     if (!options.rpc) throw "undefined RPC URL";
     if (options.writeRpc) {
@@ -504,11 +558,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     if (!process?.env?.CLI_STARTUP_TEST) {
         for (let i = 0; i < 3; i++) {
             try {
-                ordersDetails = await getOrderDetails(options.subgraph, {
-                    orderHash: options.orderHash,
-                    orderOwner: options.orderOwner,
-                    orderbook: options.orderbookAddress,
-                });
+                ordersDetails = await getOrderDetails(options.subgraph, options.sgFilter);
                 break;
             } catch (e) {
                 if (i != 2) await sleep(10000 * (i + 1));
@@ -857,7 +907,13 @@ export const main = async (argv: any, version?: string) => {
                 let ordersDidChange = false;
                 const results = await Promise.allSettled(
                     lastReadOrdersMap.map((v) =>
-                        getOrderChanges(v.sg, lastReadOrdersTimestamp, v.skip, roundSpan),
+                        getOrderChanges(
+                            v.sg,
+                            lastReadOrdersTimestamp,
+                            v.skip,
+                            roundSpan,
+                            options.sgFilter,
+                        ),
                     ),
                 );
                 for (let i = 0; i < results.length; i++) {
@@ -945,4 +1001,24 @@ function getEnv(value: any): any {
         } else return value;
     }
     return undefined;
+}
+
+export function parseArrayFromEnv(value?: string): string[] | undefined {
+    return value ? Array.from(value.matchAll(/[^,\s]+/g)).map((v) => v[0]) : undefined;
+}
+
+export function validateAddress(value?: unknown): string {
+    if (typeof value !== "string") throw "expected string";
+    if (!ethers.utils.isAddress(value)) {
+        throw `${value} is not a valid address`;
+    }
+    return value.toLowerCase();
+}
+
+export function validateHash(value?: unknown): string {
+    if (typeof value !== "string") throw "expected string";
+    if (!HASH_PATTERN.test(value)) {
+        throw `${value} is not a valid hash`;
+    }
+    return value.toLowerCase();
 }
