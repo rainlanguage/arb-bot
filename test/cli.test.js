@@ -4,12 +4,12 @@ const { sleep } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
-const { arbRound, startup, getRpcConfig } = require("../src/cli");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const {
     startup,
     arbRound,
+    getRpcConfig,
     validateHash,
     validateAddress,
     parseArrayFromEnv,
