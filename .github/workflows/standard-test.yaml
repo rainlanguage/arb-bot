@@ -7,6 +7,9 @@ concurrency:
 
 jobs:
   unit-test:
+    permissions:
+      id-token: write
+      contents: write
     name: unit tests
     runs-on: ubuntu-latest
 
@@ -37,6 +40,9 @@ jobs:
   
   e2e-test:
     name: e2e fork test
+    permissions:
+      id-token: write
+      contents: write
     runs-on: ubuntu-latest
     strategy:
       matrix:
