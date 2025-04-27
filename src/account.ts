@@ -349,14 +349,9 @@ export async function rotateProviders(config: BotConfig, resetDataFetcher = true
         );
 
         if (resetDataFetcher) {
-            config.dataFetcher = await getDataFetcher(
-                viemClient as any as PublicClient,
-                config.lps,
-                config.publicRpc,
-            );
-        } else {
-            config.dataFetcher.web3Client = viemClient as any as PublicClient;
+            config.dataFetcher.reset();
         }
+        config.dataFetcher.web3Client = viemClient as any as PublicClient;
         config.viemClient = viemClient as any as PublicClient;
 
         // rotate main account's provider
@@ -952,6 +947,8 @@ export async function fundOwnedOrders(
                                 rp4Address,
                                 config.dataFetcher,
                                 gasPrice,
+                                undefined,
+                                true,
                             );
                             const initSellAmount = ethers.BigNumber.from(route.amountOutBI);
                             let sellAmount: BigNumber;
@@ -967,6 +964,8 @@ export async function fundOwnedOrders(
                                     rp4Address,
                                     config.dataFetcher,
                                     gasPrice,
+                                    undefined,
+                                    true,
                                 );
                                 if (topupAmount.lte(route.amountOutBI)) {
                                     finalRpParams = rpParams;
