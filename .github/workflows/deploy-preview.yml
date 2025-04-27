@@ -60,11 +60,11 @@ jobs:
           DISPAIR: ${{ vars.PREVIEW_DISPAIR }}
 
       # we need to get from/to timestamp because hyperdx by default only shows the last 15 mins logs,
-      # so if a commit preview has been pushed more than 15 mins relative to when link get opened, it
-      # wont show the logs unless user manually increases the timeframe from hyperdx gui, so we set
-      # from/to timestamp in link query vars to avoid this, the timeframe set is for past 30 days which
+      # so if a commit preview has been pushed more than 15 mins ago relative to when link gets opened,
+      # it wont show the logs unless user manually increases the timeframe from hyperdx gui, so we set
+      # from/to timestamp in link query vars to avoid this, the timeframe is set for past 30 days which
       # should be more than enough for any use case
-      - name: Get Date Timestamps
+      - name: Set Preview Link Timestamps
         run: |
           # set from(30 days ago) to(now) timestamps in envs
           FROM_TIME=$(date -d "30 days ago" +%s)
