@@ -59,7 +59,7 @@ jobs:
         run: nix develop -c node arb-bot
         env:
           IS_PREVIEW: true
-          PREVIEW_RUNS: ${{ vars.PREVIEW_RUNS }}
+          PREVIEW_ROUNDS: ${{ vars.PREVIEW_ROUNDS }}
           TRACER_SERVICE_NAME: github-preview-${{ github.sha }}
           RPC_URL: ${{ secrets.PREVIEW_RPC_URL }}
           HYPERDX_API_KEY: ${{ secrets.PREVIEW_HYPERDX_API_KEY }}
