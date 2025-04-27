@@ -28,8 +28,12 @@ jobs:
           fetch-depth: 0
 
       # Install nix
-      - uses: DeterminateSystems/nix-installer-action@v4
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
 
       # Prepare and build sushi lib
       - name: Build Sushi Lib
