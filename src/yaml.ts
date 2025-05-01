@@ -9,7 +9,7 @@ import { SelfFundOrder, SgFilter, TokenDetails } from "./types";
 export const INT_PATTERN = /^[0-9]+$/;
 
 /** Float pattern */
-export const FLOAT_PATTERN = /^[0-9]+(.[0-9]+)?$/;
+export const FLOAT_PATTERN = /^[0-9]+(\.[0-9]+)?$/;
 
 /** Solidity hash pattern */
 export const HASH_PATTERN = /^(0x)?[a-fA-F0-9]{64}$/;
@@ -247,7 +247,7 @@ export namespace AppOptions {
         }
         if (mnemonic) {
             if (!walletCount || !topupAmount) {
-                throw "walletCount and toptupAmount are required when using mnemonic key";
+                throw "walletCount and topupAmount are required when using mnemonic key";
             }
             assert(
                 INT_PATTERN.test(walletCount),
@@ -316,7 +316,7 @@ export namespace AppOptions {
             );
         }
         if (typeof bool.value === "string") {
-            bool.value = bool.value === "true" ? true : false;
+            bool.value = bool.value === "true";
         }
         assert(typeof bool.value === "boolean", exception);
         return bool.value;
@@ -457,7 +457,7 @@ export namespace AppOptions {
             assert(
                 Array.isArray(selfFundOrders.value) &&
                     selfFundOrders.value.every((v: any) => typeof v === "string"),
-                "expected array of vault funding details, example: token|vaultId|threshold|toptupamount",
+                "expected array of vault funding details, example: token|vaultId|threshold|topupAmount",
             );
             return selfFundOrders.value.map((v) => {
                 const [
@@ -623,7 +623,7 @@ export function envOrSelf(value: any) {
 }
 
 /**
- * Parses an array of strings from the given input where items are sperated y a comma
+ * Parses an array of strings from the given input where items are seperated y a comma
  */
 export function parseArrayFromEnv(value?: string): string[] | undefined {
     return value ? Array.from(value.matchAll(/[^,\s]+/g)).map((v) => v[0]) : undefined;

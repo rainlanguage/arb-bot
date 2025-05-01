@@ -83,7 +83,7 @@ rpOnly: $RP_ONLY
 ownerProfile: $OWNER_PROFILE
 
 # Specifies owned order to get funded once their vault goes below the specified threshold
-# example for env: token|vaultId|threshold|toptupamount,token|vaultId|threshold|toptupamount,...
+# example for env: token|vaultId|threshold|topupAmount,token|vaultId|threshold|topupAmount,...
 selfFundOrders: $SELF_FUND_ORDERS
 
 # Filters for inc/exc orders, multiple items can be separated by a comma

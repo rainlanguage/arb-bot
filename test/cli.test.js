@@ -116,8 +116,8 @@ sgFilter:
         - "0x${"8".repeat(40)}"
 `;
 
-        const path = "./test/testYamlCli.yaml";
-        writeFileSync("./test/testYamlCli.yaml", yaml, "utf8");
+        const path = "./test/second.test.yaml";
+        writeFileSync(path, yaml, "utf8");
 
         const result = await startup(["", "", "--config", path]);
         const expected = {

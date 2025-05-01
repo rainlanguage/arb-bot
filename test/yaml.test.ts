@@ -61,8 +61,8 @@ sgFilter:
     - "0x9999999999999999999999999999999999999999"
   `;
 
-        const path = "./test/testYaml.yaml";
-        writeFileSync("./test/testYaml.yaml", yaml, "utf8");
+        const path = "./test/first.test.yaml";
+        writeFileSync(path, yaml, "utf8");
 
         const result = AppOptions.fromYaml(path);
         const expected: AppOptions = {
@@ -308,7 +308,7 @@ sgFilter:
         input = { mnemonic: validMnemonic, walletCount: "3" };
         assert.throws(
             () => AppOptions.resolveKey(input),
-            "walletCount and toptupAmount are required when using mnemonic key",
+            "walletCount and topupAmount are required when using mnemonic key",
         );
 
         // Unhappy: invalid walletCount

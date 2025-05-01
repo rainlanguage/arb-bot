@@ -153,7 +153,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const options = AppOptions.fromYaml(cmdOptions.config);
     const roundGap = options.sleep;
 
-    const poolUpdateInterval = options.poolUpdateInterval! * 60 * 1000;
+    const poolUpdateInterval = options.poolUpdateInterval * 60 * 1000;
     let ordersDetails: SgOrder[] = [];
     if (!process?.env?.CLI_STARTUP_TEST) {
         for (let i = 0; i < 3; i++) {
@@ -168,7 +168,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     }
     const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
     const tokens = getOrdersTokens(ordersDetails);
-    (options as any).tokens = tokens;
+    options.tokens = tokens;
 
     // get config
     const config = await getConfig(
