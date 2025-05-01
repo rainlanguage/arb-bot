@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { writeFileSync, unlinkSync } from "fs";
 import { envOrSelf, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
 
-describe("Test yaml AppOptions", async function () {
+describe.only("Test yaml AppOptions", async function () {
     it("test AppOptions fromYaml", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_MNEMONIC = "test mnemonic key";
@@ -264,7 +264,7 @@ sgFilter:
         const validKey = "0x" + "1".repeat(64);
         const validMnemonic = "test mnemonic phrase";
 
-        // Happy path: using key only
+        // happy path: using key only
         let input: any = { key: validKey };
         let result = AppOptions.resolveKey(input);
         assert.deepEqual(result, {
@@ -274,7 +274,7 @@ sgFilter:
             topupAmount: undefined,
         });
 
-        // Happy path: using mnemonic with walletCount and topupAmount
+        // happy path: using mnemonic with walletCount and topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3", topupAmount: "0.5" };
         result = AppOptions.resolveKey(input);
         assert.deepEqual(result, {
@@ -284,42 +284,42 @@ sgFilter:
             topupAmount: "0.5",
         });
 
-        // Unhappy: neither key nor mnemonic provided
+        // unhappy: neither key nor mnemonic provided
         input = {};
         assert.throws(
             () => AppOptions.resolveKey(input),
             "only one of key or mnemonic should be specified",
         );
 
-        // Unhappy: both key and mnemonic provided
+        // unhappy: both key and mnemonic provided
         input = { key: validKey, mnemonic: validMnemonic, walletCount: "3", topupAmount: "0.5" };
         assert.throws(
             () => AppOptions.resolveKey(input),
             "only one of key or mnemonic should be specified",
         );
 
-        // Unhappy: mnemonic provided but missing walletCount or topupAmount
+        // unhappy: mnemonic provided but missing walletCount or topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3" };
         assert.throws(
             () => AppOptions.resolveKey(input),
             "walletCount and topupAmount are required when using mnemonic key",
         );
 
-        // Unhappy: invalid walletCount
+        // unhappy: invalid walletCount
         input = { mnemonic: validMnemonic, walletCount: "invalid", topupAmount: "0.5" };
         assert.throws(
             () => AppOptions.resolveKey(input),
             "invalid walletCount, it should be an integer greater than equal to 0",
         );
 
-        // Unhappy: invalid topupAmount
+        // unhappy: invalid topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3", topupAmount: "invalid" };
         assert.throws(
             () => AppOptions.resolveKey(input),
             "invalid topupAmount, it should be a number greater than equal to 0",
         );
 
-        // Unhappy: key provided but invalid wallet private key
+        // unhappy: key provided but invalid wallet private key
         const invalidKey = "invalidKey";
         input = { key: invalidKey };
         assert.throws(() => AppOptions.resolveKey(input), "invalid wallet private key");
@@ -572,7 +572,7 @@ sgFilter:
         const address2 = `0x${"2".repeat(40)}`;
         const address3 = `0x${"3".repeat(40)}`;
         const address4 = `0x${"4".repeat(40)}`;
-        // Happy path using direct object input:
+        // happy path using direct object input:
         const inputObj = [{ [address1]: "100" }, { [address2]: "max" }];
         const resultObj = AppOptions.resolveOwnerProfile(inputObj);
         const expectedObj = {
@@ -581,7 +581,7 @@ sgFilter:
         };
         assert.deepEqual(resultObj, expectedObj);
 
-        // Happy path using env variable:
+        // happy path using env variable:
         process.env.OWNER_PROFILE = `${address3}=200,${address4}=max`;
         const envInput = "$OWNER_PROFILE";
         const resultEnv = AppOptions.resolveOwnerProfile(envInput);
@@ -591,7 +591,7 @@ sgFilter:
         };
         assert.deepEqual(resultEnv, expectedEnv);
 
-        // Unhappy: Invalid owner profile (bad format)
+        // unhappy: Invalid owner profile (bad format)
         const badInput = [{ [address1]: "100=200" }];
         assert.throws(
             () => AppOptions.resolveOwnerProfile(badInput),
@@ -610,6 +610,11 @@ sgFilter:
             "Invalid owner profile, must be in form of 'OWNER: LIMIT'",
         );
 
+        // unhappy: invalid address in owner profile
+        const badAddress = "0xinvalid";
+        const badInput4 = [{ [badAddress]: "100" }];
+        assert.throws(() => AppOptions.resolveOwnerProfile(badInput4), /Invalid owner address/);
+
         process.env.OWNER_PROFILE = `${address3}=200=somethingbad`;
         const badEnvInput = "$OWNER_PROFILE";
         assert.throws(
@@ -623,7 +628,7 @@ sgFilter:
         const address2 = `0x${"2".repeat(40)}`;
         const address3 = `0x${"3".repeat(40)}`;
         const address4 = `0x${"4".repeat(40)}`;
-        // Happy path using direct object input:
+        // happy path using direct object input:
         const inputOrders = [
             {
                 token: address1,
@@ -655,7 +660,7 @@ sgFilter:
         ];
         assert.deepEqual(resultOrders, expectedOrders);
 
-        // Happy path using env variable:
+        // happy path using env variable:
         process.env.SELF_FUND = `token=${address3},vaultId=3,threshold=1.5,topupAmount=2.5,token=${address4},vaultId=4,threshold=2.0,topupAmount=3.0`;
         const envInput = "$SELF_FUND";
         const resultEnv = AppOptions.resolveSelfFundOrders(envInput);
@@ -675,25 +680,35 @@ sgFilter:
         ];
         assert.deepEqual(resultEnv, expectedEnv);
 
-        // Unhappy: Env input with extra key
+        // unhappy: Env input with extra key
         process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=2.5,extra=123`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
             /unexpected key: extra/,
         );
 
-        // Unhappy: Env input with undefined value
+        // unhappy: Env input with undefined value
         process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=`;
-        assert.throws(() => AppOptions.resolveSelfFundOrders("$SELF_FUND"), /unexpected value: /);
+        assert.throws(
+            () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
+            /unexpected value for topupAmount key: /,
+        );
 
-        // Unhappy: Env input with extra argument
+        // unhappy: Env input with extra argument
         process.env.SELF_FUND = `token=${address1}=extra,vaultId=5,threshold=1.5,topupAmount=`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
             /unexpected arguments: extra/,
         );
 
-        // Unhappy: Direct input not provided as an array
+        // Test case for partial self fund order
+        process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5`;
+        assert.throws(
+            () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
+            "expected a number greater than equal to 0 for topupAmount",
+        );
+
+        // unhappy: Direct input not provided as an array
         const badInput = {
             token: address2,
             vaultId: "6",
@@ -705,7 +720,7 @@ sgFilter:
             "expected array of SelfFundOrder",
         );
 
-        // Unhappy: Invalid token address format in direct input
+        // unhappy: Invalid token address format in direct input
         const badInput2 = [
             {
                 token: "invalid", // not a valid address

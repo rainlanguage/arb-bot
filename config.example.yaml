@@ -31,7 +31,7 @@ subgraph:
 # Arb contract address, required
 arbAddress: "0x1234...5678"
 
-# Generic arb contract address, required
+# Generic arb contract address, optional
 genericArbAddress: "0x1234...5678"
 
 # Dispair contract address, required

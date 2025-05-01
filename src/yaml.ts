@@ -451,11 +451,11 @@ export namespace AppOptions {
             assert(vaultId && isBigNumberish(vaultId), "invalid vault id");
             assert(
                 threshold && FLOAT_PATTERN.test(threshold),
-                "expected a number greater than equal to 0",
+                "expected a number greater than equal to 0 for threshold",
             );
             assert(
                 topupAmount && FLOAT_PATTERN.test(topupAmount),
-                "expected a number greater than equal to 0",
+                "expected a number greater than equal to 0 for topupAmount",
             );
         };
         if (selfFundOrders.isEnv) {
@@ -474,7 +474,10 @@ export namespace AppOptions {
                 const kvs = selfFundOrders.value.slice(index - 4, index).map((v) => {
                     const [key = undefined, value = undefined, ...rest] = v.split("=");
                     assert(typeof key === "string" && keys.includes(key), `unexpected key: ${key}`);
-                    assert(typeof value === "string" && value, `unexpected value: ${key}`);
+                    assert(
+                        typeof value === "string" && value,
+                        `unexpected value for ${key} key: ${value}`,
+                    );
                     assert(rest.length === 0, `unexpected arguments: ${rest}`);
                     return { [key]: value };
                 });
