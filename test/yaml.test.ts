@@ -1,12 +1,6 @@
 import { assert } from "chai";
 import { writeFileSync, unlinkSync } from "fs";
-import {
-    envOrSelf,
-    validateHash,
-    validateAddress,
-    parseArrayFromEnv,
-    AppOptions,
-} from "../src/yaml";
+import { envOrSelf, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
 
 describe("Test yaml config", async function () {
     it("test config fromYaml", async function () {
@@ -832,7 +826,7 @@ describe("Test yaml config helpers", async function () {
     it("test envOrSelf", async function () {
         const inputs = {
             env1: "$ENV_VAR",
-            env2: "$OTHER_ENV",
+            env2: "$OTHER_ENV_VAR",
             number: 123,
             str: "something",
             bool: true,
@@ -842,7 +836,7 @@ describe("Test yaml config helpers", async function () {
         // env override
         process.env.ENV_VAR = "some env var";
         assert.deepEqual(envOrSelf(inputs.env1), { isEnv: true, value: "some env var" });
-        process.env.OTHER_ENV = "some other env var";
+        process.env.OTHER_ENV_VAR = "some other env var";
         assert.deepEqual(envOrSelf(inputs.env2), { isEnv: true, value: "some other env var" });
 
         // no env
@@ -854,20 +848,20 @@ describe("Test yaml config helpers", async function () {
         assert.deepEqual(envOrSelf(inputs.notDefined), { isEnv: false, value: undefined });
     });
 
-    it("test get array from env", async function () {
-        let result = parseArrayFromEnv("a, b,c, d");
+    it("test try parse array", async function () {
+        let result = tryIntoArray("a, b,c, d");
         let expected: any = ["a", "b", "c", "d"];
         assert.deepEqual(result, expected);
 
-        result = parseArrayFromEnv("  abcd   ");
+        result = tryIntoArray("  abcd   ");
         expected = ["abcd"];
         assert.deepEqual(result, expected);
 
-        result = parseArrayFromEnv("");
+        result = tryIntoArray("");
         expected = undefined;
         assert.deepEqual(result, expected);
 
-        result = parseArrayFromEnv();
+        result = tryIntoArray();
         expected = undefined;
         assert.deepEqual(result, expected);
     });

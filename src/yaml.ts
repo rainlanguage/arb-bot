@@ -277,7 +277,7 @@ export namespace AppOptions {
     export function resolveUrls(input: any, exception: string) {
         const urls = envOrSelf(input);
         if (urls.isEnv) {
-            urls.value = parseArrayFromEnv(urls.value);
+            urls.value = tryIntoArray(urls.value);
         }
         assert(
             urls.value &&
@@ -293,7 +293,7 @@ export namespace AppOptions {
     export function resolveLiquidityProviders(input: any) {
         const lps = envOrSelf(input);
         if (lps.isEnv) {
-            lps.value = parseArrayFromEnv(lps.value);
+            lps.value = tryIntoArray(lps.value);
         }
         if (!lps.value) return undefined;
         assert(
@@ -407,7 +407,7 @@ export namespace AppOptions {
         };
         if (ownerProfile.isEnv) {
             if (typeof ownerProfile.value === "undefined") return;
-            ownerProfile.value = parseArrayFromEnv(ownerProfile.value);
+            ownerProfile.value = tryIntoArray(ownerProfile.value);
             assert(
                 Array.isArray(ownerProfile.value) &&
                     ownerProfile.value.every((v: any) => typeof v === "string"),
@@ -460,7 +460,7 @@ export namespace AppOptions {
         };
         if (selfFundOrders.isEnv) {
             if (typeof selfFundOrders.value === "undefined") return;
-            selfFundOrders.value = parseArrayFromEnv(selfFundOrders.value);
+            selfFundOrders.value = tryIntoArray(selfFundOrders.value);
             assert(
                 Array.isArray(selfFundOrders.value) &&
                     selfFundOrders.value.every((v: any) => typeof v === "string"),
@@ -512,7 +512,7 @@ export namespace AppOptions {
             excludeOrderbooks: envOrSelf(input?.excludeOrderbooks),
         };
         if (sgFilter.includeOrders.isEnv) {
-            const includeOrders = parseArrayFromEnv(sgFilter.includeOrders.value);
+            const includeOrders = tryIntoArray(sgFilter.includeOrders.value);
             if (includeOrders) {
                 sgFilter.includeOrders = new Set(includeOrders.map(validateHash));
             }
@@ -523,7 +523,7 @@ export namespace AppOptions {
             sgFilter.includeOrders = undefined;
         }
         if (sgFilter.excludeOrders.isEnv) {
-            const excludeOrders = parseArrayFromEnv(sgFilter.excludeOrders.value);
+            const excludeOrders = tryIntoArray(sgFilter.excludeOrders.value);
             if (excludeOrders) {
                 sgFilter.excludeOrders = new Set(excludeOrders.map(validateHash));
             }
@@ -535,7 +535,7 @@ export namespace AppOptions {
         }
 
         if (sgFilter.includeOwners.isEnv) {
-            const includeOwners = parseArrayFromEnv(sgFilter.includeOwners.value);
+            const includeOwners = tryIntoArray(sgFilter.includeOwners.value);
             if (includeOwners) {
                 sgFilter.includeOwners = new Set(includeOwners.map(validateAddress));
             }
@@ -549,7 +549,7 @@ export namespace AppOptions {
             sgFilter.includeOwners = undefined;
         }
         if (sgFilter.excludeOwners.isEnv) {
-            const excludeOwners = parseArrayFromEnv(sgFilter.excludeOwners.value);
+            const excludeOwners = tryIntoArray(sgFilter.excludeOwners.value);
             if (excludeOwners) {
                 sgFilter.excludeOwners = new Set(excludeOwners.map(validateAddress));
             }
@@ -564,7 +564,7 @@ export namespace AppOptions {
         }
 
         if (sgFilter.includeOrderbooks.isEnv) {
-            const includeOrderbooks = parseArrayFromEnv(sgFilter.includeOrderbooks.value);
+            const includeOrderbooks = tryIntoArray(sgFilter.includeOrderbooks.value);
             if (includeOrderbooks) {
                 sgFilter.includeOrderbooks = new Set(includeOrderbooks.map(validateAddress));
             }
@@ -580,7 +580,7 @@ export namespace AppOptions {
             sgFilter.includeOrderbooks = undefined;
         }
         if (sgFilter.excludeOrderbooks.isEnv) {
-            const excludeOrderbooks = parseArrayFromEnv(sgFilter.excludeOrderbooks.value);
+            const excludeOrderbooks = tryIntoArray(sgFilter.excludeOrderbooks.value);
             if (excludeOrderbooks) {
                 sgFilter.excludeOrderbooks = new Set(excludeOrderbooks.map(validateAddress));
             }
@@ -630,9 +630,9 @@ export function envOrSelf(value: any) {
 }
 
 /**
- * Parses an array of strings from the given input where items are seperated y a comma
+ * Tries to parse the given string into an array of strings where items are separated y a comma
  */
-export function parseArrayFromEnv(value?: string): string[] | undefined {
+export function tryIntoArray(value?: string): string[] | undefined {
     return value ? Array.from(value.matchAll(/[^,\s]+/g)).map((v) => v[0]) : undefined;
 }
 
