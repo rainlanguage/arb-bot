@@ -37,7 +37,9 @@ genericArbAddress: "0x1234...5678"
 # Dispair contract address, required
 dispair: "0x1234...5678"
 
-# list of liquidity providers names separated by a comma for each, default includes all available liquidity providers
+# list of liquidity providers 
+# if provided through an env var, they should be separated by a comma
+# default includes all available liquidity providers
 liquidityProviders:
   - sushiswapv2
   - uniswapv3
@@ -85,7 +87,7 @@ maxRatio: true
 # Only clear orders through RP4, excludes intra and inter orderbook clears, default true
 rpOnly: true
 
-# Option to specifies the owner limit
+# Option that specifies the owner limit
 # for specifying in env use key=value form and separate by comma owner1=limit,owner2=limit,...
 ownerProfile:
   - "0x1234...5678": 100
