@@ -2,7 +2,7 @@ import { assert } from "chai";
 import { writeFileSync, unlinkSync } from "fs";
 import { envOrSelf, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
 
-describe.only("Test yaml AppOptions", async function () {
+describe("Test yaml AppOptions", async function () {
     it("test AppOptions fromYaml", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_MNEMONIC = "test mnemonic key";
@@ -36,7 +36,6 @@ hops: 2
 retries: 3
 maxRatio: true
 rpOnly: false
-publicRpc: true
 ownerProfile: $OWNER_PROFILE
 selfFundOrders:
   - token: "0x6666666666666666666666666666666666666666"
