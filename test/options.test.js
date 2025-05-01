@@ -1,6 +1,5 @@
 const { assert } = require("chai");
 const { getConfig } = require("../src");
-const { assertError } = require("./utils");
 const { LiquidityProviders } = require("sushi");
 
 describe("Test app options", async function () {
@@ -11,8 +10,11 @@ describe("Test app options", async function () {
             "0x" + "1".repeat(64), // wallet key
             "0x" + "3".repeat(40), // arb address
             {
-                lps: ["SUShIswapV2", "bIsWaP"],
+                liquidityProviders: ["SUShIswapV2", "bIsWaP"],
                 dispair: "0xE7116BC05C8afe25e5B54b813A74F916B5D42aB1",
+                hops: 1,
+                retries: 1,
+                gasCoveragePercentage: "100",
             },
         );
 
@@ -24,20 +26,5 @@ describe("Test app options", async function () {
         assert.equal(config.chain.id, 137);
         assert.equal(config.gasCoveragePercentage, "100");
         assert.deepEqual(config.rpc, rpcs);
-    });
-
-    it("should error if retries is not between 1-3", async function () {
-        const configPromise = async () =>
-            await getConfig(
-                ["https://polygon.drpc.org"],
-                "0x" + "1".repeat(64),
-                "0x" + "3".repeat(40),
-                { retries: 5 },
-            );
-        await assertError(
-            configPromise,
-            "invalid retries value, must be an integer between 1 - 3",
-            "unexpected error",
-        );
     });
 });

@@ -1,3 +1,4 @@
+import { AppOptions } from "./yaml";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { erc20Abi, PublicClient } from "viem";
@@ -12,7 +13,6 @@ import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/
 import { MulticallAbi, orderbookAbi, routeProcessor3Abi, VaultBalanceAbi } from "./abis";
 import {
     BotConfig,
-    CliOptions,
     ViemClient,
     OwnedOrder,
     TokenDetails,
@@ -36,7 +36,7 @@ export const MainAccountDerivationIndex = 0 as const;
 export async function initAccounts(
     mnemonicOrPrivateKey: string,
     config: BotConfig,
-    options: CliOptions,
+    options: AppOptions,
     tracer?: Tracer,
     ctx?: Context,
 ) {
@@ -154,7 +154,7 @@ export async function initAccounts(
  */
 export async function manageAccounts(
     config: BotConfig,
-    options: CliOptions,
+    options: AppOptions,
     avgGasCost: BigNumber,
     lastIndex: number,
     wgc: ViemClient[],
