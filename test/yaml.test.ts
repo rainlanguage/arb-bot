@@ -326,16 +326,25 @@ sgFilter:
 
     it("test AppOptions resolveUrls", async function () {
         // happy
-        // from obj
         let input: any = ["url1", "url2", "url3"];
-        let result = AppOptions.resolveUrls(input, "unexpected error");
+        let result: any = AppOptions.resolveUrls(input, "unexpected error");
         assert.deepEqual(result, ["url1", "url2", "url3"]);
+
+        // happy optional
+        input = undefined;
+        result = AppOptions.resolveUrls(input, "unexpected error", true);
+        assert.deepEqual(result, undefined);
 
         // happy from env
         process.env.INPUT = "url1,url2,url3";
         input = "$INPUT";
         result = AppOptions.resolveUrls(input, "unexpected error");
         assert.deepEqual(result, ["url1", "url2", "url3"]);
+
+        // happy from env optional
+        input = "$EMPTY_INPUT";
+        result = AppOptions.resolveUrls(input, "unexpected error", true);
+        assert.deepEqual(result, undefined);
 
         // unhappy
         input = [];

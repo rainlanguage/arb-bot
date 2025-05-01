@@ -102,13 +102,11 @@ export namespace AppOptions {
                 input.rpc,
                 "expected array of rpc urls with at least 1 url",
             ),
-            writeRpc:
-                input.writeRpc === undefined
-                    ? undefined
-                    : AppOptions.resolveUrls(
-                          input.writeRpc,
-                          "expected array of rpc urls with at least 1 url",
-                      ),
+            writeRpc: AppOptions.resolveUrls(
+                input.writeRpc,
+                "expected array of write rpc urls with at least 1 url",
+                true,
+            ),
             subgraph: AppOptions.resolveUrls(
                 input.subgraph,
                 "expected array of subgraph urls with at least 1 url",
@@ -274,11 +272,16 @@ export namespace AppOptions {
     }
 
     /** Resolves config's urls */
-    export function resolveUrls(input: any, exception: string) {
+    export function resolveUrls<isOptional extends boolean = false>(
+        input: any,
+        exception: string,
+        isOptional = false as isOptional,
+    ): isOptional extends false ? string[] : string[] | undefined {
         const urls = envOrSelf(input);
         if (urls.isEnv) {
             urls.value = tryIntoArray(urls.value);
         }
+        if (isOptional && urls.value === undefined) return undefined as any;
         assert(
             urls.value &&
                 Array.isArray(urls.value) &&
@@ -286,7 +289,7 @@ export namespace AppOptions {
                 urls.value.every((v: any) => typeof v === "string"),
             exception,
         );
-        return urls.value;
+        return urls.value as any;
     }
 
     /** Resolves config's list of liquidity providers */
@@ -523,6 +526,8 @@ export namespace AppOptions {
             const includeOrders = tryIntoArray(sgFilter.includeOrders.value);
             if (includeOrders) {
                 sgFilter.includeOrders = new Set(includeOrders.map(validateHash));
+            } else {
+                sgFilter.includeOrders = undefined;
             }
         } else if (sgFilter.includeOrders.value) {
             assert(Array.isArray(sgFilter.includeOrders.value), "expected an array of orderhashes");
@@ -534,6 +539,8 @@ export namespace AppOptions {
             const excludeOrders = tryIntoArray(sgFilter.excludeOrders.value);
             if (excludeOrders) {
                 sgFilter.excludeOrders = new Set(excludeOrders.map(validateHash));
+            } else {
+                sgFilter.excludeOrders = undefined;
             }
         } else if (sgFilter.excludeOrders.value) {
             assert(Array.isArray(sgFilter.excludeOrders.value), "expected an array of orderhashes");
@@ -546,6 +553,8 @@ export namespace AppOptions {
             const includeOwners = tryIntoArray(sgFilter.includeOwners.value);
             if (includeOwners) {
                 sgFilter.includeOwners = new Set(includeOwners.map(validateAddress));
+            } else {
+                sgFilter.includeOwners = undefined;
             }
         } else if (sgFilter.includeOwners.value) {
             assert(
@@ -560,6 +569,8 @@ export namespace AppOptions {
             const excludeOwners = tryIntoArray(sgFilter.excludeOwners.value);
             if (excludeOwners) {
                 sgFilter.excludeOwners = new Set(excludeOwners.map(validateAddress));
+            } else {
+                sgFilter.excludeOwners = undefined;
             }
         } else if (sgFilter.excludeOwners.value) {
             assert(
@@ -575,6 +586,8 @@ export namespace AppOptions {
             const includeOrderbooks = tryIntoArray(sgFilter.includeOrderbooks.value);
             if (includeOrderbooks) {
                 sgFilter.includeOrderbooks = new Set(includeOrderbooks.map(validateAddress));
+            } else {
+                sgFilter.includeOrderbooks = undefined;
             }
         } else if (sgFilter.includeOrderbooks.value) {
             assert(
@@ -591,6 +604,8 @@ export namespace AppOptions {
             const excludeOrderbooks = tryIntoArray(sgFilter.excludeOrderbooks.value);
             if (excludeOrderbooks) {
                 sgFilter.excludeOrderbooks = new Set(excludeOrderbooks.map(validateAddress));
+            } else {
+                sgFilter.excludeOrderbooks = undefined;
             }
         } else if (sgFilter.excludeOrderbooks.value) {
             assert(
