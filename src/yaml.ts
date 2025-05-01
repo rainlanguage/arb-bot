@@ -323,32 +323,36 @@ export namespace AppOptions {
     }
 
     /** Resolves config's address */
-    export function resolveAddress(input: any, addressName: string, optional = false) {
+    export function resolveAddress<isOptional extends boolean = false>(
+        input: any,
+        addressName: string,
+        isOptional = false as isOptional,
+    ): isOptional extends false ? string : string | undefined {
         const address = envOrSelf(input).value;
-        if (optional && address === undefined) return undefined;
+        if (isOptional && address === undefined) return undefined as any;
         assert(
             typeof address === "string" && ethers.utils.isAddress(address),
             `expected valid ${addressName} contract address`,
         );
-        return address.toLowerCase();
+        return address.toLowerCase() as any;
     }
 
     /** Resolves config's numeric value */
     export function resolveNumericValue<
         fallback extends string | undefined = undefined,
-        asString extends boolean | undefined = false,
+        returnAsString extends boolean | undefined = false,
     >(
         input: any,
         pattern: RegExp,
         exception: string,
         fallback?: fallback,
-        returnAsString: asString = false as asString,
+        returnAsString = false as returnAsString,
         callback?: (value: any) => void,
     ): fallback extends string
-        ? asString extends true
+        ? returnAsString extends true
             ? string
             : number
-        : (asString extends true ? string : number) | undefined {
+        : (returnAsString extends true ? string : number) | undefined {
         const value = envOrSelf(input).value || fallback;
         if (typeof value === "undefined") {
             callback?.(value);

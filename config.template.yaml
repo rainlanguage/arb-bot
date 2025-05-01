@@ -54,7 +54,7 @@ txGas: $TX_GAS
 # Option to set a static gas limit for quote read calls, default is 1 milion
 quoteGas: $QUOTE_GAS
 
-# Minimum bot's wallet gas token balance before alering
+# Minimum bot's wallet gas token balance required for operating
 botMinBalance: $BOT_MIN_BALANCE
 
 # Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
