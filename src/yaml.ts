@@ -3,7 +3,7 @@ import { parse } from "yaml";
 import { readFileSync } from "fs";
 import { isBigNumberish } from "./utils";
 import { BigNumber, ethers } from "ethers";
-import { SelfFundOrder, SgFilter, TokenDetails } from "./types";
+import { SelfFundOrder, SgFilter } from "./types";
 
 /** Integer pattern */
 export const INT_PATTERN = /^[0-9]+$/;
@@ -72,8 +72,6 @@ export type AppOptions = {
     ownerProfile?: Record<string, number>;
     /** Optional filters for inc/exc orders, owner and orderbooks */
     sgFilter?: SgFilter;
-    /** List of tracking tokens */
-    tokens?: TokenDetails[];
 };
 
 /** Provides methods to instantiate and validate AppOptions */

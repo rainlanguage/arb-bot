@@ -168,7 +168,6 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     }
     const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
     const tokens = getOrdersTokens(ordersDetails);
-    options.tokens = tokens;
 
     // get config
     const config = await getConfig(
@@ -179,6 +178,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
         tracer,
         ctx,
     );
+    config.watchedTokens = tokens;
 
     // fetch initial gas price on startup
     const state: OperationState = {

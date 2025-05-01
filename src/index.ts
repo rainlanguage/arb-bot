@@ -149,7 +149,7 @@ export async function getConfig(
     config.lps = lps;
     config.viemClient = viemClient as any as PublicClient;
     config.dataFetcher = dataFetcher;
-    config.watchedTokens = options.tokens ?? [];
+    config.watchedTokens = [];
     config.selfFundOrders = options.selfFundOrders;
     config.publicRpc = false;
     config.walletKey = walletKey;
