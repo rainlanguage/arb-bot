@@ -1,4 +1,4 @@
-import { sleep } from "./utils";
+import { sleep, withBigintSerializer } from "./utils";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
 import { Command } from "commander";
@@ -295,6 +295,14 @@ export const main = async (argv: any, version?: string) => {
                 "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
+                "meta.configurations": JSON.stringify(
+                    {
+                        ...options,
+                        key: "***",
+                        mnemonic: "***",
+                    },
+                    withBigintSerializer,
+                ),
             });
 
             await tracer.startActiveSpan(

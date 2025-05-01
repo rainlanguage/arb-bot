@@ -1,0 +1,137 @@
+# Private key of the bot's wallet, only one of this or mnemonic should be set
+key: "0x1234...7890"
+
+# Mnemonic phrase, only one of this or key should be set
+mnemonic: "12 or 24 mnemonic words"
+
+# Number of excess wallets for submitting txs, required only when mnemonic option is used
+walletCount: 5
+
+# Topup amount for excess accounts, required only when mnemonic option is used
+topupAmount: 0.5
+
+# List of rpc urls, required
+# for specifying more than 1 RPC in the env, separate them by a comma and a space
+rpc: 
+  - https://rpc-url1.com
+  - https://rpc-url2.com
+
+# Optional list of write rpc urls for write transactions
+# for specifying more than 1 RPC in the env, separate them by a comma and a space
+writeRpc: 
+  - https://write-rpc-url1.com
+  - https://write-rpc-url2.com
+
+# List of subgraph urls, required
+# for more than 1 subgraphs, seperate them by comma and a space
+subgraph:
+  - https://subgraph-url1.com
+  - https://subgraph-url2.com
+
+# Arb contract address, required
+arbAddress: "0x1234...5678"
+
+# Generic arb contract address, required
+genericArbAddress: "0x1234...5678"
+
+# Dispair contract address, required
+dispair: "0x1234...5678"
+
+# list of liquidity providers names seperated by a comma for each, default encludes all available liquidity providers
+liquidityProviders:
+  - sushiswapv2
+  - uniswapv3
+  - quickswapv3
+
+# Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
+route: single
+
+# Seconds to wait between each arb round, default is 10
+sleep: 10
+
+# Option to specify time (in minutes) between pools updates, default is 0 minutes
+poolUpdateInterval: 10
+
+# Gas coverage percentage for each transaction to be considered profitable to be submitted, default is 100
+gasCoveragePercentage: 250
+
+# Option to set a gas limit for all submitting txs optionally with appended percentage sign to apply as percentage to original gas
+txGas: 110%
+
+# Option to set a static gas limit for quote read calls, default is 1 milion
+quoteGas: 1000000
+
+# Minimum bot's wallet gas token balance required for operating, required option
+botMinBalance: 0.5
+
+# Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
+gasPriceMultiplier: 107
+
+# Option to multiply the gas limit estimation from the rpc as percentage, default is 100, ie no change
+gasLimitMultiplier: 100
+
+# Optional seconds to wait for the transaction to mine before disregarding it, default is 15
+timeout: 15
+
+# number of hops of binary search, if left unspecified will be 1 by default
+hops: 1
+
+# The amount of retries for the same order, max is 3, default is 1
+retries: 1
+
+# Option to maximize maxIORatio, default true
+maxRatio: true
+
+# Only clear orders through RP4, excludes intra and inter orderbook clears, default true
+rpOnly: true
+
+# Option to specifies the owner limit
+# for specifying in env use key=value form and separate by comma owner1=limit,owner2=limit,...
+ownerProfile:
+  - "0x1234...5678": 100
+  - "0x1234...7890": max
+
+# Option that specifies owned order to get funded once their vault goes below the specified threshold
+# example for env: token=vaultId=threshold=topupAmount,token=vaultId=threshold=topupAmount,...
+selfFundOrders:
+  - token: "0x1234...5678"
+    vaultId: "0x1234...7890"
+    topupAmount: 0.5
+    threshold: 0.02
+
+  - token: "0xabcd...1234"
+    vaultId: 123456789
+    topupAmount: 80
+    threshold: 0.1
+
+# Optional filters for inc/exc orders, multiple items can be separated by a comma
+sgFilter:
+  # Only process these specific order hashes
+  includeOrders:
+    - "0x1234...5678"
+    - "0xabcd...1234"
+
+  # Does NOT process these specific order hashes
+  excludeOrders:
+    - "0x1234...5678"
+    - "0xabcd...1234"
+
+  # Only process orders from these specific owners
+  includeOwners:
+    - "0x1234...5678"
+    - "0xabcd...1234"
+
+  # Does NOT process orders from these specific owners
+  excludeOwners:
+    - "0x1234...5678"
+    - "0xabcd...1234"
+
+  # Only process orders from these specific orderbooks
+  includeOrderbooks:
+    - "0x1234...5678"
+    - "0xabcd...1234"
+
+  # Does NOT process orders from these specific orderbooks
+  excludeOrderbooks:
+    - "0x1234...5678"
+    - "0xabcd...1234"

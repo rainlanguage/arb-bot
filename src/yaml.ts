@@ -16,13 +16,13 @@ export const HASH_PATTERN = /^(0x)?[a-fA-F0-9]{64}$/;
 
 /** Rain Solver app configurations */
 export type AppOptions = {
-    /** Private key of the bot's wallet, one of this or mnemonic must be set */
+    /** Private key of the bot's wallet, only one of this or mnemonic must be set */
     key?: string;
-    /** Mnemonic phrase, one of this or key must be set */
+    /** Mnemonic phrase, only one of this or key must be set */
     mnemonic?: string;
-    /** Number of excess wallets for submitting txs, requires mnemonic option */
+    /** Number of excess wallets for submitting txs, required only when mnemonic option is used */
     walletCount?: number;
-    /** Topup amount for excess accounts, requires mnemonic option */
+    /** Topup amount for excess accounts, required only when mnemonic option is used */
     topupAmount?: string;
     /** List fo rpc urls */
     rpc: string[];
@@ -36,17 +36,17 @@ export type AppOptions = {
     genericArbAddress?: string;
     /** List of subgraph urls */
     subgraph: string[];
-    /** Option to maximize maxIORatio */
+    /** Option to maximize maxIORatio, default is true */
     maxRatio: boolean;
-    /** Only clear orders through RP4, excludes intra and inter orderbook clears */
+    /** Only clear orders through RP4, excludes intra and inter orderbook clears, default is true */
     rpOnly: boolean;
-    /** list of liquidity providers names */
+    /** list of liquidity providers names, default includes all liquidity providers */
     liquidityProviders?: string[];
     /** Seconds to wait between each arb round, default is 10 */
     sleep: number;
-    /** Gas coverage percentage for each transaction to be considered profitable to be submitted */
+    /** Gas coverage percentage for each transaction to be considered profitable to be submitted, default is 100 */
     gasCoveragePercentage: string;
-    /** Optional seconds to wait for the transaction to mine before disregarding it */
+    /** Optional seconds to wait for the transaction to mine before disregarding it, default is 15 */
     timeout: number;
     /** Number of hops of binary search, if left unspecified will be 1 by default */
     hops: number;
@@ -54,7 +54,7 @@ export type AppOptions = {
     retries: number;
     /** Option to specify time (in minutes) between pools data resets, default is 0 minutes */
     poolUpdateInterval: number;
-    /** Minimum bot's wallet gas token balance required for operating */
+    /** Minimum bot's wallet gas token balance required for operating, required */
     botMinBalance: string;
     /** Specifies the routing mode 'multi' or 'single' or 'full', default is 'single' */
     route: "single" | "multi" | undefined;
@@ -66,13 +66,13 @@ export type AppOptions = {
     txGas?: string;
     /** Option to set a static gas limit for quote read calls, default is 1 milion */
     quoteGas: bigint;
-    /** Specifies owned order to get funded once their vault goes below the specified threshold */
+    /** Option that specifies owned order to get funded once their vault goes below the specified threshold */
     selfFundOrders?: SelfFundOrder[];
-    /** Specifies the owner limit in form of key/value */
+    /** Option that specifies the owner limit in form of key/value */
     ownerProfile?: Record<string, number>;
-    /** Filters for inc/exc orders, owner and orderbooks */
+    /** Optional filters for inc/exc orders, owner and orderbooks */
     sgFilter?: SgFilter;
-    /** List tracking tokens */
+    /** List of tracking tokens */
     tokens?: TokenDetails[];
 };
 
@@ -461,7 +461,7 @@ export namespace AppOptions {
             assert(
                 Array.isArray(selfFundOrders.value) &&
                     selfFundOrders.value.every((v: any) => typeof v === "string"),
-                "expected array of vault funding details, example: token|vaultId|threshold|topupAmount",
+                "expected array of vault funding details, example: token=vaultId=threshold=topupAmount",
             );
             return selfFundOrders.value.map((v) => {
                 const [
@@ -470,7 +470,7 @@ export namespace AppOptions {
                     threshold = undefined,
                     topupAmount = undefined,
                     ...rest
-                ] = v.split("|");
+                ] = v.split("=");
                 assert(rest.length === 0, `unexpected arguments: ${rest}`);
                 validate({ token, vaultId, topupAmount, threshold });
                 return {

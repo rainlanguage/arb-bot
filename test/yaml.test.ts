@@ -411,7 +411,7 @@ sgFilter:
         const address = `0x${"1".repeat(40)}`;
         // happy
         let input: any = address;
-        let result = AppOptions.resolveAddress(input, "SomeContractName");
+        let result: any = AppOptions.resolveAddress(input, "SomeContractName");
         assert.deepEqual(result, address);
 
         // happy undefined
@@ -662,7 +662,7 @@ sgFilter:
         assert.deepEqual(resultOrders, expectedOrders);
 
         // Happy path using env variable:
-        process.env.SELF_FUND = `${address3}|3|1.5|2.5,${address4}|4|2.0|3.0`;
+        process.env.SELF_FUND = `${address3}=3=1.5=2.5,${address4}=4=2.0=3.0`;
         const envInput = "$SELF_FUND";
         const resultEnv = AppOptions.resolveSelfFundOrders(envInput);
         const expectedEnv = [
@@ -682,7 +682,7 @@ sgFilter:
         assert.deepEqual(resultEnv, expectedEnv);
 
         // Unhappy: Env input with extra arguments
-        process.env.SELF_FUND = `${address1}|5|1.5|2.5|extra`;
+        process.env.SELF_FUND = `${address1}=5=1.5=2.5=extra`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
             /unexpected arguments: extra/,
