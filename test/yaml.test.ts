@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { writeFileSync, unlinkSync } from "fs";
-import { envOrSelf, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
+import { readValue, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
 
 describe("Test yaml AppOptions", async function () {
     it("test AppOptions fromYaml", async function () {
@@ -857,7 +857,7 @@ sgFilter:
 });
 
 describe("Test yaml AppOptions helpers", async function () {
-    it("test envOrSelf", async function () {
+    it("test read value", async function () {
         const inputs = {
             env1: "$ENV_VAR",
             env2: "$OTHER_ENV_VAR",
@@ -869,17 +869,17 @@ describe("Test yaml AppOptions helpers", async function () {
 
         // env override
         process.env.ENV_VAR = "some env var";
-        assert.deepEqual(envOrSelf(inputs.env1), { isEnv: true, value: "some env var" });
+        assert.deepEqual(readValue(inputs.env1), { isEnv: true, value: "some env var" });
         process.env.OTHER_ENV_VAR = "some other env var";
-        assert.deepEqual(envOrSelf(inputs.env2), { isEnv: true, value: "some other env var" });
+        assert.deepEqual(readValue(inputs.env2), { isEnv: true, value: "some other env var" });
 
         // no env
-        assert.deepEqual(envOrSelf(inputs.number), { isEnv: false, value: 123 });
-        assert.deepEqual(envOrSelf(inputs.str), { isEnv: false, value: "something" });
-        assert.deepEqual(envOrSelf(inputs.bool), { isEnv: false, value: true });
+        assert.deepEqual(readValue(inputs.number), { isEnv: false, value: 123 });
+        assert.deepEqual(readValue(inputs.str), { isEnv: false, value: "something" });
+        assert.deepEqual(readValue(inputs.bool), { isEnv: false, value: true });
 
         // undefined
-        assert.deepEqual(envOrSelf(inputs.notDefined), { isEnv: false, value: undefined });
+        assert.deepEqual(readValue(inputs.notDefined), { isEnv: false, value: undefined });
     });
 
     it("test try parse array", async function () {

@@ -237,10 +237,10 @@ export namespace AppOptions {
 
     /** Resolves config's wallet key */
     export function resolveKey(input: any) {
-        const key = envOrSelf(input.key).value;
-        const mnemonic = envOrSelf(input.mnemonic).value;
-        let walletCount = envOrSelf(input.walletCount).value;
-        const topupAmount = envOrSelf(input.topupAmount).value;
+        const key = readValue(input.key).value;
+        const mnemonic = readValue(input.mnemonic).value;
+        let walletCount = readValue(input.walletCount).value;
+        const topupAmount = readValue(input.topupAmount).value;
         if ((!key && !mnemonic) || (key && mnemonic)) {
             throw "only one of key or mnemonic should be specified";
         }
@@ -275,7 +275,7 @@ export namespace AppOptions {
         exception: string,
         isOptional = false as isOptional,
     ): isOptional extends false ? string[] : string[] | undefined {
-        const urls = envOrSelf(input);
+        const urls = readValue(input);
         if (urls.isEnv) {
             urls.value = tryIntoArray(urls.value);
         }
@@ -292,7 +292,7 @@ export namespace AppOptions {
 
     /** Resolves config's list of liquidity providers */
     export function resolveLiquidityProviders(input: any) {
-        const lps = envOrSelf(input);
+        const lps = readValue(input);
         if (lps.isEnv) {
             lps.value = tryIntoArray(lps.value);
         }
@@ -309,7 +309,7 @@ export namespace AppOptions {
 
     /** Resolves config's boolean value */
     export function resolveBool(input: any, exception: string, fallback = false) {
-        const bool = envOrSelf(input);
+        const bool = readValue(input);
         if (typeof bool.value === "undefined") {
             bool.value = fallback.toString();
         }
@@ -332,7 +332,7 @@ export namespace AppOptions {
         addressName: string,
         isOptional = false as isOptional,
     ): isOptional extends false ? string : string | undefined {
-        const address = envOrSelf(input).value;
+        const address = readValue(input).value;
         if (isOptional && address === undefined) return undefined as any;
         assert(
             typeof address === "string" && ethers.utils.isAddress(address),
@@ -357,7 +357,7 @@ export namespace AppOptions {
             ? string
             : number
         : (returnAsString extends true ? string : number) | undefined {
-        const value = envOrSelf(input).value || fallback;
+        const value = readValue(input).value || fallback;
         if (typeof value === "undefined") {
             callback?.(value);
             return undefined as any;
@@ -377,7 +377,7 @@ export namespace AppOptions {
 
     /** Resolves config's route type */
     export function resolveRouteType(input: any) {
-        const route = (envOrSelf(input).value || "single")?.toLowerCase();
+        const route = (readValue(input).value || "single")?.toLowerCase();
         assert(
             typeof route === "string" &&
                 (route === "full" || route === "single" || route === "multi"),
@@ -389,12 +389,12 @@ export namespace AppOptions {
 
     /** Resolves config's owner profiles */
     export function resolveOwnerProfile(input: any) {
-        const ownerProfile = envOrSelf(input);
+        const ownerProfile = readValue(input);
         const profiles: Record<string, number> = {};
         const validate = (owner: string, limit: string) => {
             assert(ethers.utils.isAddress(owner), `Invalid owner address: ${owner}`);
             assert(
-                isBigNumberish(limit) || limit === "max",
+                (isBigNumberish(limit) && BigNumber.from(limit).gte(0)) || limit === "max",
                 "Invalid owner profile limit, must be an integer gte 0 or 'max' for no limit",
             );
             if (limit === "max") {
@@ -440,7 +440,7 @@ export namespace AppOptions {
 
     /** Resolves config's bot self funding orders/vaults */
     export function resolveSelfFundOrders(input: any) {
-        const selfFundOrders = envOrSelf(input);
+        const selfFundOrders = readValue(input);
         const validate = (details: any) => {
             const {
                 token = undefined,
@@ -513,109 +513,44 @@ export namespace AppOptions {
     /** Resolves config's order filters */
     export function resolveSgFilters(input: any) {
         const sgFilter: any = {
-            includeOrders: envOrSelf(input?.includeOrders),
-            excludeOrders: envOrSelf(input?.excludeOrders),
-            includeOwners: envOrSelf(input?.includeOwners),
-            excludeOwners: envOrSelf(input?.excludeOwners),
-            includeOrderbooks: envOrSelf(input?.includeOrderbooks),
-            excludeOrderbooks: envOrSelf(input?.excludeOrderbooks),
+            includeOrders: readValue(input?.includeOrders),
+            excludeOrders: readValue(input?.excludeOrders),
+            includeOwners: readValue(input?.includeOwners),
+            excludeOwners: readValue(input?.excludeOwners),
+            includeOrderbooks: readValue(input?.includeOrderbooks),
+            excludeOrderbooks: readValue(input?.excludeOrderbooks),
         };
-        if (sgFilter.includeOrders.isEnv) {
-            const includeOrders = tryIntoArray(sgFilter.includeOrders.value);
-            if (includeOrders) {
-                sgFilter.includeOrders = new Set(includeOrders.map(validateHash));
+        const validate = (
+            field: string,
+            exceptionMsg: string,
+            validationFn: (value?: unknown) => string,
+        ) => {
+            if (sgFilter[field].isEnv) {
+                const list = tryIntoArray(sgFilter[field].value);
+                if (list) {
+                    sgFilter[field] = new Set(list.map(validationFn));
+                } else {
+                    sgFilter[field] = undefined;
+                }
+            } else if (sgFilter[field].value) {
+                assert(Array.isArray(sgFilter[field].value), exceptionMsg);
+                sgFilter[field] = new Set(sgFilter[field].value.map(validationFn));
             } else {
-                sgFilter.includeOrders = undefined;
+                sgFilter[field] = undefined;
             }
-        } else if (sgFilter.includeOrders.value) {
-            assert(Array.isArray(sgFilter.includeOrders.value), "expected an array of orderhashes");
-            sgFilter.includeOrders = new Set(sgFilter.includeOrders.value.map(validateHash));
-        } else {
-            sgFilter.includeOrders = undefined;
-        }
-        if (sgFilter.excludeOrders.isEnv) {
-            const excludeOrders = tryIntoArray(sgFilter.excludeOrders.value);
-            if (excludeOrders) {
-                sgFilter.excludeOrders = new Set(excludeOrders.map(validateHash));
-            } else {
-                sgFilter.excludeOrders = undefined;
-            }
-        } else if (sgFilter.excludeOrders.value) {
-            assert(Array.isArray(sgFilter.excludeOrders.value), "expected an array of orderhashes");
-            sgFilter.excludeOrders = new Set(sgFilter.excludeOrders.value.map(validateHash));
-        } else {
-            sgFilter.excludeOrders = undefined;
-        }
+        };
 
-        if (sgFilter.includeOwners.isEnv) {
-            const includeOwners = tryIntoArray(sgFilter.includeOwners.value);
-            if (includeOwners) {
-                sgFilter.includeOwners = new Set(includeOwners.map(validateAddress));
-            } else {
-                sgFilter.includeOwners = undefined;
-            }
-        } else if (sgFilter.includeOwners.value) {
-            assert(
-                Array.isArray(sgFilter.includeOwners.value),
-                "expected an array of owner addresses",
-            );
-            sgFilter.includeOwners = new Set(sgFilter.includeOwners.value.map(validateAddress));
-        } else {
-            sgFilter.includeOwners = undefined;
-        }
-        if (sgFilter.excludeOwners.isEnv) {
-            const excludeOwners = tryIntoArray(sgFilter.excludeOwners.value);
-            if (excludeOwners) {
-                sgFilter.excludeOwners = new Set(excludeOwners.map(validateAddress));
-            } else {
-                sgFilter.excludeOwners = undefined;
-            }
-        } else if (sgFilter.excludeOwners.value) {
-            assert(
-                Array.isArray(sgFilter.excludeOwners.value),
-                "expected an array of owner addresses",
-            );
-            sgFilter.excludeOwners = new Set(sgFilter.excludeOwners.value.map(validateAddress));
-        } else {
-            sgFilter.excludeOwners = undefined;
-        }
+        // validate inc/exc orders
+        validate("includeOrders", "expected an array of orderhashes", validateHash);
+        validate("excludeOrders", "expected an array of orderhashes", validateHash);
 
-        if (sgFilter.includeOrderbooks.isEnv) {
-            const includeOrderbooks = tryIntoArray(sgFilter.includeOrderbooks.value);
-            if (includeOrderbooks) {
-                sgFilter.includeOrderbooks = new Set(includeOrderbooks.map(validateAddress));
-            } else {
-                sgFilter.includeOrderbooks = undefined;
-            }
-        } else if (sgFilter.includeOrderbooks.value) {
-            assert(
-                Array.isArray(sgFilter.includeOrderbooks.value),
-                "expected an array of orderbook addresses",
-            );
-            sgFilter.includeOrderbooks = new Set(
-                sgFilter.includeOrderbooks.value.map(validateAddress),
-            );
-        } else {
-            sgFilter.includeOrderbooks = undefined;
-        }
-        if (sgFilter.excludeOrderbooks.isEnv) {
-            const excludeOrderbooks = tryIntoArray(sgFilter.excludeOrderbooks.value);
-            if (excludeOrderbooks) {
-                sgFilter.excludeOrderbooks = new Set(excludeOrderbooks.map(validateAddress));
-            } else {
-                sgFilter.excludeOrderbooks = undefined;
-            }
-        } else if (sgFilter.excludeOrderbooks.value) {
-            assert(
-                Array.isArray(sgFilter.excludeOrderbooks.value),
-                "expected an array of orderbook addresses",
-            );
-            sgFilter.excludeOrderbooks = new Set(
-                sgFilter.excludeOrderbooks.value.map(validateAddress),
-            );
-        } else {
-            sgFilter.excludeOrderbooks = undefined;
-        }
+        // validate inc/exc owners
+        validate("includeOwners", "expected an array of owner addresses", validateAddress);
+        validate("excludeOwners", "expected an array of owner addresses", validateAddress);
+
+        // validate inc/exc orderbooks
+        validate("includeOrderbooks", "expected an array of orderbook addresses", validateAddress);
+        validate("excludeOrderbooks", "expected an array of orderbook addresses", validateAddress);
 
         // include if any of the fields are set
         if (Object.values(sgFilter).some((v) => typeof v !== "undefined")) {
@@ -627,9 +562,10 @@ export namespace AppOptions {
 }
 
 /**
- * Extracts the env value if the given input points to an env variable, else returns unchanged
+ * Reads the env value if the given input points to
+ * an envvariable, else returns the value unchanged
  */
-export function envOrSelf(value: any) {
+export function readValue(value: any) {
     const result = { isEnv: false, value };
     if (typeof value === "string" && value.startsWith("$")) {
         result.isEnv = true;
