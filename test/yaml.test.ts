@@ -656,7 +656,7 @@ sgFilter:
         assert.deepEqual(resultOrders, expectedOrders);
 
         // Happy path using env variable:
-        process.env.SELF_FUND = `${address3}=3=1.5=2.5,${address4}=4=2.0=3.0`;
+        process.env.SELF_FUND = `token=${address3},vaultId=3,threshold=1.5,topupAmount=2.5,token=${address4},vaultId=4,threshold=2.0,topupAmount=3.0`;
         const envInput = "$SELF_FUND";
         const resultEnv = AppOptions.resolveSelfFundOrders(envInput);
         const expectedEnv = [
@@ -675,8 +675,19 @@ sgFilter:
         ];
         assert.deepEqual(resultEnv, expectedEnv);
 
-        // Unhappy: Env input with extra arguments
-        process.env.SELF_FUND = `${address1}=5=1.5=2.5=extra`;
+        // Unhappy: Env input with extra key
+        process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=2.5,extra=123`;
+        assert.throws(
+            () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
+            /unexpected key: extra/,
+        );
+
+        // Unhappy: Env input with undefined value
+        process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=`;
+        assert.throws(() => AppOptions.resolveSelfFundOrders("$SELF_FUND"), /unexpected value: /);
+
+        // Unhappy: Env input with extra argument
+        process.env.SELF_FUND = `token=${address1}=extra,vaultId=5,threshold=1.5,topupAmount=`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
             /unexpected arguments: extra/,

@@ -464,25 +464,30 @@ export namespace AppOptions {
             assert(
                 Array.isArray(selfFundOrders.value) &&
                     selfFundOrders.value.every((v: any) => typeof v === "string"),
-                "expected array of vault funding details, example: token=vaultId=threshold=topupAmount",
+                "expected array of vault funding details in key=value, example: token=0xabc...123,vaultId=0x123...456,threshold=0.5,topupAmount=10",
             );
-            return selfFundOrders.value.map((v) => {
-                const [
-                    token = undefined,
-                    vaultId = undefined,
-                    threshold = undefined,
-                    topupAmount = undefined,
-                    ...rest
-                ] = v.split("=");
-                assert(rest.length === 0, `unexpected arguments: ${rest}`);
-                validate({ token, vaultId, topupAmount, threshold });
-                return {
-                    token: token!.toLowerCase(),
-                    vaultId,
-                    threshold,
-                    topupAmount,
-                };
-            }) as SelfFundOrder[];
+            let index = 0;
+            const result: SelfFundOrder[] = [];
+            const keys = ["token", "vaultId", "threshold", "topupAmount"];
+            while (selfFundOrders.value.length - index > 0) {
+                index += 4;
+                const kvs = selfFundOrders.value.slice(index - 4, index).map((v) => {
+                    const [key = undefined, value = undefined, ...rest] = v.split("=");
+                    assert(typeof key === "string" && keys.includes(key), `unexpected key: ${key}`);
+                    assert(typeof value === "string" && value, `unexpected value: ${key}`);
+                    assert(rest.length === 0, `unexpected arguments: ${rest}`);
+                    return { [key]: value };
+                });
+                const details = {
+                    ...kvs[0],
+                    ...kvs[1],
+                    ...kvs[2],
+                    ...kvs[3],
+                } as SelfFundOrder;
+                validate(details);
+                result.push(details);
+            }
+            return result;
         } else if (input) {
             assert(
                 Array.isArray(input) &&
