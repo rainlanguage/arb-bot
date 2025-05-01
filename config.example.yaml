@@ -12,18 +12,18 @@ topupAmount: 0.5
 
 # List of rpc urls, required
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
-rpc: 
+rpc:
   - https://rpc-url1.com
   - https://rpc-url2.com
 
 # Optional list of write rpc urls for write transactions
 # for specifying more than 1 RPC in the env, separate them by a comma and a space
-writeRpc: 
+writeRpc:
   - https://write-rpc-url1.com
   - https://write-rpc-url2.com
 
 # List of subgraph urls, required
-# for more than 1 subgraphs, seperate them by comma and a space
+# for more than 1 subgraphs, separate them by comma and a space
 subgraph:
   - https://subgraph-url1.com
   - https://subgraph-url2.com
@@ -37,7 +37,7 @@ genericArbAddress: "0x1234...5678"
 # Dispair contract address, required
 dispair: "0x1234...5678"
 
-# list of liquidity providers names seperated by a comma for each, default encludes all available liquidity providers
+# list of liquidity providers names seperated by a comma for each, default includes all available liquidity providers
 liquidityProviders:
   - sushiswapv2
   - uniswapv3
@@ -58,7 +58,7 @@ gasCoveragePercentage: 250
 # Option to set a gas limit for all submitting txs optionally with appended percentage sign to apply as percentage to original gas
 txGas: 110%
 
-# Option to set a static gas limit for quote read calls, default is 1 milion
+# Option to set a static gas limit for quote read calls, default is 1 million
 quoteGas: 1000000
 
 # Minimum bot's wallet gas token balance required for operating, required option

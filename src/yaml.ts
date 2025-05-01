@@ -24,7 +24,7 @@ export type AppOptions = {
     walletCount?: number;
     /** Topup amount for excess accounts, required only when mnemonic option is used */
     topupAmount?: string;
-    /** List fo rpc urls */
+    /** List of rpc urls */
     rpc: string[];
     /** List of write rpc urls used explicitly for write transactions */
     writeRpc?: string[];
@@ -64,7 +64,7 @@ export type AppOptions = {
     gasLimitMultiplier: number;
     /** Option to set a gas limit for all submitting txs optionally with appended percentage sign to apply as percentage to original gas */
     txGas?: string;
-    /** Option to set a static gas limit for quote read calls, default is 1 milion */
+    /** Option to set a static gas limit for quote read calls, default is 1 million */
     quoteGas: bigint;
     /** Option that specifies owned order to get funded once their vault goes below the specified threshold */
     selfFundOrders?: SelfFundOrder[];
@@ -102,10 +102,13 @@ export namespace AppOptions {
                 input.rpc,
                 "expected array of rpc urls with at least 1 url",
             ),
-            writeRpc: AppOptions.resolveUrls(
-                input.writeRpc,
-                "expected array of rpc urls with at least 1 url",
-            ),
+            writeRpc:
+                input.writeRpc === undefined
+                    ? undefined
+                    : AppOptions.resolveUrls(
+                          input.writeRpc,
+                          "expected array of rpc urls with at least 1 url",
+                      ),
             subgraph: AppOptions.resolveUrls(
                 input.subgraph,
                 "expected array of subgraph urls with at least 1 url",
