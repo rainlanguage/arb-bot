@@ -298,8 +298,8 @@ export const main = async (argv: any, version?: string) => {
                 "meta.configurations": JSON.stringify(
                     {
                         ...options,
-                        key: "***",
-                        mnemonic: "***",
+                        key: options.key ? "***" : "N/A",
+                        mnemonic: options.mnemonic ? "***" : "N/A",
                     },
                     withBigintSerializer,
                 ),
