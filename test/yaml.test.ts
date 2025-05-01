@@ -880,6 +880,9 @@ describe("Test yaml AppOptions helpers", async function () {
 
         // undefined
         assert.deepEqual(readValue(inputs.notDefined), { isEnv: false, value: undefined });
+
+        // undefined env
+        assert.deepEqual(readValue("$UNDEFINED_ENV"), { isEnv: true, value: undefined });
     });
 
     it("test try parse array", async function () {
