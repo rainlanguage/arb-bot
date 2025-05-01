@@ -11,19 +11,19 @@ walletCount: 5
 topupAmount: 0.5
 
 # List of rpc urls, required
-# for specifying more than 1 RPC in the env, separate them by a comma and a space
+# for specifying more than 1 RPC in the env, separate them by a comma
 rpc:
   - https://rpc-url1.com
   - https://rpc-url2.com
 
 # Optional list of write rpc urls for write transactions
-# for specifying more than 1 RPC in the env, separate them by a comma and a space
+# for specifying more than 1 RPC in the env, separate them by a comma
 writeRpc:
   - https://write-rpc-url1.com
   - https://write-rpc-url2.com
 
 # List of subgraph urls, required
-# for more than 1 subgraphs, separate them by comma and a space
+# for specifying more than 1 subgraph URL in the env, separate them by a comma
 subgraph:
   - https://subgraph-url1.com
   - https://subgraph-url2.com
@@ -37,7 +37,7 @@ genericArbAddress: "0x1234...5678"
 # Dispair contract address, required
 dispair: "0x1234...5678"
 
-# list of liquidity providers 
+# list of liquidity providers
 # if provided through an env var, they should be separated by a comma
 # default includes all available liquidity providers
 liquidityProviders:
@@ -45,7 +45,7 @@ liquidityProviders:
   - uniswapv3
   - quickswapv3
 
-# Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
+# Specifies the routing mode 'multi' or 'single' or 'full', default is single
 route: single
 
 # Seconds to wait between each arb round, default is 10
@@ -78,7 +78,7 @@ timeout: 15
 # number of hops of binary search, if left unspecified will be 1 by default
 hops: 1
 
-# The amount of retries for the same order, max is 3, default is 1
+# The amount of retries for the same order, maximum allowed 3, minimum allowed 1, default is 1
 retries: 1
 
 # Option to maximize maxIORatio, default true
@@ -93,14 +93,13 @@ ownerProfile:
   - "0x1234...5678": 100
   - "0x1234...7890": max
 
-# Option that specifies owned order to get funded once their vault goes below the specified threshold
+# Optional list of orders to self-fund when vault balance falls below specified threshold
 # example for env: token=vaultId=threshold=topupAmount,token=vaultId=threshold=topupAmount,...
 selfFundOrders:
   - token: "0x1234...5678"
     vaultId: "0x1234...7890"
     topupAmount: 0.5
     threshold: 0.02
-
   - token: "0xabcd...1234"
     vaultId: 123456789
     topupAmount: 80

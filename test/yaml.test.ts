@@ -2,8 +2,8 @@ import { assert } from "chai";
 import { writeFileSync, unlinkSync } from "fs";
 import { envOrSelf, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
 
-describe("Test yaml config", async function () {
-    it("test config fromYaml", async function () {
+describe("Test yaml AppOptions", async function () {
+    it("test AppOptions fromYaml", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_MNEMONIC = "test mnemonic key";
         process.env.MY_RPC = "http://rpc1.example.com,http://rpc2.example.com";
@@ -116,14 +116,14 @@ sgFilter:
             },
         };
 
-        // config returned from fromYaml() should match expected
+        // AppOptions returned from fromYaml() should match expected
         assert.deepEqual(result, expected);
 
         // cleanup the temporary file
         unlinkSync(path);
     });
 
-    it("test config init", async function () {
+    it("test AppOptions tryFrom", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_KEY = "0x" + "a".repeat(64);
         process.env.MY_RPC = "http://rpc1.example.com,http://rpc2.example.com";
@@ -177,7 +177,7 @@ sgFilter:
                 includeOwners: ["0x9999999999999999999999999999999999999999"],
             },
         };
-        const result = AppOptions.init(input);
+        const result = AppOptions.tryFrom(input);
 
         // Assertions for the env-provided fields:
         assert.deepEqual(result.key, process.env.MY_KEY);
@@ -260,7 +260,7 @@ sgFilter:
         assert.deepEqual(result.sgFilter!.includeOwners, expectedSgFilter.includeOwners);
     });
 
-    it("test config resolveKey", async function () {
+    it("test AppOptions resolveKey", async function () {
         const validKey = "0x" + "1".repeat(64);
         const validMnemonic = "test mnemonic phrase";
 
@@ -325,7 +325,7 @@ sgFilter:
         assert.throws(() => AppOptions.resolveKey(input), "invalid wallet private key");
     });
 
-    it("test config resolveUrls", async function () {
+    it("test AppOptions resolveUrls", async function () {
         // happy
         // from obj
         let input: any = ["url1", "url2", "url3"];
@@ -348,7 +348,7 @@ sgFilter:
         assert.throws(() => AppOptions.resolveUrls(input, "unexpected error"), "unexpected error");
     });
 
-    it("test config resolveLiquidityProviders", async function () {
+    it("test AppOptions resolveLiquidityProviders", async function () {
         // happy
         let input: any = ["lp1", "lp2", "lp3"];
         let result = AppOptions.resolveLiquidityProviders(input);
@@ -368,7 +368,7 @@ sgFilter:
         );
     });
 
-    it("test config resolveBool", async function () {
+    it("test AppOptions resolveBool", async function () {
         // happy
         let input: any = true;
         let result = AppOptions.resolveBool(input, "unexpected error");
@@ -401,7 +401,7 @@ sgFilter:
         assert.equal(result, false);
     });
 
-    it("test config resolveAddress", async function () {
+    it("test AppOptions resolveAddress", async function () {
         const address = `0x${"1".repeat(40)}`;
         // happy
         let input: any = address;
@@ -441,7 +441,7 @@ sgFilter:
         );
     });
 
-    it("test config resolveNumericValue", async function () {
+    it("test AppOptions resolveNumericValue", async function () {
         // happy case: valid integer string, returns number by default
         const intVal = AppOptions.resolveNumericValue("123", /^[0-9]+$/, "invalid int");
         assert.strictEqual(intVal, 123);
@@ -522,7 +522,7 @@ sgFilter:
         );
     });
 
-    it("test config resolveRouteType", async function () {
+    it("test AppOptions resolveRouteType", async function () {
         // happy
         let input: any = "full";
         let result = AppOptions.resolveRouteType(input);
@@ -567,7 +567,7 @@ sgFilter:
             "expected either of full, single or multi",
         );
     });
-    it("test config resolveOwnerProfile", async function () {
+    it("test AppOptions resolveOwnerProfile", async function () {
         const address1 = `0x${"1".repeat(40)}`;
         const address2 = `0x${"2".repeat(40)}`;
         const address3 = `0x${"3".repeat(40)}`;
@@ -618,7 +618,7 @@ sgFilter:
         );
     });
 
-    it("test config resolveSelfFundOrders", async function () {
+    it("test AppOptions resolveSelfFundOrders", async function () {
         const address1 = `0x${"1".repeat(40)}`;
         const address2 = `0x${"2".repeat(40)}`;
         const address3 = `0x${"3".repeat(40)}`;
@@ -706,7 +706,7 @@ sgFilter:
         assert.throws(() => AppOptions.resolveSelfFundOrders(badInput2), /invalid token address/);
     });
 
-    it("test config resolveSgFilters", async function () {
+    it("test AppOptions resolveSgFilters", async function () {
         // --- Direct object input ---
         const orderHash1 = "0x" + "a".repeat(64);
         const orderHash2 = "0x" + "b".repeat(64);
@@ -822,7 +822,7 @@ sgFilter:
     });
 });
 
-describe("Test yaml config helpers", async function () {
+describe("Test yaml AppOptions helpers", async function () {
     it("test envOrSelf", async function () {
         const inputs = {
             env1: "$ENV_VAR",

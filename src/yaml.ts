@@ -50,7 +50,7 @@ export type AppOptions = {
     timeout: number;
     /** Number of hops of binary search, if left unspecified will be 1 by default */
     hops: number;
-    /** The amount of retries for the same order, max is 3, default is 1 */
+    /** The amount of retries for the same order, maximum allowed 3, minimum allowed 1, default is 1 */
     retries: number;
     /** Option to specify time (in minutes) between pools data resets, default is 0 minutes */
     poolUpdateInterval: number;
@@ -66,7 +66,7 @@ export type AppOptions = {
     txGas?: string;
     /** Option to set a static gas limit for quote read calls, default is 1 million */
     quoteGas: bigint;
-    /** Option that specifies owned order to get funded once their vault goes below the specified threshold */
+    /** Optional list of orders to self-fund when vault balance falls below specified threshold */
     selfFundOrders?: SelfFundOrder[];
     /** Option that specifies the owner limit in form of key/value */
     ownerProfile?: Record<string, number>;
@@ -88,14 +88,14 @@ export namespace AppOptions {
             // parse any number as string for unified validations
             reviver: (_k, v) => (typeof v === "number" || typeof v === "bigint" ? v.toString() : v),
         });
-        return AppOptions.init(obj);
+        return AppOptions.tryFrom(obj);
     }
 
     /**
      * Instantiates and validates configurations details from the give input
      * @param input - The configuration object
      */
-    export function init(input: any): AppOptions {
+    export function tryFrom(input: any): AppOptions {
         return {
             ...AppOptions.resolveKey(input),
             rpc: AppOptions.resolveUrls(
@@ -630,7 +630,7 @@ export function envOrSelf(value: any) {
 }
 
 /**
- * Tries to parse the given string into an array of strings where items are separated y a comma
+ * Tries to parse the given string into an array of strings where items are separated by a comma
  */
 export function tryIntoArray(value?: string): string[] | undefined {
     return value ? Array.from(value.matchAll(/[^,\s]+/g)).map((v) => v[0]) : undefined;
