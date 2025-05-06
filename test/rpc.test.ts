@@ -350,7 +350,7 @@ describe("Test RpcProgress", async function () {
         const result = new RpcProgress();
         assert.deepEqual(result.buffer, []);
         assert.equal(result.success, 0);
-        assert.equal(result.successRate, 10000);
+        assert.equal(result.successRate, 5000);
 
         result.recordRequest();
         assert.deepEqual(result.buffer, Array(1).fill(RpcBufferType.Failure));
@@ -368,7 +368,7 @@ describe("Test RpcProgress", async function () {
         const result1 = new RpcProgress();
         assert.deepEqual(result1.buffer, []);
         assert.equal(result1.success, 0);
-        assert.equal(result1.selectionRate, 10000);
+        assert.equal(result1.selectionRate, 5000);
 
         result1.recordRequest();
         assert.deepEqual(result1.buffer, [RpcBufferType.Failure]);
@@ -387,7 +387,7 @@ describe("Test RpcProgress", async function () {
         });
         assert.deepEqual(result2.buffer, []);
         assert.equal(result2.success, 0);
-        assert.equal(result2.selectionRate, 25000);
+        assert.equal(result2.selectionRate, 12500);
 
         result2.recordRequest();
         assert.deepEqual(result2.buffer, [RpcBufferType.Failure]);

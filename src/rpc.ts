@@ -214,7 +214,8 @@ export class RpcProgress {
 
     /** Current success rate in 2 fixed decimals points percentage */
     get successRate() {
-        if (this.buffer.length === 0) return 10_000;
+        // at start when no previous record is available, we start from 50%
+        if (this.buffer.length === 0) return 5_000;
         return Math.ceil((this.success / this.buffer.length) * 10_000);
     }
 
