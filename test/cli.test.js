@@ -585,7 +585,7 @@ describe("Test cli", async function () {
     it("test getRpcConfig unhappy", async function () {
         assert.throws(() => getRpcConfig(["abcd=2"]), "unknown key/value: abcd=2");
         assert.throws(() => getRpcConfig(["weight=2"]), "expected at least one rpc url");
-        assert.throws(() => getRpcConfig(["url="]), "invalid url: ");
+        assert.throws(() => getRpcConfig(["url="]), "expected value after url=");
         assert.throws(
             () => getRpcConfig(["url=https://example.com", "weight=abcd"]),
             'invalid rpc weight: "abcd", expected a number greater than equal to 0',

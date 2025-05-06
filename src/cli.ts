@@ -1052,10 +1052,10 @@ export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
         }
 
         const [key, value, ...rest] = cliRpcArgs[i].split("=");
+        assert(value, `expected value after ${key}=`);
         assert(rest.length === 0, `unexpected arguments: ${rest}`);
 
         if (key === "url") {
-            assert(value, `invalid url: ${value}`);
             if (Object.keys(result[result.length - 1]).includes("url")) {
                 result.push({
                     url: value,
