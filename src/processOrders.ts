@@ -279,7 +279,6 @@ export const processOrders = async (
                         message = errorSnapshot(message, e.error);
                         span.recordException(e.error);
                     }
-                    span.setAttribute("severity", ErrorSeverity.MEDIUM);
                     span.setStatus({ code: SpanStatusCode.ERROR, message });
                 } else if (e.reason === ProcessPairHaltReason.TxFailed) {
                     // failed to submit the tx to mempool, this can happen for example when rpc rejects
@@ -484,11 +483,13 @@ export async function processPair(args: {
         }
         await dataFetcher.updatePools(dataFetcherBlockNumber);
     } catch (e) {
-        result.reason = ProcessPairHaltReason.FailedToUpdatePools;
-        result.error = e;
-        return async () => {
-            throw result;
-        };
+        if (typeof e !== "string" || !e.includes("fetchPoolsForToken")) {
+            result.reason = ProcessPairHaltReason.FailedToUpdatePools;
+            result.error = e;
+            return async () => {
+                throw result;
+            };
+        }
     }
 
     // get pool details
