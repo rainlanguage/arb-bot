@@ -87,7 +87,7 @@ node arb-bot <OPTIONS>
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
-- `-r` or `--rpc`, RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each seperated by semi, example: example: https://example.com;{weight};{trackSize} . Will override the 'RPC_URL' in env variables
+- `-r` or `--rpc`, List of RPC url(s) for interacting with evm, optionally with selection weight and track size seperated by comma in form of key=value, example: url=https://rpc1.com,weight=0.5,trackSize=100 . Will override the 'RPC_URL' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables

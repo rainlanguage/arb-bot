@@ -1,3 +1,4 @@
+import assert from "assert";
 import { config } from "dotenv";
 import { isAddress } from "viem";
 import { RpcConfig } from "./rpc";
@@ -105,7 +106,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-r, --rpc <url...>",
-            "RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each seperated by semi, example: https://example.com;{weight};{trackSize} . Will override the 'RPC_URL' in env variables",
+            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size seperated by comma in form of key=value, example: url=https://rpc1.com,weight=0.5,trackSize=100 . Will override the 'RPC_URL' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
@@ -246,7 +247,7 @@ const getOptions = async (argv: any, version?: string) => {
     // assigning specified options from cli/env
     cmdOptions.key = cmdOptions.key || getEnv(ENV_OPTIONS.key);
     cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
-    cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
+    cmdOptions.rpc = cmdOptions.rpc?.map(parseArrayFromEnv)?.flat() || getEnv(ENV_OPTIONS.rpc);
     cmdOptions.writeRpc = cmdOptions.writeRpc || getEnv(ENV_OPTIONS.writeRpc);
     cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
     cmdOptions.genericArbAddress =
@@ -1035,39 +1036,62 @@ function getEnv(value: any): any {
  * Parses the cli rpc arguments to an array of RpcConfig
  */
 export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
-    return cliRpcArgs.map((v: string) => {
-        const [url, weight = undefined, track = undefined, ...rest] = v.split(";");
-        if (!url) {
-            throw "invalid rpc url: " + url;
-        }
-        if (rest.length) {
-            throw "invalid rpc argument: " + v;
-        }
-        const selectionWeight = (() => {
-            if (weight) {
-                const result = parseFloat(weight);
-                if (isNaN(result)) {
-                    throw `invalid rpc weight: "${weight}", expected a number greater than equal to 0`;
-                }
-                return result;
-            }
-        })();
-        const trackSize = (() => {
-            if (track) {
-                const result = parseInt(track);
-                if (isNaN(result)) {
-                    throw `invalid track size: "${track}", expected an integer greater than equal to 0`;
-                }
-                return result;
-            }
-        })();
+    const result: RpcConfig[] = [];
+    for (let i = 0; i < cliRpcArgs.length; i++) {
+        // should contain known key/value
+        assert(
+            cliRpcArgs[i].startsWith("url=") ||
+                cliRpcArgs[i].startsWith("trackSize=") ||
+                cliRpcArgs[i].startsWith("weight="),
+            `unknown key/value: ${cliRpcArgs[i]}`,
+        );
 
-        return {
-            url,
-            trackSize,
-            selectionWeight,
-        };
-    });
+        // insert the first one as empty to be filled
+        if (!result.length) {
+            result.push({} as any);
+        }
+
+        const [key, value, ...rest] = cliRpcArgs[i].split("=");
+        assert(rest.length === 0, `unexpected arguments: ${rest}`);
+
+        if (key === "url") {
+            assert(value, `invalid url: ${value}`);
+            if (Object.keys(result[result.length - 1]).includes("url")) {
+                result.push({
+                    url: value,
+                });
+            } else {
+                result[result.length - 1].url = value;
+            }
+        }
+        if (key === "weight") {
+            assert(!("selectionWeight" in result[result.length - 1]), "duplicate weight option");
+            result[result.length - 1].selectionWeight = (() => {
+                if (value) {
+                    const result = parseFloat(value);
+                    if (isNaN(result)) {
+                        throw `invalid rpc weight: "${value}", expected a number greater than equal to 0`;
+                    }
+                    return result;
+                }
+            })();
+        }
+        if (key === "trackSize") {
+            assert(!("trackSize" in result[result.length - 1]), "duplicate trackSize option");
+            result[result.length - 1].trackSize = (() => {
+                if (value) {
+                    const result = parseInt(value);
+                    if (isNaN(result)) {
+                        throw `invalid track size: "${value}", expected an integer greater than equal to 0`;
+                    }
+                    return result;
+                }
+            })();
+        }
+    }
+    assert(result[0].url, "expected at least one rpc url");
+
+    return result;
 }
 
 export function parseArrayFromEnv(value?: string): string[] | undefined {

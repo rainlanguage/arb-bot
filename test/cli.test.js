@@ -111,7 +111,7 @@ describe("Test cli", async function () {
         }
 
         try {
-            await startup(["", "", "--key", `0x${"0".repeat(64)}`, "--rpc", "some-rpc"]);
+            await startup(["", "", "--key", `0x${"0".repeat(64)}`, "--rpc", "url=some-rpc"]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
             const expected = "undefined arb contract address";
@@ -125,7 +125,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
+                "url=some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
                 "--sleep",
@@ -144,7 +144,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
+                "url=some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
                 "--pool-update-interval",
@@ -164,7 +164,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
+                "url=some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
                 "--pool-update-interval",
@@ -184,7 +184,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"0".repeat(64)}`,
                 "--rpc",
-                "some-rpc",
+                "url=some-rpc",
                 "--arb-address",
                 `0x${"0".repeat(64)}`,
                 "--pool-update-interval",
@@ -205,7 +205,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://polygon.drpc.org",
+                "url=https://polygon.drpc.org",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -228,7 +228,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -254,7 +254,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -280,7 +280,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -306,7 +306,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -332,7 +332,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -358,7 +358,7 @@ describe("Test cli", async function () {
                 "--key",
                 `0x${"1".repeat(64)}`,
                 "--rpc",
-                "https://rpc.ankr.com/polygon",
+                "url=https://rpc.ankr.com/polygon",
                 "--arb-address",
                 `0x${"1".repeat(40)}`,
                 "--pool-update-interval",
@@ -383,7 +383,7 @@ describe("Test cli", async function () {
             "--key",
             "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
             "--rpc",
-            "https://polygon.drpc.org",
+            "url=https://polygon.drpc.org",
             "--arb-address",
             `0x${"1".repeat(40)}`,
             "--bot-min-balance",
@@ -550,17 +550,19 @@ describe("Test cli", async function () {
 
     it("test getRpcConfig happy", async function () {
         const inputs = [
-            "https://example1.com",
-            "https://example2.com;2.5;50",
-            "wss://example3.com;1.5",
-            "https://example4.com;;200",
+            "url=https://example1.com",
+            "url=https://example2.com",
+            "weight=2.5",
+            "trackSize=50",
+            "url=wss://example3.com",
+            "weight=1.5",
+            "url=https://example4.com",
+            "trackSize=200",
         ];
         const result = getRpcConfig(inputs);
         const expected = [
             {
                 url: "https://example1.com",
-                trackSize: undefined,
-                selectionWeight: undefined,
             },
             {
                 url: "https://example2.com",
@@ -569,13 +571,11 @@ describe("Test cli", async function () {
             },
             {
                 url: "wss://example3.com",
-                trackSize: undefined,
                 selectionWeight: 1.5,
             },
             {
                 url: "https://example4.com",
                 trackSize: 200,
-                selectionWeight: undefined,
             },
         ];
 
@@ -583,18 +583,25 @@ describe("Test cli", async function () {
     });
 
     it("test getRpcConfig unhappy", async function () {
-        assert.throws(() => getRpcConfig([";50;120"]), "invalid rpc url: ");
+        assert.throws(() => getRpcConfig(["abcd=2"]), "unknown key/value: abcd=2");
+        assert.throws(() => getRpcConfig(["weight=2"]), "expected at least one rpc url");
+        assert.throws(() => getRpcConfig(["url="]), "invalid url: ");
         assert.throws(
-            () => getRpcConfig(["https://example.com;abcd"]),
+            () => getRpcConfig(["url=https://example.com", "weight=abcd"]),
             'invalid rpc weight: "abcd", expected a number greater than equal to 0',
         );
         assert.throws(
-            () => getRpcConfig(["https://example.com;50;abcd"]),
+            () => getRpcConfig(["url=https://example.com", "trackSize=abcd"]),
             'invalid track size: "abcd", expected an integer greater than equal to 0',
         );
         assert.throws(
-            () => getRpcConfig(["https://example.com;50;120;something-else"]),
-            "invalid rpc argument: https://example.com;50;120;something-else",
+            () => getRpcConfig(["url=https://example.com=something-else"]),
+            "unexpected arguments: something-else",
+        );
+        assert.throws(() => getRpcConfig(["weight=3", "weight=2"]), "duplicate weight option");
+        assert.throws(
+            () => getRpcConfig(["trackSize=3", "trackSize=2"]),
+            "duplicate trackSize option",
         );
     });
 });
