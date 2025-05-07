@@ -78,7 +78,7 @@ export class RpcState {
     }): Promise<Transport> {
         // rpcs selection rate, each rate determines the probability of selecting that
         // rpc which is just a percentage of that rpc's latest success rate in 2 fixed
-        // point decimalss relative to other rpcs sucess rates, so the bigger the rate,
+        // point decimals relative to other rpcs sucess rates, so the bigger the rate,
         // the higher chance of being selected
         const rates = this.urls.map((url) => this.metrics[url].progress.selectionRate);
         return await promiseTimeout(
