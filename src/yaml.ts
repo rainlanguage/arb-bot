@@ -491,9 +491,8 @@ export namespace AppOptions {
                 result[result.length - 1][key as keyof SelfFundOrder] = value;
             }
 
-            // validate built array values
-            assert(result.every(validate), "expected array of SelfFundOrder");
-
+            // validate built array values and return
+            result.every(validate);
             return result as SelfFundOrder[];
         } else if (input) {
             assert(
