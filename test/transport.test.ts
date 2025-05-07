@@ -78,7 +78,7 @@ describe("Test transport", async function () {
         await mockServer2.stop();
     });
 
-    it("tes RainSolver transport unhappy", async function () {
+    it("test RainSolver transport unhappy", async function () {
         // setup 2 rpc mock servers
         const mockServer1 = getLocal();
         const mockServer2 = getLocal();

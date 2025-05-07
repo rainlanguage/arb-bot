@@ -337,12 +337,12 @@ describe("Test RpcProgress", async function () {
         });
 
         for (let i = 0; i < 30; i++) {
-            const expectedSuccesss = Math.min(i + 1, 20);
+            const expectedSuccess = Math.min(i + 1, 20);
             const expectedStack = Array(Math.min(i + 1, 20)).fill(RpcBufferType.Success);
             result.recordRequest();
             result.recordSuccess();
             assert.deepEqual(result.buffer, expectedStack);
-            assert.equal(result.success, expectedSuccesss);
+            assert.equal(result.success, expectedSuccess);
         }
     });
 

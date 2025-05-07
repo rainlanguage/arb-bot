@@ -106,7 +106,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-r, --rpc <url...>",
-            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size seperated by comma in form of key=value, example: url=https://rpc1.com,weight=0.5,trackSize=100 . Will override the 'RPC_URL' in env variables",
+            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size seperated by comma in form of key=value, example: `url=https://rpc1.com,weight=0.5,trackSize=100` . Will override the 'RPC_URL' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
