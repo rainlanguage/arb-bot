@@ -187,9 +187,8 @@ BOT_WALLET_PRIVATEKEY="123..."
 # mnemonic phrase
 MNEMONIC=""
 
-# RPC url(s) for interacting with evm, optionally append selection weight and/or track size for each separated by semi
-# example: https://example.com;{weight};{trackSize}
-# for specifying more than 1 RPC in the env, separate them by a comma and a space
+# List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value
+# example: url=https://rpc1.com,weight=0.5,trackSize=100
 RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY};2.5, https://drpc.com;1.5;85"
 
 # Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
