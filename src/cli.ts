@@ -969,7 +969,6 @@ export const main = async (argv: any, version?: string) => {
                         "success-count": record.success,
                         "failure-count": record.failure,
                         "timeout-count": record.timeout,
-                        "request-intervals": record.requestIntervals,
                         "avg-request-interval": record.avgRequestIntervals,
                     });
                     record.reset();
