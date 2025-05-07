@@ -265,7 +265,7 @@ sgFilter:
 
         // happy path: using key only
         let input: any = { key: validKey };
-        let result = AppOptions.resolveKey(input);
+        let result = AppOptions.resolveWalletKey(input);
         assert.deepEqual(result, {
             key: validKey,
             mnemonic: undefined,
@@ -275,7 +275,7 @@ sgFilter:
 
         // happy path: using mnemonic with walletCount and topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3", topupAmount: "0.5" };
-        result = AppOptions.resolveKey(input);
+        result = AppOptions.resolveWalletKey(input);
         assert.deepEqual(result, {
             key: undefined,
             mnemonic: validMnemonic,
@@ -286,42 +286,42 @@ sgFilter:
         // unhappy: neither key nor mnemonic provided
         input = {};
         assert.throws(
-            () => AppOptions.resolveKey(input),
+            () => AppOptions.resolveWalletKey(input),
             "only one of key or mnemonic should be specified",
         );
 
         // unhappy: both key and mnemonic provided
         input = { key: validKey, mnemonic: validMnemonic, walletCount: "3", topupAmount: "0.5" };
         assert.throws(
-            () => AppOptions.resolveKey(input),
+            () => AppOptions.resolveWalletKey(input),
             "only one of key or mnemonic should be specified",
         );
 
         // unhappy: mnemonic provided but missing walletCount or topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3" };
         assert.throws(
-            () => AppOptions.resolveKey(input),
+            () => AppOptions.resolveWalletKey(input),
             "walletCount and topupAmount are required when using mnemonic key",
         );
 
         // unhappy: invalid walletCount
         input = { mnemonic: validMnemonic, walletCount: "invalid", topupAmount: "0.5" };
         assert.throws(
-            () => AppOptions.resolveKey(input),
+            () => AppOptions.resolveWalletKey(input),
             "invalid walletCount, it should be an integer greater than equal to 0",
         );
 
         // unhappy: invalid topupAmount
         input = { mnemonic: validMnemonic, walletCount: "3", topupAmount: "invalid" };
         assert.throws(
-            () => AppOptions.resolveKey(input),
+            () => AppOptions.resolveWalletKey(input),
             "invalid topupAmount, it should be a number greater than equal to 0",
         );
 
         // unhappy: key provided but invalid wallet private key
         const invalidKey = "invalidKey";
         input = { key: invalidKey };
-        assert.throws(() => AppOptions.resolveKey(input), "invalid wallet private key");
+        assert.throws(() => AppOptions.resolveWalletKey(input), "invalid wallet private key");
     });
 
     it("test AppOptions resolveUrls", async function () {

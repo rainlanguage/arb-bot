@@ -1,8 +1,8 @@
 import assert from "assert";
 import { parse } from "yaml";
+import { ethers } from "ethers";
 import { readFileSync } from "fs";
 import { isBigNumberish } from "./utils";
-import { BigNumber, ethers } from "ethers";
 import { SelfFundOrder, SgFilter } from "./types";
 
 /** Integer pattern */
@@ -95,7 +95,7 @@ export namespace AppOptions {
      */
     export function tryFrom(input: any): AppOptions {
         return {
-            ...AppOptions.resolveKey(input),
+            ...AppOptions.resolveWalletKey(input),
             rpc: AppOptions.resolveUrls(
                 input.rpc,
                 "expected array of rpc urls with at least 1 url",
@@ -236,7 +236,7 @@ export namespace AppOptions {
     }
 
     /** Resolves config's wallet key */
-    export function resolveKey(input: any) {
+    export function resolveWalletKey(input: any) {
         const key = readValue(input.key).value;
         const mnemonic = readValue(input.mnemonic).value;
         let walletCount = readValue(input.walletCount).value;
@@ -394,16 +394,13 @@ export namespace AppOptions {
         const validate = (owner: string, limit: string) => {
             assert(ethers.utils.isAddress(owner), `Invalid owner address: ${owner}`);
             assert(
-                (isBigNumberish(limit) && BigNumber.from(limit).gte(0)) || limit === "max",
+                (INT_PATTERN.test(limit) && Number(limit) > 0) || limit === "max",
                 "Invalid owner profile limit, must be an integer gte 0 or 'max' for no limit",
             );
             if (limit === "max") {
                 profiles[owner.toLowerCase()] = Number.MAX_SAFE_INTEGER;
             } else {
-                const limitBN = BigNumber.from(limit);
-                profiles[owner.toLowerCase()] = limitBN.gte(Number.MAX_SAFE_INTEGER.toString())
-                    ? Number.MAX_SAFE_INTEGER
-                    : limitBN.toNumber();
+                profiles[owner.toLowerCase()] = Math.min(Number(limit), Number.MAX_SAFE_INTEGER);
             }
         };
         if (ownerProfile.isEnv) {
@@ -435,7 +432,7 @@ export namespace AppOptions {
                 });
             });
         }
-        return profiles;
+        return Object.keys(profiles).length ? profiles : undefined;
     }
 
     /** Resolves config's bot self funding orders/vaults */
@@ -520,18 +517,18 @@ export namespace AppOptions {
         const validate = (
             field: string,
             exceptionMsg: string,
-            validationFn: (value?: unknown) => string,
+            validator: (value?: unknown) => string,
         ) => {
             if (sgFilter[field].isEnv) {
                 const list = tryIntoArray(sgFilter[field].value);
                 if (list) {
-                    sgFilter[field] = new Set(list.map(validationFn));
+                    sgFilter[field] = new Set(list.map(validator));
                 } else {
                     sgFilter[field] = undefined;
                 }
             } else if (sgFilter[field].value) {
                 assert(Array.isArray(sgFilter[field].value), exceptionMsg);
-                sgFilter[field] = new Set(sgFilter[field].value.map(validationFn));
+                sgFilter[field] = new Set(sgFilter[field].value.map(validator));
             } else {
                 sgFilter[field] = undefined;
             }
