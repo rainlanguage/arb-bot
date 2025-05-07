@@ -458,6 +458,7 @@ export namespace AppOptions {
                 topupAmount && FLOAT_PATTERN.test(topupAmount),
                 "expected a number greater than equal to 0 for topupAmount",
             );
+            return true;
         };
         if (selfFundOrders.isEnv) {
             if (typeof selfFundOrders.value === "undefined") return;
@@ -467,43 +468,39 @@ export namespace AppOptions {
                     selfFundOrders.value.every((v: any) => typeof v === "string"),
                 "expected array of vault funding details in key=value, example: token=0xabc...123,vaultId=0x123...456,threshold=0.5,topupAmount=10",
             );
-            let index = 0;
-            const result: SelfFundOrder[] = [];
-            const keys = ["token", "vaultId", "threshold", "topupAmount"];
-            while (selfFundOrders.value.length - index > 0) {
-                index += 4;
-                const kvs = selfFundOrders.value.slice(index - 4, index).map((v) => {
-                    const [key = undefined, value = undefined, ...rest] = v.split("=");
-                    assert(typeof key === "string" && keys.includes(key), `unexpected key: ${key}`);
-                    assert(
-                        typeof value === "string" && value,
-                        `unexpected value for ${key} key: ${value}`,
-                    );
-                    assert(rest.length === 0, `unexpected arguments: ${rest}`);
-                    return { [key]: value };
-                });
-                const details = {
-                    ...kvs[0],
-                    ...kvs[1],
-                    ...kvs[2],
-                    ...kvs[3],
-                } as SelfFundOrder;
-                validate(details);
-                result.push(details);
+
+            // build  array of SelfFundOrder from the inputs
+            const result: Record<string, any>[] = [];
+            for (const item of selfFundOrders.value) {
+                // should contain known keys
+                assert(
+                    item.startsWith("token=") ||
+                        item.startsWith("vaultId=") ||
+                        item.startsWith("threshold=") ||
+                        item.startsWith("topupAmount="),
+                    `unknown key/value: ${item}`,
+                );
+
+                // insert empty next
+                if (!result.length || Object.keys(result[result.length - 1]).length === 4) {
+                    result.push({});
+                }
+
+                const [key, value, ...rest]: string[] = item.split("=");
+                assert(value, `expected value after ${key}=`);
+                assert(rest.length === 0, `unexpected arguments: ${rest}`);
+                assert(!(key in result[result.length - 1]), `duplicate ${key}`);
+
+                result[result.length - 1][key as keyof SelfFundOrder] = value;
             }
-            return result;
+
+            // validate built array values
+            assert(result.every(validate), "expected array of SelfFundOrder");
+
+            return result as SelfFundOrder[];
         } else if (input) {
             assert(
-                Array.isArray(input) &&
-                    input.every((v: any) => {
-                        validate({
-                            token: v.token,
-                            vaultId: v.vaultId,
-                            threshold: v.threshold,
-                            topupAmount: v.topupAmount,
-                        });
-                        return true;
-                    }),
+                Array.isArray(input) && input.every(validate),
                 "expected array of SelfFundOrder",
             );
             return input as SelfFundOrder[];

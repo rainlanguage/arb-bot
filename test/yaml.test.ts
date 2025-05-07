@@ -636,6 +636,7 @@ sgFilter:
         const address2 = `0x${"2".repeat(40)}`;
         const address3 = `0x${"3".repeat(40)}`;
         const address4 = `0x${"4".repeat(40)}`;
+
         // happy path using direct object input:
         const inputOrders = [
             {
@@ -692,14 +693,14 @@ sgFilter:
         process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=2.5,extra=123`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
-            /unexpected key: extra/,
+            /unknown key\/value: extra=123/,
         );
 
         // unhappy: Env input with undefined value
         process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,topupAmount=`;
         assert.throws(
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
-            /unexpected value for topupAmount key: /,
+            /expected value after topupAmount=/,
         );
 
         // unhappy: Env input with extra argument
@@ -708,6 +709,10 @@ sgFilter:
             () => AppOptions.resolveSelfFundOrders("$SELF_FUND"),
             /unexpected arguments: extra/,
         );
+
+        // unhappy: Env input with extra argument
+        process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5,threshold=2`;
+        assert.throws(() => AppOptions.resolveSelfFundOrders("$SELF_FUND"), /duplicate threshold/);
 
         // Test case for partial self fund order
         process.env.SELF_FUND = `token=${address1},vaultId=5,threshold=1.5`;
