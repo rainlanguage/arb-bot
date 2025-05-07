@@ -126,7 +126,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-l, --lps <string>",
-            "List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers",
+            "List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidity providers",
         )
         .option(
             "-g, --gas-coverage <integer>",

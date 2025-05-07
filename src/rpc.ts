@@ -237,7 +237,7 @@ export class RpcProgress {
         // buffer length saturates at trackSize
         this.buffer.push(RpcBufferType.Failure);
         if (this.buffer.length > this.trackSize) {
-            // knock the first itme out
+            // knock the first item out
             if (this.buffer[0] === RpcBufferType.Success) this.success--;
             this.buffer = this.buffer.slice(1);
         }

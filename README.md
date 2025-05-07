@@ -95,7 +95,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 
 Other optional arguments are:
 - `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
-- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
+- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidity providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--include-orders`, Option to only include the specified orders for processing, Will override the 'INCLUDE_ORDERS' in env variables
 - `--include-owners`, Option to only include the specified owners' orders for processing, Will override the 'INCLUDE_OWNERS' in env variables
