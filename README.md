@@ -189,7 +189,7 @@ MNEMONIC=""
 
 # List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value
 # example: url=https://rpc1.com,weight=0.5,trackSize=100
-RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY};2.5, https://drpc.com;1.5;85"
+RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY},weight=0.5,url=https://rpc1.com,weight=0.5,trackSize=100"
 
 # Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""
