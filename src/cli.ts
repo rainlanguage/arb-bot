@@ -1066,27 +1066,21 @@ export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
         }
         if (key === "weight") {
             assert(!("selectionWeight" in result[result.length - 1]), "duplicate weight option");
-            result[result.length - 1].selectionWeight = (() => {
-                if (value) {
-                    const result = parseFloat(value);
-                    if (isNaN(result)) {
-                        throw `invalid rpc weight: "${value}", expected a number greater than equal to 0`;
-                    }
-                    return result;
-                }
-            })();
+            const parsedValue = parseFloat(value);
+            assert(
+                !isNaN(parsedValue),
+                `invalid rpc weight: "${value}", expected a number greater than equal to 0`,
+            );
+            result[result.length - 1].selectionWeight = parsedValue;
         }
         if (key === "trackSize") {
             assert(!("trackSize" in result[result.length - 1]), "duplicate trackSize option");
-            result[result.length - 1].trackSize = (() => {
-                if (value) {
-                    const result = parseInt(value);
-                    if (isNaN(result)) {
-                        throw `invalid track size: "${value}", expected an integer greater than equal to 0`;
-                    }
-                    return result;
-                }
-            })();
+            const parsedValue = parseInt(value);
+            assert(
+                !isNaN(parsedValue),
+                `invalid track size: "${value}", expected an integer greater than equal to 0`,
+            );
+            result[result.length - 1].trackSize = parsedValue;
         }
     }
     assert(result[0].url, "expected at least one rpc url");
