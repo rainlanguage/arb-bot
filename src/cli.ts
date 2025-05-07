@@ -106,7 +106,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-r, --rpc <url...>",
-            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size seperated by comma in form of key=value, example: `url=https://rpc1.com,weight=0.5,trackSize=100` . Will override the 'RPC_URL' in env variables",
+            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value, example: `url=https://rpc1.com,weight=0.5,trackSize=100` . Will override the 'RPC_URL' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
@@ -126,7 +126,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-l, --lps <string>",
-            "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers",
+            "List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers",
         )
         .option(
             "-g, --gas-coverage <integer>",
