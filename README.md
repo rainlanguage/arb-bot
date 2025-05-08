@@ -355,7 +355,7 @@ to tell Docker to do so. The default behaviour of Docker is that it manages
 volumes opaquely within its own system files, which has pros and cons. Either way
 the default behaviour won't give you a predictable path on the host to work with.
 
-To create a bind mount to a specific absolute path on the host
+To create a bind mount to a specific absolute path on the host 
 
 ```
 docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>
