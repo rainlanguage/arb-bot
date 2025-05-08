@@ -18,6 +18,7 @@
             rainix.node-build-inputs.${system}
             rainix.sol-build-inputs.${system}
             pkgsnix.doctl
+            pkgsnix.envsubst
           ];
         };
     }
