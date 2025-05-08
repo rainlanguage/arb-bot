@@ -11,9 +11,6 @@ on:
         options:
           - flare
 
-env:
-  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -47,7 +44,7 @@ jobs:
           nix develop -c envsubst -i deployments/${{ inputs.deployment }}/specs.yaml -o spec.yaml
           
           # Deploy
-          nix develop -c doctl apps create -t ${{ secrets.DOCTL_API_KEY }} --spec spec.yaml -o json > result.json
+          nix develop -c doctl apps create -t ${{ secrets.DOCTL_API_KEY }} --project-id ${{ secrets.DOCTL_PROJECT_ID }} --spec spec.yaml -o json > result.json
           echo "APP_ID=$(jq -r '.[0].id' result.json)" >> $GITHUB_ENV
           echo "${{ env.APP_ID }}" > deployments/${{ inputs.deployment }}/id.txt
           

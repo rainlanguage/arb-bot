@@ -1,4 +1,4 @@
-# updates the rain solver configuration without updating the source to latest upstream changes
+# updates the rain solver configuration only, i.e. without updating the source
 name: Update A Rain Solver Worker Configurations
 
 on:
@@ -10,9 +10,6 @@ on:
         type: choice
         options:
           - flare
-
-env:
-  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
 
 jobs:
   update:

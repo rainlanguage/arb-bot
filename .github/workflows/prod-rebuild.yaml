@@ -11,9 +11,6 @@ on:
         options:
           - flare
 
-env:
-  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
-
 jobs:
   rebuild:
     runs-on: ubuntu-latest
