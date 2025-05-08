@@ -1,0 +1,63 @@
+# deploys a new instance of rain solver
+name: Deploy A New Rain Solver Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "Choose From Available Deployments"
+        required: true
+        type: choice
+        options:
+          - flare
+
+env:
+  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          deployment=${{ inputs.deployment }}
+          echo "rpc=PROD_${deployment^^}_RPC" >> $GITHUB_ENV
+
+      - name: Checkout Repo
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.PUBLISHER_SSH_KEY }}
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Deploy New ${{ inputs.deployment }} Worker
+        env:
+          HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
+          PROD_WALLET_KEY: ${{ secrets.PROD_WALLET_KEY }}
+          RPC_URL: ${{ secrets[env.rpc] }}
+        run: |
+          # Use envsubst to replace secrets in spec.yaml
+          envsubst -i deployments/${{ inputs.deployment }}/specs.yaml -o spec.yaml
+          
+          # Deploy
+          nix develop -c doctl apps create -t ${{ secrets.DOCTL_API_KEY }} --spec spec.yaml -o json > result.json
+          echo "APP_ID=$(jq -r '.[0].id' result.json)" >> $GITHUB_ENV
+          echo "${{ env.APP_ID }}" > deployments/${{ inputs.deployment }}/id.txt
+          
+          # rm temp files
+          rm -f result.json spec.yaml
+
+      - name: Commit Changes
+        run: |
+          git add "deployments/${{ inputs.deployment }}/id.txt"
+          git commit -m "New Deployment ${{ inputs.deployment }} [skip ci]"
+
+      - name: Push Changes To Remote
+        run: git push origin

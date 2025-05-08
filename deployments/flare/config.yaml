@@ -1,0 +1,16 @@
+key: $BOT_WALLET_PRIVATEKEY
+rpc: $RPC_URL
+subgraph: 
+  - https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/2024-12-13-9dc7/gn
+arbAddress: "0x5376Ffa8fbE804f3D9292bc6b319b0e59Ce42311"
+dispair: "0xE3989Ea7486c0F418C764e6c511e86f6E8830FAb"
+sleep: 10
+poolUpdateInterval: 60
+txGas: 110%
+botMinBalance: 1
+gasPriceMultiplier: 115
+maxRatio: true
+rpOnly: true
+sgFilter:
+  includeOwners: 
+    - "0x7177b9d00bB5dbcaaF069CC63190902763783b09"

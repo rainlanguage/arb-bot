@@ -1,0 +1,37 @@
+# soft restart the rain solver worker
+name: Restart A Rain Solver Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "Choose From Available Deployments"
+        required: true
+        type: choice
+        options:
+          - flare
+
+env:
+  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Restart ${{ inputs.deployment }} Worker
+        run: nix develop -c doctl apps restart $(cat deployments/${{ inputs.deployment }}/id.txt) -t ${{ secrets.DOCTL_API_KEY }}
+

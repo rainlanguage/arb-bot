@@ -1,0 +1,50 @@
+# updates all rain solver workers to latest upstream changes
+name: Upgrade Rain Solver Workers With Latest Production Changes
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DOCTL_API_KEY: ${{ secrets.DOCTL_API_KEY }}
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        deployment: [flare]
+      fail-fast: false
+    steps:
+      - run: |
+          deployment=${{ matrix.deployment }}
+          echo "rpc=PROD_${deployment^^}_RPC" >> $GITHUB_ENV
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Upgrade ${{ matrix.deployment }} Worker
+        env:
+          HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
+          PROD_WALLET_KEY: ${{ secrets.PROD_WALLET_KEY }}
+          RPC_URL: ${{ secrets[env.rpc] }}
+        run: |
+          # Use envsubst to replace secrets in spec.yaml
+          envsubst -i deployments/${{ matrix.deployment }}/specs.yaml -o spec.yaml
+          
+          # Upgrade to latest upstream source
+          nix develop -c doctl apps update $(cat deployments/${{ matrix.deployment }}/id.txt) -t ${{ secrets.DOCTL_API_KEY }} --spec spec.yaml --update-sources
+
+          # rm temp files
+          rm -f spec.yaml
