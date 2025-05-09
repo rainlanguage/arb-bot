@@ -97,15 +97,8 @@ export namespace AppOptions {
     export function tryFrom(input: any): AppOptions {
         return {
             ...AppOptions.resolveWalletKey(input),
-            rpc: AppOptions.resolveRpc(
-                input.rpc,
-                // "expected array of rpc urls with at least 1 url",
-            ),
-            writeRpc: AppOptions.resolveRpc(
-                input.writeRpc,
-                // "expected array of write rpc urls with at least 1 url",
-                true,
-            ),
+            rpc: AppOptions.resolveRpc(input.rpc),
+            writeRpc: AppOptions.resolveRpc(input.writeRpc, true),
             subgraph: AppOptions.resolveUrls(
                 input.subgraph,
                 "expected array of subgraph urls with at least 1 url",
