@@ -11,16 +11,24 @@ walletCount: 5
 topupAmount: 0.5
 
 # List of rpc urls, required
-# for specifying more than 1 RPC in the env, separate them by a comma
+# example for env: url=https://rpc-url1.com,weight=0.5,trackSize=200
 rpc:
-  - https://rpc-url1.com
-  - https://rpc-url2.com
+  - url: https://rpc-url1.com # required field
+    weight: 1.5 # optional
+    trackSize: 200 # optional
+
+  - url: https://rpc-url2.com
+    weight: 0.5
 
 # Optional list of write rpc urls for write transactions
-# for specifying more than 1 RPC in the env, separate them by a comma
+# example for env: url=https://rpc-url1.com,weight=0.5,trackSize=200
 writeRpc:
-  - https://write-rpc-url1.com
-  - https://write-rpc-url2.com
+  - url: https://rpc-url1.com # required field
+    weight: 1.5 # optional
+    trackSize: 200 # optional
+
+  - url: https://rpc-url2.com
+    weight: 0.5
 
 # List of subgraph urls, required
 # for specifying more than 1 subgraph URL in the env, separate them by a comma

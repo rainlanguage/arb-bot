@@ -75,7 +75,9 @@ for (let i = 0; i < testData.length; i++) {
 
         config.rpc = [rpc, ...fallbackRpcs[chainId]];
         const state = OperationState.init(config.rpc.map((v) => ({ url: v })));
-        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders);
+        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders, {
+            retryCount: 4,
+        });
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {

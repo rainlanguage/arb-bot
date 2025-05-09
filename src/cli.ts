@@ -1,9 +1,7 @@
-import assert from "assert";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
 import { Command } from "commander";
 import { AppOptions } from "./yaml";
-import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { getOrderChanges, SgOrder } from "./query";
@@ -166,17 +164,10 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const tokens = getOrdersTokens(ordersDetails);
 
     // init raw state
-    const state = OperationState.init(options.rpcConfigs, options.writeRpcConfigs);
+    const state = OperationState.init(options.rpc, options.writeRpc);
 
     // get config
-    const config = await getConfig(
-        options.rpc,
-        (options.key ?? options.mnemonic)!,
-        options.arbAddress,
-        options,
-        tracer,
-        ctx,
-    );
+    const config = await getConfig(options, state, tracer, ctx);
     config.watchedTokens = tokens;
 
     // fetch initial gas price on startup

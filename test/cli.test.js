@@ -8,14 +8,6 @@ const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const {
-    startup,
-    arbRound,
-    getRpcConfig,
-    validateHash,
-    validateAddress,
-    parseArrayFromEnv,
-} = require("../src/cli");
 
 describe("Test cli", async function () {
     beforeEach(() => mockServer.start(8080));
@@ -84,8 +76,10 @@ describe("Test cli", async function () {
 
         const yaml = `
 key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-rpc: ["https://polygon.drpc.org"]
-writeRpc: ["http://write-rpc.example.com"]
+rpc:
+    - url: https://polygon.drpc.org
+writeRpc:
+    - url: http://write-rpc.example.com
 subgraph: ["http://subgraph.example.com"]
 arbAddress: "0x${"1".repeat(40)}"
 dispair: "${deployer}"
@@ -133,7 +127,7 @@ sgFilter:
             poolUpdateInterval: 0,
             config: {
                 chain: { id: 137 },
-                rpc: ["https://polygon.drpc.org"],
+                rpc: [{ url: "https://polygon.drpc.org" }],
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
                 rpcState: {
@@ -183,7 +177,7 @@ sgFilter:
         assert.equal(result.roundGap, expected.roundGap);
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
         assert.equal(result.config.chain.id, expected.config.chain.id);
-        assert.equal(result.config.rpc[0], expected.config.rpc[0]);
+        assert.deepEqual(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
         assert.equal(result.config.route, expected.config.route);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);

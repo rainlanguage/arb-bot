@@ -2,6 +2,7 @@ import assert from "assert";
 import { parse } from "yaml";
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
+import { RpcConfig } from "./rpc";
 import { isBigNumberish } from "./utils";
 import { SelfFundOrder, SgFilter } from "./types";
 
@@ -24,10 +25,10 @@ export type AppOptions = {
     walletCount?: number;
     /** Topup amount for excess accounts, required only when mnemonic option is used */
     topupAmount?: string;
-    /** List of rpc urls */
-    rpc: string[];
-    /** List of write rpc urls used explicitly for write transactions */
-    writeRpc?: string[];
+    /** List of rpc config */
+    rpc: RpcConfig[];
+    /** List of write rpc configs used explicitly for write transactions */
+    writeRpc?: RpcConfig[];
     /** Arb contract address */
     arbAddress: string;
     /** Dispair contract address */
@@ -96,13 +97,13 @@ export namespace AppOptions {
     export function tryFrom(input: any): AppOptions {
         return {
             ...AppOptions.resolveWalletKey(input),
-            rpc: AppOptions.resolveUrls(
+            rpc: AppOptions.resolveRpc(
                 input.rpc,
-                "expected array of rpc urls with at least 1 url",
+                // "expected array of rpc urls with at least 1 url",
             ),
-            writeRpc: AppOptions.resolveUrls(
+            writeRpc: AppOptions.resolveRpc(
                 input.writeRpc,
-                "expected array of write rpc urls with at least 1 url",
+                // "expected array of write rpc urls with at least 1 url",
                 true,
             ),
             subgraph: AppOptions.resolveUrls(
@@ -385,6 +386,75 @@ export namespace AppOptions {
         );
         if (route === "full") return undefined;
         else return route;
+    }
+
+    /** Resolves config's rpcs */
+    export function resolveRpc<isOptional extends boolean = false>(
+        input: any,
+        isOptional = false as isOptional,
+    ): isOptional extends false ? RpcConfig[] : RpcConfig[] | undefined {
+        const rpcs = readValue(input);
+        const validate = (rpcConfig: any, key: string, value: any) => {
+            assert(
+                key === "url" || key === "weight" || key === "trackSize",
+                `/unknown key: ${key}`,
+            );
+            if (key === "url") {
+                assert(!("url" in rpcConfig), "duplicate url");
+                rpcConfig.url = value;
+            }
+            if (key === "weight") {
+                assert(!("selectionWeight" in rpcConfig), "duplicate weight option");
+                const parsedValue = parseFloat(value);
+                assert(
+                    !isNaN(parsedValue),
+                    `invalid rpc weight: "${value}", expected a number greater than equal to 0`,
+                );
+                rpcConfig.selectionWeight = parsedValue;
+            }
+            if (key === "trackSize") {
+                assert(!("trackSize" in rpcConfig), "duplicate trackSize option");
+                const parsedValue = parseInt(value);
+                assert(
+                    !isNaN(parsedValue),
+                    `invalid rpc track size: "${value}", expected an integer greater than equal to 0`,
+                );
+                rpcConfig.trackSize = parsedValue;
+            }
+        };
+
+        const result: RpcConfig[] = [];
+        if (rpcs.isEnv) {
+            if (isOptional && typeof rpcs.value === "undefined") return undefined as any;
+            rpcs.value = tryIntoArray(rpcs.value);
+            for (let i = 0; i < rpcs.value.length; i++) {
+                const [key, value, ...rest] = rpcs.value[i].split("=");
+                assert(value, `expected value after ${key}=`);
+                assert(rest.length === 0, `unexpected arguments: ${rest}`);
+
+                // insert the first one as empty to be filled
+                if (!result.length || (key === "url" && "url" in result[result.length - 1])) {
+                    result.push({} as any);
+                }
+                validate(result[result.length - 1], key, value);
+            }
+            assert(result?.[0]?.url, "expected at least one rpc url");
+        } else if (input) {
+            assert(Array.isArray(input), "expected array of RpcConfig");
+            input.forEach((rpcConfig: any) => {
+                const res = {} as any;
+                for (const key in rpcConfig) {
+                    validate(res, key, rpcConfig[key]);
+                }
+                result.push(res);
+            });
+        }
+        if (isOptional) {
+            if (!result.length) return undefined as any;
+        } else {
+            assert(result.length && result[0].url, "expected at least one rpc url");
+        }
+        return result as any;
     }
 
     /** Resolves config's owner profiles */

@@ -12,14 +12,7 @@ import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
 import { processLps, getChainConfig, getDataFetcher, createViemClient } from "./config";
-import {
-    SgFilter,
-    BotConfig,
-    CliOptions,
-    RoundReport,
-    BundledOrders,
-    OperationState,
-} from "./types";
+import { SgFilter, BotConfig, RoundReport, BundledOrders, OperationState } from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -74,30 +67,27 @@ export async function getOrderDetails(
 
 /**
  * Get the general and network configuration required for the bot to operate
- * @param rpcUrls - The RPC URL array
- * @param walletKey - The wallet mnemonic phrase or private key
- * @param arbAddress - The Rain Arb contract address deployed on the network
- * @param options - (optional) Optional parameters, liquidity providers
+ * @param options - App Options
+ * @param state - App state
  * @returns The configuration object
  */
 export async function getConfig(
-    rpcUrls: string[],
-    walletKey: string,
-    arbAddress: string,
     options: AppOptions,
+    state: OperationState,
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
-    const chainId = (await getChainId(rpcUrls)) as ChainId;
+    const chainId = (await getChainId(options.rpc.map((v) => v.url))) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
-    const lps = processLps(options.lps);
+    const walletKey = (options.key ?? options.mnemonic)!;
+    const lps = processLps(options.liquidityProviders);
     const viemClient = await createViemClient(
         chainId,
         state.rpc,
         undefined,
-        options.timeout,
+        { timeout: options.timeout },
         undefined,
     );
     const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, state.rpc, lps);
@@ -125,8 +115,8 @@ export async function getConfig(
         }
     })();
 
-    config.rpc = rpcUrls;
-    config.arbAddress = arbAddress;
+    config.rpc = options.rpc;
+    config.arbAddress = options.arbAddress;
     config.genericArbAddress = options.genericArbAddress;
     config.timeout = options.timeout;
     config.writeRpc = options.writeRpc;
@@ -142,7 +132,6 @@ export async function getConfig(
     config.publicRpc = false;
     config.walletKey = walletKey;
     config.route = options.route;
-    config.rpcState = rpcState;
     config.gasPriceMultiplier = options.gasPriceMultiplier;
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;

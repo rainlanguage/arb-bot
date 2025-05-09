@@ -6,7 +6,7 @@ describe("Test yaml AppOptions", async function () {
     it("test AppOptions fromYaml", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_MNEMONIC = "test mnemonic key";
-        process.env.MY_RPC = "http://rpc1.example.com,http://rpc2.example.com";
+        process.env.MY_RPC = "url=http://rpc1.example.com,url=http://rpc2.example.com";
         process.env.OWNER_PROFILE =
             "0x4444444444444444444444444444444444444444=100,0x5555555555555555555555555555555555555555=max";
 
@@ -15,7 +15,8 @@ mnemonic: "$MY_MNEMONIC"
 rpc: "$MY_RPC"
 walletCount: 10
 topupAmount: 0.5
-writeRpc: ["http://write-rpc.example.com"]
+writeRpc:
+    - url: http://write-rpc.example.com
 subgraph: ["http://subgraph.example.com"]
 arbAddress: "0x1111111111111111111111111111111111111111"
 dispair: "0x2222222222222222222222222222222222222222"
@@ -60,11 +61,11 @@ sgFilter:
         const result = AppOptions.fromYaml(path);
         const expected: AppOptions = {
             key: undefined,
-            rpc: ["http://rpc1.example.com", "http://rpc2.example.com"],
+            rpc: [{ url: "http://rpc1.example.com" }, { url: "http://rpc2.example.com" }],
             mnemonic: process.env.MY_MNEMONIC,
             walletCount: 10,
             topupAmount: "0.5",
-            writeRpc: ["http://write-rpc.example.com"],
+            writeRpc: [{ url: "http://write-rpc.example.com" }],
             subgraph: ["http://subgraph.example.com"],
             arbAddress: "0x1111111111111111111111111111111111111111",
             dispair: "0x2222222222222222222222222222222222222222",
@@ -125,12 +126,12 @@ sgFilter:
     it("test AppOptions tryFrom", async function () {
         // Set up environment variables for fields that should come from env
         process.env.MY_KEY = "0x" + "a".repeat(64);
-        process.env.MY_RPC = "http://rpc1.example.com,http://rpc2.example.com";
+        process.env.MY_RPC = "url=http://rpc1.example.com,url=http://rpc2.example.com";
 
         const input = {
             key: "$MY_KEY",
             rpc: "$MY_RPC",
-            writeRpc: ["http://write-rpc.example.com"],
+            writeRpc: [{ url: "http://write-rpc.example.com" }],
             subgraph: ["http://subgraph.example.com"],
             arbAddress: "0x1111111111111111111111111111111111111111",
             dispair: "0x2222222222222222222222222222222222222222",
@@ -180,10 +181,13 @@ sgFilter:
 
         // Assertions for the env-provided fields:
         assert.deepEqual(result.key, process.env.MY_KEY);
-        assert.deepEqual(result.rpc, ["http://rpc1.example.com", "http://rpc2.example.com"]);
+        assert.deepEqual(result.rpc, [
+            { url: "http://rpc1.example.com" },
+            { url: "http://rpc2.example.com" },
+        ]);
 
         // Assertions for directly specified fields:
-        assert.deepEqual(result.writeRpc, ["http://write-rpc.example.com"]);
+        assert.deepEqual(result.writeRpc, [{ url: "http://write-rpc.example.com" }]);
         assert.deepEqual(result.subgraph, ["http://subgraph.example.com"]);
         assert.deepEqual(
             result.arbAddress,
@@ -857,6 +861,99 @@ sgFilter:
         assert.throws(
             () => AppOptions.resolveSgFilters(badInputFilters),
             "expected an array of owner addresses",
+        );
+    });
+
+    it("test AppOptions resolveRpc", async function () {
+        // happy path using direct object input:
+        const inputs = [
+            {
+                url: "https://example1.com",
+            },
+            {
+                url: "https://example2.com",
+                weight: "2.5",
+                trackSize: "50",
+            },
+            {
+                url: "wss://example3.com",
+                weight: "1.5",
+            },
+            {
+                url: "https://example4.com",
+                trackSize: "200",
+            },
+        ];
+        const result = AppOptions.resolveRpc(inputs);
+        const expected = [
+            {
+                url: "https://example1.com",
+            },
+            {
+                url: "https://example2.com",
+                trackSize: 50,
+                selectionWeight: 2.5,
+            },
+            {
+                url: "wss://example3.com",
+                selectionWeight: 1.5,
+            },
+            {
+                url: "https://example4.com",
+                trackSize: 200,
+            },
+        ];
+        assert.deepEqual(result, expected);
+
+        // happy path using env variable:
+        process.env.RPC_URLS =
+            "url=https://example1.com,url=https://example2.com,weight=2.5,trackSize=50,url=wss://example3.com,weight=1.5,url=https://example4.com,trackSize=200";
+        const envInput = "$RPC_URLS";
+        const resultEnv = AppOptions.resolveRpc(envInput);
+        assert.deepEqual(resultEnv, expected);
+
+        // unhappy: Env input with extra key
+        process.env.RPC_URLS = `url=https://example2.com,weight=2.5,trackSize=50,badKey=123`;
+        assert.throws(() => AppOptions.resolveRpc("$RPC_URLS"), /unknown key: badKey/);
+
+        // unhappy: Env input with undefined value
+        process.env.RPC_URLS = `url=https://example2.com,weight=2.5,trackSize=`;
+        assert.throws(() => AppOptions.resolveRpc("$RPC_URLS"), /expected value after trackSize=/);
+
+        // unhappy: Env input with extra argument
+        process.env.RPC_URLS = `url=https://example2.com,weight=2.5,trackSize=50=extra`;
+        assert.throws(() => AppOptions.resolveRpc("$RPC_URLS"), /unexpected arguments: extra/);
+
+        // unhappy: Env input duplicate
+        process.env.RPC_URLS = `url=https://example2.com,weight=2.5,weight=1.5`;
+        assert.throws(() => AppOptions.resolveRpc("$RPC_URLS"), /duplicate weight/);
+
+        // Test case for bad value
+        process.env.RPC_URLS = `url=https://example2.com,weight=2.5,trackSize=abcd`;
+        assert.throws(
+            () => AppOptions.resolveRpc("$RPC_URLS"),
+            `invalid rpc track size: "abcd", expected an integer greater than equal to 0`,
+        );
+
+        // unhappy: Direct input not provided as an array
+        const badInput = {
+            url: "https://example2.com",
+            weight: "2.5",
+            trackSize: "50",
+        };
+        assert.throws(() => AppOptions.resolveRpc(badInput), "expected array of RpcConfig");
+
+        // unhappy: Invalid token address format in direct input
+        const badInput2 = [
+            {
+                url: "https://example2.com",
+                weight: "abcd",
+                trackSize: "50",
+            },
+        ];
+        assert.throws(
+            () => AppOptions.resolveRpc(badInput2),
+            `invalid rpc weight: "abcd", expected a number greater than equal to 0`,
         );
     });
 });
