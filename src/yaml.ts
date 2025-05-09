@@ -445,7 +445,7 @@ export namespace AppOptions {
         if (isOptional) {
             if (!result.length) return undefined as any;
         } else {
-            assert(result.length && result[0].url, "expected at least one rpc url");
+            assert(result.length && result.some((v) => v.url), "expected at least one rpc url");
         }
         return result as any;
     }
