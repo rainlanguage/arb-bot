@@ -388,10 +388,7 @@ export namespace AppOptions {
     ): isOptional extends false ? RpcConfig[] : RpcConfig[] | undefined {
         const rpcs = readValue(input);
         const validate = (rpcConfig: any, key: string, value: any) => {
-            assert(
-                key === "url" || key === "weight" || key === "trackSize",
-                `/unknown key: ${key}`,
-            );
+            assert(key === "url" || key === "weight" || key === "trackSize", `unknown key: ${key}`);
             if (key === "url") {
                 assert(!("url" in rpcConfig), "duplicate url");
                 rpcConfig.url = value;
