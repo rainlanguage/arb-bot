@@ -147,11 +147,10 @@ export const processOrders = async (
                 // await for first available signer to get free
                 const signer = await getSigner(accounts, mainAccount, true);
 
-                const writeSigner = config.writeRpc
+                const writeSigner = state.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
-                          config.writeRpc,
-                          false,
+                          state.writeRpc,
                           privateKeyToAccount(
                               signer.account.getHdKey
                                   ? (ethers.utils.hexlify(
@@ -163,7 +162,6 @@ export const processOrders = async (
                           ),
                           config.timeout,
                           undefined,
-                          config,
                       )
                     : undefined;
 

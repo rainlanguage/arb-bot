@@ -1,8 +1,9 @@
+import assert from "assert";
 import { config } from "dotenv";
 import { isAddress } from "viem";
+import { RpcConfig } from "./rpc";
 import { getGasPrice } from "./gas";
 import { Command } from "commander";
-import { getMetaInfo } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { sleep, isBigNumberish } from "./utils";
@@ -11,9 +12,11 @@ import { Resource } from "@opentelemetry/resources";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { getDataFetcher, getMetaInfo } from "./config";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 import {
     BotConfig,
     CliOptions,
@@ -23,13 +26,6 @@ import {
     ProcessPairReportStatus,
     SgFilter,
 } from "./types";
-import {
-    sweepToEth,
-    manageAccounts,
-    rotateProviders,
-    sweepToMainWallet,
-    getBatchEthBalance,
-} from "./account";
 import {
     getOrdersTokens,
     downscaleProtection,
@@ -110,7 +106,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-r, --rpc <url...>",
-            "RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables",
+            "List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value, example: `url=https://rpc1.com,weight=0.5,trackSize=100` . Will override the 'RPC_URL' in env variables",
         )
         .option(
             "-s, --subgraph <url...>",
@@ -130,7 +126,7 @@ const getOptions = async (argv: any, version?: string) => {
         )
         .option(
             "-l, --lps <string>",
-            "List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers",
+            "List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidity providers",
         )
         .option(
             "-g, --gas-coverage <integer>",
@@ -251,7 +247,7 @@ const getOptions = async (argv: any, version?: string) => {
     // assigning specified options from cli/env
     cmdOptions.key = cmdOptions.key || getEnv(ENV_OPTIONS.key);
     cmdOptions.mnemonic = cmdOptions.mnemonic || getEnv(ENV_OPTIONS.mnemonic);
-    cmdOptions.rpc = cmdOptions.rpc || getEnv(ENV_OPTIONS.rpc);
+    cmdOptions.rpc = cmdOptions.rpc?.map(parseArrayFromEnv)?.flat() || getEnv(ENV_OPTIONS.rpc);
     cmdOptions.writeRpc = cmdOptions.writeRpc || getEnv(ENV_OPTIONS.writeRpc);
     cmdOptions.arbAddress = cmdOptions.arbAddress || getEnv(ENV_OPTIONS.arbAddress);
     cmdOptions.genericArbAddress =
@@ -471,13 +467,23 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     if (options.key) {
         if (!HASH_PATTERN.test(options.key)) throw "invalid wallet private key";
     }
-    if (!options.rpc) throw "undefined RPC URL";
+    if (!options.rpc) {
+        throw "undefined RPC URL";
+    } else {
+        const rpcConfigs = getRpcConfig(options.rpc);
+        options.rpc = rpcConfigs.map((v) => v.url);
+        options.rpcConfigs = rpcConfigs;
+    }
     if (options.writeRpc) {
         if (
             !Array.isArray(options.writeRpc) ||
             options.writeRpc.some((v) => typeof v !== "string")
         ) {
             throw `Invalid write rpcs: ${options.writeRpc}`;
+        } else {
+            const writeRpcConfigs = getRpcConfig(options.writeRpc);
+            options.writeRpc = writeRpcConfigs.map((v) => v.url);
+            options.writeRpcConfigs = writeRpcConfigs;
         }
     }
     if (!options.arbAddress) throw "undefined arb contract address";
@@ -570,21 +576,21 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const tokens = getOrdersTokens(ordersDetails);
     options.tokens = tokens;
 
+    // init raw state
+    const state = OperationState.init(options.rpcConfigs, options.writeRpcConfigs);
+
     // get config
     const config = await getConfig(
         options.rpc,
         options.key ?? options.mnemonic,
         options.arbAddress,
         options as CliOptions,
+        state,
         tracer,
         ctx,
     );
 
     // fetch initial gas price on startup
-    const state: OperationState = {
-        gasPrice: 0n,
-        l1GasPrice: 0n,
-    };
     await getGasPrice(config, state);
 
     return {
@@ -749,8 +755,10 @@ export const main = async (argv: any, version?: string) => {
             }
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
-                await rotateProviders(config, update);
-                roundSpan.setAttribute("details.rpc", config.rpc);
+                if (update) {
+                    await getDataFetcher(config.viemClient, state.rpc, config.lps);
+                }
+                roundSpan.setAttribute("details.rpc", state.rpc.urls);
                 await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
@@ -960,9 +968,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // report rpcs performance for round
-            for (const rpc in config.rpcState.metrics) {
+            for (const rpc in state.rpc.metrics) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                    const record = config.rpcState.metrics[rpc];
+                    const record = state.rpc.metrics[rpc];
                     span.setAttributes({
                         "rpc-url": rpc,
                         "request-count": record.req,
@@ -970,10 +978,32 @@ export const main = async (argv: any, version?: string) => {
                         "failure-count": record.failure,
                         "timeout-count": record.timeout,
                         "avg-request-interval": record.avgRequestIntervals,
+                        "latest-success-rate": record.progress.successRate / 100,
+                        "selection-weight": record.progress.selectionWeight,
                     });
                     record.reset();
                     span.end();
                 });
+            }
+            // report write rpcs performance
+            if (state.writeRpc) {
+                for (const rpc in state.writeRpc.metrics) {
+                    await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
+                        const record = state.writeRpc!.metrics[rpc];
+                        span.setAttributes({
+                            "rpc-url": rpc,
+                            "request-count": record.req,
+                            "success-count": record.success,
+                            "failure-count": record.failure,
+                            "timeout-count": record.timeout,
+                            "avg-request-interval": record.avgRequestIntervals,
+                            "latest-success-rate": record.progress.successRate / 100,
+                            "selection-weight": record.progress.selectionWeight,
+                        });
+                        record.reset();
+                        span.end();
+                    });
+                }
             }
 
             // eslint-disable-next-line no-console
@@ -1000,6 +1030,62 @@ function getEnv(value: any): any {
         } else return value;
     }
     return undefined;
+}
+
+/**
+ * Parses the cli rpc arguments to an array of RpcConfig
+ */
+export function getRpcConfig(cliRpcArgs: string[]): RpcConfig[] {
+    const result: RpcConfig[] = [];
+    for (let i = 0; i < cliRpcArgs.length; i++) {
+        // should contain known key/value
+        assert(
+            cliRpcArgs[i].startsWith("url=") ||
+                cliRpcArgs[i].startsWith("trackSize=") ||
+                cliRpcArgs[i].startsWith("weight="),
+            `unknown key/value: ${cliRpcArgs[i]}`,
+        );
+
+        // insert the first one as empty to be filled
+        if (!result.length) {
+            result.push({} as any);
+        }
+
+        const [key, value, ...rest] = cliRpcArgs[i].split("=");
+        assert(value, `expected value after ${key}=`);
+        assert(rest.length === 0, `unexpected arguments: ${rest}`);
+
+        if (key === "url") {
+            if (Object.keys(result[result.length - 1]).includes("url")) {
+                result.push({
+                    url: value,
+                });
+            } else {
+                result[result.length - 1].url = value;
+            }
+        }
+        if (key === "weight") {
+            assert(!("selectionWeight" in result[result.length - 1]), "duplicate weight option");
+            const parsedValue = parseFloat(value);
+            assert(
+                !isNaN(parsedValue),
+                `invalid rpc weight: "${value}", expected a number greater than equal to 0`,
+            );
+            result[result.length - 1].selectionWeight = parsedValue;
+        }
+        if (key === "trackSize") {
+            assert(!("trackSize" in result[result.length - 1]), "duplicate trackSize option");
+            const parsedValue = parseInt(value);
+            assert(
+                !isNaN(parsedValue),
+                `invalid track size: "${value}", expected an integer greater than equal to 0`,
+            );
+            result[result.length - 1].trackSize = parsedValue;
+        }
+    }
+    assert(result[0].url, "expected at least one rpc url");
+
+    return result;
 }
 
 export function parseArrayFromEnv(value?: string): string[] | undefined {

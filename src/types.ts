@@ -1,4 +1,4 @@
-import { RpcState } from "./rpc";
+import { RpcConfig, RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
 import { AttributeValue } from "@opentelemetry/api";
@@ -75,6 +75,8 @@ export type CliOptions = {
     quoteGas: bigint;
     rpOnly?: boolean;
     dispair: string;
+    rpcConfigs: RpcConfig[];
+    writeRpcConfigs?: RpcConfig[];
 };
 
 export type TokenDetails = {
@@ -216,7 +218,6 @@ export type BotConfig = {
     publicRpc: boolean;
     walletKey: string;
     route?: "multi" | "single";
-    rpcState: RpcState;
     gasPriceMultiplier: number;
     gasLimitMultiplier: number;
     txGas?: string;
@@ -230,7 +231,22 @@ export type BotConfig = {
 export type OperationState = {
     gasPrice: bigint;
     l1GasPrice: bigint;
+    rpc: RpcState;
+    writeRpc?: RpcState;
 };
+export namespace OperationState {
+    export function init(rpcConfigs: RpcConfig[], writeRpcConfigs?: RpcConfig[]): OperationState {
+        const result: OperationState = {
+            gasPrice: 0n,
+            l1GasPrice: 0n,
+            rpc: new RpcState(rpcConfigs),
+        };
+        if (writeRpcConfigs) {
+            result.writeRpc = new RpcState(writeRpcConfigs);
+        }
+        return result;
+    }
+}
 
 export type Report = {
     status: ProcessPairReportStatus;

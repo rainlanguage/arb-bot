@@ -87,7 +87,7 @@ node arb-bot <OPTIONS>
 The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
 - `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
 - `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
-- `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
+- `-r` or `--rpc`, List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value, example: url=https://rpc1.com,weight=0.5,trackSize=100 . Will override the 'RPC_URL' in env variables
 - `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
 - `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
 - `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
@@ -95,7 +95,7 @@ The app requires these arguments (all arguments can be set in env variables alte
 
 Other optional arguments are:
 - `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
-- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
+- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string separated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidity providers
 - `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
 - `--include-orders`, Option to only include the specified orders for processing, Will override the 'INCLUDE_ORDERS' in env variables
 - `--include-owners`, Option to only include the specified owners' orders for processing, Will override the 'INCLUDE_OWNERS' in env variables
@@ -187,10 +187,9 @@ BOT_WALLET_PRIVATEKEY="123..."
 # mnemonic phrase
 MNEMONIC=""
 
-# RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
-# for specifying more than 1 RPC in the env, separate them by a comma and a space
-RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
-
+# List of RPC url(s) for interacting with evm, optionally with selection weight and track size separated by comma in form of key=value
+# example: `url=https://rpc1.com,weight=0.5,trackSize=100`
+RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY},weight=0.5,url=https://rpc1.com,weight=0.5,trackSize=100"
 # Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
 WRITE_RPC=""
 
@@ -204,7 +203,7 @@ GENERIC_ARB_ADDRESS="0x123..."
 # for more than 1 subgraphs, seperate them by comma and a space
 SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
 
-# list of liquidity providers names seperated by a comma for each
+# list of liquidity providers names separated by a comma for each
 LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
 
 # gas coverage percentage for each transaction to be considered profitable to be submitted
@@ -355,7 +354,7 @@ to tell Docker to do so. The default behaviour of Docker is that it manages
 volumes opaquely within its own system files, which has pros and cons. Either way
 the default behaviour won't give you a predictable path on the host to work with.
 
-To create a bind mount to a specific absolute path on the host
+To create a bind mount to a specific absolute path on the host 
 
 ```
 docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>
