@@ -53,7 +53,8 @@
         "dotenv": "^16.0.3",
         "ethers": "5.7.0",
         "sushi": "./lib/sushiswap/packages/sushi",
-        "viem": "=2.21.35"
+        "viem": "=2.21.35",
+        "yaml": "^2.7.1"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

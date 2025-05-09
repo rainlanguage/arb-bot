@@ -4,10 +4,10 @@ import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { WNATIVE } from "sushi/currency";
 import { ChainId, ChainKey } from "sushi/chain";
-import { rainSolverTransport } from "./transport";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, ViemClient, ChainConfig, BotDataFetcher } from "./types";
+import { rainSolverTransport, RainSolverTransportConfig } from "./transport";
 import {
     HDAccount,
     PublicClient,
@@ -70,16 +70,15 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
  * @param chainId - The chain id
  * @param rpcState - rpc state
  * @param account - If fallback RPCs should be used as well or not
- * @param timeout - The timeout in milliseconds
+ * @param configuration - The rain solver transport configurations
  */
 export async function createViemClient(
     chainId: ChainId,
     rpcState: RpcState,
     account?: HDAccount | PrivateKeyAccount,
-    timeout?: number,
+    configuration?: RainSolverTransportConfig,
     testClient?: any,
 ): Promise<ViemClient> {
-    const configuration = { timeout };
     const transport = rainSolverTransport(rpcState, configuration);
 
     const client = testClient
@@ -175,11 +174,13 @@ export async function onFetchResponse(this: RpcState, response: Response) {
  * @param configOrViemClient - The network config data or a viem public client
  * @param rpcState - rpc state
  * @param liquidityProviders - Array of Liquidity Providers
+ * @param configuration - The rain solver transport configurations
  */
 export async function getDataFetcher(
     configOrViemClient: BotConfig | PublicClient,
     rpcState: RpcState,
     liquidityProviders: LiquidityProviders[] = [],
+    configuration?: RainSolverTransportConfig,
 ): Promise<BotDataFetcher> {
     try {
         const dataFetcher = await RainDataFetcher.init(
@@ -190,6 +191,7 @@ export async function getDataFetcher(
                       configOrViemClient.chain.id as ChainId,
                       rpcState,
                       undefined,
+                      configuration,
                       undefined,
                   )) as any as PublicClient),
             liquidityProviders,

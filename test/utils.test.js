@@ -1,6 +1,13 @@
 const { assert } = require("chai");
 const { ethers, BigNumber } = require("ethers");
-const { clone, scale18, scale18To, getTotalIncome, extendSpanAttributes } = require("../src/utils");
+const {
+    clone,
+    scale18,
+    scale18To,
+    getTotalIncome,
+    extendSpanAttributes,
+    withBigintSerializer,
+} = require("../src/utils");
 
 describe("Test utils functions", async function () {
     it("should clone correctly", async function () {
@@ -97,5 +104,30 @@ describe("Test utils functions", async function () {
             "header.c": "some string",
         };
         assert.deepEqual(spanAttrs, expected);
+    });
+
+    it("should test withBigIntSerializer", async function () {
+        // bigint
+        let value = 123n;
+        let result = withBigintSerializer("key", value);
+        assert.equal(result, "123");
+
+        // set
+        value = new Set(["a", "b", "c"]);
+        result = withBigintSerializer("key", value);
+        assert.deepEqual(result, ["a", "b", "c"]);
+
+        // set wih bigint
+        value = {
+            a: 123n,
+            b: new Set([1n, 2n]),
+        };
+        result = JSON.stringify(value, withBigintSerializer);
+        assert.equal(result, '{"a":"123","b":["1","2"]}');
+
+        // else
+        value = 123;
+        result = withBigintSerializer("key", value);
+        assert.equal(result, 123);
     });
 });

@@ -1,18 +1,18 @@
+import { erc20Abi } from "viem";
+import { AppOptions } from "./yaml";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
-import { erc20Abi } from "viem";
+import { createViemClient } from "./config";
 import { estimateGasCost, getTxFee } from "./gas";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
-import { createViemClient } from "./config";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { getRpSwap, PoolBlackList, sleep, addWatchedToken } from "./utils";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { MulticallAbi, orderbookAbi, routeProcessor3Abi, VaultBalanceAbi } from "./abis";
 import {
     BotConfig,
-    CliOptions,
     ViemClient,
     OwnedOrder,
     TokenDetails,
@@ -30,14 +30,15 @@ export const MainAccountDerivationIndex = 0 as const;
  * Generates array of accounts from mnemonic phrase and tops them up from main acount
  * @param mnemonicOrPrivateKey - The mnemonic phrase or private key
  * @param config - The config obj
- * @param options - The config obj
+ * @param state - App operation state
+ * @param options - App options
  * @returns Array of ethers Wallets derived from the given menomonic phrase and standard derivation path
  */
 export async function initAccounts(
     mnemonicOrPrivateKey: string,
     config: BotConfig,
     state: OperationState,
-    options: CliOptions,
+    options: AppOptions,
     tracer?: Tracer,
     ctx?: Context,
 ) {
@@ -55,7 +56,7 @@ export async function initAccounts(
                       ? mnemonicOrPrivateKey
                       : "0x" + mnemonicOrPrivateKey) as `0x${string}`,
               ),
-        config.timeout,
+        { timeout: config.timeout },
         (config as any).testClientViem,
     );
 
@@ -70,7 +71,7 @@ export async function initAccounts(
                     mnemonicToAccount(mnemonicOrPrivateKey, {
                         addressIndex,
                     }),
-                    config.timeout,
+                    { timeout: config.timeout },
                     (config as any).testClientViem,
                 ),
             );
@@ -144,14 +145,15 @@ export async function initAccounts(
  * and replaces them with new ones while topping them up with x11 of avg gas cost
  * of the arb() transactions, returns the last index used for new wallets.
  * @param config - The config obj
- * @param options - The config obj
+ * @param options - App options
  * @param avgGasCost - Avg gas cost of arb txs
  * @param lastIndex - The last index used for wallets
  * @param wgc - wallets garbage collection
+ * @param state - App operation state
  */
 export async function manageAccounts(
     config: BotConfig,
-    options: CliOptions,
+    options: AppOptions,
     avgGasCost: BigNumber,
     lastIndex: number,
     wgc: ViemClient[],
@@ -217,7 +219,7 @@ export async function manageAccounts(
                     mnemonicToAccount(options.mnemonic!, {
                         addressIndex: ++lastIndex,
                     }),
-                    config.timeout,
+                    { timeout: config.timeout },
                     (config as any).testClientViem,
                 );
                 span?.setAttribute("details.wallet", acc.account.address);
