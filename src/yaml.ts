@@ -400,7 +400,7 @@ export namespace AppOptions {
                 assert(!("selectionWeight" in rpcConfig), "duplicate weight option");
                 const parsedValue = parseFloat(value);
                 assert(
-                    !isNaN(parsedValue),
+                    !isNaN(parsedValue) && parsedValue >= 0,
                     `invalid rpc weight: "${value}", expected a number greater than equal to 0`,
                 );
                 rpcConfig.selectionWeight = parsedValue;
@@ -409,7 +409,7 @@ export namespace AppOptions {
                 assert(!("trackSize" in rpcConfig), "duplicate trackSize option");
                 const parsedValue = parseInt(value);
                 assert(
-                    !isNaN(parsedValue),
+                    !isNaN(parsedValue) && parsedValue >= 0,
                     `invalid rpc track size: "${value}", expected an integer greater than equal to 0`,
                 );
                 rpcConfig.trackSize = parsedValue;
