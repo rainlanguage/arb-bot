@@ -84,7 +84,7 @@ node arb-bot <OPTIONS>
 
 <br>
 
-The app requires a config yaml file to operate and by default it looks in `./config.yaml`, however the path of the config file can be passed by using `-c` or `--config` flag on cli or set in `CONFIG` env variable, for more details about config file please see `./config.example.yaml`.
+The app requires a config yaml file to operate and by default it looks in `./config.yaml`, however the path of the config file can be passed by using `-c` or `--config` flag on cli or set in `CONFIG` env variable, for more details about config file, please see `./config.example.yaml`.
 
 <br>
 
