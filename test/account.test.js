@@ -9,7 +9,6 @@ const {
     initAccounts,
     manageAccounts,
     rotateAccounts,
-    rotateProviders,
     getBatchEthBalance,
     getBatchTokenBalanceForAccount,
     sweepToEth,
@@ -64,7 +63,7 @@ describe("Test accounts", async function () {
             topupAmount: "0.0000000000000001",
         };
         const mnemonic = "test test test test test test test test test test test junk";
-        const { mainAccount, accounts } = await initAccounts(mnemonic, config, options);
+        const { mainAccount, accounts } = await initAccounts(mnemonic, config, {}, options);
 
         const expected = [
             { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
@@ -93,7 +92,7 @@ describe("Test accounts", async function () {
             topupAmount: "100",
         };
         const key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-        const { mainAccount, accounts } = await initAccounts(key, config, options);
+        const { mainAccount, accounts } = await initAccounts(key, config, {}, options);
 
         const expected = [
             { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", BALANCE: "10000" },
@@ -169,7 +168,14 @@ describe("Test accounts", async function () {
             topupAmount: "0.00000000001",
             mnemonic,
         };
-        const result = await manageAccounts(config, options, ethers.BigNumber.from("100"), 20, []);
+        const result = await manageAccounts(
+            config,
+            options,
+            ethers.BigNumber.from("100"),
+            20,
+            [],
+            {},
+        );
         const expectedAccounts = [
             { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" },
             { address: "0x02484cb50AAC86Eae85610D6f4Bf026f30f6627D" },
@@ -180,48 +186,6 @@ describe("Test accounts", async function () {
         assert.equal(mainAccount.account.address, expectedAccounts[0].address);
         assert.equal(accounts[0].account.address, expectedAccounts[1].address);
         assert.equal(accounts[1].account.address, expectedAccounts[2].address);
-    });
-
-    it("should rotate providers", async function () {
-        const rpcs = ["http://localhost:8080/rpc-url1", "http://localhost:8080/rpc-url2"];
-        const mainAccount = (
-            await viem.getTestClient({ account: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" })
-        )
-            .extend(publicActions)
-            .extend(walletActions);
-        const accounts = [
-            (await viem.getTestClient({ account: "0xdF906eA18C6537C6379aC83157047F507FB37263" }))
-                .extend(publicActions)
-                .extend(walletActions),
-        ];
-        const dataFectherBefore = {
-            fetchedPairPools: [],
-            reset: () => {},
-        };
-        const config = {
-            rpc: rpcs,
-            chain: { id: 137 },
-            mainAccount,
-            accounts,
-            dataFetcher: dataFectherBefore,
-            publicRpc: false,
-        };
-
-        await rotateProviders(config, mainAccount, true);
-
-        assert.exists(config.mainAccount);
-        assert.exists(config.accounts);
-        assert.exists(config.rpc);
-        assert.exists(config.viemClient);
-        assert.exists(config.dataFetcher);
-        assert.equal(config.chain.id, 137);
-        assert.equal(config.viemClient.transport.transports.length, 2);
-        assert.equal(config.viemClient.transport.transports[0].value.url, config.rpc[0]);
-        assert.equal(config.viemClient.transport.transports[1].value.url, config.rpc[1]);
-        assert.equal(config.mainAccount.provider, config.provider);
-        accounts.forEach((v) => {
-            assert.equal(v.provider, config.provider);
-        });
     });
 
     it("should rotate accounts", async function () {

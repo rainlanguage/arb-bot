@@ -10,13 +10,13 @@ const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const { publicActions, walletActions } = require("viem");
-const { ProcessPairReportStatus } = require("../../src/types");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
-const { getChainConfig, getDataFetcher } = require("../../src/config");
+const { ProcessPairReportStatus, OperationState } = require("../../src/types");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const { getChainConfig, getDataFetcher, fallbackRpcs } = require("../../src/config");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { prepareOrdersForRound, getOrderbookOwnersProfileMapFromSg } = require("../../src/order");
 const {
@@ -73,8 +73,9 @@ for (let i = 0; i < testData.length; i++) {
         provider.register();
         const tracer = provider.getTracer("arb-bot-tracer");
 
-        config.rpc = [rpc];
-        const dataFetcherPromise = getDataFetcher(config, liquidityProviders, true);
+        config.rpc = [rpc, ...fallbackRpcs[chainId]];
+        const state = OperationState.init(config.rpc.map((v) => ({ url: v })));
+        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders);
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {
@@ -84,6 +85,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -249,9 +251,7 @@ for (let i = 0; i < testData.length; i++) {
                     await getOrderbookOwnersProfileMapFromSg(orders, viemClient, []),
                     false,
                 );
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -336,6 +336,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -576,9 +577,7 @@ for (let i = 0; i < testData.length; i++) {
                         });
                     });
                 });
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders
@@ -676,6 +675,7 @@ for (let i = 0; i < testData.length; i++) {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
+                dataFetcher.web3Client.transport.retryCount = 3;
                 const testSpan = tracer.startSpan("test-clearing");
                 const ctx = trace.setSpan(context.active(), testSpan);
 
@@ -927,9 +927,7 @@ for (let i = 0; i < testData.length; i++) {
                         });
                     });
                 });
-                const state = {
-                    gasPrice: await bot.getGasPrice(),
-                };
+                state.gasPrice = await bot.getGasPrice();
                 const { reports } = await clear(config, orders, state, tracer, ctx);
 
                 // should have cleared correct number of orders

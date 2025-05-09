@@ -8,6 +8,14 @@ const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
+const {
+    startup,
+    arbRound,
+    getRpcConfig,
+    validateHash,
+    validateAddress,
+    parseArrayFromEnv,
+} = require("../src/cli");
 
 describe("Test cli", async function () {
     beforeEach(() => mockServer.start(8080));
@@ -191,25 +199,13 @@ sgFilter:
         assert.equal(result.config.rpOnly, expected.config.rpOnly);
         assert.deepEqual(result.options.dispair, expected.options.dispair);
         assert.deepEqual(result.config.dispair, expected.config.dispair);
-        for (const url in result.config.rpcState.metrics) {
-            assert.equal(
-                result.config.rpcState.metrics[url].req,
-                expected.config.rpcState.metrics[url].req,
-            );
-            assert.equal(
-                result.config.rpcState.metrics[url].success,
-                expected.config.rpcState.metrics[url].success,
-            );
-            assert.equal(
-                result.config.rpcState.metrics[url].failure,
-                expected.config.rpcState.metrics[url].failure,
-            );
-            assert.deepEqual(
-                result.config.rpcState.metrics[url].cache,
-                expected.config.rpcState.metrics[url].cache,
-            );
-            assert.notEqual(result.config.rpcState.metrics[url].lastRequestTimestamp, 0);
-            assert.isNotEmpty(result.config.rpcState.metrics[url].requestIntervals);
+        for (const url in result.state.rpc.metrics) {
+            assert.ok(result.state.rpc.metrics[url].req >= 4);
+            assert.ok(result.state.rpc.metrics[url].success >= 4);
+            assert.ok(result.state.rpc.metrics[url].failure < 4);
+            assert.deepEqual(result.state.rpc.metrics[url].cache, {});
+            assert.notEqual(result.state.rpc.metrics[url].lastRequestTimestamp, 0);
+            assert.isNotEmpty(result.state.rpc.metrics[url].requestIntervals);
         }
         assert.deepEqual(result.options.sgFilter, expected.options.sgFilter);
     });

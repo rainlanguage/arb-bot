@@ -1,7 +1,6 @@
 import axios from "axios";
 import { ethers } from "ethers";
 import { ChainId } from "sushi";
-import { RpcState } from "./rpc";
 import { versions } from "process";
 import { PublicClient } from "viem";
 import { AppOptions } from "./yaml";
@@ -12,15 +11,15 @@ import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
-import { SgFilter, BotConfig, RoundReport, BundledOrders, OperationState } from "./types";
+import { processLps, getChainConfig, getDataFetcher, createViemClient } from "./config";
 import {
-    processLps,
-    getChainConfig,
-    getDataFetcher,
-    onFetchRequest,
-    onFetchResponse,
-    createViemClient,
-} from "./config";
+    SgFilter,
+    BotConfig,
+    CliOptions,
+    RoundReport,
+    BundledOrders,
+    OperationState,
+} from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -93,26 +92,15 @@ export async function getConfig(
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
-    // init rpc state
-    const rpcState = new RpcState(rpcUrls);
-    config.onFetchRequest = (request: Request) => {
-        onFetchRequest(request, rpcState);
-    };
-    config.onFetchResponse = (response: Response) => {
-        onFetchResponse(response.clone(), rpcState);
-    };
-
-    const lps = processLps(options.liquidityProviders);
+    const lps = processLps(options.lps);
     const viemClient = await createViemClient(
         chainId,
-        rpcUrls,
-        false,
+        state.rpc,
         undefined,
         options.timeout,
         undefined,
-        config,
     );
-    const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, lps, false);
+    const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, state.rpc, lps);
 
     const interpreter = await (async () => {
         try {
@@ -167,7 +155,14 @@ export async function getConfig(
     };
 
     // init accounts
-    const { mainAccount, accounts } = await initAccounts(walletKey, config, options, tracer, ctx);
+    const { mainAccount, accounts } = await initAccounts(
+        walletKey,
+        config,
+        state,
+        options,
+        tracer,
+        ctx,
+    );
     config.mainAccount = mainAccount;
     config.accounts = accounts;
 

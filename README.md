@@ -84,7 +84,7 @@ node arb-bot <OPTIONS>
 
 <br>
 
-The app requires a config yaml file to operate and by default it looks in `./config.yaml`, however the path of the config file can be passed by using `-c` or `--config` flag on cli or set in `CONFIG` env variable, for more details about config file please see `./config.example.yaml`:
+The app requires a config yaml file to operate and by default it looks in `./config.yaml`, however the path of the config file can be passed by using `-c` or `--config` flag on cli or set in `CONFIG` env variable, for more details about config file please see `./config.example.yaml`.
 
 <br>
 
@@ -222,7 +222,7 @@ to tell Docker to do so. The default behaviour of Docker is that it manages
 volumes opaquely within its own system files, which has pros and cons. Either way
 the default behaviour won't give you a predictable path on the host to work with.
 
-To create a bind mount to a specific absolute path on the host
+To create a bind mount to a specific absolute path on the host 
 
 ```
 docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>

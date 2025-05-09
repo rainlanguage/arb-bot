@@ -1,4 +1,4 @@
-import { sleep, withBigintSerializer } from "./utils";
+import assert from "assert";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
 import { Command } from "commander";
@@ -8,12 +8,15 @@ import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
 import { getOrderChanges, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
+import { sleep, withBigintSerializer } from "./utils";
 import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { getDataFetcher, getMetaInfo } from "./config";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 import {
     BotConfig,
     ViemClient,
@@ -21,13 +24,6 @@ import {
     OperationState,
     ProcessPairReportStatus,
 } from "./types";
-import {
-    sweepToEth,
-    manageAccounts,
-    rotateProviders,
-    sweepToMainWallet,
-    getBatchEthBalance,
-} from "./account";
 import {
     getOrdersTokens,
     downscaleProtection,
@@ -169,6 +165,9 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
     const tokens = getOrdersTokens(ordersDetails);
 
+    // init raw state
+    const state = OperationState.init(options.rpcConfigs, options.writeRpcConfigs);
+
     // get config
     const config = await getConfig(
         options.rpc,
@@ -181,10 +180,6 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     config.watchedTokens = tokens;
 
     // fetch initial gas price on startup
-    const state: OperationState = {
-        gasPrice: 0n,
-        l1GasPrice: 0n,
-    };
     await getGasPrice(config, state);
 
     return {
@@ -357,8 +352,10 @@ export const main = async (argv: any, version?: string) => {
             }
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
-                await rotateProviders(config, update);
-                roundSpan.setAttribute("details.rpc", config.rpc);
+                if (update) {
+                    await getDataFetcher(config.viemClient, state.rpc, config.lps);
+                }
+                roundSpan.setAttribute("details.rpc", state.rpc.urls);
                 await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
@@ -568,21 +565,42 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // report rpcs performance for round
-            for (const rpc in config.rpcState.metrics) {
+            for (const rpc in state.rpc.metrics) {
                 await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
-                    const record = config.rpcState.metrics[rpc];
+                    const record = state.rpc.metrics[rpc];
                     span.setAttributes({
                         "rpc-url": rpc,
                         "request-count": record.req,
                         "success-count": record.success,
                         "failure-count": record.failure,
                         "timeout-count": record.timeout,
-                        "request-intervals": record.requestIntervals,
                         "avg-request-interval": record.avgRequestIntervals,
+                        "latest-success-rate": record.progress.successRate / 100,
+                        "selection-weight": record.progress.selectionWeight,
                     });
                     record.reset();
                     span.end();
                 });
+            }
+            // report write rpcs performance
+            if (state.writeRpc) {
+                for (const rpc in state.writeRpc.metrics) {
+                    await tracer.startActiveSpan("rpc-report", {}, roundCtx, async (span) => {
+                        const record = state.writeRpc!.metrics[rpc];
+                        span.setAttributes({
+                            "rpc-url": rpc,
+                            "request-count": record.req,
+                            "success-count": record.success,
+                            "failure-count": record.failure,
+                            "timeout-count": record.timeout,
+                            "avg-request-interval": record.avgRequestIntervals,
+                            "latest-success-rate": record.progress.successRate / 100,
+                            "selection-weight": record.progress.selectionWeight,
+                        });
+                        record.reset();
+                        span.end();
+                    });
+                }
             }
 
             // eslint-disable-next-line no-console

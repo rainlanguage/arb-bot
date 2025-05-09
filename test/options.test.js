@@ -1,6 +1,7 @@
 const { assert } = require("chai");
 const { getConfig } = require("../src");
 const { LiquidityProviders } = require("sushi");
+const { RpcState } = require("../src/rpc");
 
 describe("Test app options", async function () {
     it("should use defaults", async function () {
@@ -16,6 +17,7 @@ describe("Test app options", async function () {
                 retries: 1,
                 gasCoveragePercentage: "100",
             },
+            { rpc: new RpcState(rpcs.map((url) => ({ url }))) },
         );
 
         assert.deepEqual(config.lps, [LiquidityProviders.SushiSwapV2, LiquidityProviders.Biswap]);

@@ -1,12 +1,12 @@
 import { AppOptions } from "./yaml";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
-import { erc20Abi, PublicClient } from "viem";
+import { erc20Abi } from "viem";
 import { estimateGasCost, getTxFee } from "./gas";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
-import { createViemClient, getDataFetcher } from "./config";
+import { createViemClient } from "./config";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { getRpSwap, PoolBlackList, sleep, addWatchedToken } from "./utils";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
@@ -44,8 +44,7 @@ export async function initAccounts(
     const isMnemonic = !/^(0x)?[a-fA-F0-9]{64}$/.test(mnemonicOrPrivateKey);
     const mainAccount = await createViemClient(
         config.chain.id as ChainId,
-        config.rpc,
-        config.publicRpc,
+        state.rpc,
         isMnemonic
             ? mnemonicToAccount(mnemonicOrPrivateKey, {
                   addressIndex: MainAccountDerivationIndex,
@@ -57,7 +56,6 @@ export async function initAccounts(
               ),
         config.timeout,
         (config as any).testClientViem,
-        config,
     );
 
     // if the provided key is mnemonic, generate new accounts
@@ -67,14 +65,12 @@ export async function initAccounts(
             accounts.push(
                 await createViemClient(
                     config.chain.id as ChainId,
-                    config.rpc,
-                    config.publicRpc,
+                    state.rpc,
                     mnemonicToAccount(mnemonicOrPrivateKey, {
                         addressIndex,
                     }),
                     config.timeout,
                     (config as any).testClientViem,
-                    config,
                 ),
             );
         }
@@ -216,14 +212,12 @@ export async function manageAccounts(
             try {
                 const acc = await createViemClient(
                     config.chain.id as ChainId,
-                    config.rpc,
-                    config.publicRpc,
+                    state.rpc,
                     mnemonicToAccount(options.mnemonic!, {
                         addressIndex: ++lastIndex,
                     }),
                     config.timeout,
                     (config as any).testClientViem,
-                    config,
                 );
                 span?.setAttribute("details.wallet", acc.account.address);
                 const balance = ethers.BigNumber.from(
@@ -328,75 +322,6 @@ export async function manageAccounts(
         }
     }
     return lastIndex;
-}
-
-/**
- * Rotates the providers rpcs for viem and ethers clients
- * @param config - The config object
- * @param resetDataFetcher
- */
-export async function rotateProviders(config: BotConfig, resetDataFetcher = true) {
-    if (config.rpc?.length > 1) {
-        config.rpc.push(config.rpc.shift()!);
-        const viemClient = await createViemClient(
-            config.chain.id as ChainId,
-            config.rpc,
-            config.publicRpc,
-            undefined,
-            config.timeout,
-            undefined,
-            config,
-        );
-
-        if (resetDataFetcher) {
-            config.dataFetcher.reset();
-        }
-        config.dataFetcher.web3Client = viemClient as any as PublicClient;
-        config.viemClient = viemClient as any as PublicClient;
-
-        // rotate main account's provider
-        const mainAccBalance = config.mainAccount.BALANCE;
-        const mainAccBounty = config.mainAccount.BOUNTY;
-        const mainAcc = await createViemClient(
-            config.chain.id as ChainId,
-            config.rpc,
-            config.publicRpc,
-            config.mainAccount.account,
-            config.timeout,
-            undefined,
-            config,
-        );
-        // config.mainAccount.connect(provider);
-        mainAcc.BALANCE = mainAccBalance;
-        mainAcc.BOUNTY = mainAccBounty;
-        config.mainAccount = mainAcc;
-
-        // rotate other accounts' provider
-        for (let i = 0; i < config.accounts.length; i++) {
-            const balance = config.accounts[i].BALANCE;
-            const bounty = config.accounts[i].BOUNTY;
-            const acc = await createViemClient(
-                config.chain.id as ChainId,
-                config.rpc,
-                config.publicRpc,
-                config.accounts[i].account,
-                config.timeout,
-                undefined,
-                config,
-            );
-            acc.BALANCE = balance;
-            acc.BOUNTY = bounty;
-            config.accounts[i] = acc;
-        }
-    } else {
-        if (resetDataFetcher) {
-            config.dataFetcher = await getDataFetcher(
-                config.viemClient,
-                config.lps,
-                config.publicRpc,
-            );
-        }
-    }
 }
 
 /**

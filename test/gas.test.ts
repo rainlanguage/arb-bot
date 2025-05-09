@@ -112,6 +112,7 @@ describe("Test gas", async function () {
         const state1: OperationState = {
             gasPrice: 0n,
             l1GasPrice: 0n,
+            rpc: {} as any,
         };
         await getGasPrice(config, state1);
         assert.equal(state1.gasPrice, gasPrice);
@@ -124,6 +125,7 @@ describe("Test gas", async function () {
         const state2: OperationState = {
             gasPrice: 0n,
             l1GasPrice: 0n,
+            rpc: {} as any,
         };
         await getGasPrice(config, state2);
         assert.equal(state2.gasPrice, gasPrice);
