@@ -1,0 +1,48 @@
+# updates the rain solver configuration only, i.e. without updating the source
+name: Update A Rain Solver Worker Configurations
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: "Choose From Available Deployments"
+        required: true
+        type: choice
+        options:
+          - flare
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          deployment=${{ inputs.deployment }}
+          echo "rpc=PROD_${deployment^^}_RPC" >> $GITHUB_ENV
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Install Nix 1/2
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+      - name: Install Nix 2/2
+        uses: DeterminateSystems/flakehub-cache-action@main
+
+      - name: Update ${{ inputs.deployment }} Worker
+        env:
+          HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
+          PROD_WALLET_KEY: ${{ secrets.PROD_WALLET_KEY }}
+          RPC_URL: ${{ secrets[env.rpc] }}
+        run: |
+          # Use envsubst to replace secrets in spec.yaml
+          nix develop -c envsubst -i deployments/${{ inputs.deployment }}/specs.yaml -o spec.yaml
+          
+          # Deploy
+          nix develop -c doctl apps update $(cat deployments/${{ inputs.deployment }}/id.txt) -t ${{ secrets.DOCTL_API_KEY }} --spec spec.yaml
+
+          # rm temp files
+          rm -f spec.yaml
