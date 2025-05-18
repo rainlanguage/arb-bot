@@ -418,9 +418,14 @@ export namespace AppOptions {
             if (isOptional && typeof rpcs.value === "undefined") return undefined as any;
             rpcs.value = tryIntoArray(rpcs.value);
             for (let i = 0; i < rpcs.value.length; i++) {
-                const [key, value, ...rest] = rpcs.value[i].split("=");
+                // eslint-disable-next-line prefer-const
+                let [key, value, ...rest] = rpcs.value[i].split("=");
                 assert(value, `expected value after ${key}=`);
-                assert(rest.length === 0, `unexpected arguments: ${rest}`);
+                if (key === "url" && rest.length) {
+                    value = value.concat("=", rest.join("="));
+                } else {
+                    assert(rest.length === 0, `unexpected arguments: ${rest}`);
+                }
 
                 // insert the first one as empty to be filled
                 if (!result.length || (key === "url" && "url" in result[result.length - 1])) {

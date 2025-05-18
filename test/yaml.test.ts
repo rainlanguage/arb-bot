@@ -868,7 +868,7 @@ sgFilter:
         // happy path using direct object input:
         const inputs = [
             {
-                url: "https://example1.com",
+                url: "https://example1.com/auth=123",
             },
             {
                 url: "https://example2.com",
@@ -887,7 +887,7 @@ sgFilter:
         const result = AppOptions.resolveRpc(inputs);
         const expected = [
             {
-                url: "https://example1.com",
+                url: "https://example1.com/auth=123",
             },
             {
                 url: "https://example2.com",
@@ -907,7 +907,7 @@ sgFilter:
 
         // happy path using env variable:
         process.env.RPC_URLS =
-            "url=https://example1.com,url=https://example2.com,weight=2.5,trackSize=50,url=wss://example3.com,weight=1.5,url=https://example4.com,trackSize=200";
+            "url=https://example1.com/auth=123,url=https://example2.com,weight=2.5,trackSize=50,url=wss://example3.com,weight=1.5,url=https://example4.com,trackSize=200";
         const envInput = "$RPC_URLS";
         const resultEnv = AppOptions.resolveRpc(envInput);
         assert.deepEqual(resultEnv, expected);
