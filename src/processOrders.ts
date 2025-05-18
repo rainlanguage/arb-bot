@@ -147,11 +147,10 @@ export const processOrders = async (
                 // await for first available signer to get free
                 const signer = await getSigner(accounts, mainAccount, true);
 
-                const writeSigner = config.writeRpc
+                const writeSigner = state.writeRpc
                     ? await createViemClient(
                           config.chain.id as ChainId,
-                          config.writeRpc,
-                          false,
+                          state.writeRpc,
                           privateKeyToAccount(
                               signer.account.getHdKey
                                   ? (ethers.utils.hexlify(
@@ -161,9 +160,8 @@ export const processOrders = async (
                                         ? config.walletKey
                                         : "0x" + config.walletKey) as `0x${string}`),
                           ),
-                          config.timeout,
+                          { timeout: config.timeout },
                           undefined,
-                          config,
                       )
                     : undefined;
 
@@ -281,7 +279,6 @@ export const processOrders = async (
                         message = errorSnapshot(message, e.error);
                         span.recordException(e.error);
                     }
-                    span.setAttribute("severity", ErrorSeverity.MEDIUM);
                     span.setStatus({ code: SpanStatusCode.ERROR, message });
                 } else if (e.reason === ProcessPairHaltReason.TxFailed) {
                     // failed to submit the tx to mempool, this can happen for example when rpc rejects
@@ -486,11 +483,13 @@ export async function processPair(args: {
         }
         await dataFetcher.updatePools(dataFetcherBlockNumber);
     } catch (e) {
-        result.reason = ProcessPairHaltReason.FailedToUpdatePools;
-        result.error = e;
-        return async () => {
-            throw result;
-        };
+        if (typeof e !== "string" || !e.includes("fetchPoolsForToken")) {
+            result.reason = ProcessPairHaltReason.FailedToUpdatePools;
+            result.error = e;
+            return async () => {
+                throw result;
+            };
+        }
     }
 
     // get pool details

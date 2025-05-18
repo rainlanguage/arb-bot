@@ -78,7 +78,7 @@ module.exports = [
     [
         ChainId.ETHEREUM,
         process?.env?.TEST_ETH_RPC,
-        19829125,
+        22434064,
         [
             WNATIVE[ChainId.ETHEREUM],
             USDT[ChainId.ETHEREUM],
@@ -90,8 +90,8 @@ module.exports = [
             // }),
         ],
         [
-            "0x17FD2FeeDabE71f013F5228ed9a52DE58291b15d",
-            "0x83B9c290E8D86e686a9Eda6A6DC8FA6d281A5157",
+            "0x6B44ba0a126a2A1a8aa6cD1AdeeD002e141Bcd44",
+            "0x11b113383cE08E84001DC614f141aE4C27221e31",
             // "0x3776100a4b669Ef0d727a81FC69bF50DE74A976c",
         ],
         [

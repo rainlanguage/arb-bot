@@ -5,7 +5,7 @@ This app requires NodeJS v18 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## The Case for Profitability
-Profitablity can be adjusted by using an integer ≥0 for `--gas-coverage` arg as the percentage of the gas cost of the transaction, denominated in receiving ERC20 token, the cost of the transaction is calculated in the receiving ERC20 token unit with current market price of that token against chain's native token.
+Profitablity can be adjusted by using an integer ≥0 for `gasCoveragePercentage` config arg as the percentage of the gas cost of the transaction, denominated in receiving ERC20 token, the cost of the transaction is calculated in the receiving ERC20 token unit with current market price of that token against chain's native token.
 
 for example:
 - If set to 100, the receiving profit must be at least equal or greater than tx gas cost.
@@ -84,45 +84,7 @@ node arb-bot <OPTIONS>
 
 <br>
 
-The app requires these arguments (all arguments can be set in env variables alternatively, more details below):
-- `-k` or `--key`, Private key of wallet that performs the transactions, one of this or --mnemonic should be specified. Will override the 'BOT_WALLET_PRIVATEKEY' in env variables
-- `-m` or `--mnemonic`, Mnemonic phrase of wallet that performs the transactions, one of this or --key should be specified, requires `--wallet-count` and `--topup-amount`. Will override the 'MNEMONIC' in env variables
-- `-r` or `--rpc`, RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. Will override the 'RPC_URL' in env variables
-- `--arb-address`, Address of the deployed arb contract, Will override the 'ARB_ADDRESS' in env variables
-- `--bot-min-balance` The minimum gas token balance the bot wallet must have. Will override the 'BOT_MIN_BALANCE' in env variables
-- `-s` or `--subgraph`, Subgraph URL(s) to read orders details from, can be used in combination with --orders, Will override the 'SUBGRAPH' in env variables
-- `--dispair`, Address of dispair (ExpressionDeployer contract) to use for tasks, Will override the 'DISPAIR' in env variables
-
-Other optional arguments are:
-- `--generic-arb-address`, Address of the deployed generic arb contract to perform inter-orderbook clears, Will override the 'GENERIC_ARB_ADDRESS' in env variables
-- `-l` or `--lps`, List of liquidity providers (dex) to use by the router as one quoted string seperated by a comma for each, example: 'SushiSwapV2,UniswapV3', Will override the 'LIQUIDITY_PROVIDERS' in env variables, if unset will use all available liquidty providers
-- `-g` or `--gas-coverage`, The percentage of gas to cover to be considered profitable for the transaction to be submitted, an integer greater than equal 0, default is 100 meaning full coverage, Will override the 'GAS_COVER' in env variables
-- `--include-orders`, Option to only include the specified orders for processing, Will override the 'INCLUDE_ORDERS' in env variables
-- `--include-owners`, Option to only include the specified owners' orders for processing, Will override the 'INCLUDE_OWNERS' in env variables
-- `--include-orderbooks`, Option to only include the specified orderbooks for processing, Will override the 'INCLUDE_ORDERBOOKS' in env variables
-- `--exclude-orders`, Option to exclude the specified orders from processing, Will override the 'EXCLUDE_ORDERS' in env variables
-- `--exclude-owners`, Option to exclude the specified owners' orders from processing, Will override the 'EXCLUDE_OWNERS' in env variables
-- `--exclude-orderbooks`, Option to exclude the specified orderbooks from processing, Will override the 'EXCLUDE_ORDERBOOKS' in env variables
-- `--sleep`, Seconds to wait between each arb round, default is 10, Will override the 'SLEEP' in env variables
-- `--max-ratio`, Option to maximize maxIORatio, Will override the 'MAX_RATIO' in env variables
-- `--timeout`, Optional seconds to wait for the transaction to mine before disregarding it, Will override the 'TIMEOUT' in env variables
-- `--write-rpc`, Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks, Will override the 'WRITE_RPC' in env variables
-- `--hops`, Option to specify how many hops the binary search should do, default is 0 if left unspecified, Will override the 'HOPS' in env variables
-- `--retries`, Option to specify how many retries should be done for the same order, max value is 3, default is 1 if left unspecified, Will override the 'RETRIES' in env variables
-- `--pool-update-interval`, Option to specify time (in minutes) between pools updates, default is 15 minutes, Will override the 'POOL_UPDATE_INTERVAL' in env variables
-- `--self-fund-orders`, Specifies owned order to get funded once their vault goes below the specified threshold, example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;... . Will override the 'SELF_FUND_ORDERS' in env variables
-- `--route`, Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'. Will override the 'ROUTE' in env variables
-- `-w` or `--wallet-count`, Number of wallet to submit transactions with, requirs `--mnemonic`. Will override the 'WALLET_COUNT' in env variables
-- `-t` or `--topup-amount`, The initial topup amount of excess wallets, requirs `--mnemonic`. Will override the 'TOPUP_AMOUNT' in env variables
-- `--owner-profile`, Specifies the owner limit, example: --owner-profile 0x123456=12 . Will override the 'OWNER_PROFILE' in env variables
-- `--public-rpc`, Allows to use public RPCs as fallbacks, default is false. Will override the 'PUBLIC_RPC' in env variables
-- `--gas-price-multiplier`, Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%. Will override the 'GAS_PRICE_MULTIPLIER' in env variables
-- `--gas-limit-multiplier`, Option to multiply the gas limit estimation from the rpc as percentage, default is 100, ie no change. Will override the 'GAS_LIMIT_MULTIPLIER' in env variables
-- `--tx-gas`, Option to set a gas limit for all submitting txs optionally with appended percentage sign to apply as percentage to original gas. Will override the 'TX_GAS' in env variables
-- `--quote-gas`, Option to set a static gas limit for quote read calls, default is 1 milion. Will override the 'QUOTE_GAS' in env variables
-- `--rp-only`, Only clear orders through RP4, excludes intra and inter orderbook clears. Will override the 'RP_ONLY' in env variablesin env variables
-- `-V` or `--version`, output the version number
-- `-h` or `--help`, output usage information
+The app requires a config yaml file to operate and by default it looks in `./config.yaml`, however the path of the config file can be passed by using `-c` or `--config` flag on cli or set in `CONFIG` env variable, for more details about config file, please see `./config.example.yaml`.
 
 <br>
 
@@ -181,112 +143,17 @@ node arb-bot -h
 
 Alternatively all variables can be specified in env variables with below keys:
 ```bash
-# private key of the matchmaker bot's wallet
-BOT_WALLET_PRIVATEKEY="123..."
+# path to config yaml file
+CONFIG=
 
-# mnemonic phrase
-MNEMONIC=""
-
-# RPC URL(s) that will be provider for interacting with evm, use different providers if more than 1 is specified to prevent banning. 
-# for specifying more than 1 RPC in the env, separate them by a comma and a space
-RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/{API_KEY}, https://rpc.ankr.com/polygon/{API_KEY}"
-
-# Option to explicitly use for write transactions, such as flashbots or mev protect rpc to protect against mev attacks.
-WRITE_RPC=""
-
-# arb contract address
-ARB_ADDRESS="0x123..."
-
-# generic arb contract address
-GENERIC_ARB_ADDRESS="0x123..."
-
-# one or more subgraph urls to read orders details from, can be used in combination with ORDERS
-# for more than 1 subgraphs, seperate them by comma and a space
-SUBGRAPH="https://api.thegraph.com/subgraphs/name/org1/sg1, https://api.thegraph.com/subgraphs/name/org2/sg2"
-
-# list of liquidity providers names seperated by a comma for each
-LIQUIDITY_PROVIDERS="sushiswapv2,uniswapv3,quickswap"
-
-# gas coverage percentage for each transaction to be considered profitable to be submitted
-GAS_COVER="100"
-
-# Option to filter the subgraph query results with a specific order hash
-ORDER_HASH=""
-
-# Option to filter the subgraph query results with a specific order owner address
-ORDER_OWNER=""
-
-# Seconds to wait between each arb round, default is 10
-SLEEP=10
-
-# Option to maximize maxIORatio
-MAX_RATIO="true"
-
-# Optional seconds to wait for the transaction to mine before disregarding it
-TIMEOUT=""
-
-# number of hops of binary search, if left unspecified will be 7 by default
-HOPS=11
+# Git branch to track for docker compose
+DOCKER_CHANNEL=master
 
 # api key for heyperDx platfomr to send spans to, if not set will send traces to localhost
 HYPERDX_API_KEY=""
 
 # trace/spans service name, defaults to "arb-bot" if not set
 TRACER_SERVICE_NAME=""
-
-# The amount of retries for the same order, max is 3, default is 1
-RETRIES=1
-
-# Option to specify time (in minutes) between pools updates, default is 0 minutes
-POOL_UPDATE_INTERVAL=
-
-# number of excess wallets for submitting txs, requires mnemonic option
-WALLET_COUNT=
-
-# topup amount for excess accounts, requires mnemonic option
-TOPUP_AMOUNT=
-
-# Minimum bot's wallet gas token balance before alering
-BOT_MIN_BALANCE=
-
-# Specifies owned order to get funded once their vault goes below the specified threshold
-# example: token,vaultId,threshold,toptupamount;token,vaultId,threshold,toptupamount;...
-SELF_FUND_ORDERS=
-
-# Specifies the owner limit, in form of owner1=limit,owner2=limit,... , example: 0x123456=12,0x3456=44
-OWNER_PROFILE= 
-
-# Allows to use public RPCs as fallbacks, default is false
-PUBLIC_RPC=
-
-# Specifies the routing mode 'multi' or 'single' or 'full', default is 'single'
-ROUTE="single"
-
-# Option to multiply the gas price fetched from the rpc as percentage, default is 107, ie +7%
-GAS_PRICE_MULTIPLIER=
-
-# Option to multiply the gas limit estimation from the rpc as percentage, default is 100, ie no change
-GAS_LIMIT_MULTIPLIER=
-
-# Option to set a gas limit for all submitting txs optionally with appended percentage sign to apply as percentage to original gas
-TX_GAS=
-
-# Option to set a static gas limit for quote read calls, default is 1 milion
-QUOTE_GAS=
-
-# Only clear orders through RP4, excludes intra and inter orderbook clears
-RP_ONLY="true"
-
-# Address of dispair (ExpressionDeployer contract) to use for tasks
-DISPAIR="address"
-
-# Filters for inc/exc orders, multiple items can be separated by a comma
-INCLUDE_ORDERS=
-INCLUDE_OWNERS=
-INCLUDE_ORDERBOOKS=
-EXCLUDE_ORDERS=
-EXCLUDE_OWNERS=
-EXCLUDE_ORDERBOOKS=
 ```
 If both env variables and CLI argument are set, the CLI arguments will be prioritized and override the env variables.
 
@@ -355,7 +222,7 @@ to tell Docker to do so. The default behaviour of Docker is that it manages
 volumes opaquely within its own system files, which has pros and cons. Either way
 the default behaviour won't give you a predictable path on the host to work with.
 
-To create a bind mount to a specific absolute path on the host
+To create a bind mount to a specific absolute path on the host 
 
 ```
 docker volume create --driver local --opt type=none --opt device=<absolute-host-path> --opt o=bind <volume-name>

@@ -337,7 +337,7 @@ export function appGlobalLogger(scrub: boolean, ...data: any[]) {
 export async function promiseTimeout(
     promise: Promise<any>,
     time: number,
-    exception: string | number | bigint | symbol | boolean,
+    exception: Error | string | number | bigint | symbol | boolean,
 ) {
     let timer: string | number | NodeJS.Timeout | undefined;
     return Promise.race([
@@ -716,6 +716,8 @@ export async function routeExists(
 export function withBigintSerializer(_k: string, v: any) {
     if (typeof v == "bigint") {
         return v.toString();
+    } else if (v instanceof Set) {
+        return Array.from(v);
     } else {
         return v;
     }

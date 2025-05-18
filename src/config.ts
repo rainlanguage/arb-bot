@@ -7,11 +7,9 @@ import { ChainId, ChainKey } from "sushi/chain";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import { BotConfig, ViemClient, ChainConfig, BotDataFetcher } from "./types";
+import { rainSolverTransport, RainSolverTransportConfig } from "./transport";
 import {
-    http,
-    fallback,
     HDAccount,
-    webSocket,
     PublicClient,
     publicActions,
     walletActions,
@@ -70,55 +68,18 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
 /**
  * Creates a viem client
  * @param chainId - The chain id
- * @param rpcs - The RPC urls
- * @param useFallbacks - If fallback RPCs should be used as well or not
+ * @param rpcState - rpc state
  * @param account - If fallback RPCs should be used as well or not
- * @param timeout
+ * @param configuration - The rain solver transport configurations
  */
 export async function createViemClient(
     chainId: ChainId,
-    rpcs: string[],
-    useFallbacks = false,
+    rpcState: RpcState,
     account?: HDAccount | PrivateKeyAccount,
-    timeout?: number,
+    configuration?: RainSolverTransportConfig,
     testClient?: any,
-    config?: BotConfig,
 ): Promise<ViemClient> {
-    const configuration = { rank: false, retryCount: 3 };
-    const urls = rpcs?.filter((v) => typeof v === "string") ?? [];
-    const topRpcs = urls.map((v) =>
-        v.startsWith("http")
-            ? http(v, {
-                  timeout,
-                  onFetchRequest: config?.onFetchRequest,
-                  onFetchResponse: config?.onFetchResponse,
-              })
-            : webSocket(v, {
-                  timeout,
-                  keepAlive: true,
-                  reconnect: true,
-              }),
-    );
-    const fallbacks = (fallbackRpcs[chainId] ?? [])
-        .filter((v) => !urls.includes(v))
-        .map((v) =>
-            v.startsWith("http")
-                ? http(v, {
-                      timeout,
-                      onFetchRequest: config?.onFetchRequest,
-                      onFetchResponse: config?.onFetchResponse,
-                  })
-                : webSocket(v, {
-                      timeout,
-                      keepAlive: true,
-                      reconnect: true,
-                  }),
-        );
-    const transport = !topRpcs.length
-        ? fallback(fallbacks, configuration)
-        : useFallbacks
-          ? fallback([...topRpcs, ...fallbacks], configuration)
-          : fallback(topRpcs, configuration);
+    const transport = rainSolverTransport(rpcState, configuration);
 
     const client = testClient
         ? ((await testClient({ account }))
@@ -142,11 +103,11 @@ export async function createViemClient(
 /**
  * Keeps record of http fetch requests for a http viem client
  */
-export function onFetchRequest(request: Request, rpcState: RpcState) {
+export function onFetchRequest(this: RpcState, request: Request) {
     const url = normalizeUrl(request.url);
-    let record = rpcState.metrics[url];
+    let record = this.metrics[url];
     if (!record) {
-        record = rpcState.metrics[url] = new RpcMetrics();
+        record = this.metrics[url] = new RpcMetrics();
     }
     record.recordRequest();
 }
@@ -154,17 +115,18 @@ export function onFetchRequest(request: Request, rpcState: RpcState) {
 /**
  * Keeps record of http fetch responses for a http viem client
  */
-export function onFetchResponse(response: Response, rpcState: RpcState) {
-    const url = normalizeUrl(response.url);
-    let record = rpcState.metrics[url];
+export async function onFetchResponse(this: RpcState, response: Response) {
+    const _response = response.clone();
+    const url = normalizeUrl(_response.url);
+    let record = this.metrics[url];
     if (!record) {
         // this cannot really happen, but just to be sure,
         // initialize this rpc record if its not already
-        record = rpcState.metrics[url] = new RpcMetrics();
+        record = this.metrics[url] = new RpcMetrics();
         record.recordRequest();
     }
 
-    if (!response.ok) {
+    if (!_response.ok) {
         record.recordFailure();
         return;
     }
@@ -181,8 +143,8 @@ export function onFetchResponse(response: Response, rpcState: RpcState) {
         }
         record.recordFailure();
     };
-    if (response.headers.get("Content-Type")?.startsWith("application/json")) {
-        response
+    if (_response.headers.get("Content-Type")?.startsWith("application/json")) {
+        await _response
             .json()
             .then((res: any) => {
                 handleResponse(res);
@@ -191,7 +153,7 @@ export function onFetchResponse(response: Response, rpcState: RpcState) {
                 record.recordFailure();
             });
     } else {
-        response
+        await _response
             .text()
             .then((text) => {
                 try {
@@ -210,12 +172,15 @@ export function onFetchResponse(response: Response, rpcState: RpcState) {
 /**
  * Instantiates a RainDataFetcher
  * @param configOrViemClient - The network config data or a viem public client
+ * @param rpcState - rpc state
  * @param liquidityProviders - Array of Liquidity Providers
+ * @param configuration - The rain solver transport configurations
  */
 export async function getDataFetcher(
     configOrViemClient: BotConfig | PublicClient,
-    liquidityProviders?: LiquidityProviders[],
-    useFallbacks = false,
+    rpcState: RpcState,
+    liquidityProviders: LiquidityProviders[] = [],
+    configuration?: RainSolverTransportConfig,
 ): Promise<BotDataFetcher> {
     try {
         const dataFetcher = await RainDataFetcher.init(
@@ -224,15 +189,16 @@ export async function getDataFetcher(
                 ? (configOrViemClient as PublicClient)
                 : ((await createViemClient(
                       configOrViemClient.chain.id as ChainId,
-                      configOrViemClient.rpc,
-                      useFallbacks,
+                      rpcState,
                       undefined,
+                      configuration,
                       undefined,
                   )) as any as PublicClient),
             liquidityProviders,
         );
         return dataFetcher as BotDataFetcher;
     } catch (error) {
+        console.log(error);
         throw "cannot instantiate RainDataFetcher for this network";
     }
 }
@@ -304,9 +270,9 @@ export function processLps(liquidityProviders?: string[]): LiquidityProviders[] 
 }
 
 /**
- * Chain specific fallback data
+ * Chain specific public rpcs
  */
-export const fallbackRpcs: Record<number, readonly string[]> = {
+export const publicRpcs: Record<number, readonly string[]> = {
     [ChainId.ARBITRUM_NOVA]: ["https://nova.arbitrum.io/rpc"],
     [ChainId.ARBITRUM]: [
         "https://arbitrum.drpc.org",
