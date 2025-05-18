@@ -175,7 +175,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
 
     return {
         roundGap,
-        options: options,
+        options,
         poolUpdateInterval,
         config,
         orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
@@ -281,6 +281,7 @@ export const main = async (argv: any, version?: string) => {
                 "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
+                "meta.trackedTokens": JSON.stringify(config.watchedTokens),
                 "meta.configurations": JSON.stringify(
                     {
                         ...options,
