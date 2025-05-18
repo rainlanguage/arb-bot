@@ -77,6 +77,7 @@ for (let i = 0; i < testData.length; i++) {
         const state = OperationState.init(config.rpc.map((v) => ({ url: v })));
         const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders, {
             retryCountNext: Math.max(publicRpcs[chainId] * 2, 50),
+            timeout: 600_000,
         });
 
         // run tests on each rp version
