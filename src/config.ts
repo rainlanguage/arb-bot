@@ -278,8 +278,10 @@ export const publicRpcs: Record<number, string[]> = (() => {
     const chainRpcs: Record<number, string[]> = {};
     Chains.forEach((chainConfig: any) => {
         chainRpcs[chainConfig.chainId] = chainConfig.rpc
-            .map((v: any) => v.url)
-            .filter((v: string) => v.startsWith("http"));
+            .filter(
+                (v: any) => v.url?.startsWith("http") && (!v.tracking || v.tracking !== "limited"),
+            )
+            .map((v: any) => v.url);
     });
     return chainRpcs;
 })();
