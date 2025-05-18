@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { ChainId } from "sushi";
 import { versions } from "process";
 import { PublicClient } from "viem";
+import { AppOptions } from "./yaml";
 import { DeployerAbi } from "./abis";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
@@ -11,14 +12,7 @@ import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
 import { processLps, getChainConfig, getDataFetcher, createViemClient } from "./config";
-import {
-    SgFilter,
-    BotConfig,
-    CliOptions,
-    RoundReport,
-    BundledOrders,
-    OperationState,
-} from "./types";
+import { SgFilter, BotConfig, RoundReport, BundledOrders, OperationState } from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -73,88 +67,27 @@ export async function getOrderDetails(
 
 /**
  * Get the general and network configuration required for the bot to operate
- * @param rpcUrls - The RPC URL array
- * @param walletKey - The wallet mnemonic phrase or private key
- * @param arbAddress - The Rain Arb contract address deployed on the network
- * @param options - (optional) Optional parameters, liquidity providers
+ * @param options - App Options
+ * @param state - App state
  * @returns The configuration object
  */
 export async function getConfig(
-    rpcUrls: string[],
-    walletKey: string,
-    arbAddress: string,
-    options: CliOptions,
+    options: AppOptions,
     state: OperationState,
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
-    if (!ethers.utils.isAddress(arbAddress)) throw "invalid arb contract address";
-    if (options.genericArbAddress && !ethers.utils.isAddress(options.genericArbAddress)) {
-        throw "invalid generic arb contract address";
-    }
-
-    let timeout = 15_000;
-    if (options.timeout) {
-        if (typeof options.timeout === "number") {
-            if (!Number.isInteger(options.timeout) || options.timeout == 0)
-                throw "invalid timeout, must be an integer greater than 0";
-            else timeout = options.timeout * 1000;
-        } else if (typeof options.timeout === "string") {
-            if (/^\d+$/.test(options.timeout)) timeout = Number(options.timeout) * 1000;
-            else throw "invalid timeout, must be an integer greater than 0";
-            if (timeout == 0) throw "invalid timeout, must be an integer greater than 0";
-        } else throw "invalid timeout, must be an integer greater than 0";
-    }
-
-    let gasCoveragePercentage = "100";
-    if (options.gasCoverage) {
-        if (/^[0-9]+$/.test(options.gasCoverage)) {
-            gasCoveragePercentage = options.gasCoverage;
-        } else throw "invalid gas coverage percentage, must be an integer greater than equal 0";
-    }
-
-    let hops = 1;
-    if (options.hops) {
-        if (typeof options.hops === "number") {
-            hops = options.hops;
-            if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
-        } else if (typeof options.hops === "string" && /^[0-9]+$/.test(options.hops)) {
-            hops = Number(options.hops);
-            if (hops === 0) throw "invalid hops value, must be an integer greater than 0";
-        } else throw "invalid hops value, must be an integer greater than 0";
-    }
-
-    let retries = 1;
-    if (options.retries) {
-        if (typeof options.retries === "number") {
-            retries = options.retries;
-            if (retries < 1 || retries > 3)
-                throw "invalid retries value, must be an integer between 1 - 3";
-        } else if (typeof options.retries === "string" && /^[0-9]+$/.test(options.retries)) {
-            retries = Number(options.retries);
-            if (retries < 1 || retries > 3)
-                throw "invalid retries value, must be an integer between 1 - 3";
-        } else throw "invalid retries value, must be an integer between 1 - 3";
-    }
-
-    let route: "single" | "multi" | undefined = "single";
-    if (options.route) {
-        const temp = options.route.toLowerCase();
-        if (temp === "full") route = undefined;
-        if (temp === "multi") route = "multi";
-        if (temp === "single") route = "single";
-    }
-
-    const chainId = (await getChainId(rpcUrls)) as ChainId;
+    const chainId = (await getChainId(options.rpc.map((v) => v.url))) as ChainId;
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
-    const lps = processLps(options.lps);
+    const walletKey = (options.key ?? options.mnemonic)!;
+    const lps = processLps(options.liquidityProviders);
     const viemClient = await createViemClient(
         chainId,
         state.rpc,
         undefined,
-        options.timeout,
+        { timeout: options.timeout },
         undefined,
     );
     const dataFetcher = await getDataFetcher(viemClient as any as PublicClient, state.rpc, lps);
@@ -182,23 +115,23 @@ export async function getConfig(
         }
     })();
 
-    config.rpc = rpcUrls;
-    config.arbAddress = arbAddress;
+    config.rpc = options.rpc;
+    config.arbAddress = options.arbAddress;
     config.genericArbAddress = options.genericArbAddress;
-    config.timeout = timeout;
+    config.timeout = options.timeout;
     config.writeRpc = options.writeRpc;
     config.maxRatio = !!options.maxRatio;
-    config.hops = hops;
-    config.retries = retries;
-    config.gasCoveragePercentage = gasCoveragePercentage;
+    config.hops = options.hops;
+    config.retries = options.retries;
+    config.gasCoveragePercentage = options.gasCoveragePercentage;
     config.lps = lps;
     config.viemClient = viemClient as any as PublicClient;
     config.dataFetcher = dataFetcher;
-    config.watchedTokens = options.tokens ?? [];
+    config.watchedTokens = [];
     config.selfFundOrders = options.selfFundOrders;
-    config.publicRpc = options.publicRpc;
+    config.publicRpc = false;
     config.walletKey = walletKey;
-    config.route = route;
+    config.route = options.route;
     config.gasPriceMultiplier = options.gasPriceMultiplier;
     config.gasLimitMultiplier = options.gasLimitMultiplier;
     config.txGas = options.txGas;

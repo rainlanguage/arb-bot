@@ -2,18 +2,12 @@ require("dotenv").config();
 const { assert } = require("chai");
 const { sleep } = require("../src/utils");
 const mockServer = require("mockttp").getLocal();
+const { writeFileSync, unlinkSync } = require("fs");
+const { startup, arbRound } = require("../src/cli");
 const { trace, context } = require("@opentelemetry/api");
 const { Resource } = require("@opentelemetry/resources");
 const { BasicTracerProvider } = require("@opentelemetry/sdk-trace-base");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const {
-    startup,
-    arbRound,
-    getRpcConfig,
-    validateHash,
-    validateAddress,
-    parseArrayFromEnv,
-} = require("../src/cli");
 
 describe("Test cli", async function () {
     beforeEach(() => mockServer.start(8080));
@@ -68,362 +62,72 @@ describe("Test cli", async function () {
             await startup(["", ""]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "undefined wallet, only one of key or mnemonic should be specified";
-            assert.equal(error, expected);
+            const expected = "no such file or directory, open './config.yaml'";
+            assert.include(error.message, expected);
         }
 
         try {
-            await startup(["", "", "--key", `0x${"0".repeat(64)}`, "-m", "something"]);
+            await startup(["", "", "-c", "./some-other-path.yaml"]);
             assert.fail("expected to fail, but resolved");
         } catch (error) {
-            const expected = "undefined wallet, only one of key or mnemonic should be specified";
-            assert.equal(error, expected);
+            const expected = "no such file or directory, open './some-other-path.yaml'";
+            assert.include(error.message, expected);
         }
 
-        try {
-            await startup(["", "", "--key", `0x${"0".repeat(63)}`]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "invalid wallet private key";
-            assert.equal(error, expected);
-        }
+        const yaml = `
+key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+rpc:
+    - url: https://polygon.drpc.org
+writeRpc:
+    - url: http://write-rpc.example.com
+subgraph: ["http://subgraph.example.com"]
+arbAddress: "0x${"1".repeat(40)}"
+dispair: "${deployer}"
+liquidityProviders: 
+    - lp1
+    - lp2
+txGas: 123456789
+quoteGas: 7777
+botMinBalance: 0.123
+gasPriceMultiplier: 120
+gasLimitMultiplier: 110
+timeout: 20000
+hops: 2
+retries: 3
+maxRatio: true
+rpOnly: true
+publicRpc: true
+sgFilter:
+    includeOrders:
+        - "0x${"1".repeat(64)}"
+        - "0x${"2".repeat(64)}"
+    excludeOrders:
+        - "0x${"3".repeat(64)}"
+        - "0x${"4".repeat(64)}"
+    includeOwners:
+        - "0x${"1".repeat(40)}"
+        - "0x${"2".repeat(40)}"
+    excludeOwners:
+        - "0x${"3".repeat(40)}"
+        - "0x${"4".repeat(40)}"
+    includeOrderbooks:
+        - "0x${"5".repeat(40)}"
+        - "0x${"6".repeat(40)}"
+    excludeOrderbooks:
+        - "0x${"7".repeat(40)}"
+        - "0x${"8".repeat(40)}"
+`;
 
-        try {
-            await startup([
-                "",
-                "",
-                "-m",
-                "test test test test test test test test test test test junk",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected =
-                "--wallet-count and --toptup-amount are required when using mnemonic option";
-            assert.equal(error, expected);
-        }
+        const path = "./test/second.test.yaml";
+        writeFileSync(path, yaml, "utf8");
 
-        try {
-            await startup(["", "", "--key", `0x${"0".repeat(64)}`]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "undefined RPC URL";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup(["", "", "--key", `0x${"0".repeat(64)}`, "--rpc", "url=some-rpc"]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "undefined arb contract address";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "url=some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--sleep",
-                "abcd",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "invalid sleep value, must be an integer greater than equal 0";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "url=some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--pool-update-interval",
-                "abcd",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected =
-                "invalid poolUpdateInterval value, must be an integer greater than equal zero";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "url=some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--pool-update-interval",
-                "10",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected =
-                "expected a valid value for --bot-min-balance, it should be an number greater than 0";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"0".repeat(64)}`,
-                "--rpc",
-                "url=some-rpc",
-                "--arb-address",
-                `0x${"0".repeat(64)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "undefined dispair address";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://polygon.drpc.org",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = "failed to get dispair interpreter address";
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--include-orders",
-                `0x${"1".repeat(64)}`,
-                `0x${"2".repeat(40)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(40)} is not a valid hash`;
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--exclude-orders",
-                `0x${"1".repeat(64)}`,
-                `0x${"2".repeat(40)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(40)} is not a valid hash`;
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--include-owners",
-                `0x${"1".repeat(40)}`,
-                `0x${"2".repeat(64)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(64)} is not a valid address`;
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--exclude-owners",
-                `0x${"1".repeat(40)}`,
-                `0x${"2".repeat(64)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(64)} is not a valid address`;
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--include-orderbooks",
-                `0x${"1".repeat(40)}`,
-                `0x${"2".repeat(64)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(64)} is not a valid address`;
-            assert.equal(error, expected);
-        }
-
-        try {
-            await startup([
-                "",
-                "",
-                "--key",
-                `0x${"1".repeat(64)}`,
-                "--rpc",
-                "url=https://rpc.ankr.com/polygon",
-                "--arb-address",
-                `0x${"1".repeat(40)}`,
-                "--pool-update-interval",
-                "10",
-                "--bot-min-balance",
-                "12",
-                "--dispair",
-                "0x783b82f0fBF6743882072AE2393B108F5938898B",
-                "--exclude-orderbooks",
-                `0x${"1".repeat(40)}`,
-                `0x${"2".repeat(64)}`,
-            ]);
-            assert.fail("expected to fail, but resolved");
-        } catch (error) {
-            const expected = `0x${"2".repeat(64)} is not a valid address`;
-            assert.equal(error, expected);
-        }
-
-        const result = await startup([
-            "",
-            "",
-            "--key",
-            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-            "--rpc",
-            "url=https://polygon.drpc.org",
-            "--arb-address",
-            `0x${"1".repeat(40)}`,
-            "--bot-min-balance",
-            "0.123",
-            "--gas-price-multiplier",
-            "120",
-            "--gas-limit-multiplier",
-            "110",
-            "--tx-gas",
-            "123456789",
-            "--quote-gas",
-            "7777",
-            "--rp-only",
-            "--dispair",
-            deployer,
-            "--include-orders",
-            `0x${"1".repeat(64)}`,
-            `0x${"2".repeat(64)}`,
-            "--exclude-orders",
-            `0x${"3".repeat(64)}`,
-            `0x${"4".repeat(64)}`,
-            "--include-owners",
-            `0x${"1".repeat(40)}`,
-            `0x${"2".repeat(40)}`,
-            "--exclude-owners",
-            `0x${"3".repeat(40)}`,
-            `0x${"4".repeat(40)}`,
-            "--include-orderbooks",
-            `0x${"5".repeat(40)}`,
-            `0x${"6".repeat(40)}`,
-            "--exclude-orderbooks",
-            `0x${"7".repeat(40)}`,
-            `0x${"8".repeat(40)}`,
-        ]);
+        const result = await startup(["", "", "--config", path]);
         const expected = {
             roundGap: 10000,
             poolUpdateInterval: 0,
             config: {
                 chain: { id: 137 },
-                rpc: ["https://polygon.drpc.org"],
+                rpc: [{ url: "https://polygon.drpc.org" }],
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
                 rpcState: {
@@ -444,7 +148,7 @@ describe("Test cli", async function () {
                 dispair: {
                     interpreter: "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D",
                     store: "0xFA4989F5D49197FD9673cE4B7Fe2A045A0F2f9c8",
-                    deployer,
+                    deployer: deployer.toLowerCase(),
                 },
             },
             options: {
@@ -454,7 +158,7 @@ describe("Test cli", async function () {
                 txGas: "123456789",
                 quoteGas: 7777n,
                 rpOnly: true,
-                dispair: deployer,
+                dispair: deployer.toLowerCase(),
                 sgFilter: {
                     includeOrders: new Set([`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`]),
                     excludeOrders: new Set([`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`]),
@@ -465,11 +169,15 @@ describe("Test cli", async function () {
                 },
             },
         };
+
+        // rm test yaml file
+        unlinkSync(path);
+
         await sleep(1000);
         assert.equal(result.roundGap, expected.roundGap);
         assert.equal(result.poolUpdateInterval, expected.poolUpdateInterval);
         assert.equal(result.config.chain.id, expected.config.chain.id);
-        assert.equal(result.config.rpc[0], expected.config.rpc[0]);
+        assert.deepEqual(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
         assert.equal(result.config.route, expected.config.route);
         assert.equal(result.options.botMinBalance, expected.options.botMinBalance);
@@ -494,114 +202,5 @@ describe("Test cli", async function () {
             assert.isNotEmpty(result.state.rpc.metrics[url].requestIntervals);
         }
         assert.deepEqual(result.options.sgFilter, expected.options.sgFilter);
-    });
-
-    it("test get array from env", async function () {
-        let result = parseArrayFromEnv("a, b,c, d");
-        let expected = ["a", "b", "c", "d"];
-        assert.deepEqual(result, expected);
-
-        result = parseArrayFromEnv("  abcd   ");
-        expected = ["abcd"];
-        assert.deepEqual(result, expected);
-
-        result = parseArrayFromEnv("");
-        expected = undefined;
-        assert.deepEqual(result, expected);
-
-        result = parseArrayFromEnv();
-        expected = undefined;
-        assert.deepEqual(result, expected);
-    });
-
-    it("test validate address", async function () {
-        assert.ok(validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D"));
-
-        assert.throws(() => validateAddress(), "expected string");
-        assert.throws(() => validateAddress(0x1234567), "expected string");
-        assert.throws(() => validateAddress(""), " is not a valid address");
-        assert.throws(
-            () => validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8"),
-            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8 is not a valid address",
-        );
-        assert.throws(
-            () => validateAddress("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG"),
-            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG is not a valid address",
-        );
-    });
-
-    it("test validate hash", async function () {
-        assert.ok(
-            validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8DeDd866204eE07f8DeDd86620"),
-        );
-
-        assert.throws(() => validateHash(), "expected string");
-        assert.throws(() => validateHash(0x1234567), "expected string");
-        assert.throws(() => validateHash(""), " is not a valid hash");
-        assert.throws(
-            () => validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8"),
-            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8 is not a valid hash",
-        );
-        assert.throws(
-            () => validateHash("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG"),
-            "0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8GGG is not a valid hash",
-        );
-    });
-
-    it("test getRpcConfig happy", async function () {
-        const inputs = [
-            "url=https://example1.com",
-            "url=https://example2.com",
-            "weight=2.5",
-            "trackSize=50",
-            "url=wss://example3.com",
-            "weight=1.5",
-            "url=https://example4.com",
-            "trackSize=200",
-        ];
-        const result = getRpcConfig(inputs);
-        const expected = [
-            {
-                url: "https://example1.com",
-            },
-            {
-                url: "https://example2.com",
-                trackSize: 50,
-                selectionWeight: 2.5,
-            },
-            {
-                url: "wss://example3.com",
-                selectionWeight: 1.5,
-            },
-            {
-                url: "https://example4.com",
-                trackSize: 200,
-            },
-        ];
-
-        assert.deepEqual(result, expected);
-    });
-
-    it("test getRpcConfig unhappy", async function () {
-        assert.throws(() => getRpcConfig(["abcd=2"]), "unknown key/value: abcd=2");
-        assert.throws(() => getRpcConfig(["weight=2"]), "expected at least one rpc url");
-        assert.throws(() => getRpcConfig(["url="]), "expected value after url=");
-        assert.throws(
-            () => getRpcConfig(["url=https://example.com", "weight=abcd"]),
-            'invalid rpc weight: "abcd", expected a number greater than equal to 0',
-        );
-        assert.throws(
-            () => getRpcConfig(["url=https://example.com", "trackSize=abcd"]),
-            'invalid track size: "abcd", expected an integer greater than equal to 0',
-        );
-        assert.throws(
-            () => getRpcConfig(["url=https://example.com=something-else"]),
-            "unexpected arguments: something-else",
-        );
-        assert.throws(() => getRpcConfig(["weight=3", "weight=2"]), "duplicate weight option");
-        assert.throws(
-            () => getRpcConfig(["trackSize=3", "trackSize=2"]),
-            "duplicate trackSize option",
-        );
     });
 });

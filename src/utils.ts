@@ -716,6 +716,8 @@ export async function routeExists(
 export function withBigintSerializer(_k: string, v: any) {
     if (typeof v == "bigint") {
         return v.toString();
+    } else if (v instanceof Set) {
+        return Array.from(v);
     } else {
         return v;
     }

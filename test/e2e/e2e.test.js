@@ -16,7 +16,7 @@ const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { ProcessPairReportStatus, OperationState } = require("../../src/types");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { getChainConfig, getDataFetcher, fallbackRpcs } = require("../../src/config");
+const { getChainConfig, getDataFetcher, publicRpcs } = require("../../src/config");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { prepareOrdersForRound, getOrderbookOwnersProfileMapFromSg } = require("../../src/order");
 const {
@@ -73,9 +73,12 @@ for (let i = 0; i < testData.length; i++) {
         provider.register();
         const tracer = provider.getTracer("arb-bot-tracer");
 
-        config.rpc = [rpc, ...fallbackRpcs[chainId]];
+        config.rpc = [rpc];
         const state = OperationState.init(config.rpc.map((v) => ({ url: v })));
-        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders);
+        const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders, {
+            retryCountNext: Math.max(publicRpcs[chainId] * 2, 50),
+            timeout: 600_000,
+        });
 
         // run tests on each rp version
         for (let j = 0; j < rpVersions.length; j++) {

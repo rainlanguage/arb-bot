@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
-import { ChainId } from "sushi";
 import { ethers } from "ethers";
+import { ViemClient } from "../dist/types";
 import { TokenDetails } from "../src/types";
 import { errorSnapshot } from "../src/error";
-import { PublicClient, erc20Abi } from "viem";
 import { routeProcessor3Abi } from "../src/abis";
+import { ChainId, DataFetcher } from "sushi";
 import { setWatchedTokens } from "../src/account";
 import { Native, Token, WNATIVE } from "sushi/currency";
-import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { getRpSwap, PoolBlackList, sleep } from "../src/utils";
-import { createViemClient, getDataFetcher, processLps } from "../src/config";
+import { publicClientConfig, ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { HDAccount, mnemonicToAccount, PrivateKeyAccount } from "viem/accounts";
+import { PublicClient, createWalletClient, erc20Abi, http, publicActions } from "viem";
 
 /**
  * Sweep wallet's tokens
@@ -23,27 +23,26 @@ export async function sweepWalletTokens(
     length: number,
 ) {
     let walletIndex = 1;
-    const toWallet = await createViemClient(
-        chainId as ChainId,
-        [rpc],
-        undefined,
-        mnemonicToAccount(mnemonic, { addressIndex: 0 }),
-        60_000,
-    );
+    const transport = http(rpc, { timeout: 60_000 });
+
+    const toWallet = createWalletClient({
+        account: mnemonicToAccount(mnemonic, { addressIndex: 0 }),
+        chain: publicClientConfig[chainId]?.chain,
+        transport,
+    }).extend(publicActions) as any as ViemClient;
+
     console.log("main wallet ", toWallet.account.address);
     const gasPrice = ethers.BigNumber.from(await toWallet.getGasPrice())
         .mul(107)
         .div(100)
         .toBigInt();
     for (let j = 0; j < length; j++) {
-        const fromWallet = await createViemClient(
-            chainId as ChainId,
-            [rpc],
-            undefined,
-            mnemonicToAccount(mnemonic, { addressIndex: walletIndex++ }),
-            60_000,
-        );
-        await setWatchedTokens(fromWallet, tokens);
+        const fromWallet = createWalletClient({
+            account: mnemonicToAccount(mnemonic, { addressIndex: walletIndex++ }),
+            chain: publicClientConfig[chainId]?.chain,
+            transport,
+        }).extend(publicActions) as any as ViemClient;
+        setWatchedTokens(fromWallet, tokens);
         console.log("wallet index", walletIndex - 1, fromWallet.account.address);
 
         // from wallet gas balance
@@ -72,6 +71,20 @@ export async function sweepWalletTokens(
         let cumulativeGasLimit = ethers.constants.Zero;
         for (let i = 0; i < fromWallet.BOUNTY.length; i++) {
             const bounty = fromWallet.BOUNTY[i];
+            if (!bounty.decimals) {
+                bounty.decimals = await fromWallet.readContract({
+                    address: bounty.address as any,
+                    abi: erc20Abi,
+                    functionName: "decimals",
+                });
+            }
+            if (!bounty.symbol) {
+                bounty.symbol = await fromWallet.readContract({
+                    address: bounty.address as any,
+                    abi: erc20Abi,
+                    functionName: "symbol",
+                });
+            }
             try {
                 const balance = ethers.BigNumber.from(
                     (
@@ -174,7 +187,7 @@ export async function sweepWalletTokens(
                     console.log("remaining gas amount ", ethers.utils.formatUnits(transferAmount));
                     const hash = await fromWallet.sendTransaction({
                         to: toWallet.account.address,
-                        value: transferAmount.toBigInt(),
+                        value: (transferAmount.toBigInt() * 99n) / 100n,
                         gas: gasLimit.toBigInt(),
                     });
                     const receipt = await fromWallet.waitForTransactionReceipt({
@@ -207,27 +220,44 @@ export async function sweepWalletTokens(
  */
 export async function sweepToGas(
     account: HDAccount | PrivateKeyAccount,
-    rpc: string,
-    chainId: ChainId,
     tokens: TokenDetails[],
+    chainId: ChainId,
+    rpc: string,
 ) {
     const rp4Address = ROUTE_PROCESSOR_4_ADDRESS[
         chainId as keyof typeof ROUTE_PROCESSOR_4_ADDRESS
     ] as `0x${string}`;
     const rp = new ethers.utils.Interface(routeProcessor3Abi);
     const erc20 = new ethers.utils.Interface(erc20Abi);
-    const mainAccount = await createViemClient(chainId, [rpc], undefined, account, 60_000);
+
+    const transport = http(rpc, { timeout: 60_000 });
+    const mainAccount = createWalletClient({
+        account,
+        chain: publicClientConfig[chainId]?.chain,
+        transport,
+    }).extend(publicActions) as any as ViemClient;
     setWatchedTokens(mainAccount, tokens);
-    const dataFetcher = await getDataFetcher(
-        mainAccount as any as PublicClient,
-        processLps(),
-        false,
-    );
+    const dataFetcher = new DataFetcher(chainId, mainAccount as any as PublicClient);
+
     const gasPrice = ethers.BigNumber.from(await mainAccount.getGasPrice())
         .mul(107)
         .div(100);
     for (let i = 0; i < mainAccount.BOUNTY.length; i++) {
         const bounty = mainAccount.BOUNTY[i];
+        if (!bounty.decimals) {
+            bounty.decimals = await mainAccount.readContract({
+                address: bounty.address as any,
+                abi: erc20Abi,
+                functionName: "decimals",
+            });
+        }
+        if (!bounty.symbol) {
+            bounty.symbol = await mainAccount.readContract({
+                address: bounty.address as any,
+                abi: erc20Abi,
+                functionName: "symbol",
+            });
+        }
         console.log("token", bounty.symbol);
         console.log("tokenAddress", bounty.address);
         try {
@@ -260,7 +290,7 @@ export async function sweepToGas(
                 Native.onChain(chainId),
                 mainAccount.account.address,
                 rp4Address,
-                dataFetcher,
+                dataFetcher as any,
                 gasPrice,
             );
             let routeText = "";

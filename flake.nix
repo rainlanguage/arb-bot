@@ -17,6 +17,10 @@
             rainix.sol-build-inputs.${system}
             pkgs.doctl
           ];
+          shellHook = ''
+            # download chains config json from chainlist
+            curl -sS -o ./chains.json "https://chainlist.org/rpcs.json"
+          '';
         };
     }
   );

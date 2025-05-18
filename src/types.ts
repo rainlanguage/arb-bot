@@ -1,6 +1,6 @@
-import { RpcConfig, RpcState } from "./rpc";
 import { BigNumber } from "ethers";
 import { Token } from "sushi/currency";
+import { RpcConfig, RpcState } from "./rpc";
 import { AttributeValue } from "@opentelemetry/api";
 import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import {
@@ -42,41 +42,6 @@ export enum ProcessPairReportStatus {
 export type BotError = {
     snapshot: string;
     error: any;
-};
-
-export type CliOptions = {
-    key?: string;
-    mnemonic?: string;
-    rpc: string[];
-    writeRpc?: string[];
-    arbAddress: string;
-    genericArbAddress?: string;
-    subgraph: string[];
-    lps?: string[];
-    gasCoverage: string;
-    sgFilter?: SgFilter;
-    sleep: number;
-    maxRatio: boolean;
-    timeout?: number;
-    hops: number;
-    retries: number;
-    poolUpdateInterval: number;
-    walletCount?: number;
-    topupAmount?: string;
-    botMinBalance: string;
-    selfFundOrders?: SelfFundOrder[];
-    tokens?: TokenDetails[];
-    ownerProfile?: Record<string, number>;
-    publicRpc: boolean;
-    route?: string;
-    gasPriceMultiplier: number;
-    gasLimitMultiplier: number;
-    txGas?: string;
-    quoteGas: bigint;
-    rpOnly?: boolean;
-    dispair: string;
-    rpcConfigs: RpcConfig[];
-    writeRpcConfigs?: RpcConfig[];
 };
 
 export type TokenDetails = {
@@ -199,8 +164,8 @@ export type BotConfig = {
     isSpecialL2: boolean;
     key?: string;
     mnemonic?: string;
-    rpc: string[];
-    writeRpc?: string[];
+    rpc: RpcConfig[];
+    writeRpc?: RpcConfig[];
     arbAddress: string;
     genericArbAddress?: string;
     lps: LiquidityProviders[];

@@ -1,8 +1,8 @@
-import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
-import { ChainId, Router } from "sushi";
 import { BigNumber, ethers } from "ethers";
-import { getDataFetcher } from "../src/config";
+import { publicClientConfig } from "sushi/config";
+import { ChainId, DataFetcher, Router } from "sushi";
+import { createPublicClient, fallback, http, PublicClient } from "viem";
 
 /**
  * Gets the route for tokens
@@ -40,10 +40,12 @@ export const getRouteForTokens = async (
         decimals: toTokenDecimals,
         address: toTokenAddress,
     });
-    const dataFetcher = await getDataFetcher({
-        chain: { id: chainId },
-        rpc: rpcs,
-    } as any as PublicClient);
+    const transport = fallback(rpcs.map((v) => http(v, { timeout: 60_000 })));
+    const client = createPublicClient({
+        chain: publicClientConfig[chainId]?.chain,
+        transport,
+    });
+    const dataFetcher = new DataFetcher(chainId as any, client as any as PublicClient);
     await dataFetcher.fetchPoolsForToken(fromToken, toToken);
     const pcMap = dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
     const route = Router.findBestRoute(

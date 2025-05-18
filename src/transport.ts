@@ -9,6 +9,7 @@ export namespace RainSolverTransportDefaults {
     export const RETRY_COUNT = 1 as const;
     export const TIMEOUT = 10_000 as const;
     export const RETRY_DELAY = 150 as const;
+    export const RETRY_COUNT_NEXT = 1 as const;
     export const POLLING_INTERVAL = 250 as const;
     export const POLLING_TIMEOUT = 10_000 as const;
     export const KEY = "RainSolverTransport" as const;
@@ -31,6 +32,8 @@ export type RainSolverTransportConfig = {
     pollingTimeout?: number;
     /** The polling interval (in ms) to check for next available rpc, default: 250ms */
     pollingInterval?: number;
+    /** The max number of times to retry with next rpc, default: 1 */
+    retryCountNext?: number;
 };
 
 /**
@@ -76,6 +79,7 @@ export function rainSolverTransport(
         retryDelay = RainSolverTransportDefaults.RETRY_DELAY,
         pollingTimeout = RainSolverTransportDefaults.POLLING_TIMEOUT,
         pollingInterval = RainSolverTransportDefaults.POLLING_INTERVAL,
+        retryCountNext = RainSolverTransportDefaults.RETRY_COUNT_NEXT,
     } = config;
     return (({
         chain,
@@ -91,7 +95,7 @@ export function rainSolverTransport(
             type: "RainSolverTransport",
             timeout: timeout_ ?? timeout,
             async request(args) {
-                const req = async (tryNext = true): Promise<any> => {
+                const req = async (tryNextCount: number): Promise<any> => {
                     try {
                         const transport = await state.nextRpc({
                             timeout: pollingTimeout,
@@ -107,11 +111,11 @@ export function rainSolverTransport(
                         }).request(args);
                     } catch (error: any) {
                         if (shouldThrow(error)) throw error;
-                        if (tryNext) return req(false);
+                        if (tryNextCount) return req(tryNextCount - 1);
                         throw error;
                     }
                 };
-                return req();
+                return req(Math.max(retryCountNext, 1));
             },
         });
     }) as RainSolverTransport;
