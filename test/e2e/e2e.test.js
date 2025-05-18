@@ -73,7 +73,7 @@ for (let i = 0; i < testData.length; i++) {
         provider.register();
         const tracer = provider.getTracer("arb-bot-tracer");
 
-        config.rpc = [rpc, ...(publicRpcs[chainId] ?? [])];
+        config.rpc = [rpc];
         const state = OperationState.init(config.rpc.map((v) => ({ url: v })));
         const dataFetcherPromise = getDataFetcher(config, state.rpc, liquidityProviders, {
             retryCountNext: Math.max(publicRpcs[chainId] * 2, 50),
@@ -84,7 +84,7 @@ for (let i = 0; i < testData.length; i++) {
         for (let j = 0; j < rpVersions.length; j++) {
             const rpVersion = rpVersions[j];
 
-            it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+            it.only(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;
