@@ -1,4 +1,7 @@
 /* eslint-disable no-console */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import Chains from "../chains.json";
 import { shouldThrow } from "./error";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
@@ -269,118 +272,14 @@ export function processLps(liquidityProviders?: string[]): LiquidityProviders[] 
 }
 
 /**
- * Chain specific fallback data
+ * Chain specific public rpcs
  */
-export const fallbackRpcs: Record<number, readonly string[]> = {
-    [ChainId.ARBITRUM_NOVA]: ["https://nova.arbitrum.io/rpc"],
-    [ChainId.ARBITRUM]: [
-        "https://arbitrum.drpc.org",
-        "https://arb-pokt.nodies.app",
-        "https://1rpc.io/arb",
-        "https://rpc.ankr.com/arbitrum",
-        "https://arbitrum-one.public.blastapi.io",
-        "https://endpoints.omniatech.io/v1/arbitrum/one/public",
-        "https://arb1.croswap.com/rpc",
-        "https://arbitrum.blockpi.network/v1/rpc/public",
-        "https://arb-mainnet-public.unifra.io",
-        "https://lb.drpc.org/ogrpc?network=arbitrum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-    ],
-    [ChainId.AVALANCHE]: [
-        "https://api.avax.network/ext/bc/C/rpc",
-        "https://rpc.ankr.com/avalanche",
-    ],
-    [ChainId.BOBA]: ["https://mainnet.boba.network", "https://lightning-replica.boba.network"],
-    [ChainId.BOBA_AVAX]: ["https://avax.boba.network", "https://replica.avax.boba.network"],
-    [ChainId.BOBA_BNB]: ["https://bnb.boba.network", "https://replica.bnb.boba.network"],
-    [ChainId.BSC]: [
-        "https://rpc.ankr.com/bsc",
-        "https://bsc.blockpi.network/v1/rpc/public",
-        "https://bsc-pokt.nodies.app",
-        "https://bscrpc.com",
-        "https://1rpc.io/bnb",
-        "https://bsc.drpc.org",
-        "https://bsc.meowrpc.com",
-        "https://binance.llamarpc.com",
-        "https://bsc-dataseed.binance.org",
-        "https://bsc-dataseed1.binance.org",
-        "https://bsc-dataseed2.binance.org",
-        "https://lb.drpc.org/ogrpc?network=bsc&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-    ],
-    [ChainId.BTTC]: ["https://rpc.bittorrentchain.io"],
-    [ChainId.CELO]: ["https://forno.celo.org"],
-    [ChainId.ETHEREUM]: [
-        "https://eth-pokt.nodies.app",
-        "https://eth.drpc.org",
-        "https://ethereum-rpc.publicnode.com",
-        "https://eth.llamarpc.com",
-        "https://1rpc.io/eth",
-        "https://ethereum.publicnode.com",
-        "https://cloudflare-eth.com",
-        "https://lb.drpc.org/ogrpc?network=ethereum&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-    ],
-    [ChainId.FANTOM]: [
-        "https://rpc.ankr.com/fantom",
-        "https://rpc.fantom.network",
-        "https://rpc2.fantom.network",
-    ],
-    [ChainId.FUSE]: ["https://rpc.fuse.io"],
-    [ChainId.GNOSIS]: ["https://rpc.ankr.com/gnosis"],
-    [ChainId.HARMONY]: ["https://api.harmony.one", "https://rpc.ankr.com/harmony"],
-    [ChainId.KAVA]: ["https://evm.kava.io", "https://evm2.kava.io"],
-    [ChainId.MOONBEAM]: ["https://rpc.api.moonbeam.network", "https://rpc.ankr.com/moonbeam"],
-    [ChainId.MOONRIVER]: ["https://rpc.api.moonriver.moonbeam.network"],
-    [ChainId.OPTIMISM]: [
-        "https://rpc.ankr.com/optimism",
-        "https://optimism-mainnet.public.blastapi.io",
-        "https://1rpc.io/op",
-        "https://optimism.blockpi.network/v1/rpc/public",
-        "https://mainnet.optimism.io",
-        "https://lb.drpc.org/ogrpc?network=optimism&dkey=Ak765fp4zUm6uVwKu4annC8M80dnCZkR7pAEsm6XXi_w",
-    ],
-    [ChainId.POLYGON]: [
-        "https://polygon.meowrpc.com",
-        "https://polygon-rpc.com",
-        "https://polygon-pokt.nodies.app",
-        "https://polygon-bor-rpc.publicnode.com",
-        "https://1rpc.io/matic",
-        "https://polygon-mainnet.public.blastapi.io",
-        "https://polygon.blockpi.network/v1/rpc/public",
-        "https://polygon.llamarpc.com",
-        "https://polygon-rpc.com",
-        "https://rpc.ankr.com/polygon",
-        "https://matic-mainnet.chainstacklabs.com",
-        "https://polygon-bor.publicnode.com",
-        "https://rpc-mainnet.matic.quiknode.pro",
-        "https://rpc-mainnet.maticvigil.com",
-    ],
-    [ChainId.POLYGON_ZKEVM]: [
-        "https://zkevm-rpc.com",
-        "https://rpc.ankr.com/polygon_zkevm",
-        "https://rpc.polygon-zkevm.gateway.fm",
-    ],
-    [ChainId.THUNDERCORE]: [
-        "https://mainnet-rpc.thundercore.com",
-        "https://mainnet-rpc.thundercore.io",
-        "https://mainnet-rpc.thundertoken.net",
-    ],
-    [ChainId.FLARE]: [
-        "https://rpc.ankr.com/flare",
-        "https://flare-api.flare.network/ext/C/rpc",
-        "https://flare.rpc.thirdweb.com",
-    ],
-    [ChainId.LINEA]: [
-        "https://linea.blockpi.network/v1/rpc/public",
-        "https://rpc.linea.build",
-        "https://linea-rpc.publicnode.com",
-        "https://1rpc.io/linea",
-        "https://linea.drpc.org",
-    ],
-    [ChainId.BASE]: [
-        "https://base-rpc.publicnode.com",
-        "https://base.blockpi.network/v1/rpc/public",
-        "https://1rpc.io/base",
-        "https://base-pokt.nodies.app",
-        "https://mainnet.base.org",
-        "https://base.meowrpc.com",
-    ],
-} as const;
+export const publicRpcs: Record<number, string[]> = (() => {
+    const chainRpcs: Record<number, string[]> = {};
+    Chains.forEach((chainConfig) => {
+        chainRpcs[chainConfig.chainId] = chainConfig.rpc
+            .map((v: any) => v.url)
+            .filter((v: string) => v.startsWith("http"));
+    });
+    return chainRpcs;
+})();
