@@ -32,7 +32,7 @@ export type RainSolverTransportConfig = {
     pollingTimeout?: number;
     /** The polling interval (in ms) to check for next available rpc, default: 250ms */
     pollingInterval?: number;
-    /** The max number of times to retry with next rpc, default: 3 */
+    /** The max number of times to retry with next rpc, default: 1 */
     retryCountNext?: number;
 };
 
@@ -111,7 +111,7 @@ export function rainSolverTransport(
                         }).request(args);
                     } catch (error: any) {
                         if (shouldThrow(error)) throw error;
-                        if (tryNextCount) return req(--tryNextCount);
+                        if (tryNextCount) return req(tryNextCount - 1);
                         throw error;
                     }
                 };
