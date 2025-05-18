@@ -276,7 +276,7 @@ export function processLps(liquidityProviders?: string[]): LiquidityProviders[] 
  */
 export const publicRpcs: Record<number, string[]> = (() => {
     const chainRpcs: Record<number, string[]> = {};
-    Chains.forEach((chainConfig) => {
+    Chains.forEach((chainConfig: any) => {
         chainRpcs[chainConfig.chainId] = chainConfig.rpc
             .map((v: any) => v.url)
             .filter((v: string) => v.startsWith("http"));
