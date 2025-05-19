@@ -1,5 +1,5 @@
-# Rain Orderbook Arbitrage Bot
-NodeJS app that clears Rain orderbook orders against major DeFi platforms liquidity by finding arbitrage trades for token pairs of orders details queried from a subgraph or from file containing array of `Order Struct`, bundling them as `takeOrders` and submitting them to one of [Rain Arb Contracts](https://github.com/rainprotocol/rain.orderbook/tree/main/src/concrete).
+# Rain Solver
+Rain Solver (also known as Rain Orderbook Arbitrage Bot) is a NodeJS app that solves (clears) Rain orderbook orders against major DeFi platforms liquidity, other Rain Orderbooks and opposite orders of the same Rain Orderbook, by finding arbitrage trades for token pairs of the active orders that are queried from a subgraph, once an opportunity is found a transaction is submitted to one of [Rain Arb Contracts](https://github.com/rainprotocol/rain.orderbook/tree/main/src/concrete) which handles the clearing process from there.
 
 This app requires NodeJS v18 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
