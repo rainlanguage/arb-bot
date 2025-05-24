@@ -1,6 +1,4 @@
 import { OtelTracer } from ".";
-import { sleep } from "../utils";
-import { SgOrder } from "../query";
 import { getGasPrice } from "../gas";
 import { AppOptions } from "../yaml";
 import { getCliOptions } from "./options";
@@ -18,8 +16,8 @@ export type CliStartupResult = {
     config: BotConfig;
     options: AppOptions;
     state: OperationState;
+    startupTimestamp: number;
     watchedTokens: TokenDetails[];
-    lastReadOrdersTimestamp: number;
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap;
 };
 
@@ -42,20 +40,11 @@ export async function startup(
     // init AppOptions from the config yaml
     const options = AppOptions.fromYaml(cmdOptions.config);
 
-    // const poolUpdateInterval = options.poolUpdateInterval * 60 * 1000;
-    let ordersDetails: SgOrder[] = [];
-    const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
+    // fetch orders at startup
+    const ordersDetailsPromise = getOrderDetails(options.subgraph, options.sgFilter);
+    const startupTimestamp = Math.floor(Date.now() / 1000);
+    const ordersDetails = await ordersDetailsPromise;
 
-    // try to fetch orders
-    for (let i = 0; i < 3; i++) {
-        try {
-            ordersDetails = await getOrderDetails(options.subgraph, options.sgFilter);
-            break;
-        } catch (e) {
-            if (i != 2) await sleep(10000 * (i + 1));
-            else throw e;
-        }
-    }
     const watchedTokens = getOrdersTokens(ordersDetails);
 
     // init raw state
@@ -81,7 +70,7 @@ export async function startup(
         config,
         options,
         watchedTokens,
-        lastReadOrdersTimestamp,
+        startupTimestamp,
         orderbooksOwnersProfileMap,
     };
 }

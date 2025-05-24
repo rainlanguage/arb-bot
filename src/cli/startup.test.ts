@@ -99,16 +99,6 @@ sgFilter:
                 rpc: [{ url: "https://example-rpc.com" }],
                 arbAddress: `0x${"1".repeat(40)}`,
                 route: "single",
-                rpcState: {
-                    metrics: {
-                        "https://example-rpc.com/": {
-                            req: 5,
-                            success: 5,
-                            failure: 0,
-                            cache: {},
-                        },
-                    },
-                },
                 gasPriceMultiplier: 120,
                 gasLimitMultiplier: 110,
                 txGas: "123456789",

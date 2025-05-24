@@ -149,34 +149,28 @@ export const main = async (argv: any, version?: string) => {
     const tracer = provider.getTracer("rain-solver-tracer");
 
     // parse cli args and startup bot configuration
-    const {
-        state,
-        config,
-        options,
-        watchedTokens,
-        lastReadOrdersTimestamp,
-        orderbooksOwnersProfileMap,
-    } = await tracer.startActiveSpan("startup", async (startupSpan) => {
-        const ctx = trace.setSpan(context.active(), startupSpan);
-        try {
-            const result = await startup(argv, version, { tracer, ctx });
-            startupSpan.setStatus({ code: SpanStatusCode.OK });
-            startupSpan.end();
-            return result;
-        } catch (e: any) {
-            const snapshot = errorSnapshot("", e);
-            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-            startupSpan.recordException(e);
+    const { state, config, options, watchedTokens, startupTimestamp, orderbooksOwnersProfileMap } =
+        await tracer.startActiveSpan("startup", async (startupSpan) => {
+            const ctx = trace.setSpan(context.active(), startupSpan);
+            try {
+                const result = await startup(argv, version, { tracer, ctx });
+                startupSpan.setStatus({ code: SpanStatusCode.OK });
+                startupSpan.end();
+                return result;
+            } catch (e: any) {
+                const snapshot = errorSnapshot("", e);
+                startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
+                startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+                startupSpan.recordException(e);
 
-            // end this span and wait for it to finish
-            startupSpan.end();
-            await sleep(20000);
+                // end this span and wait for it to finish
+                startupSpan.end();
+                await sleep(20000);
 
-            // reject the promise that makes the cli process to exit with error
-            return Promise.reject(e);
-        }
-    });
+                // reject the promise that makes the cli process to exit with error
+                return Promise.reject(e);
+            }
+        });
 
     const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
@@ -420,7 +414,7 @@ export const main = async (argv: any, version?: string) => {
                     "watch-new-orders",
                     JSON.stringify({
                         hasRead: lastReadOrdersMap,
-                        startTime: lastReadOrdersTimestamp,
+                        startTime: startupTimestamp,
                     }),
                 );
                 let ordersDidChange = false;
@@ -428,7 +422,7 @@ export const main = async (argv: any, version?: string) => {
                     lastReadOrdersMap.map((v) =>
                         getOrderChanges(
                             v.sg,
-                            lastReadOrdersTimestamp,
+                            startupTimestamp,
                             v.skip,
                             roundSpan,
                             options.sgFilter,
