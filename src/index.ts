@@ -1,26 +1,23 @@
 import axios from "axios";
-import { ethers } from "ethers";
 import { ChainId } from "sushi";
 import { versions } from "process";
-import { PublicClient } from "viem";
 import { AppOptions } from "./yaml";
 import { DeployerAbi } from "./abis";
 import { initAccounts } from "./account";
 import { processOrders } from "./processOrders";
-import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
-import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { Context, Span, Tracer } from "@opentelemetry/api";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
+import { createPublicClient, fallback, http, PublicClient } from "viem";
 import { processLps, getChainConfig, getDataFetcher, createViemClient } from "./config";
 import { SgFilter, BotConfig, RoundReport, BundledOrders, OperationState } from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
  * @param sgs - The subgraph endpoint URL(s) to query for orders' details
- * @param json - Path to a json file containing orders structs
- * @param signer - The ethers signer
  * @param sgFilters - The filters for subgraph query
- * @param span
+ * @param span - (optional) Parent otel span used for instrumentation
+ * @param timeout - Optional timeout for subgraph queries
  */
 export async function getOrderDetails(
     sgs: string[],
@@ -77,7 +74,10 @@ export async function getConfig(
     tracer?: Tracer,
     ctx?: Context,
 ): Promise<BotConfig> {
-    const chainId = (await getChainId(options.rpc.map((v) => v.url))) as ChainId;
+    const chainId = (await createPublicClient({
+        transport: fallback(options.rpc.map((v) => http(v.url))),
+    }).getChainId()) as ChainId;
+
     const config = getChainConfig(chainId) as any as BotConfig;
     if (!config) throw `Cannot find configuration for the network with chain id: ${chainId}`;
 
@@ -179,16 +179,4 @@ export async function clear(
 
     if (majorVersion >= 18) return await processOrders(config, bundledOrders, state, tracer, ctx);
     else throw `NodeJS v18 or higher is required for running the app, current version: ${version}`;
-}
-
-async function getChainId(rpcs: string[]): Promise<number> {
-    for (let i = 0; i < rpcs.length; i++) {
-        try {
-            const provider = new ethers.providers.JsonRpcProvider(rpcs[i]);
-            return (await provider.getNetwork()).chainId;
-        } catch (error) {
-            if (i === rpcs.length - 1) throw error;
-        }
-    }
-    throw "Failed to get chain id";
 }
