@@ -153,7 +153,7 @@ export const main = async (argv: any, version?: string) => {
         await tracer.startActiveSpan("startup", async (startupSpan) => {
             const ctx = trace.setSpan(context.active(), startupSpan);
             try {
-                const result = await startup(argv, version, { tracer, ctx });
+                const result = await startup(argv, version, tracer, ctx);
                 startupSpan.setStatus({ code: SpanStatusCode.OK });
                 startupSpan.end();
                 return result;

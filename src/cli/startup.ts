@@ -1,8 +1,8 @@
-import { OtelTracer } from ".";
 import { getGasPrice } from "../gas";
 import { AppOptions } from "../yaml";
 import { getCliOptions } from "./options";
 import { getOrderDetails, getConfig } from "../";
+import { Context, Tracer } from "@opentelemetry/api";
 import { getOrdersTokens, getOrderbookOwnersProfileMapFromSg } from "../order";
 import {
     BotConfig,
@@ -30,12 +30,14 @@ export type CliStartupResult = {
  *
  * @param argv - CLI arguments
  * @param version - Optional application version
- * @param otelTracer - Optional OpenTelemetry tracer and context
+ * @param tracer - Optional OTEL tracer
+ * @param span - Optional parent otel context
  */
 export async function startup(
     argv: any,
     version?: string,
-    otelTracer?: OtelTracer,
+    tracer?: Tracer,
+    ctx?: Context,
 ): Promise<CliStartupResult> {
     // get cli options
     const cmdOptions = getCliOptions(argv, version);
@@ -54,7 +56,7 @@ export async function startup(
     const state = OperationState.init(options.rpc, options.writeRpc);
 
     // get config
-    const config = await getConfig(options, state, otelTracer?.tracer, otelTracer?.ctx);
+    const config = await getConfig(options, state, tracer, ctx);
     config.watchedTokens = watchedTokens;
 
     // fetch initial gas price on startup
