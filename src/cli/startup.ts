@@ -29,9 +29,9 @@ export type CliStartupResult = {
  * - Constructing the owner profile mapping (owner limits)
  *
  * @param argv - CLI arguments
- * @param version - Optional application version
- * @param tracer - Optional OTEL tracer
- * @param span - Optional parent otel context
+ * @param version - (optional) application version
+ * @param tracer - (optional) OTEL tracer
+ * @param span - (optional) parent otel context
  */
 export async function startup(
     argv: any,
