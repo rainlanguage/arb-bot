@@ -22,12 +22,15 @@ export type CliStartupResult = {
 };
 
 /**
- * Handles Rain Solver startup process executed from cli, that is creating
- * AppOptions from the given path to yaml config, getting initial order details
- * from subgraph, initializing the OperationSate and building owner profile mapping
- * @param argv - CLI args
- * @param version - App version
- * @param otelTracer - Otel tracer and context
+ * Handles the RainSolver startup process execution by:
+ * - Loading `AppOptions` from the specified YAML config file that is read from given path
+ * - Fetching initial order details from the subgraph
+ * - Setting up the `OperationState`
+ * - Constructing the owner profile mapping (owner limits)
+ *
+ * @param argv - CLI arguments
+ * @param version - Optional application version
+ * @param otelTracer - Optional OpenTelemetry tracer and context
  */
 export async function startup(
     argv: any,
