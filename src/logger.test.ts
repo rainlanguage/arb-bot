@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
-import { RainSolverLogger } from "./logger";
+import { SpanStatusCode } from "@opentelemetry/api";
+import { PreAssembledSpan, RainSolverLogger } from "./logger";
 import { describe, it, assert } from "vitest";
 
 describe("Test RainSolverLogger", async function () {
@@ -43,6 +44,85 @@ describe("Test RainSolverLogger", async function () {
             } catch (e2) {
                 throw stdoutText + "does not include { someObj: 123 }";
             }
+        }
+
+        // clear stdout text
+        stdoutText = "";
+
+        // setup a pre assembled span
+        const now = Date.now();
+        const preAssembledSpan: PreAssembledSpan = {
+            name: "test-span",
+            startTime: now,
+            endTime: now + 200,
+            attributes: {
+                "test-attr": "test-value",
+                "another-attr": 42,
+            },
+            events: [
+                { name: "event1", startTime: now + 25, attributes: { key: "value" } },
+                { name: "event2", startTime: now + 50, attributes: { foo: "bar" } },
+            ],
+            status: { code: SpanStatusCode.OK, message: "ok" },
+            exception: {
+                error: "some error",
+                time: now + 100,
+            },
+        };
+
+        // export the pre assembled span
+        logger.exportPreAssembledSpan(preAssembledSpan);
+
+        // parse export result as obj from stdout text
+        const result = JSON.parse(
+            stdoutText
+                .trim()
+                .replaceAll("'", '"')
+                .replaceAll(/(\[\],)/g, "[]")
+                .replaceAll(/(},\s*})/g, "}}")
+                .replaceAll(/(},\s*])/g, "}]")
+                .replaceAll(/(\w+):/g, '"$1":')
+                .replaceAll("undefined", "null")
+                .replaceAll(/(,\s*}\s*,)/g, "},"),
+        );
+
+        const nowSeconds = Math.floor(now / 1000);
+        const expected = {
+            name: preAssembledSpan.name,
+            timestamp: (preAssembledSpan.startTime as number) * 1000,
+            duration:
+                ((preAssembledSpan.endTime as number) - (preAssembledSpan.startTime as number)) *
+                1000,
+            attributes: preAssembledSpan.attributes,
+            status: preAssembledSpan.status,
+            events: [
+                {
+                    name: "event1",
+                    attributes: preAssembledSpan.events?.[0].attributes,
+                    time: [nowSeconds, Number(((now + 25) / 1000 - nowSeconds).toFixed(9)) * 1e9],
+                },
+                {
+                    name: "event2",
+                    attributes: preAssembledSpan.events?.[1].attributes,
+                    time: [nowSeconds, Number(((now + 50) / 1000 - nowSeconds).toFixed(9)) * 1e9],
+                },
+                {
+                    name: "exception",
+                    attributes: { "exception.message": preAssembledSpan.exception?.error },
+                    time: [nowSeconds, Number(((now + 100) / 1000 - nowSeconds).toFixed(9)) * 1e9],
+                },
+            ],
+        };
+        assert.equal(result.name, expected.name);
+        assert.equal(result.timestamp, expected.timestamp);
+        assert.equal(result.duration, expected.duration);
+        assert.deepEqual(result.attributes, expected.attributes);
+        assert.deepEqual(result.status, expected.status);
+        for (let i = 0; i < expected.events.length; i++) {
+            assert.equal(result.events[i].name, expected.events[i].name);
+            assert.deepEqual(result.events[i].attributes, expected.events[i].attributes);
+            assert.equal(result.events[i].time[0], expected.events[i].time[0]);
+            assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // due to percision loss
         }
 
         // set original stdout write fn back

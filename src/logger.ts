@@ -16,6 +16,10 @@ import {
     Tracer,
     context,
     Context,
+    TimeInput,
+    Exception,
+    SpanStatus,
+    Attributes,
     SpanOptions,
     DiagLogLevel,
     DiagConsoleLogger,
@@ -29,6 +33,48 @@ import {
 export type SpanWithContext = {
     readonly span: Span;
     readonly context: Context;
+};
+
+/**
+ * Represents a pre-assembled OpenTelemetry span, encapsulating all relevant span data
+ * including name, timing, status, attributes, events, exceptions, and nested spans.
+ * This type allows span information to be collected and stored independently of inline
+ * instrumentation for app's functions, enabling deferred export to an otel channel at
+ * any point during runtime.
+ * That means we wont need to use otel API and functionalities directly in a function's
+ * body to instrument it, but rather we just gather these data and info and just export
+ * it to otel whenever we want
+ */
+export type PreAssembledSpan = {
+    /** Span's name */
+    name: string;
+    /** Initial span optioins */
+    options?: Omit<SpanOptions, "startTime">;
+    /** A manually specified start time for this span */
+    startTime?: TimeInput;
+    /** A manually specified end time for this span */
+    endTime?: TimeInput;
+    /** The status of this span */
+    status?: SpanStatus;
+    /** Attributes associated with this span */
+    attributes?: Attributes;
+    /** Exception details for this span */
+    exception?: {
+        error: Exception;
+        /** A manually specified time for the exception occurrence */
+        time?: TimeInput;
+    };
+    /** Recorded events for this span */
+    events?: {
+        /** The name of the event */
+        name: string;
+        /** The attributes that will be added and are associated with this event */
+        attributes?: Attributes;
+        /** Start time of the event */
+        startTime?: TimeInput;
+    }[];
+    /** Child span of this span */
+    child?: PreAssembledSpan;
 };
 
 /**
@@ -97,6 +143,47 @@ export class RainSolverLogger {
      */
     setSpanContext(span: Span): SpanWithContext {
         return { span, context: trace.setSpan(context.active(), span) };
+    }
+
+    /**
+     * Exports a span (and any of its child spans) with all the given pre-assembled data, the
+     * pre-assembled span can be exported at any point during teh runtime, which eliminates the
+     * need to use otel API and functionalities inline throughout the codebase for instrumentation
+     * @param preAssembledSpan - The span data to export.
+     * @param ctx - (Optional) The parent context to associate with the new span.
+     */
+    exportPreAssembledSpan(preAssembledSpan: PreAssembledSpan, ctx?: Context) {
+        const { name, options, startTime, endTime, status, attributes, events, exception, child } =
+            preAssembledSpan;
+
+        // start the span
+        const { span, context: spanCtx } = this.startSpan(name, { ...options, startTime }, ctx);
+
+        // handle child span if exists
+        if (child) {
+            this.exportPreAssembledSpan(child, spanCtx);
+        }
+
+        // handle attrs
+        if (attributes) {
+            span.setAttributes(attributes);
+        }
+        // handle events
+        if (events) {
+            for (const event of events) {
+                span.addEvent(event.name, event.attributes, event.startTime);
+            }
+        }
+        // handle exception
+        if (exception) {
+            span.recordException(exception.error, exception.time);
+        }
+        // handle span status
+        if (status) {
+            span.setStatus(status);
+        }
+        // end the span with the given end time
+        span.end(endTime);
     }
 
     /**
