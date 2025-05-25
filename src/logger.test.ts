@@ -51,7 +51,7 @@ describe("Test RainSolverLogger", async function () {
 
         // setup a pre assembled span
         const now = Date.now();
-        const preAssembledSpan: PreAssembledSpan = {
+        const preAssembledSpan = {
             name: "test-span",
             startTime: now,
             endTime: now + 200,
@@ -65,13 +65,14 @@ describe("Test RainSolverLogger", async function () {
             ],
             status: { code: SpanStatusCode.OK, message: "ok" },
             exception: {
-                error: "some error",
+                exception: "some error",
                 time: now + 100,
             },
+            children: [],
         };
 
         // export the pre assembled span
-        logger.exportPreAssembledSpan(preAssembledSpan);
+        logger.exportPreAssembledSpan(preAssembledSpan as any);
 
         // parse export result as obj from stdout text
         const result = JSON.parse(
@@ -108,7 +109,7 @@ describe("Test RainSolverLogger", async function () {
                 },
                 {
                     name: "exception",
-                    attributes: { "exception.message": preAssembledSpan.exception?.error },
+                    attributes: { "exception.message": preAssembledSpan.exception?.exception },
                     time: [nowSeconds, Number(((now + 100) / 1000 - nowSeconds).toFixed(9)) * 1e9],
                 },
             ],
@@ -122,10 +123,69 @@ describe("Test RainSolverLogger", async function () {
             assert.equal(result.events[i].name, expected.events[i].name);
             assert.deepEqual(result.events[i].attributes, expected.events[i].attributes);
             assert.equal(result.events[i].time[0], expected.events[i].time[0]);
-            assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // due to percision loss
+            assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // due to precision loss
         }
 
         // set original stdout write fn back
         process.stdout.write = orgStdout;
+    });
+});
+
+describe("Test PreAssembledSpan", async function () {
+    it("should correctly initialize and gather data by testing all setters", async function () {
+        const now = Date.now();
+        const expected = {
+            name: "test-span",
+            startTime: now,
+            endTime: undefined,
+            options: undefined,
+            attributes: {},
+            events: [],
+            status: undefined,
+            exception: undefined,
+            children: [],
+        } as any;
+
+        const span = new PreAssembledSpan("test-span", now);
+        assert.deepEqual(span, expected);
+
+        span.addEvent("event1", { key: "value" }, now + 25);
+        expected.events.push({ name: "event1", startTime: now + 25, attributes: { key: "value" } });
+        assert.deepEqual(span, expected);
+
+        span.setAttr("test-attr", "test-value");
+        expected.attributes["test-attr"] = "test-value";
+        assert.deepEqual(span, expected);
+
+        span.extendAttrs({ "another-attr": 42 });
+        expected.attributes["another-attr"] = 42;
+        assert.deepEqual(span, expected);
+
+        span.setStatus({ code: SpanStatusCode.ERROR, message: "error" });
+        expected.status = { code: SpanStatusCode.ERROR, message: "error" };
+        assert.deepEqual(span, expected);
+
+        span.recordException("error", now + 100);
+        expected.exception = { exception: "error", time: now + 100 };
+        assert.deepEqual(span, expected);
+
+        span.addChild(new PreAssembledSpan("child-span", now + 200));
+        const expectedChild = {
+            name: "child-span",
+            startTime: now + 200,
+            endTime: undefined,
+            options: undefined,
+            attributes: {},
+            events: [],
+            status: undefined,
+            exception: undefined,
+            children: [],
+        };
+        expected.children.push(expectedChild);
+        assert.deepEqual(span, expected);
+
+        span.end(now + 500);
+        expected.endTime = now + 500;
+        assert.deepEqual(span, expected);
     });
 });
