@@ -122,7 +122,7 @@ describe("Test RainSolverLogger", async function () {
         for (let i = 0; i < expected.events.length; i++) {
             assert.equal(result.events[i].name, expected.events[i].name);
             assert.deepEqual(result.events[i].attributes, expected.events[i].attributes);
-            assert.equal(result.events[i].time[0], expected.events[i].time[0]);
+            assert.closeTo(result.events[i].time[0], expected.events[i].time[0], 1); // due to precision loss
             assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // due to precision loss
         }
 
