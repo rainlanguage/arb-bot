@@ -6,10 +6,10 @@ ARG DOCKER_CHANNEL
 ENV GIT_COMMIT=$GIT_SHA
 ENV DOCKER_TAG=$DOCKER_CHANNEL
 
-WORKDIR /arb-bot
+WORKDIR /rain-solver
 ADD . .
 RUN rm -rf test/*.js test/*.ts test/e2e
 RUN npm install
 RUN npm run build
-CMD node arb-bot
-# ENTRYPOINT ["node" "arb-bot"]
+CMD node rain-solver
+# ENTRYPOINT ["node" "rain-solver"]
