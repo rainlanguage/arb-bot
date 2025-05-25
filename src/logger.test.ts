@@ -4,7 +4,7 @@ import { PreAssembledSpan, RainSolverLogger } from "./logger";
 import { describe, it, assert } from "vitest";
 
 describe("Test RainSolverLogger", async function () {
-    it("should collect data and logs and export correctly", async function () {
+    it("should successfully collect data and logs and export to otel channel", async function () {
         // hook to stdout for test
         let stdoutText = "";
         const orgStdout = process.stdout.write;
