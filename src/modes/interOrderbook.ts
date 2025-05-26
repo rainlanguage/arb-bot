@@ -1,10 +1,11 @@
 import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
+import { RainSolverConfig } from "../config";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
 import { BaseError, ExecutionRevertedError, PublicClient } from "viem";
-import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
+import { BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 import {
     ONE18,
     scale18To,
@@ -31,7 +32,7 @@ export async function dryrun({
     viemClient,
     l1GasPrice,
 }: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     signer: ViemClient;
@@ -305,7 +306,7 @@ export async function findOpp({
     orderbooksOrders,
     l1GasPrice,
 }: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     signer: ViemClient;
@@ -457,7 +458,7 @@ export async function binarySearch({
     viemClient,
     l1GasPrice,
 }: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     signer: ViemClient;

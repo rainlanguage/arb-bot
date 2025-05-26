@@ -1,24 +1,19 @@
 import { clear } from ".";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
-import { AppOptions } from "./yaml";
 import { startup } from "./cli/startup";
 import { getOrderChanges } from "./query";
+import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
 import { RainSolverLogger } from "./logger";
+import { RainSolverConfig } from "./config";
 import { Context } from "@opentelemetry/api";
 import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
-import { getDataFetcher, getMetaInfo } from "./config";
+import { getDataFetcher, getMetaInfo } from "./client";
 import { trace, Tracer, context, SpanStatusCode } from "@opentelemetry/api";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
-import {
-    BotConfig,
-    ViemClient,
-    BundledOrders,
-    OperationState,
-    ProcessPairReportStatus,
-} from "./types";
+import { ViemClient, BundledOrders, OperationState, ProcessPairReportStatus } from "./types";
 import {
     downscaleProtection,
     prepareOrdersForRound,
@@ -32,7 +27,7 @@ export const arbRound = async (
     tracer: Tracer,
     roundCtx: Context,
     options: AppOptions,
-    config: BotConfig,
+    config: RainSolverConfig,
     bundledOrders: BundledOrders[][],
     state: OperationState,
 ) => {
