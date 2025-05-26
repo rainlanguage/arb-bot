@@ -1,4 +1,3 @@
-import { sleep } from "../utils";
 import { startup } from "./startup";
 import { getOrderDetails } from "..";
 import { unlinkSync, writeFileSync } from "node:fs";
@@ -9,6 +8,10 @@ vi.mock("viem", async (importOriginal) => {
         ...(await importOriginal()),
         createPublicClient: vi.fn().mockReturnValue({
             getChainId: vi.fn().mockResolvedValue(137),
+            readContract: vi
+                .fn()
+                .mockResolvedValueOnce("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D")
+                .mockResolvedValueOnce("0xFA4989F5D49197FD9673cE4B7Fe2A045A0F2f9c8"),
         }),
     };
 });
@@ -27,16 +30,12 @@ vi.mock("../account", () => ({
     }),
 }));
 
-vi.mock("../config", async (importOriginal) => {
+vi.mock("../client", async (importOriginal) => {
     return {
         ...(await importOriginal()),
         getDataFetcher: vi.fn(),
         createViemClient: vi.fn().mockResolvedValue({
             getGasPrice: vi.fn().mockResolvedValue(1234n),
-            readContract: vi
-                .fn()
-                .mockResolvedValueOnce("0xC1A14cE2fd58A3A2f99deCb8eDd866204eE07f8D")
-                .mockResolvedValueOnce("0xFA4989F5D49197FD9673cE4B7Fe2A045A0F2f9c8"),
         }),
     };
 });
@@ -132,7 +131,6 @@ sgFilter:
         // rm test yaml file
         unlinkSync(path);
 
-        await sleep(1000);
         assert.equal(result.config.chain.id, expected.config.chain.id);
         assert.deepEqual(result.config.rpc[0], expected.config.rpc[0]);
         assert.equal(result.config.arbAddress, expected.config.arbAddress);
