@@ -1,19 +1,14 @@
 import { getGasPrice } from "../gas";
-import { AppOptions } from "../yaml";
 import { getCliOptions } from "./options";
+import { AppOptions } from "../config/yaml";
+import { RainSolverConfig } from "../config";
 import { getOrderDetails, getConfig } from "../";
 import { Context, Tracer } from "@opentelemetry/api";
 import { getOrdersTokens, getOrderbookOwnersProfileMapFromSg } from "../order";
-import {
-    BotConfig,
-    ViemClient,
-    TokenDetails,
-    OperationState,
-    OrderbooksOwnersProfileMap,
-} from "../types";
+import { ViemClient, TokenDetails, OperationState, OrderbooksOwnersProfileMap } from "../types";
 
 export type CliStartupResult = {
-    config: BotConfig;
+    config: RainSolverConfig;
     options: AppOptions;
     state: OperationState;
     startupTimestamp: number;
