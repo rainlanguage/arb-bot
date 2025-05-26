@@ -1,6 +1,6 @@
-import { assert } from "chai";
+import { describe, it, assert } from "vitest";
 import { writeFileSync, unlinkSync } from "fs";
-import { readValue, AppOptions, tryIntoArray, validateHash, validateAddress } from "../src/yaml";
+import { readValue, AppOptions, tryIntoArray, validateHash, validateAddress } from "./yaml";
 
 describe("Test yaml AppOptions", async function () {
     it("test AppOptions fromYaml", async function () {

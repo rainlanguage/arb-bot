@@ -1,11 +1,12 @@
 import { Token } from "sushi/currency";
 import { estimateGasCost } from "../gas";
+import { RainSolverConfig } from "../config";
 import { ChainId, DataFetcher, Router } from "sushi";
 import { BigNumber, Contract, ethers } from "ethers";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getBountyEnsureRainlang, parseRainlang } from "../task";
 import { BaseError, ExecutionRevertedError, PublicClient } from "viem";
-import { SpanAttrs, BotConfig, ViemClient, DryrunResult, BundledOrders } from "../types";
+import { SpanAttrs, ViemClient, DryrunResult, BundledOrders } from "../types";
 import {
     ONE18,
     scale18,
@@ -45,7 +46,7 @@ export async function dryrun({
     l1GasPrice,
 }: {
     mode: number;
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     dataFetcher: DataFetcher;
@@ -380,7 +381,7 @@ export async function findOpp({
     l1GasPrice,
 }: {
     mode: number;
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     dataFetcher: DataFetcher;
@@ -499,7 +500,7 @@ export async function findOppWithRetries({
     viemClient,
     l1GasPrice,
 }: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     dataFetcher: DataFetcher;
@@ -591,7 +592,7 @@ export function findMaxInput({
     gasPrice,
     config,
 }: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     dataFetcher: DataFetcher;
     gasPrice: bigint;

@@ -1,12 +1,13 @@
 /* eslint-disable no-console */
+import { ViemClient } from "./types";
 import { shouldThrow } from "./error";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
-import { WNATIVE } from "sushi/currency";
+import { RainSolverConfig } from "./config";
 import { ChainId, ChainKey } from "sushi/chain";
+import { publicClientConfig } from "sushi/config";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { RainDataFetcher, LiquidityProviders } from "sushi/router";
-import { BotConfig, ViemClient, ChainConfig, BotDataFetcher } from "./types";
 import { rainSolverTransport, RainSolverTransportConfig } from "./transport";
 import {
     HDAccount,
@@ -16,54 +17,6 @@ import {
     PrivateKeyAccount,
     createWalletClient,
 } from "viem";
-import {
-    STABLES,
-    publicClientConfig,
-    ROUTE_PROCESSOR_3_ADDRESS,
-    ROUTE_PROCESSOR_4_ADDRESS,
-    ROUTE_PROCESSOR_3_1_ADDRESS,
-    ROUTE_PROCESSOR_3_2_ADDRESS,
-} from "sushi/config";
-
-/**
- * List of liquidity provider that are excluded
- */
-export const ExcludedLiquidityProviders = [
-    LiquidityProviders.CurveSwap,
-    LiquidityProviders.Camelot,
-    LiquidityProviders.Trident,
-] as const;
-
-/**
- * Get the chain config for a given chain id
- * @param chainId - The chain id
- */
-export function getChainConfig(chainId: ChainId): ChainConfig {
-    const chain = publicClientConfig[chainId].chain;
-    if (!chain) throw new Error("network not supported");
-    const nativeWrappedToken = WNATIVE[chainId];
-    if (!nativeWrappedToken) throw new Error("network not supported");
-    const routeProcessors: Record<string, `0x${string}`> = {};
-    [
-        ["3", ROUTE_PROCESSOR_3_ADDRESS],
-        ["3.1", ROUTE_PROCESSOR_3_1_ADDRESS],
-        ["3.2", ROUTE_PROCESSOR_3_2_ADDRESS],
-        ["4", ROUTE_PROCESSOR_4_ADDRESS],
-    ].forEach(([key, addresses]: any[]) => {
-        const address = addresses[chainId];
-        if (address) {
-            routeProcessors[key] = address;
-        }
-    });
-    const stableTokens = (STABLES as any)[chainId];
-    return {
-        chain,
-        nativeWrappedToken,
-        routeProcessors,
-        stableTokens,
-        isSpecialL2: SpecialL2Chains.is(chain.id),
-    };
-}
 
 /**
  * Creates a viem client
@@ -177,11 +130,11 @@ export async function onFetchResponse(this: RpcState, response: Response) {
  * @param configuration - The rain solver transport configurations
  */
 export async function getDataFetcher(
-    configOrViemClient: BotConfig | PublicClient,
+    configOrViemClient: RainSolverConfig | PublicClient,
     rpcState: RpcState,
     liquidityProviders: LiquidityProviders[] = [],
     configuration?: RainSolverTransportConfig,
-): Promise<BotDataFetcher> {
+): Promise<RainDataFetcher> {
     try {
         const dataFetcher = await RainDataFetcher.init(
             configOrViemClient.chain!.id as ChainId,
@@ -196,7 +149,7 @@ export async function getDataFetcher(
                   )) as any as PublicClient),
             liquidityProviders,
         );
-        return dataFetcher as BotDataFetcher;
+        return dataFetcher as RainDataFetcher;
     } catch (error) {
         console.log(error);
         throw "cannot instantiate RainDataFetcher for this network";
@@ -204,25 +157,12 @@ export async function getDataFetcher(
 }
 
 /**
- * List of L2 chains that require SEPARATE L1 gas actions.
- * other L2 chains that dont require separate L1 gas actions
- * such as Arbitrum and Polygon zkEvm are excluded, these chains'
- * gas actions are performed the same as usual L1 chains.
- */
-export enum SpecialL2Chains {
-    BASE = ChainId.BASE,
-    OPTIMISM = ChainId.OPTIMISM,
-}
-export namespace SpecialL2Chains {
-    export function is(chainId: number): boolean {
-        return Object.values(SpecialL2Chains).includes(chainId as any);
-    }
-}
-
-/**
  * Get meta info for a bot to post on otel
  */
-export async function getMetaInfo(config: BotConfig, sg: string[]): Promise<Record<string, any>> {
+export async function getMetaInfo(
+    config: RainSolverConfig,
+    sg: string[],
+): Promise<Record<string, any>> {
     const obs: string[] = [];
     for (const s of sg) {
         try {
@@ -243,30 +183,6 @@ export async function getMetaInfo(config: BotConfig, sg: string[]): Promise<Reco
     } catch (e) {
         return {};
     }
-}
-
-/**
- * Resolves an array of case-insensitive names to LiquidityProviders, ignores the ones that are not valid
- * @param liquidityProviders - List of liquidity providers
- */
-export function processLps(liquidityProviders?: string[]): LiquidityProviders[] {
-    const LP = Object.values(LiquidityProviders);
-    if (
-        !liquidityProviders ||
-        !Array.isArray(liquidityProviders) ||
-        !liquidityProviders.length ||
-        !liquidityProviders.every((v) => typeof v === "string")
-    ) {
-        return LP.filter((v) => !ExcludedLiquidityProviders.includes(v as any));
-    }
-    const lps: LiquidityProviders[] = [];
-    for (let i = 0; i < liquidityProviders.length; i++) {
-        const index = LP.findIndex(
-            (v) => v.toLowerCase() === liquidityProviders[i].toLowerCase().trim(),
-        );
-        if (index > -1 && !lps.includes(LP[index])) lps.push(LP[index]);
-    }
-    return lps.length ? lps : LP.filter((v) => !ExcludedLiquidityProviders.includes(v as any));
 }
 
 /**
