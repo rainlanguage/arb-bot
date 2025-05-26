@@ -1,11 +1,11 @@
 import { clear } from ".";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
+import { getOrderChanges } from "./query";
 import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
 import { RainSolverConfig } from "./config";
 import { Context } from "@opentelemetry/api";
-import { getOrderChanges } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
