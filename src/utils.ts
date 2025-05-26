@@ -1,12 +1,13 @@
 import { ChainId } from "sushi/chain";
 import { AfterClearAbi } from "./abis";
 import { RouteLeg } from "sushi/tines";
+import { RainSolverConfig } from "./config";
 import { Token, Type } from "sushi/currency";
 import BlackList from "./pool-blacklist.json";
 import { isBytes, isHexString } from "ethers/lib/utils";
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { erc20Abi, parseEventLogs, TransactionReceipt } from "viem";
-import { BotConfig, TakeOrderDetails, TokenDetails, ViemClient } from "./types";
+import { TakeOrderDetails, TokenDetails, ViemClient } from "./types";
 import { RainDataFetcher, DataFetcherOptions, LiquidityProviders, Router } from "sushi/router";
 
 /**
@@ -688,7 +689,7 @@ export async function getRpSwap(
  * Checks if a route exists between 2 tokens using sushi router
  */
 export async function routeExists(
-    config: BotConfig,
+    config: RainSolverConfig,
     fromToken: Token,
     toToken: Token,
     gasPrice: BigNumber,
@@ -734,7 +735,7 @@ export function toNumber(value: BigNumberish): number {
  * Get market quote (price) for a token pair using sushi router
  */
 export function getMarketQuote(
-    config: BotConfig,
+    config: RainSolverConfig,
     fromToken: Token,
     toToken: Token,
     gasPrice: BigNumber,

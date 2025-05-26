@@ -1,15 +1,12 @@
 import { BigNumber } from "ethers";
-import { Token } from "sushi/currency";
 import { RpcConfig, RpcState } from "./rpc";
 import { AttributeValue } from "@opentelemetry/api";
-import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import {
     Chain,
     Account,
     HDAccount,
     TestClient,
     WalletClient,
-    PublicClient,
     PublicActions,
     WalletActions,
     FallbackTransport,
@@ -146,53 +143,6 @@ export type TestViemClient = TestClient<"hardhat"> &
         ) => Promise<`0x${string}`>;
     };
 
-export type BotDataFetcher = RainDataFetcher;
-
-export type ChainConfig = {
-    chain: Chain;
-    nativeWrappedToken: Token;
-    routeProcessors: { [key: string]: `0x${string}` };
-    stableTokens?: Token[];
-    isSpecialL2: boolean;
-};
-
-export type BotConfig = {
-    chain: Chain;
-    nativeWrappedToken: Token;
-    routeProcessors: { [key: string]: `0x${string}` };
-    stableTokens?: Token[];
-    isSpecialL2: boolean;
-    key?: string;
-    mnemonic?: string;
-    rpc: RpcConfig[];
-    writeRpc?: RpcConfig[];
-    arbAddress: string;
-    genericArbAddress?: string;
-    lps: LiquidityProviders[];
-    maxRatio: boolean;
-    timeout?: number;
-    hops: number;
-    retries: number;
-    gasCoveragePercentage: string;
-    watchedTokens?: TokenDetails[];
-    viemClient: PublicClient;
-    dataFetcher: BotDataFetcher;
-    mainAccount: ViemClient;
-    accounts: ViemClient[];
-    selfFundOrders?: SelfFundOrder[];
-    publicRpc: boolean;
-    walletKey: string;
-    route?: "multi" | "single";
-    gasPriceMultiplier: number;
-    gasLimitMultiplier: number;
-    txGas?: string;
-    quoteGas: bigint;
-    rpOnly?: boolean;
-    dispair: Dispair;
-    onFetchRequest?: (request: Request) => void;
-    onFetchResponse?: (request: Response) => void;
-};
-
 export type OperationState = {
     gasPrice: bigint;
     l1GasPrice: bigint;
@@ -303,12 +253,6 @@ export type SgFilter = {
     includeOrderbooks?: Set<string>;
     /** Orderbook addresses to exclude (takes precedence over includeOrderbooks) */
     excludeOrderbooks?: Set<string>;
-};
-
-export type Dispair = {
-    deployer: string;
-    interpreter: string;
-    store: string;
 };
 
 export type RpcRequest = {

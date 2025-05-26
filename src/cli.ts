@@ -1,26 +1,21 @@
 import { clear } from ".";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
-import { AppOptions } from "./yaml";
+import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
+import { RainSolverConfig } from "./config";
 import { Context } from "@opentelemetry/api";
 import { getOrderChanges } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { getDataFetcher, getMetaInfo } from "./config";
+import { getDataFetcher, getMetaInfo } from "./client";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
-import {
-    BotConfig,
-    ViemClient,
-    BundledOrders,
-    OperationState,
-    ProcessPairReportStatus,
-} from "./types";
+import { ViemClient, BundledOrders, OperationState, ProcessPairReportStatus } from "./types";
 import {
     downscaleProtection,
     prepareOrdersForRound,
@@ -49,7 +44,7 @@ export const arbRound = async (
     tracer: Tracer,
     roundCtx: Context,
     options: AppOptions,
-    config: BotConfig,
+    config: RainSolverConfig,
     bundledOrders: BundledOrders[][],
     state: OperationState,
 ) => {

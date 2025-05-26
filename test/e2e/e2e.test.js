@@ -10,13 +10,14 @@ const { ethers, viem, network } = require("hardhat");
 const { Resource } = require("@opentelemetry/resources");
 const { trace, context } = require("@opentelemetry/api");
 const { publicActions, walletActions } = require("viem");
+const { getChainConfig } = require("../../src/config/chain");
 const ERC20Artifact = require("../abis/ERC20Upgradeable.json");
 const { abi: orderbookAbi } = require("../abis/OrderBook.json");
+const { getDataFetcher, publicRpcs } = require("../../src/client");
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
 const { ProcessPairReportStatus, OperationState } = require("../../src/types");
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { SEMRESATTRS_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
-const { getChainConfig, getDataFetcher, publicRpcs } = require("../../src/config");
 const { BasicTracerProvider, BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 const { prepareOrdersForRound, getOrderbookOwnersProfileMapFromSg } = require("../../src/order");
 const {

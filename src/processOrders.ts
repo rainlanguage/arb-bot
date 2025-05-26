@@ -2,29 +2,28 @@ import { findOpp } from "./modes";
 import { PublicClient } from "viem";
 import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
-import { createViemClient } from "./config";
+import { createViemClient } from "./client";
 import { arbAbis, orderbookAbi } from "./abis";
 import { getGasPrice, getQuoteGas } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
-import { ChainId, RainDataFetcherOptions } from "sushi";
 import { fundOwnedOrders, checkOwnedOrders } from "./account";
 import { Context, SpanStatusCode, Tracer } from "@opentelemetry/api";
+import { ChainId, RainDataFetcher, RainDataFetcherOptions } from "sushi";
 import { ProcessPairHaltReason, ProcessPairReportStatus } from "./types";
 import { ErrorSeverity, errorSnapshot, isTimeout, KnownErrors } from "./error";
 import { toNumber, getEthPrice, PoolBlackList, getMarketQuote } from "./utils";
 import {
     Report,
-    BotConfig,
     SpanAttrs,
     ViemClient,
     RoundReport,
     BundledOrders,
-    BotDataFetcher,
     OperationState,
     ProcessPairResult,
 } from "./types";
+import { RainSolverConfig } from "./config";
 
 /**
  * Main function that processes all given orders and tries clearing them against onchain liquidity and reports the result
@@ -34,7 +33,7 @@ import {
  * @param ctx
  */
 export const processOrders = async (
-    config: BotConfig,
+    config: RainSolverConfig,
     bundledOrders: BundledOrders[][],
     state: OperationState,
     tracer: Tracer,
@@ -379,10 +378,10 @@ export const processOrders = async (
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
  */
 export async function processPair(args: {
-    config: BotConfig;
+    config: RainSolverConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
-    dataFetcher: BotDataFetcher;
+    dataFetcher: RainDataFetcher;
     signer: ViemClient;
     writeSigner: ViemClient | undefined;
     arb: Contract;
