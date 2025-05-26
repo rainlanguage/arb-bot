@@ -1,6 +1,7 @@
 import { clear } from ".";
 import { config } from "dotenv";
 import { getGasPrice } from "./gas";
+import { startup } from "./cli/startup";
 import { getOrderChanges } from "./query";
 import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
@@ -36,7 +37,6 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import { startup } from "./cli/startup";
 
 config();
 
