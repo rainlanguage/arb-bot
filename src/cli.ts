@@ -1,9 +1,7 @@
 import { config } from "dotenv";
-import { getGasPrice } from "./gas";
 import { Command } from "commander";
-import { AppOptions } from "./config/yaml";
+import { AppOptions } from "./config";
 import { BigNumber, ethers } from "ethers";
-import { RainSolverConfig } from "./config";
 import { Context } from "@opentelemetry/api";
 import { getOrderChanges, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
@@ -15,8 +13,8 @@ import { getDataFetcher, getMetaInfo } from "./client";
 import { CompressionAlgorithm } from "@opentelemetry/otlp-exporter-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import { BotConfig, ViemClient, BundledOrders, ProcessPairReportStatus } from "./types";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
-import { ViemClient, BundledOrders, OperationState, ProcessPairReportStatus } from "./types";
 import {
     getOrdersTokens,
     downscaleProtection,
@@ -39,6 +37,7 @@ import {
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
+import { SharedState, SharedStateConfig } from "./state";
 
 config();
 
@@ -68,9 +67,9 @@ export const arbRound = async (
     tracer: Tracer,
     roundCtx: Context,
     options: AppOptions,
-    config: RainSolverConfig,
+    config: BotConfig,
     bundledOrders: BundledOrders[][],
-    state: OperationState,
+    state: SharedState,
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
@@ -158,15 +157,13 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
     const tokens = getOrdersTokens(ordersDetails);
 
-    // init raw state
-    const state = OperationState.init(options.rpc, options.writeRpc);
+    // init state
+    const stateConfig = await SharedStateConfig.tryFromAppOptions(options);
+    const state = new SharedState(stateConfig);
 
     // get config
     const config = await getConfig(options, state, tracer, ctx);
     config.watchedTokens = tokens;
-
-    // fetch initial gas price on startup
-    await getGasPrice(config, state);
 
     return {
         roundGap,
@@ -340,10 +337,9 @@ export const main = async (argv: any, version?: string) => {
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 if (update) {
-                    await getDataFetcher(config.viemClient, state.rpc, config.lps);
+                    config.dataFetcher = await getDataFetcher(state);
                 }
                 roundSpan.setAttribute("details.rpc", state.rpc.urls);
-                await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     tracer,
                     roundCtx,

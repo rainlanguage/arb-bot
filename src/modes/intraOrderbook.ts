@@ -1,12 +1,18 @@
 import { orderbookAbi } from "../abis";
 import { estimateGasCost } from "../gas";
 import { BigNumber, ethers } from "ethers";
-import { RainSolverConfig } from "../config";
 import { containsNodeError, errorSnapshot } from "../error";
 import { getWithdrawEnsureRainlang, parseRainlang } from "../task";
 import { BaseError, erc20Abi, ExecutionRevertedError, PublicClient } from "viem";
 import { estimateProfit, scale18, withBigintSerializer, extendSpanAttributes } from "../utils";
-import { SpanAttrs, ViemClient, DryrunResult, BundledOrders, TakeOrderDetails } from "../types";
+import {
+    SpanAttrs,
+    BotConfig,
+    ViemClient,
+    DryrunResult,
+    BundledOrders,
+    TakeOrderDetails,
+} from "../types";
 
 const obInterface = new ethers.utils.Interface(orderbookAbi);
 
@@ -26,7 +32,7 @@ export async function dryrun({
     outputBalance,
     l1GasPrice,
 }: {
-    config: RainSolverConfig;
+    config: BotConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     signer: ViemClient;
@@ -306,7 +312,7 @@ export async function findOpp({
     orderbooksOrders,
     l1GasPrice,
 }: {
-    config: RainSolverConfig;
+    config: BotConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     signer: ViemClient;

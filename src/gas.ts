@@ -1,10 +1,9 @@
 import { ChainId } from "sushi";
 import { BigNumber } from "ethers";
 import { getQuoteConfig } from "./utils";
-import { RainSolverConfig } from "./config";
 import { publicActionsL2 } from "viem/op-stack";
 import { encodeFunctionData, multicall3Abi } from "viem";
-import { BundledOrders, OperationState, RawTx, ViemClient } from "./types";
+import { BundledOrders, RawTx, ViemClient, BotConfig } from "./types";
 import { ArbitrumNodeInterfaceAbi, ArbitrumNodeInterfaceAddress, OrderbookQuoteAbi } from "./abis";
 
 // default gas price for bsc chain, 1 gwei
@@ -16,7 +15,7 @@ export const BSC_DEFAULT_GAS_PRICE = 1_000_000_000n as const;
 export async function estimateGasCost(
     tx: RawTx,
     signer: ViemClient,
-    config: RainSolverConfig,
+    config: BotConfig,
     l1GasPrice?: bigint,
     l1Signer?: any,
 ) {
@@ -51,7 +50,7 @@ export async function estimateGasCost(
 /**
  * Retruns the L1 gas cost of a transaction if operating chain is special L2 else returns 0.
  */
-export function getL1Fee(receipt: any, config: RainSolverConfig): bigint {
+export function getL1Fee(receipt: any, config: BotConfig): bigint {
     if (!config.isSpecialL2) return 0n;
 
     if (typeof receipt.l1Fee === "bigint") {
@@ -66,39 +65,17 @@ export function getL1Fee(receipt: any, config: RainSolverConfig): bigint {
 /**
  * Get Transaction total gas cost from receipt (includes L1 fee)
  */
-export function getTxFee(receipt: any, config: RainSolverConfig): bigint {
+export function getTxFee(receipt: any, config: BotConfig): bigint {
     const gasUsed = BigNumber.from(receipt.gasUsed).toBigInt();
     const effectiveGasPrice = BigNumber.from(receipt.effectiveGasPrice).toBigInt();
     return effectiveGasPrice * gasUsed + getL1Fee(receipt, config);
 }
 
 /**
- * Fetches the gas price (L1 gas price as well if chain is special L2)
- */
-export async function getGasPrice(config: RainSolverConfig, state: OperationState) {
-    const promises = [config.viemClient.getGasPrice()];
-    if (config.isSpecialL2) {
-        const l1Client = config.viemClient.extend(publicActionsL2());
-        promises.push(l1Client.getL1BaseFee());
-    }
-    const [gasPriceResult, l1GasPriceResult = undefined] = await Promise.allSettled(promises);
-    if (gasPriceResult.status === "fulfilled") {
-        let gasPrice = gasPriceResult.value;
-        if (config.chain.id === ChainId.BSC && gasPrice < BSC_DEFAULT_GAS_PRICE) {
-            gasPrice = BSC_DEFAULT_GAS_PRICE;
-        }
-        state.gasPrice = (gasPrice * BigInt(config.gasPriceMultiplier)) / 100n;
-    }
-    if (l1GasPriceResult?.status === "fulfilled") {
-        state.l1GasPrice = l1GasPriceResult.value;
-    }
-}
-
-/**
  * Calculates the gas limit that used for quoting orders
  */
 export async function getQuoteGas(
-    config: RainSolverConfig,
+    config: BotConfig,
     orderDetails: BundledOrders,
     multicallAddressOverride?: string,
 ): Promise<bigint> {

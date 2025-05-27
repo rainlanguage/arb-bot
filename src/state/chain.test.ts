@@ -16,14 +16,16 @@ describe("Test getChainConfig", () => {
         const chainId = ChainId.ETHEREUM;
         const config = getChainConfig(chainId);
 
-        expect(config.chain).toEqual(publicClientConfig[chainId].chain);
         expect(config.nativeWrappedToken).toEqual(WNATIVE[chainId]);
         expect(config.routeProcessors["3"]).toBe(ROUTE_PROCESSOR_3_ADDRESS[chainId]);
         expect(config.routeProcessors["3.1"]).toBe(ROUTE_PROCESSOR_3_1_ADDRESS[chainId]);
         expect(config.routeProcessors["3.2"]).toBe(ROUTE_PROCESSOR_3_2_ADDRESS[chainId]);
         expect(config.routeProcessors["4"]).toBe(ROUTE_PROCESSOR_4_ADDRESS[chainId]);
         expect(config.stableTokens).toEqual(STABLES[chainId]);
-        expect(config.isSpecialL2).toBe(SpecialL2Chains.is(config.chain.id));
+        expect(config.isSpecialL2).toBe(SpecialL2Chains.is(config.id));
+        for (const key in publicClientConfig[chainId].chain) {
+            expect(config[key]).toEqual(publicClientConfig[chainId].chain[key]);
+        }
     });
 
     it("should throw if chain is not supported", () => {

@@ -1,17 +1,16 @@
 import axios from "axios";
-import { ChainId } from "sushi";
 import { versions } from "process";
-import { PublicClient } from "viem";
+import { AppOptions } from "./config";
+import { SharedState } from "./state";
 import { initAccounts } from "./account";
-import { AppOptions } from "./config/yaml";
-import { RainSolverConfig } from "./config";
+import { getDataFetcher } from "./client";
 import { processOrders } from "./processOrders";
+import { publicClientConfig } from "sushi/config";
 import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
-import { getDataFetcher, createViemClient } from "./client";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
-import { SgFilter, RoundReport, BundledOrders, OperationState } from "./types";
+import { SgFilter, RoundReport, BundledOrders, BotConfig } from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
@@ -65,36 +64,37 @@ export async function getOrderDetails(
 }
 
 /**
+ * @deprecated
+ *
  * Get the general and network configuration required for the bot to operate
  * @param options - App Options
- * @param state - App state
+ * @param state - App shared state
  * @returns The configuration object
  */
 export async function getConfig(
     options: AppOptions,
-    state: OperationState,
+    state: SharedState,
     tracer?: Tracer,
     ctx?: Context,
-): Promise<RainSolverConfig> {
-    const config = await RainSolverConfig.tryFromAppOptions(options);
-    const viemClient = await createViemClient(
-        config.chain.id as ChainId,
-        state.rpc,
-        undefined,
-        { timeout: options.timeout },
-        undefined,
-    );
-    const dataFetcher = await getDataFetcher(
-        viemClient as any as PublicClient,
-        state.rpc,
-        config.lps,
-    );
-    config.viemClient = viemClient as any as PublicClient;
+): Promise<BotConfig> {
+    const config: any = {
+        ...options,
+        lps: state.liquidityProviders!,
+        viemClient: state.client,
+        watchedTokens: state.watchedTokens,
+        dispair: state.dispair,
+        nativeWrappedToken: state.chainConfig.nativeWrappedToken,
+        routeProcessors: state.chainConfig.routeProcessors,
+        stableTokens: state.chainConfig.stableTokens,
+        isSpecialL2: state.chainConfig.isSpecialL2,
+        chain: publicClientConfig[state.chainConfig.id as keyof typeof publicClientConfig].chain,
+    };
+    const dataFetcher = await getDataFetcher(state);
     config.dataFetcher = dataFetcher;
 
     // init accounts
     const { mainAccount, accounts } = await initAccounts(
-        config.walletKey,
+        state.walletKey,
         config,
         state,
         options,
@@ -117,9 +117,9 @@ export async function getConfig(
  * @returns The report of details of cleared orders
  */
 export async function clear(
-    config: RainSolverConfig,
+    config: BotConfig,
     bundledOrders: BundledOrders[][],
-    state: OperationState,
+    state: SharedState,
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> {

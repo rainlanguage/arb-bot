@@ -1,9 +1,9 @@
 import { erc20Abi } from "viem";
+import { AppOptions } from "./config";
+import { SharedState } from "./state";
 import { ChainId, RPParams } from "sushi";
-import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
 import { createViemClient } from "./client";
-import { RainSolverConfig } from "./config";
 import { estimateGasCost, getTxFee } from "./gas";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Native, Token, WNATIVE } from "sushi/currency";
@@ -12,7 +12,7 @@ import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { getRpSwap, PoolBlackList, sleep, addWatchedToken } from "./utils";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { MulticallAbi, orderbookAbi, routeProcessor3Abi, VaultBalanceAbi } from "./abis";
-import { ViemClient, OwnedOrder, TokenDetails, OperationState, BundledOrders } from "./types";
+import { BotConfig, ViemClient, OwnedOrder, TokenDetails, BundledOrders } from "./types";
 
 /** Standard base path for eth accounts */
 export const BasePath = "m/44'/60'/0'/0/" as const;
@@ -30,8 +30,8 @@ export const MainAccountDerivationIndex = 0 as const;
  */
 export async function initAccounts(
     mnemonicOrPrivateKey: string,
-    config: RainSolverConfig,
-    state: OperationState,
+    config: BotConfig,
+    state: SharedState,
     options: AppOptions,
     tracer?: Tracer,
     ctx?: Context,
@@ -146,12 +146,12 @@ export async function initAccounts(
  * @param state - App operation state
  */
 export async function manageAccounts(
-    config: RainSolverConfig,
+    config: BotConfig,
     options: AppOptions,
     avgGasCost: BigNumber,
     lastIndex: number,
     wgc: ViemClient[],
-    state: OperationState,
+    state: SharedState,
     tracer?: Tracer,
     ctx?: Context,
 ) {
@@ -399,8 +399,8 @@ export async function getBatchTokenBalanceForAccount(
 export async function sweepToMainWallet(
     fromWallet: ViemClient,
     toWallet: ViemClient,
-    state: OperationState,
-    config: RainSolverConfig,
+    state: SharedState,
+    config: BotConfig,
     tracer?: Tracer,
     ctx?: Context,
 ) {
@@ -614,8 +614,8 @@ export async function sweepToMainWallet(
  * @param config - The config obj
  */
 export async function sweepToEth(
-    config: RainSolverConfig,
-    state: OperationState,
+    config: BotConfig,
+    state: SharedState,
     tracer?: Tracer,
     ctx?: Context,
 ) {
@@ -815,8 +815,8 @@ export function setWatchedTokens(account: ViemClient, watchedTokens: TokenDetail
  */
 export async function fundOwnedOrders(
     ownedOrders: OwnedOrder[],
-    config: RainSolverConfig,
-    state: OperationState,
+    config: BotConfig,
+    state: SharedState,
 ): Promise<{ ownedOrder?: OwnedOrder; error: string }[]> {
     const failedFundings: { ownedOrder?: OwnedOrder; error: string }[] = [];
     const ob = new ethers.utils.Interface(orderbookAbi);
@@ -995,7 +995,7 @@ export async function fundOwnedOrders(
  * @param multicallAddressOverride - Optional multicall address
  */
 export async function checkOwnedOrders(
-    config: RainSolverConfig,
+    config: BotConfig,
     orderDetails: BundledOrders[][],
     multicallAddressOverride?: string,
 ): Promise<OwnedOrder[]> {

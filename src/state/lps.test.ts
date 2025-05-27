@@ -8,7 +8,7 @@ describe("Test processLiquidityProviders", () => {
         ExcludedLiquidityProviders.forEach((lp) => {
             expect(result).not.toContain(lp);
         });
-        // Should contain at least one included provider
+        // should contain at least one included provider
         expect(result.length).toBeGreaterThan(0);
     });
 
