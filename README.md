@@ -1,7 +1,7 @@
 # Rain Solver
 Rain Solver (also known as Rain Orderbook Arbitrage Bot) is a NodeJS app that solves (clears) Rain orderbook orders against major DeFi platforms liquidity, other Rain Orderbooks and opposite orders of the same Rain Orderbook, by finding arbitrage trades for token pairs of the active orders that are queried from a subgraph, once an opportunity is found a transaction is submitted to one of [Rain Arb Contracts](https://github.com/rainprotocol/rain.orderbook/tree/main/src/concrete) which handles the clearing process from there.
 
-This app requires NodeJS v18 or higher to run and is docker ready.
+This app requires NodeJS v22 or higher to run and is docker ready.
 This app can also be run in Github Actions with a cron job, please read below for more details.
 
 ## The Case for Profitability
@@ -47,7 +47,7 @@ pnpm install --frozen-lockfile
 pnpm exec turbo run build --filter=./packages/sushi
 cd ../..
 ```
-and then install the dependencies, requires `>= nodejs v18`:
+and then install the dependencies, requires `>= nodejs v22`:
 ```bash
 npm install
 npm run build
@@ -76,7 +76,7 @@ nix develop -c node rain-solver <OPTIONS>
 ```
 <br>
 
-- without nix package manager (requires `>= nodejs v18`):
+- without nix package manager (requires `>= nodejs v22`):
 
 ```bash
 node rain-solver <OPTIONS>
