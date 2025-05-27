@@ -6,19 +6,17 @@ import { initAccounts } from "./account";
 import { getDataFetcher } from "./client";
 import { processOrders } from "./processOrders";
 import { publicClientConfig } from "sushi/config";
-import { Context, Span } from "@opentelemetry/api";
 import { checkSgStatus, handleSgResults } from "./sg";
-import { Tracer } from "@opentelemetry/sdk-trace-base";
+import { Context, Span, Tracer } from "@opentelemetry/api";
 import { querySgOrders, SgOrder, statusCheckQuery } from "./query";
 import { SgFilter, RoundReport, BundledOrders, BotConfig } from "./types";
 
 /**
  * Get the order details from a source, i.e array of subgraphs and/or a local json file
  * @param sgs - The subgraph endpoint URL(s) to query for orders' details
- * @param json - Path to a json file containing orders structs
- * @param signer - The ethers signer
  * @param sgFilters - The filters for subgraph query
- * @param span
+ * @param span - (optional) Parent otel span used for instrumentation
+ * @param timeout - Optional timeout for subgraph queries
  */
 export async function getOrderDetails(
     sgs: string[],

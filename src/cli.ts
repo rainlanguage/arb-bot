@@ -1,12 +1,12 @@
+import { clear } from ".";
 import { config } from "dotenv";
-import { Command } from "commander";
-import { AppOptions } from "./config";
+import { startup } from "./cli/startup";
+import { getOrderChanges } from "./query";
+import { AppOptions } from "./config/yaml";
 import { BigNumber, ethers } from "ethers";
 import { Context } from "@opentelemetry/api";
-import { getOrderChanges, SgOrder } from "./query";
 import { Resource } from "@opentelemetry/resources";
 import { sleep, withBigintSerializer } from "./utils";
-import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { Tracer } from "@opentelemetry/sdk-trace-base";
 import { getDataFetcher, getMetaInfo } from "./client";
@@ -16,10 +16,8 @@ import { SEMRESATTRS_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
 import { BotConfig, ViemClient, BundledOrders, ProcessPairReportStatus } from "./types";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 import {
-    getOrdersTokens,
     downscaleProtection,
     prepareOrdersForRound,
-    getOrderbookOwnersProfileMapFromSg,
     handleAddOrderbookOwnersProfileMap,
     handleRemoveOrderbookOwnersProfileMap,
 } from "./order";
@@ -40,28 +38,6 @@ import {
 import { SharedState, SharedStateConfig } from "./state";
 
 config();
-
-const getOptions = async (argv: any, version?: string) => {
-    const cmdOptions = new Command("node rain-solver")
-        .option(
-            "-c, --config <path>",
-            "Path to config yaml file, can be set in 'CONFIG' env var instead, if none is given looks for ./config.yaml in workspace root directory",
-            process.env.CONFIG || "./config.yaml",
-        )
-        .description(
-            [
-                "A NodeJS app to find and take arbitrage trades for Rain Orderbook orders against some DeFi liquidity providers, requires NodeJS v18 or higher.",
-                '- Use "node rain-solver [options]" command alias for running the app from its repository workspace',
-                '- Use "rain-solver [options]" command alias when this app is installed as a dependency in another project',
-            ].join("\n"),
-        )
-        .alias("rain-solver")
-        .version(version ?? "0.0.0")
-        .parse(argv)
-        .opts();
-
-    return cmdOptions;
-};
 
 export const arbRound = async (
     tracer: Tracer,
@@ -132,56 +108,6 @@ export const arbRound = async (
     });
 };
 
-/**
- * CLI startup function
- * @param argv - cli args
- */
-export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?: Context) {
-    const cmdOptions = await getOptions(argv, version);
-    const options = AppOptions.fromYaml(cmdOptions.config);
-    const roundGap = options.sleep;
-
-    const poolUpdateInterval = options.poolUpdateInterval * 60 * 1000;
-    let ordersDetails: SgOrder[] = [];
-    if (!process?.env?.CLI_STARTUP_TEST) {
-        for (let i = 0; i < 3; i++) {
-            try {
-                ordersDetails = await getOrderDetails(options.subgraph, options.sgFilter);
-                break;
-            } catch (e) {
-                if (i != 2) await sleep(10000 * (i + 1));
-                else throw e;
-            }
-        }
-    }
-    const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
-    const tokens = getOrdersTokens(ordersDetails);
-
-    // init state
-    const stateConfig = await SharedStateConfig.tryFromAppOptions(options);
-    const state = new SharedState(stateConfig);
-
-    // get config
-    const config = await getConfig(options, state, tracer, ctx);
-    config.watchedTokens = tokens;
-
-    return {
-        roundGap,
-        options,
-        poolUpdateInterval,
-        config,
-        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
-            ordersDetails,
-            config.viemClient as any as ViemClient,
-            tokens,
-            options.ownerProfile,
-        ),
-        tokens,
-        lastReadOrdersTimestamp,
-        state,
-    };
-}
-
 export const main = async (argv: any, version?: string) => {
     // startup otel to collect span, logs, etc
     // diag otel
@@ -217,36 +143,28 @@ export const main = async (argv: any, version?: string) => {
     const tracer = provider.getTracer("rain-solver-tracer");
 
     // parse cli args and startup bot configuration
-    const {
-        roundGap,
-        options,
-        poolUpdateInterval,
-        config,
-        orderbooksOwnersProfileMap,
-        tokens,
-        lastReadOrdersTimestamp,
-        state,
-    } = await tracer.startActiveSpan("startup", async (startupSpan) => {
-        const ctx = trace.setSpan(context.active(), startupSpan);
-        try {
-            const result = await startup(argv, version, tracer, ctx);
-            startupSpan.setStatus({ code: SpanStatusCode.OK });
-            startupSpan.end();
-            return result;
-        } catch (e: any) {
-            const snapshot = errorSnapshot("", e);
-            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-            startupSpan.recordException(e);
+    const { state, config, options, watchedTokens, startupTimestamp, orderbooksOwnersProfileMap } =
+        await tracer.startActiveSpan("startup", async (startupSpan) => {
+            const ctx = trace.setSpan(context.active(), startupSpan);
+            try {
+                const result = await startup(argv, version, tracer, ctx);
+                startupSpan.setStatus({ code: SpanStatusCode.OK });
+                startupSpan.end();
+                return result;
+            } catch (e: any) {
+                const snapshot = errorSnapshot("", e);
+                startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
+                startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+                startupSpan.recordException(e);
 
-            // end this span and wait for it to finish
-            startupSpan.end();
-            await sleep(20000);
+                // end this span and wait for it to finish
+                startupSpan.end();
+                await sleep(20000);
 
-            // reject the promise that makes the cli process to exit with error
-            return Promise.reject(e);
-        }
-    });
+                // reject the promise that makes the cli process to exit with error
+                return Promise.reject(e);
+            }
+        });
 
     const lastReadOrdersMap = options.subgraph.map((v) => ({
         sg: v,
@@ -254,7 +172,7 @@ export const main = async (argv: any, version?: string) => {
     }));
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
-    let lastInterval = Date.now() + poolUpdateInterval;
+    let lastInterval = Date.now() + options.poolUpdateInterval * 60_000;
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost: BigNumber | undefined;
     let counter = 1;
@@ -331,7 +249,7 @@ export const main = async (argv: any, version?: string) => {
             let update = false;
             const now = Date.now();
             if (lastInterval <= now) {
-                lastInterval = now + poolUpdateInterval;
+                lastInterval = now + options.poolUpdateInterval * 60_000;
                 update = true;
             }
             try {
@@ -489,7 +407,7 @@ export const main = async (argv: any, version?: string) => {
                     "watch-new-orders",
                     JSON.stringify({
                         hasRead: lastReadOrdersMap,
-                        startTime: lastReadOrdersTimestamp,
+                        startTime: startupTimestamp,
                     }),
                 );
                 let ordersDidChange = false;
@@ -497,7 +415,7 @@ export const main = async (argv: any, version?: string) => {
                     lastReadOrdersMap.map((v) =>
                         getOrderChanges(
                             v.sg,
-                            lastReadOrdersTimestamp,
+                            startupTimestamp,
                             v.skip,
                             roundSpan,
                             options.sgFilter,
@@ -516,7 +434,7 @@ export const main = async (argv: any, version?: string) => {
                                 orderbooksOwnersProfileMap,
                                 res.value.addOrders.map((v) => v.order),
                                 config.viemClient as any as ViemClient,
-                                tokens,
+                                watchedTokens,
                                 options.ownerProfile,
                                 roundSpan,
                             );
@@ -587,9 +505,9 @@ export const main = async (argv: any, version?: string) => {
             }
 
             // eslint-disable-next-line no-console
-            console.log(`Starting next round in ${roundGap / 1000} seconds...`, "\n");
+            console.log(`Starting next round in ${options.sleep / 1000} seconds...`, "\n");
             roundSpan.end();
-            await sleep(roundGap);
+            await sleep(options.sleep);
             // give otel some time to export
             await sleep(3000);
         });
