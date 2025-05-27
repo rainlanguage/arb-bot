@@ -4,22 +4,13 @@ import { getChainConfig } from "./chain";
 import { createPublicClient } from "viem";
 import { LiquidityProviders } from "sushi";
 import { SharedState, SharedStateConfig } from "./index";
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
 
 vi.mock("./gasPrice", () => ({
-    getGasPrice: vi.fn(),
-}));
-
-vi.mock("../rpc", () => ({
-    RpcState: vi.fn().mockImplementation((rpc) => ({ rpc })),
-}));
-
-vi.mock("../transport", () => ({
-    rainSolverTransport: vi.fn(),
-}));
-
-vi.mock("./lps", () => ({
-    processLiquidityProviders: vi.fn(() => [LiquidityProviders.UniswapV2]),
+    getGasPrice: vi.fn().mockResolvedValue({
+        gasPrice: { value: 1000n },
+        l1GasPrice: { value: 0n },
+    }),
 }));
 
 vi.mock("viem", async (importOriginal) => ({
@@ -63,16 +54,6 @@ describe("Test SharedStateConfig tryFromAppOptions", () => {
                 .mockImplementationOnce(() => Promise.resolve("0xstore")),
         };
         (createPublicClient as Mock).mockReturnValue(mockClient);
-
-        // patch getGasPrice to return mock values
-        (getGasPrice as Mock).mockResolvedValue({
-            gasPrice: { value: 1000n },
-            l1GasPrice: { value: 0n },
-        });
-    });
-
-    afterEach(() => {
-        vi.clearAllMocks();
     });
 
     it("should build SharedStateConfig from AppOptions (happy path)", async () => {
