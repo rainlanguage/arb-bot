@@ -1,29 +1,28 @@
 import { findOpp } from "./modes";
 import { PublicClient } from "viem";
+import { getQuoteGas } from "./gas";
+import { SharedState } from "./state";
 import { Token } from "sushi/currency";
 import { quoteSingleOrder } from "./order";
 import { createViemClient } from "./client";
 import { arbAbis, orderbookAbi } from "./abis";
-import { getGasPrice, getQuoteGas } from "./gas";
 import { getSigner, handleTransaction } from "./tx";
 import { privateKeyToAccount } from "viem/accounts";
 import { BigNumber, Contract, ethers } from "ethers";
 import { fundOwnedOrders, checkOwnedOrders } from "./account";
 import { Context, SpanStatusCode, Tracer } from "@opentelemetry/api";
 import { ChainId, RainDataFetcher, RainDataFetcherOptions } from "sushi";
-import { ProcessPairHaltReason, ProcessPairReportStatus } from "./types";
 import { ErrorSeverity, errorSnapshot, isTimeout, KnownErrors } from "./error";
 import { toNumber, getEthPrice, PoolBlackList, getMarketQuote } from "./utils";
+import { BotConfig, ProcessPairHaltReason, ProcessPairReportStatus } from "./types";
 import {
     Report,
     SpanAttrs,
     ViemClient,
     RoundReport,
     BundledOrders,
-    OperationState,
     ProcessPairResult,
 } from "./types";
-import { RainSolverConfig } from "./config";
 
 /**
  * Main function that processes all given orders and tries clearing them against onchain liquidity and reports the result
@@ -33,9 +32,9 @@ import { RainSolverConfig } from "./config";
  * @param ctx
  */
 export const processOrders = async (
-    config: RainSolverConfig,
+    config: BotConfig,
     bundledOrders: BundledOrders[][],
-    state: OperationState,
+    state: SharedState,
     tracer: Tracer,
     ctx: Context,
 ): Promise<RoundReport> => {
@@ -154,9 +153,9 @@ export const processOrders = async (
                                   ? (ethers.utils.hexlify(
                                         signer.account.getHdKey().privateKey!,
                                     ) as `0x${string}`)
-                                  : ((config.walletKey.startsWith("0x")
-                                        ? config.walletKey
-                                        : "0x" + config.walletKey) as `0x${string}`),
+                                  : ((state.walletKey.startsWith("0x")
+                                        ? state.walletKey
+                                        : "0x" + state.walletKey) as `0x${string}`),
                           ),
                           { timeout: config.timeout },
                           undefined,
@@ -378,7 +377,7 @@ export const processOrders = async (
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
  */
 export async function processPair(args: {
-    config: RainSolverConfig;
+    config: BotConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     dataFetcher: RainDataFetcher;
@@ -389,7 +388,7 @@ export async function processPair(args: {
     orderbook: Contract;
     pair: string;
     orderbooksOrders: BundledOrders[][];
-    state: OperationState;
+    state: SharedState;
 }): Promise<() => Promise<ProcessPairResult>> {
     const {
         config,
@@ -578,7 +577,6 @@ export async function processPair(args: {
     }
 
     // record gas price for otel
-    await getGasPrice(config, state);
     spanAttributes["details.gasPrice"] = state.gasPrice.toString();
     if (state.l1GasPrice) {
         spanAttributes["details.gasPriceL1"] = state.l1GasPrice.toString();

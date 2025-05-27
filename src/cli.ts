@@ -1,6 +1,5 @@
 import { clear } from ".";
 import { config } from "dotenv";
-import { getGasPrice } from "./gas";
 import { startup } from "./cli/startup";
 import { getOrderChanges } from "./query";
 import { AppOptions } from "./config/yaml";
@@ -11,9 +10,9 @@ import { Context } from "@opentelemetry/api";
 import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
+import { SharedState, SharedStateConfig } from "./state";
 import { trace, Tracer, context, SpanStatusCode } from "@opentelemetry/api";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
-import { ViemClient, BundledOrders, OperationState, ProcessPairReportStatus } from "./types";
 import {
     downscaleProtection,
     prepareOrdersForRound,
@@ -27,9 +26,9 @@ export const arbRound = async (
     tracer: Tracer,
     roundCtx: Context,
     options: AppOptions,
-    config: RainSolverConfig,
+    config: BotConfig,
     bundledOrders: BundledOrders[][],
-    state: OperationState,
+    state: SharedState,
 ) => {
     return await tracer.startActiveSpan("process-orders", {}, roundCtx, async (span) => {
         const ctx = trace.setSpan(context.active(), span);
@@ -208,10 +207,9 @@ export const main = async (argv: any, version?: string) => {
             try {
                 const bundledOrders = prepareOrdersForRound(orderbooksOwnersProfileMap, true);
                 if (update) {
-                    await getDataFetcher(config.viemClient, state.rpc, config.lps);
+                    config.dataFetcher = await getDataFetcher(state);
                 }
                 roundSpan.setAttribute("details.rpc", state.rpc.urls);
-                await getGasPrice(config, state);
                 const roundResult = await arbRound(
                     logger.tracer,
                     roundCtx,

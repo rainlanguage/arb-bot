@@ -1,11 +1,11 @@
 import { Token } from "sushi/currency";
 import { Contract, ethers } from "ethers";
 import { getL1Fee, getTxFee } from "./gas";
-import { RainSolverConfig } from "./config";
 import { containsNodeError, handleRevert } from "./error";
 import { Account, BaseError, Chain, SendTransactionParameters, TransactionReceipt } from "viem";
 import {
     RawTx,
+    BotConfig,
     ViemClient,
     BundledOrders,
     ProcessPairResult,
@@ -41,7 +41,7 @@ export async function handleTransaction(
     pair: string,
     toToken: Token,
     fromToken: Token,
-    config: RainSolverConfig,
+    config: BotConfig,
     writeSigner?: ViemClient,
 ): Promise<() => Promise<ProcessPairResult>> {
     // submit the tx
@@ -170,7 +170,7 @@ export async function handleReceipt(
     pair: string,
     toToken: Token,
     fromToken: Token,
-    config: RainSolverConfig,
+    config: BotConfig,
     time: number,
 ): Promise<ProcessPairResult> {
     const l1Fee = getL1Fee(receipt, config);
@@ -376,7 +376,7 @@ export async function pollSigners(accounts: ViemClient[]): Promise<ViemClient> {
 /**
  * Returns the gas limit for a tx by applying the specified config
  */
-export function getTxGas(config: RainSolverConfig, gas: bigint): bigint {
+export function getTxGas(config: BotConfig, gas: bigint): bigint {
     if (config.txGas) {
         if (config.txGas.endsWith("%")) {
             const multiplier = BigInt(config.txGas.substring(0, config.txGas.length - 1));

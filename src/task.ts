@@ -1,5 +1,5 @@
 import fs from "fs";
-import { Dispair } from "./config";
+import { Dispair } from "./state";
 import { ViemClient } from "./types";
 import { DeployerAbi } from "./abis";
 import { BigNumber, utils } from "ethers";

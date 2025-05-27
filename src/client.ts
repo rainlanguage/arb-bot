@@ -1,17 +1,16 @@
 /* eslint-disable no-console */
-import { ViemClient } from "./types";
 import { shouldThrow } from "./error";
+import { SharedState } from "./state";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
-import { RainSolverConfig } from "./config";
+import { RainDataFetcher } from "sushi/router";
+import { ViemClient, BotConfig } from "./types";
 import { ChainId, ChainKey } from "sushi/chain";
 import { publicClientConfig } from "sushi/config";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
-import { RainDataFetcher, LiquidityProviders } from "sushi/router";
 import { rainSolverTransport, RainSolverTransportConfig } from "./transport";
 import {
     HDAccount,
-    PublicClient,
     publicActions,
     walletActions,
     PrivateKeyAccount,
@@ -124,34 +123,18 @@ export async function onFetchResponse(this: RpcState, response: Response) {
 
 /**
  * Instantiates a RainDataFetcher
- * @param configOrViemClient - The network config data or a viem public client
- * @param rpcState - rpc state
- * @param liquidityProviders - Array of Liquidity Providers
- * @param configuration - The rain solver transport configurations
+ * @param state - Instance of Sharedstate
  */
-export async function getDataFetcher(
-    configOrViemClient: RainSolverConfig | PublicClient,
-    rpcState: RpcState,
-    liquidityProviders: LiquidityProviders[] = [],
-    configuration?: RainSolverTransportConfig,
-): Promise<RainDataFetcher> {
+export async function getDataFetcher(state: SharedState): Promise<RainDataFetcher> {
     try {
         const dataFetcher = await RainDataFetcher.init(
-            configOrViemClient.chain!.id as ChainId,
-            "transport" in configOrViemClient
-                ? (configOrViemClient as PublicClient)
-                : ((await createViemClient(
-                      configOrViemClient.chain.id as ChainId,
-                      rpcState,
-                      undefined,
-                      configuration,
-                      undefined,
-                  )) as any as PublicClient),
-            liquidityProviders,
+            state.chainConfig.id as ChainId,
+            state.client,
+            state.liquidityProviders,
         );
         return dataFetcher as RainDataFetcher;
-    } catch (error) {
-        console.log(error);
+    } catch (e) {
+        console.log(e);
         throw "cannot instantiate RainDataFetcher for this network";
     }
 }
@@ -159,10 +142,7 @@ export async function getDataFetcher(
 /**
  * Get meta info for a bot to post on otel
  */
-export async function getMetaInfo(
-    config: RainSolverConfig,
-    sg: string[],
-): Promise<Record<string, any>> {
+export async function getMetaInfo(config: BotConfig, sg: string[]): Promise<Record<string, any>> {
     const obs: string[] = [];
     for (const s of sg) {
         try {

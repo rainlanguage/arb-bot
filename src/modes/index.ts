@@ -2,12 +2,11 @@ import { Contract } from "ethers";
 import { PublicClient } from "viem";
 import { DataFetcher } from "sushi";
 import { Token } from "sushi/currency";
-import { RainSolverConfig } from "../config";
 import { extendSpanAttributes } from "../utils";
 import { findOpp as findInterObOpp } from "./interOrderbook";
 import { findOpp as findIntraObOpp } from "./intraOrderbook";
 import { findOppWithRetries as findRpOpp } from "./routeProcessor";
-import { BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
+import { BotConfig, BundledOrders, ViemClient, DryrunResult, SpanAttrs } from "../types";
 
 /**
  * The main entrypoint for the main logic to find opps.
@@ -32,7 +31,7 @@ export async function findOpp({
     orderbooksOrders,
     l1GasPrice,
 }: {
-    config: RainSolverConfig;
+    config: BotConfig;
     orderPairObject: BundledOrders;
     viemClient: PublicClient;
     dataFetcher: DataFetcher;

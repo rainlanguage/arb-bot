@@ -1,5 +1,5 @@
 import { BigNumber } from "ethers";
-import { RpcConfig, RpcState } from "./rpc";
+import { LiquidityProviders, RainDataFetcher } from "sushi";
 import { AttributeValue } from "@opentelemetry/api";
 import {
     Chain,
@@ -11,7 +11,11 @@ import {
     WalletActions,
     FallbackTransport,
     SendTransactionParameters,
+    PublicClient,
 } from "viem";
+import { AppOptions } from "./config";
+import { Token } from "sushi/currency";
+import { Dispair } from "./state";
 
 /**
  * Specifies reason that order process halted
@@ -143,25 +147,21 @@ export type TestViemClient = TestClient<"hardhat"> &
         ) => Promise<`0x${string}`>;
     };
 
-export type OperationState = {
-    gasPrice: bigint;
-    l1GasPrice: bigint;
-    rpc: RpcState;
-    writeRpc?: RpcState;
+/** @deprecated in favor of SharedState (WIP) */
+export type BotConfig = Omit<AppOptions, "dispair"> & {
+    chain: Chain;
+    nativeWrappedToken: Token;
+    routeProcessors: { [key: string]: `0x${string}` };
+    stableTokens?: Token[];
+    isSpecialL2: boolean;
+    lps: LiquidityProviders[];
+    watchedTokens?: TokenDetails[];
+    viemClient: PublicClient;
+    dataFetcher: RainDataFetcher;
+    mainAccount: ViemClient;
+    accounts: ViemClient[];
+    dispair: Dispair;
 };
-export namespace OperationState {
-    export function init(rpcConfigs: RpcConfig[], writeRpcConfigs?: RpcConfig[]): OperationState {
-        const result: OperationState = {
-            gasPrice: 0n,
-            l1GasPrice: 0n,
-            rpc: new RpcState(rpcConfigs),
-        };
-        if (writeRpcConfigs) {
-            result.writeRpc = new RpcState(writeRpcConfigs);
-        }
-        return result;
-    }
-}
 
 export type Report = {
     status: ProcessPairReportStatus;
