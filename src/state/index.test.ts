@@ -3,8 +3,8 @@ import { getGasPrice } from "./gasPrice";
 import { getChainConfig } from "./chain";
 import { createPublicClient } from "viem";
 import { LiquidityProviders } from "sushi";
-import { SharedState, SharedStateConfig } from "./index";
 import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
+import { SharedState, SharedStateConfig, TokenDetails } from "./index";
 
 vi.mock("./gasPrice", () => ({
     getGasPrice: vi.fn().mockResolvedValue({
@@ -78,7 +78,7 @@ describe("Test SharedStateConfig tryFromAppOptions", () => {
             .mockRejectedValueOnce(new Error("fail"))
             .mockResolvedValueOnce("0xstore");
         await expect(SharedStateConfig.tryFromAppOptions(options)).rejects.toMatch(
-            /failed to get dispair interpreter address/,
+            /failed to get dispair iInterpreter address/,
         );
     });
 
@@ -88,7 +88,7 @@ describe("Test SharedStateConfig tryFromAppOptions", () => {
             .mockResolvedValueOnce("0xinterpreter")
             .mockRejectedValueOnce(new Error("fail"));
         await expect(SharedStateConfig.tryFromAppOptions(options)).rejects.toMatch(
-            /failed to get dispair store address/,
+            /failed to get dispair iStore address/,
         );
     });
 
@@ -158,5 +158,20 @@ describe("Test SharedState", () => {
         expect(sharedState.l1GasPrice).toBe(8888n);
 
         sharedState.unwatchGasPrice();
+    });
+
+    it("should watch tokens", () => {
+        const token1: TokenDetails = { address: "0xABC", symbol: "TKN", decimals: 18 };
+        const token2: TokenDetails = { address: "0xDEF", symbol: "TKN2", decimals: 18 };
+        sharedState.watchToken(token1);
+        sharedState.watchToken(token2);
+
+        expect(sharedState.watchedTokens.length).toBe(2);
+        expect(sharedState.watchedTokens).toContain(token1);
+        expect(sharedState.watchedTokens).toContain(token2);
+
+        // should not duplicate
+        sharedState.watchToken(token2);
+        expect(sharedState.watchedTokens.length).toBe(2);
     });
 });

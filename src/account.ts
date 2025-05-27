@@ -1,6 +1,6 @@
 import { erc20Abi } from "viem";
 import { AppOptions } from "./config";
-import { SharedState } from "./state";
+import { SharedState, TokenDetails } from "./state";
 import { ChainId, RPParams } from "sushi";
 import { BigNumber, ethers } from "ethers";
 import { createViemClient } from "./client";
@@ -10,9 +10,9 @@ import { Native, Token, WNATIVE } from "sushi/currency";
 import { ROUTE_PROCESSOR_4_ADDRESS } from "sushi/config";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { getRpSwap, PoolBlackList, sleep, addWatchedToken } from "./utils";
+import { BotConfig, ViemClient, OwnedOrder, BundledOrders } from "./types";
 import { context, Context, SpanStatusCode, trace, Tracer } from "@opentelemetry/api";
 import { MulticallAbi, orderbookAbi, routeProcessor3Abi, VaultBalanceAbi } from "./abis";
-import { BotConfig, ViemClient, OwnedOrder, TokenDetails, BundledOrders } from "./types";
 
 /** Standard base path for eth accounts */
 export const BasePath = "m/44'/60'/0'/0/" as const;

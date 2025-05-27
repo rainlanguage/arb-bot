@@ -2,7 +2,7 @@ import { RpcState } from "../rpc";
 import { ChainId } from "sushi/chain";
 import { DeployerAbi } from "../abis";
 import { AppOptions } from "../config";
-import { TokenDetails } from "../types";
+import { errorSnapshot } from "../error";
 import { getGasPrice } from "./gasPrice";
 import { LiquidityProviders } from "sushi";
 import { processLiquidityProviders } from "./lps";
@@ -17,6 +17,12 @@ export type Dispair = {
     deployer: string;
     interpreter: string;
     store: string;
+};
+
+export type TokenDetails = {
+    address: string;
+    decimals: number;
+    symbol: string;
 };
 
 /**
@@ -48,64 +54,60 @@ export type SharedStateConfig = {
 };
 export namespace SharedStateConfig {
     export async function tryFromAppOptions(options: AppOptions): Promise<SharedStateConfig> {
-        const config: any = {
-            walletKey: (options.key ?? options.mnemonic)!,
-            gasPriceMultiplier: options.gasPriceMultiplier,
-            liquidityProviders: processLiquidityProviders(options.liquidityProviders),
-        };
-        config.rpcState = new RpcState(options.rpc);
-        if (options.writeRpc) {
-            config.writeRpcState = new RpcState(options.writeRpc);
-        }
+        const rpcState = new RpcState(options.rpc);
+        const writeRpcState = options.writeRpc ? new RpcState(options.writeRpc) : undefined;
 
+        // use temp client ot get chain id
         let client = createPublicClient({
-            transport: rainSolverTransport(config.rpcState, { timeout: options.timeout }),
+            transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
         }) as any;
 
         // get chain config
         const chainId = await client.getChainId();
-        const chainConf = getChainConfig(chainId as ChainId);
-        if (!chainConf) throw `Cannot find configuration for the network with chain id: ${chainId}`;
+        const chainConfig = getChainConfig(chainId as ChainId);
+        if (!chainConfig) {
+            throw `Cannot find configuration for the network with chain id: ${chainId}`;
+        }
 
         // re-assign with static chain data
         client = createPublicClient({
-            chain: chainConf,
-            transport: rainSolverTransport(config.rpcState, { timeout: options.timeout }),
+            chain: chainConfig,
+            transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
         });
-        config.client = client;
-        config.chainConfig = chainConf;
 
-        const interpreter = await (async () => {
+        const getDispairAddress = async (functionName: "iInterpreter" | "iStore") => {
             try {
                 return await client.readContract({
                     address: options.dispair as `0x${string}`,
                     abi: DeployerAbi,
-                    functionName: "iInterpreter",
+                    functionName,
                 });
-            } catch {
-                throw "failed to get dispair interpreter address";
+            } catch (error) {
+                throw errorSnapshot(`failed to get dispair ${functionName} address`, error);
             }
-        })();
-        const store = await (async () => {
-            try {
-                return await client.readContract({
-                    address: options.dispair as `0x${string}`,
-                    abi: DeployerAbi,
-                    functionName: "iStore",
-                });
-            } catch {
-                throw "failed to get dispair store address";
-            }
-        })();
-        config.dispair = {
-            interpreter,
-            store,
-            deployer: options.dispair,
+        };
+        const interpreter = await getDispairAddress("iInterpreter");
+        const store = await getDispairAddress("iStore");
+
+        const config: SharedStateConfig = {
+            client,
+            rpcState,
+            writeRpcState,
+            chainConfig,
+            watchedTokens: [],
+            walletKey: (options.key ?? options.mnemonic)!,
+            gasPriceMultiplier: options.gasPriceMultiplier,
+            liquidityProviders: processLiquidityProviders(options.liquidityProviders),
+            dispair: {
+                interpreter,
+                store,
+                deployer: options.dispair,
+            },
         };
 
         // try to get init gas price
         // ignores any error, since gas prices will be fetched periodically during runtime
-        const result = await getGasPrice(client, chainConf, options.gasPriceMultiplier).catch(
+        const result = await getGasPrice(client, chainConfig, options.gasPriceMultiplier).catch(
             () => undefined,
         );
         if (!result) return config;
@@ -179,6 +181,7 @@ export class SharedState {
      * @param interval - Interval to update gas price in millisconds, default is 20 seconds
      */
     watchGasPrice(interval = 20_000) {
+        if (this.isWatchingGasPrice) return;
         this.gasPriceWatcher = setInterval(async () => {
             const result = await getGasPrice(
                 this.client,
@@ -209,5 +212,15 @@ export class SharedState {
     get isWatchingGasPrice(): boolean {
         if (this.gasPriceWatcher) return true;
         else return false;
+    }
+
+    watchToken(tokenDetails: TokenDetails) {
+        if (
+            !this.watchedTokens.find(
+                (v) => v.address.toLowerCase() === tokenDetails.address.toLowerCase(),
+            )
+        ) {
+            this.watchedTokens.push(tokenDetails);
+        }
     }
 }

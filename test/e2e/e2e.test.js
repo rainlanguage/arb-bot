@@ -97,7 +97,7 @@ for (let i = 0; i < testData.length; i++) {
         for (let j = 0; j < rpVersions.length; j++) {
             const rpVersion = rpVersions[j];
 
-            it.only(`should clear orders successfully using route processor v${rpVersion}`, async function () {
+            it(`should clear orders successfully using route processor v${rpVersion}`, async function () {
                 config.rpc = [rpc];
                 const viemClient = await viem.getPublicClient();
                 const dataFetcher = await dataFetcherPromise;

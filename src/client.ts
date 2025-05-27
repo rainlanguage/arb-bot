@@ -1,5 +1,4 @@
 /* eslint-disable no-console */
-import { shouldThrow } from "./error";
 import { SharedState } from "./state";
 import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
@@ -7,6 +6,7 @@ import { RainDataFetcher } from "sushi/router";
 import { ViemClient, BotConfig } from "./types";
 import { ChainId, ChainKey } from "sushi/chain";
 import { publicClientConfig } from "sushi/config";
+import { errorSnapshot, shouldThrow } from "./error";
 import { normalizeUrl, RpcMetrics, RpcState } from "./rpc";
 import { rainSolverTransport, RainSolverTransportConfig } from "./transport";
 import {
@@ -133,9 +133,8 @@ export async function getDataFetcher(state: SharedState): Promise<RainDataFetche
             state.liquidityProviders,
         );
         return dataFetcher as RainDataFetcher;
-    } catch (e) {
-        console.log(e);
-        throw "cannot instantiate RainDataFetcher for this network";
+    } catch (error) {
+        throw errorSnapshot("cannot instantiate RainDataFetcher for this network", error);
     }
 }
 

@@ -15,7 +15,7 @@ import {
 } from "viem";
 import { AppOptions } from "./config";
 import { Token } from "sushi/currency";
-import { Dispair } from "./state";
+import { Dispair, TokenDetails } from "./state";
 
 /**
  * Specifies reason that order process halted
@@ -43,12 +43,6 @@ export enum ProcessPairReportStatus {
 export type BotError = {
     snapshot: string;
     error: any;
-};
-
-export type TokenDetails = {
-    address: string;
-    decimals: number;
-    symbol: string;
 };
 
 export type BundledOrders = {
