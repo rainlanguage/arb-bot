@@ -30,7 +30,7 @@ describe("Test getChainConfig", () => {
 
     it("should throw if chain is not supported", () => {
         const invalidChainId = 999999 as ChainId;
-        expect(() => getChainConfig(invalidChainId)).toThrow("network not supported");
+        expect(() => getChainConfig(invalidChainId)).toThrow("network with 999999 not supported");
     });
 
     it("should throw if native wrapped token is not supported", () => {
@@ -38,7 +38,9 @@ describe("Test getChainConfig", () => {
         (publicClientConfig as any)[fakeChainId] = { chain: { id: fakeChainId } };
         (WNATIVE as any)[fakeChainId] = undefined;
 
-        expect(() => getChainConfig(fakeChainId)).toThrow("network not supported");
+        expect(() => getChainConfig(fakeChainId)).toThrow(
+            "wrapped native token info missing for chain 123456",
+        );
 
         delete (publicClientConfig as any)[fakeChainId];
     });

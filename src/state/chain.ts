@@ -24,11 +24,11 @@ export type ChainConfig = Chain & {
 export function getChainConfig(chainId: ChainId): ChainConfig {
     // get chain config
     const chain = publicClientConfig[chainId]?.chain;
-    if (!chain) throw new Error("network not supported");
+    if (!chain) throw `network with ${chainId} not supported`;
 
     // get native wrapped token details
     const nativeWrappedToken = WNATIVE[chainId];
-    if (!nativeWrappedToken) throw new Error("network not supported");
+    if (!nativeWrappedToken) throw `wrapped native token info missing for chain ${chainId}`;
 
     // get route processor addresses
     const routeProcessors: Record<string, `0x${string}`> = {};
