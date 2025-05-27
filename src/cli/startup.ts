@@ -1,16 +1,15 @@
-import { getGasPrice } from "../gas";
 import { getCliOptions } from "./options";
 import { AppOptions } from "../config/yaml";
-import { RainSolverConfig } from "../config";
 import { getOrderDetails, getConfig } from "../";
 import { Context, Tracer } from "@opentelemetry/api";
 import { getOrdersTokens, getOrderbookOwnersProfileMapFromSg } from "../order";
-import { ViemClient, TokenDetails, OperationState, OrderbooksOwnersProfileMap } from "../types";
+import { ViemClient, TokenDetails, OrderbooksOwnersProfileMap, BotConfig } from "../types";
+import { SharedState, SharedStateConfig } from "../state";
 
 export type CliStartupResult = {
-    config: RainSolverConfig;
+    config: BotConfig;
     options: AppOptions;
-    state: OperationState;
+    state: SharedState;
     startupTimestamp: number;
     watchedTokens: TokenDetails[];
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap;
@@ -20,7 +19,7 @@ export type CliStartupResult = {
  * Handles the RainSolver startup process execution by:
  * - Loading `AppOptions` from the specified YAML config file that is read from given path
  * - Fetching initial order details from the subgraph
- * - Setting up the `OperationState`
+ * - Setting up the `SharedState`
  * - Constructing the owner profile mapping (owner limits)
  *
  * @param argv - CLI arguments
@@ -47,15 +46,13 @@ export async function startup(
 
     const watchedTokens = getOrdersTokens(ordersDetails);
 
-    // init raw state
-    const state = OperationState.init(options.rpc, options.writeRpc);
+    // init state
+    const stateConfig = await SharedStateConfig.tryFromAppOptions(options);
+    const state = new SharedState(stateConfig);
 
     // get config
     const config = await getConfig(options, state, tracer, ctx);
     config.watchedTokens = watchedTokens;
-
-    // fetch initial gas price on startup
-    await getGasPrice(config, state);
 
     // build owner profile map
     const orderbooksOwnersProfileMap = await getOrderbookOwnersProfileMapFromSg(
