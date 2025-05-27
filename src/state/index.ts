@@ -1,0 +1,213 @@
+import { RpcState } from "../rpc";
+import { ChainId } from "sushi/chain";
+import { DeployerAbi } from "../abis";
+import { AppOptions } from "../config";
+import { TokenDetails } from "../types";
+import { getGasPrice } from "./gasPrice";
+import { LiquidityProviders } from "sushi";
+import { processLiquidityProviders } from "./lps";
+import { rainSolverTransport } from "../transport";
+import { ChainConfig, getChainConfig } from "./chain";
+import { createPublicClient, PublicClient } from "viem";
+
+/**
+ * Rain dispair contracts, deployer, store and interpreter
+ */
+export type Dispair = {
+    deployer: string;
+    interpreter: string;
+    store: string;
+};
+
+/**
+ * RainSolver configuration type, used during runtime
+ */
+export type SharedStateConfig = {
+    /** Dispair, deployer, store and interpreter addresses */
+    dispair: Dispair;
+    /** Wallet private key or mnemonic key */
+    walletKey: string;
+    /** List of watched tokens at runtime */
+    watchedTokens: TokenDetails[];
+    /** List of active liquidity providers */
+    liquidityProviders?: LiquidityProviders[];
+    /** A viem client used for general read calls */
+    client: PublicClient;
+    /** Chain configuration */
+    chainConfig: ChainConfig;
+    /** Initial gas price */
+    initGasPrice?: bigint;
+    /** Initial L1 gas price, if the chain is L2, otherwise, this is ignored */
+    initL1GasPrice?: bigint;
+    /** Rain solver rpc state, manages and keeps track of rpcs during runtime */
+    rpcState: RpcState;
+    /** A rpc state for write rpcs */
+    writeRpcState?: RpcState;
+    /** Optional multiplier on gas price */
+    gasPriceMultiplier?: number;
+};
+export namespace SharedStateConfig {
+    export async function tryFromAppOptions(options: AppOptions): Promise<SharedStateConfig> {
+        const config: any = {
+            walletKey: (options.key ?? options.mnemonic)!,
+            gasPriceMultiplier: options.gasPriceMultiplier,
+            liquidityProviders: processLiquidityProviders(options.liquidityProviders),
+        };
+        config.rpcState = new RpcState(options.rpc);
+        if (options.writeRpc) {
+            config.writeRpcState = new RpcState(options.writeRpc);
+        }
+
+        let client = createPublicClient({
+            transport: rainSolverTransport(config.rpcState, { timeout: options.timeout }),
+        }) as any;
+
+        // get chain config
+        const chainId = await client.getChainId();
+        const chainConf = getChainConfig(chainId as ChainId);
+        if (!chainConf) throw `Cannot find configuration for the network with chain id: ${chainId}`;
+
+        // re-assign with static chain data
+        client = createPublicClient({
+            chain: chainConf,
+            transport: rainSolverTransport(config.rpcState, { timeout: options.timeout }),
+        });
+        config.client = client;
+        config.chainConfig = chainConf;
+
+        const interpreter = await (async () => {
+            try {
+                return await client.readContract({
+                    address: options.dispair as `0x${string}`,
+                    abi: DeployerAbi,
+                    functionName: "iInterpreter",
+                });
+            } catch {
+                throw "failed to get dispair interpreter address";
+            }
+        })();
+        const store = await (async () => {
+            try {
+                return await client.readContract({
+                    address: options.dispair as `0x${string}`,
+                    abi: DeployerAbi,
+                    functionName: "iStore",
+                });
+            } catch {
+                throw "failed to get dispair store address";
+            }
+        })();
+        config.dispair = {
+            interpreter,
+            store,
+            deployer: options.dispair,
+        };
+
+        // try to get init gas price
+        // ignores any error, since gas prices will be fetched periodically during runtime
+        const result = await getGasPrice(client, chainConf, options.gasPriceMultiplier).catch(
+            () => undefined,
+        );
+        if (!result) return config;
+        const { gasPrice, l1GasPrice } = result;
+        if (!gasPrice.error) {
+            config.initGasPrice = gasPrice.value;
+        }
+        if (!l1GasPrice.error) {
+            config.initL1GasPrice = l1GasPrice.value;
+        }
+
+        return config;
+    }
+}
+
+/**
+ * Maintains the shared state for RainSolver runtime operations, holds chain
+ * configuration, dispair addresses, RPC state, wallet key, watched tokens,
+ * liquidity provider information required for application execution and also
+ * watches the gas price during runtime by reading it periodically
+ */
+export class SharedState {
+    /** Dispair, deployer, store and interpreter addresses */
+    readonly dispair: Dispair;
+    /** Wallet private key or mnemonic key */
+    readonly walletKey: string;
+    /** Chain configurations */
+    readonly chainConfig: ChainConfig;
+    /** List of watched tokens at runtime */
+    readonly watchedTokens: TokenDetails[] = [];
+    /** List of supported liquidity providers */
+    readonly liquidityProviders?: LiquidityProviders[];
+    /** A public viem client used for general read calls (without any wallet functionalities) */
+    readonly client: PublicClient;
+    /** Option to multiply the gas price fetched from the rpc as percentage, default is 100, ie no change */
+    readonly gasPriceMultiplier: number = 100;
+
+    /** Current gas price of the operating chain */
+    gasPrice = 0n;
+    /** Current L1 gas price of the operating chain, if the chain is a L2 chain, otherwise it is set to 0 */
+    l1GasPrice = 0n;
+    /** Keeps the app's RPC state */
+    rpc: RpcState;
+    /** Keeps the app's write RPC state */
+    writeRpc?: RpcState;
+
+    private gasPriceWatcher: NodeJS.Timeout | undefined;
+
+    constructor(config: SharedStateConfig) {
+        this.client = config.client;
+        this.dispair = config.dispair;
+        this.walletKey = config.walletKey;
+        this.chainConfig = config.chainConfig;
+        this.liquidityProviders = config.liquidityProviders;
+        this.rpc = config.rpcState;
+        this.writeRpc = config.writeRpcState;
+        if (typeof config.gasPriceMultiplier === "number") {
+            this.gasPriceMultiplier = config.gasPriceMultiplier;
+        }
+        if (typeof config.initGasPrice === "bigint") {
+            this.gasPrice = config.initGasPrice;
+        }
+        if (typeof config.initL1GasPrice === "bigint") {
+            this.l1GasPrice = config.initL1GasPrice;
+        }
+        this.watchGasPrice();
+    }
+
+    /**
+     * Watches gas price during runtime by reading it periodically
+     * @param interval - Interval to update gas price in millisconds, default is 20 seconds
+     */
+    watchGasPrice(interval = 20_000) {
+        this.gasPriceWatcher = setInterval(async () => {
+            const result = await getGasPrice(
+                this.client,
+                this.chainConfig,
+                this.gasPriceMultiplier,
+            ).catch(() => undefined);
+            if (!result) return;
+
+            // update gas prices that resolved successfully
+            const { gasPrice, l1GasPrice } = result;
+            if (!gasPrice.error) {
+                this.gasPrice = gasPrice.value;
+            }
+            if (!l1GasPrice.error) {
+                this.l1GasPrice = l1GasPrice.value;
+            }
+        }, interval);
+    }
+
+    /** Unwatches gas price if the watcher has been already active */
+    unwatchGasPrice() {
+        if (this.isWatchingGasPrice) {
+            clearInterval(this.gasPriceWatcher);
+            this.gasPriceWatcher = undefined;
+        }
+    }
+
+    get isWatchingGasPrice(): boolean {
+        if (this.gasPriceWatcher) return true;
+        else return false;
+    }
+}

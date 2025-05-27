@@ -10,8 +10,7 @@ import {
     ROUTE_PROCESSOR_3_2_ADDRESS,
 } from "sushi/config";
 
-export type ChainConfig = {
-    chain: Chain;
+export type ChainConfig = Chain & {
     nativeWrappedToken: Token;
     routeProcessors: { [key: string]: `0x${string}` };
     stableTokens?: Token[];
@@ -49,7 +48,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
     const stableTokens = (STABLES as any)[chainId];
 
     return {
-        chain,
+        ...chain,
         nativeWrappedToken,
         routeProcessors,
         stableTokens,

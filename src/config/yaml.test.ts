@@ -55,7 +55,7 @@ sgFilter:
     - "0x9999999999999999999999999999999999999999"
   `;
 
-        const path = "./test/first.test.yaml";
+        const path = "./first.test.yaml";
         writeFileSync(path, yaml, "utf8");
 
         const result = AppOptions.fromYaml(path);
