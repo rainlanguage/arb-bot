@@ -34,7 +34,7 @@ export type SharedStateConfig = {
     /** Wallet private key or mnemonic key */
     walletKey: string;
     /** List of watched tokens at runtime */
-    watchedTokens: TokenDetails[];
+    watchedTokens?: Map<string, TokenDetails>;
     /** List of active liquidity providers */
     liquidityProviders?: LiquidityProviders[];
     /** A viem client used for general read calls */
@@ -94,7 +94,6 @@ export namespace SharedStateConfig {
             rpcState,
             writeRpcState,
             chainConfig,
-            watchedTokens: [],
             walletKey: (options.key ?? options.mnemonic)!,
             gasPriceMultiplier: options.gasPriceMultiplier,
             liquidityProviders: processLiquidityProviders(options.liquidityProviders),
@@ -137,7 +136,7 @@ export class SharedState {
     /** Chain configurations */
     readonly chainConfig: ChainConfig;
     /** List of watched tokens at runtime */
-    readonly watchedTokens: TokenDetails[] = [];
+    readonly watchedTokens: Map<string, TokenDetails> = new Map();
     /** List of supported liquidity providers */
     readonly liquidityProviders?: LiquidityProviders[];
     /** A public viem client used for general read calls (without any wallet functionalities) */
@@ -173,7 +172,15 @@ export class SharedState {
         if (typeof config.initL1GasPrice === "bigint") {
             this.l1GasPrice = config.initL1GasPrice;
         }
+        if (config.watchedTokens) {
+            this.watchedTokens = config.watchedTokens;
+        }
         this.watchGasPrice();
+    }
+
+    get isWatchingGasPrice(): boolean {
+        if (this.gasPriceWatcher) return true;
+        else return false;
     }
 
     /**
@@ -209,18 +216,10 @@ export class SharedState {
         }
     }
 
-    get isWatchingGasPrice(): boolean {
-        if (this.gasPriceWatcher) return true;
-        else return false;
-    }
-
+    /** Watches the given token by putting on the watchedToken map */
     watchToken(tokenDetails: TokenDetails) {
-        if (
-            !this.watchedTokens.find(
-                (v) => v.address.toLowerCase() === tokenDetails.address.toLowerCase(),
-            )
-        ) {
-            this.watchedTokens.push(tokenDetails);
+        if (!this.watchedTokens.has(tokenDetails.address.toLowerCase())) {
+            this.watchedTokens.set(tokenDetails.address.toLowerCase(), tokenDetails);
         }
     }
 }
