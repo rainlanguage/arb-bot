@@ -57,7 +57,7 @@ export namespace SharedStateConfig {
         const rpcState = new RpcState(options.rpc);
         const writeRpcState = options.writeRpc ? new RpcState(options.writeRpc) : undefined;
 
-        // use temp client ot get chain id
+        // use temp client to get chain id
         let client = createPublicClient({
             transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
         }) as any;
@@ -69,7 +69,7 @@ export namespace SharedStateConfig {
             throw `Cannot find configuration for the network with chain id: ${chainId}`;
         }
 
-        // re-assign with static chain data
+        // re-assign the client with static chain data
         client = createPublicClient({
             chain: chainConfig,
             transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
