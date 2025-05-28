@@ -178,7 +178,7 @@ export class SharedState {
 
     /**
      * Watches gas price during runtime by reading it periodically
-     * @param interval - Interval to update gas price in millisconds, default is 20 seconds
+     * @param interval - Interval to update gas price in milliseconds, default is 20 seconds
      */
     watchGasPrice(interval = 20_000) {
         if (this.isWatchingGasPrice) return;
