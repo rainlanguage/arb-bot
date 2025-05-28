@@ -52,7 +52,9 @@ describe("Test getChainConfig", () => {
 
     it("should throw if chain is not supported", () => {
         const invalidChainId = 999999 as ChainId;
-        expect(() => getChainConfig(invalidChainId)).toThrow("network with 999999 not supported");
+        expect(() => getChainConfig(invalidChainId)).toThrow(
+            "network with id 999999 is not supported",
+        );
     });
 
     it("should throw if native wrapped token is not supported", () => {

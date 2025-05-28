@@ -24,7 +24,7 @@ export type ChainConfig = Chain & {
 export function getChainConfig(chainId: ChainId): ChainConfig {
     // get chain config
     const chain = publicClientConfig[chainId]?.chain;
-    if (!chain) throw `network with ${chainId} not supported`;
+    if (!chain) throw `network with id ${chainId} is not supported`;
 
     // get native wrapped token details
     const nativeWrappedToken = WNATIVE[chainId];
