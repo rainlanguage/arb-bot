@@ -43,6 +43,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
             routeProcessors[key] = address;
         }
     });
+    if (!routeProcessors["4"]) throw `missing route processor 4 address for chain ${chainId}`;
 
     // get known stable coins of the chain
     const stableTokens = (STABLES as any)[chainId];

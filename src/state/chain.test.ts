@@ -1,6 +1,6 @@
 import { ChainId } from "sushi/chain";
 import { WNATIVE } from "sushi/currency";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getChainConfig, SpecialL2Chains } from "./chain";
 import {
     STABLES,
@@ -10,6 +10,28 @@ import {
     ROUTE_PROCESSOR_3_1_ADDRESS,
     ROUTE_PROCESSOR_3_2_ADDRESS,
 } from "sushi/config";
+
+vi.mock("sushi/config", async (importOriginal) => ({
+    ...(await importOriginal()),
+    ROUTE_PROCESSOR_3_ADDRESS: {
+        [ChainId.ETHEREUM]: `0xrp3`,
+        [ChainId.FLARE]: `0xrp3`,
+        [ChainId.POLYGON]: `0xrp3`,
+    },
+    ROUTE_PROCESSOR_4_ADDRESS: {
+        [ChainId.ETHEREUM]: `0xrp4`,
+        [ChainId.FLARE]: `0xrp4`,
+    },
+    ROUTE_PROCESSOR_3_1_ADDRESS: {
+        [ChainId.ETHEREUM]: `0xrp3.1`,
+        [ChainId.POLYGON]: `0xrp3.1`,
+    },
+    ROUTE_PROCESSOR_3_2_ADDRESS: {
+        [ChainId.ETHEREUM]: `0xrp3.2`,
+        [ChainId.FLARE]: `0xrp3.2`,
+        [ChainId.POLYGON]: `0xrp3.2`,
+    },
+}));
 
 describe("Test getChainConfig", () => {
     it("should return correct config for a supported chain", () => {
@@ -43,6 +65,13 @@ describe("Test getChainConfig", () => {
         );
 
         delete (publicClientConfig as any)[fakeChainId];
+    });
+
+    it("should throw if rp4 is missing", () => {
+        const chainId = ChainId.POLYGON;
+        expect(() => getChainConfig(chainId)).toThrow(
+            "missing route processor 4 address for chain 137",
+        );
     });
 
     it("should only include route processors that exist for the chain", () => {

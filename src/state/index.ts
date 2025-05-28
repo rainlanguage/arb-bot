@@ -26,7 +26,7 @@ export type TokenDetails = {
 };
 
 /**
- * RainSolver configuration type, used during runtime
+ * SharedState configuration that holds required data for instantiating SharedState
  */
 export type SharedStateConfig = {
     /** Dispair, deployer, store and interpreter addresses */
@@ -49,7 +49,7 @@ export type SharedStateConfig = {
     rpcState: RpcState;
     /** A rpc state for write rpcs */
     writeRpcState?: RpcState;
-    /** Optional multiplier on gas price */
+    /** Optional multiplier for gas price */
     gasPriceMultiplier?: number;
 };
 export namespace SharedStateConfig {
