@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
+import { describe, it, assert } from "vitest";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { PreAssembledSpan, RainSolverLogger } from "./logger";
-import { describe, it, assert } from "vitest";
 
 describe("Test RainSolverLogger", async function () {
     it("should successfully collect data and logs and export to otel channel", async function () {
@@ -122,8 +122,8 @@ describe("Test RainSolverLogger", async function () {
         for (let i = 0; i < expected.events.length; i++) {
             assert.equal(result.events[i].name, expected.events[i].name);
             assert.deepEqual(result.events[i].attributes, expected.events[i].attributes);
-            assert.closeTo(result.events[i].time[0], expected.events[i].time[0], 1); // due to precision loss
-            assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // due to precision loss
+            assert.closeTo(result.events[i].time[0], expected.events[i].time[0], 1); // assert closeTo due to js precision loss with number operations
+            assert.closeTo(result.events[i].time[1], expected.events[i].time[1], 1000); // assert closeTo due to js precision loss with number operations
         }
 
         // set original stdout write fn back

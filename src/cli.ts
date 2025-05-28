@@ -563,5 +563,5 @@ export const main = async (argv: any, version?: string) => {
     }
 
     // flush and close the connection.
-    await logger.exporter.shutdown();
+    await logger.shutdown();
 };

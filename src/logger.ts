@@ -22,8 +22,8 @@ import {
     Attributes,
     SpanOptions,
     DiagLogLevel,
-    DiagConsoleLogger,
     AttributeValue,
+    DiagConsoleLogger,
 } from "@opentelemetry/api";
 
 /**
@@ -163,7 +163,7 @@ export class RainSolverLogger {
     async shutdown() {
         // flush and close the connection
         await this.exporter.shutdown();
-        await sleep(10000);
+        await sleep(3000);
     }
 }
 
