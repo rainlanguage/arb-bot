@@ -24,7 +24,7 @@ export type ChainConfig = Chain & {
 export function getChainConfig(chainId: ChainId): ChainConfig {
     // get chain config
     const chain = publicClientConfig[chainId]?.chain;
-    if (!chain) throw `network with ${chainId} not supported`;
+    if (!chain) throw `network with id ${chainId} is not supported`;
 
     // get native wrapped token details
     const nativeWrappedToken = WNATIVE[chainId];
@@ -43,6 +43,7 @@ export function getChainConfig(chainId: ChainId): ChainConfig {
             routeProcessors[key] = address;
         }
     });
+    if (!routeProcessors["4"]) throw `missing route processor 4 address for chain ${chainId}`;
 
     // get known stable coins of the chain
     const stableTokens = (STABLES as any)[chainId];

@@ -26,7 +26,7 @@ export type TokenDetails = {
 };
 
 /**
- * RainSolver configuration type, used during runtime
+ * SharedState configuration that holds required data for instantiating SharedState
  */
 export type SharedStateConfig = {
     /** Dispair, deployer, store and interpreter addresses */
@@ -34,7 +34,7 @@ export type SharedStateConfig = {
     /** Wallet private key or mnemonic key */
     walletKey: string;
     /** List of watched tokens at runtime */
-    watchedTokens: TokenDetails[];
+    watchedTokens?: Map<string, TokenDetails>;
     /** List of active liquidity providers */
     liquidityProviders?: LiquidityProviders[];
     /** A viem client used for general read calls */
@@ -49,7 +49,7 @@ export type SharedStateConfig = {
     rpcState: RpcState;
     /** A rpc state for write rpcs */
     writeRpcState?: RpcState;
-    /** Optional multiplier on gas price */
+    /** Optional multiplier for gas price */
     gasPriceMultiplier?: number;
 };
 export namespace SharedStateConfig {
@@ -57,7 +57,7 @@ export namespace SharedStateConfig {
         const rpcState = new RpcState(options.rpc);
         const writeRpcState = options.writeRpc ? new RpcState(options.writeRpc) : undefined;
 
-        // use temp client ot get chain id
+        // use temp client to get chain id
         let client = createPublicClient({
             transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
         }) as any;
@@ -69,7 +69,7 @@ export namespace SharedStateConfig {
             throw `Cannot find configuration for the network with chain id: ${chainId}`;
         }
 
-        // re-assign with static chain data
+        // re-assign the client with static chain data
         client = createPublicClient({
             chain: chainConfig,
             transport: rainSolverTransport(rpcState, { timeout: options.timeout }),
@@ -94,7 +94,6 @@ export namespace SharedStateConfig {
             rpcState,
             writeRpcState,
             chainConfig,
-            watchedTokens: [],
             walletKey: (options.key ?? options.mnemonic)!,
             gasPriceMultiplier: options.gasPriceMultiplier,
             liquidityProviders: processLiquidityProviders(options.liquidityProviders),
@@ -137,7 +136,7 @@ export class SharedState {
     /** Chain configurations */
     readonly chainConfig: ChainConfig;
     /** List of watched tokens at runtime */
-    readonly watchedTokens: TokenDetails[] = [];
+    readonly watchedTokens: Map<string, TokenDetails> = new Map();
     /** List of supported liquidity providers */
     readonly liquidityProviders?: LiquidityProviders[];
     /** A public viem client used for general read calls (without any wallet functionalities) */
@@ -173,12 +172,20 @@ export class SharedState {
         if (typeof config.initL1GasPrice === "bigint") {
             this.l1GasPrice = config.initL1GasPrice;
         }
+        if (config.watchedTokens) {
+            this.watchedTokens = config.watchedTokens;
+        }
         this.watchGasPrice();
+    }
+
+    get isWatchingGasPrice(): boolean {
+        if (this.gasPriceWatcher) return true;
+        else return false;
     }
 
     /**
      * Watches gas price during runtime by reading it periodically
-     * @param interval - Interval to update gas price in millisconds, default is 20 seconds
+     * @param interval - Interval to update gas price in milliseconds, default is 20 seconds
      */
     watchGasPrice(interval = 20_000) {
         if (this.isWatchingGasPrice) return;
@@ -209,18 +216,10 @@ export class SharedState {
         }
     }
 
-    get isWatchingGasPrice(): boolean {
-        if (this.gasPriceWatcher) return true;
-        else return false;
-    }
-
+    /** Watches the given token by putting on the watchedToken map */
     watchToken(tokenDetails: TokenDetails) {
-        if (
-            !this.watchedTokens.find(
-                (v) => v.address.toLowerCase() === tokenDetails.address.toLowerCase(),
-            )
-        ) {
-            this.watchedTokens.push(tokenDetails);
+        if (!this.watchedTokens.has(tokenDetails.address.toLowerCase())) {
+            this.watchedTokens.set(tokenDetails.address.toLowerCase(), tokenDetails);
         }
     }
 }

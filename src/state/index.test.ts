@@ -112,7 +112,6 @@ describe("Test SharedState", () => {
                 deployer: "0xdispair",
             },
             walletKey: "key",
-            watchedTokens: [],
             liquidityProviders: [LiquidityProviders.UniswapV2],
             client: { dummy: true },
             chainConfig: { id: 1, isSpecialL2: false },
@@ -166,12 +165,12 @@ describe("Test SharedState", () => {
         sharedState.watchToken(token1);
         sharedState.watchToken(token2);
 
-        expect(sharedState.watchedTokens.length).toBe(2);
-        expect(sharedState.watchedTokens).toContain(token1);
-        expect(sharedState.watchedTokens).toContain(token2);
+        expect(sharedState.watchedTokens.get("0xabc")).toBe(token1);
+        expect(sharedState.watchedTokens.get("0xdef")).toBe(token2);
+        expect(Array.from(sharedState.watchedTokens).length).toBe(2);
 
         // should not duplicate
         sharedState.watchToken(token2);
-        expect(sharedState.watchedTokens.length).toBe(2);
+        expect(Array.from(sharedState.watchedTokens).length).toBe(2);
     });
 });

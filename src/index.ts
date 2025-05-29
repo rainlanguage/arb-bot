@@ -80,7 +80,6 @@ export async function getConfig(
         ...options,
         lps: state.liquidityProviders!,
         viemClient: state.client,
-        watchedTokens: state.watchedTokens,
         dispair: state.dispair,
         nativeWrappedToken: state.chainConfig.nativeWrappedToken,
         routeProcessors: state.chainConfig.routeProcessors,
