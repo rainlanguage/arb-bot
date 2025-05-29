@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 import { SharedState } from "./state";
-// import { getSgOrderbooks } from "./sg";
 import { sendTransaction } from "./tx";
 import { RainDataFetcher } from "sushi/router";
 import { ViemClient, BotConfig } from "./types";

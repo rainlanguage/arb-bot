@@ -8,6 +8,7 @@ import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
 import { SharedState, SharedStateConfig } from "./state";
+import { SgOrder, SubgraphManager, SubgraphManagerConfig } from "./subgraph";
 import { trace, Tracer, context, Context, SpanStatusCode } from "@opentelemetry/api";
 import { BotConfig, ViemClient, BundledOrders, ProcessPairReportStatus } from "./types";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
@@ -19,7 +20,6 @@ import {
     handleAddOrderbookOwnersProfileMap,
     handleRemoveOrderbookOwnersProfileMap,
 } from "./order";
-import { SubgraphManager, SubgraphManagerConfig } from "./subgraph";
 
 config();
 
@@ -123,37 +123,19 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const options = AppOptions.fromYaml(cmdOptions.config);
     const roundGap = options.sleep;
 
-    // init subgraph manager and check status and fetch all orders at startup
-    const sgManagerConfig = SubgraphManagerConfig.tryFromAppOptions(options);
-    const subgraphManager = new SubgraphManager(sgManagerConfig);
-    const subgraphStatusReport = await subgraphManager.statusCheck();
-    const { orders: ordersDetails, report: subgraphFetchReport } = await subgraphManager.fetchAll();
-    const tokens = getOrdersTokens(ordersDetails);
-
     // init state
     const stateConfig = await SharedStateConfig.tryFromAppOptions(options);
     const state = new SharedState(stateConfig);
 
     // get config
     const config = await getConfig(options, state, tracer, ctx);
-    config.watchedTokens = tokens;
 
     return {
         roundGap,
         options,
         poolUpdateInterval: options.poolUpdateInterval * 60 * 1000,
         config,
-        orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
-            ordersDetails,
-            config.viemClient as any as ViemClient,
-            tokens,
-            options.ownerProfile,
-        ),
-        tokens,
         state,
-        subgraphManager,
-        subgraphFetchReport,
-        subgraphStatusReport,
     };
 }
 
@@ -161,42 +143,59 @@ export const main = async (argv: any, version?: string) => {
     const logger = new RainSolverLogger();
 
     // parse cli args and startup bot configuration
-    const {
-        roundGap,
-        options,
-        poolUpdateInterval,
-        config,
-        orderbooksOwnersProfileMap,
-        tokens,
-        state,
-        subgraphManager,
-        subgraphFetchReport,
-        subgraphStatusReport,
-    } = await logger.tracer.startActiveSpan("startup", async (startupSpan) => {
-        const ctx = trace.setSpan(context.active(), startupSpan);
-        try {
-            const result = await startup(argv, version, logger.tracer, ctx);
-            startupSpan.setStatus({ code: SpanStatusCode.OK });
-            startupSpan.end();
-            return result;
-        } catch (e: any) {
-            const snapshot = errorSnapshot("", e);
-            startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
-            startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
-            startupSpan.recordException(e);
+    const { roundGap, options, poolUpdateInterval, config, state } =
+        await logger.tracer.startActiveSpan("startup", async (startupSpan) => {
+            const ctx = trace.setSpan(context.active(), startupSpan);
+            try {
+                const result = await startup(argv, version, logger.tracer, ctx);
+                startupSpan.setStatus({ code: SpanStatusCode.OK });
+                startupSpan.end();
+                return result;
+            } catch (e: any) {
+                const snapshot = errorSnapshot("", e);
+                startupSpan.setAttribute("severity", ErrorSeverity.HIGH);
+                startupSpan.setStatus({ code: SpanStatusCode.ERROR, message: snapshot });
+                startupSpan.recordException(e);
 
-            // end this span and wait for it to finish
-            startupSpan.end();
-            await sleep(20000);
+                // end this span and wait for it to finish
+                startupSpan.end();
+                await sleep(20000);
 
-            // reject the promise that makes the cli process to exit with error
-            return Promise.reject(e);
-        }
-    });
+                // reject the promise that makes the cli process to exit with error
+                return Promise.reject(e);
+            }
+        });
 
-    // report subgraph status check and fetch
-    subgraphStatusReport.forEach((statusReport) => logger.exportPreAssembledSpan(statusReport));
-    logger.exportPreAssembledSpan(subgraphFetchReport);
+    // init subgraph manager and check status and fetch all orders
+    let ordersDetails: SgOrder[] = [];
+    const sgManagerConfig = SubgraphManagerConfig.tryFromAppOptions(options);
+    const subgraphManager = new SubgraphManager(sgManagerConfig);
+    try {
+        const report = await subgraphManager.statusCheck();
+        report.forEach((statusReport) => logger.exportPreAssembledSpan(statusReport));
+    } catch (error: any) {
+        // export the report and throw
+        error.forEach((statusReport: any) => logger.exportPreAssembledSpan(statusReport));
+        throw new Error("All subgraphs have indexing error");
+    }
+    try {
+        const { orders, report } = await subgraphManager.fetchAll();
+        const tokens = getOrdersTokens(orders);
+        ordersDetails = orders;
+        config.watchedTokens = tokens;
+        logger.exportPreAssembledSpan(report);
+    } catch (error: any) {
+        // export the report and throw
+        logger.exportPreAssembledSpan(error);
+        throw new Error("Failed to get order details from subgraphs");
+    }
+
+    const orderbooksOwnersProfileMap = await getOrderbookOwnersProfileMapFromSg(
+        ordersDetails,
+        config.viemClient as any as ViemClient,
+        config.watchedTokens!,
+        options.ownerProfile,
+    );
 
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
@@ -443,7 +442,7 @@ export const main = async (argv: any, version?: string) => {
                         orderbooksOwnersProfileMap,
                         res.addOrders.map((v) => v.order),
                         config.viemClient as any as ViemClient,
-                        tokens,
+                        config.watchedTokens!,
                         options.ownerProfile,
                     );
                     await handleRemoveOrderbookOwnersProfileMap(

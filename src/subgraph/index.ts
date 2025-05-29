@@ -33,7 +33,7 @@ export namespace SubgraphManagerConfig {
     /** Tries to create an instance from yaml config i.e. AppOptions */
     export function tryFromAppOptions(options: AppOptions): SubgraphManagerConfig {
         return {
-            subgraphs: options.subgraph,
+            subgraphs: Array.from(new Set(options.subgraph)),
             filters: options.sgFilter,
             requestTimeout: options.timeout,
         };
@@ -74,14 +74,15 @@ export class SubgraphManager {
      * Returns the list of orderbook addresses that all of the
      * subgraphs currently index, ignores failed and invalid responses
      */
-    async getOrderbooks(): Promise<string[]> {
+    async getOrderbooks(): Promise<Set<string>> {
         const promises = this.subgraphs.map((url) =>
             axios.post(url, { query: orderbooksQuery }, { headers, timeout: this.requestTimeout }),
         );
         const queryResults = await Promise.allSettled(promises);
-        return queryResults
-            .map((res: any) => res?.value?.data?.data?.orderbooks?.map((v: any) => v.id) ?? [])
-            .flat();
+        const addresses = queryResults.flatMap((res: any) =>
+            res?.value?.data?.data?.orderbooks?.map((v: any) => v.id) ?? [],
+        );
+        return new Set(addresses);
     }
 
     /**
@@ -120,6 +121,8 @@ export class SubgraphManager {
                         message: "Did not receive valid status response",
                     });
                 }
+                report.end();
+                return report;
             } catch (error) {
                 // set err status and medium severity and record exception
                 report.setAttr("severity", ErrorSeverity.MEDIUM);
@@ -128,13 +131,18 @@ export class SubgraphManager {
                     message: errorSnapshot("Subgraph status check query failed", error),
                 });
                 report.recordException(error as any);
-            }
-            report.end();
+                report.end();
 
-            return report;
+                throw report;
+            }
         });
 
-        return await Promise.all(promises);
+        const result = await Promise.allSettled(promises);
+        if (result.every((v) => v.status === "rejected")) {
+            throw result.map((v) => (v as PromiseRejectedResult).reason);
+        } else {
+            return result.map((v) => v.status === "rejected" ? v.reason : v.value);
+        }
     }
 
     /**

@@ -121,12 +121,16 @@ describe("Test SubgraphManager", () => {
         expect(reports[0].endTime).toBeGreaterThan(0);
     });
 
-    it("test statusCheck: should handle axios error", async () => {
+    it("test statusCheck: should throw when all queries fails", async () => {
         (axios.post as Mock).mockRejectedValue(new Error("fail"));
-        const reports = await manager.statusCheck();
-        expect(reports[0].status?.code).toBe(SpanStatusCode.ERROR);
-        expect(reports[0].attributes.severity).toBe(ErrorSeverity.MEDIUM);
-        expect(reports[0].endTime).toBeGreaterThan(0);
+        await expect(manager.statusCheck()).rejects.toMatchObject([
+            {
+                attributes: {
+                    severity: ErrorSeverity.MEDIUM,
+                },
+                status: { code: SpanStatusCode.ERROR },
+            }
+        ]);
     });
 
     it("test syncOrders: should sync add and remove orders", async () => {

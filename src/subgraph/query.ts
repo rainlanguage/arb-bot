@@ -1,4 +1,4 @@
-import { SgFilter } from "../types";
+import { SgFilter } from "./filter";
 
 export const DEFAULT_PAGE_SIZE = 1000 as const;
 

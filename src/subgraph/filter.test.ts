@@ -1,6 +1,6 @@
 import { SgOrder } from "./types";
+import { describe, it, expect } from "vitest";
 import { applyFilters, SgFilter } from "./filter";
-import { describe, it, expect, assert } from "vitest";
 
 describe("Test applyFilters", () => {
     const order = {
@@ -60,7 +60,7 @@ describe("Test applyFilters", () => {
         expect(applyFilters(order, filters)).toBe(false);
     });
 
-    it("should correctly applying filters for all fields", async function () {
+    it("should correctly apply filters with all fields present", async function () {
         const filters = {
             includeOrders: new Set([`0x${"1".repeat(64)}`, `0x${"2".repeat(64)}`]),
             excludeOrders: new Set([`0x${"3".repeat(64)}`, `0x${"4".repeat(64)}`]),
@@ -76,7 +76,7 @@ describe("Test applyFilters", () => {
                 id: `0x${"7".repeat(40)}`,
             },
         } as any;
-        assert(!applyFilters(order, filters));
+        expect(applyFilters(order, filters)).toBe(false);
 
         order = {
             orderHash: `0x${"1".repeat(64)}`,
@@ -85,7 +85,7 @@ describe("Test applyFilters", () => {
                 id: `0x${"6".repeat(40)}`,
             },
         };
-        assert(!applyFilters(order, filters));
+        expect(applyFilters(order, filters)).toBe(false);
 
         order = {
             orderHash: `0x${"3".repeat(64)}`,
@@ -94,7 +94,7 @@ describe("Test applyFilters", () => {
                 id: `0x${"5".repeat(40)}`,
             },
         };
-        assert(!applyFilters(order, filters));
+        expect(applyFilters(order, filters)).toBe(false);
 
         order = {
             orderHash: `0x${"1".repeat(64)}`,
@@ -103,7 +103,7 @@ describe("Test applyFilters", () => {
                 id: `0x${"5".repeat(40)}`,
             },
         };
-        assert(applyFilters(order, filters));
+        expect(applyFilters(order, filters)).toBe(true);
 
         order = {
             orderHash: `0x${"7".repeat(64)}`,
@@ -112,6 +112,6 @@ describe("Test applyFilters", () => {
                 id: `0x${"2".repeat(40)}`,
             },
         };
-        assert(!applyFilters(order, filters));
+        expect(applyFilters(order, filters)).toBe(false);
     });
 });
