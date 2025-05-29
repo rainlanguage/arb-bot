@@ -79,8 +79,8 @@ export class SubgraphManager {
             axios.post(url, { query: orderbooksQuery }, { headers, timeout: this.requestTimeout }),
         );
         const queryResults = await Promise.allSettled(promises);
-        const addresses = queryResults.flatMap((res: any) =>
-            res?.value?.data?.data?.orderbooks?.map((v: any) => v.id) ?? [],
+        const addresses = queryResults.flatMap(
+            (res: any) => res?.value?.data?.data?.orderbooks?.map((v: any) => v.id) ?? [],
         );
         return new Set(addresses);
     }
@@ -141,7 +141,7 @@ export class SubgraphManager {
         if (result.every((v) => v.status === "rejected")) {
             throw result.map((v) => (v as PromiseRejectedResult).reason);
         } else {
-            return result.map((v) => v.status === "rejected" ? v.reason : v.value);
+            return result.map((v) => (v.status === "rejected" ? v.reason : v.value));
         }
     }
 

@@ -129,7 +129,7 @@ describe("Test SubgraphManager", () => {
                     severity: ErrorSeverity.MEDIUM,
                 },
                 status: { code: SpanStatusCode.ERROR },
-            }
+            },
         ]);
     });
 
