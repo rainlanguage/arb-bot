@@ -1,11 +1,10 @@
 import { config } from "dotenv";
 import { Command } from "commander";
+import { clear, getConfig } from ".";
 import { AppOptions } from "./config";
 import { BigNumber, ethers } from "ethers";
 import { RainSolverLogger } from "./logger";
-import { getOrderChanges, SgOrder } from "./query";
 import { sleep, withBigintSerializer } from "./utils";
-import { getOrderDetails, clear, getConfig } from ".";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
 import { SharedState, SharedStateConfig } from "./state";
@@ -20,6 +19,7 @@ import {
     handleAddOrderbookOwnersProfileMap,
     handleRemoveOrderbookOwnersProfileMap,
 } from "./order";
+import { SubgraphManager, SubgraphManagerConfig } from "./subgraph";
 
 config();
 
@@ -123,20 +123,11 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     const options = AppOptions.fromYaml(cmdOptions.config);
     const roundGap = options.sleep;
 
-    const poolUpdateInterval = options.poolUpdateInterval * 60 * 1000;
-    let ordersDetails: SgOrder[] = [];
-    if (!process?.env?.CLI_STARTUP_TEST) {
-        for (let i = 0; i < 3; i++) {
-            try {
-                ordersDetails = await getOrderDetails(options.subgraph, options.sgFilter);
-                break;
-            } catch (e) {
-                if (i != 2) await sleep(10000 * (i + 1));
-                else throw e;
-            }
-        }
-    }
-    const lastReadOrdersTimestamp = Math.floor(Date.now() / 1000);
+    // init subgraph manager and check status and fetch all orders at startup
+    const sgManagerConfig = SubgraphManagerConfig.tryFromAppOptions(options);
+    const subgraphManager = new SubgraphManager(sgManagerConfig);
+    const subgraphStatusReport = await subgraphManager.statusCheck();
+    const { orders: ordersDetails, report: subgraphFetchReport } = await subgraphManager.fetchAll();
     const tokens = getOrdersTokens(ordersDetails);
 
     // init state
@@ -150,7 +141,7 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
     return {
         roundGap,
         options,
-        poolUpdateInterval,
+        poolUpdateInterval: options.poolUpdateInterval * 60 * 1000,
         config,
         orderbooksOwnersProfileMap: await getOrderbookOwnersProfileMapFromSg(
             ordersDetails,
@@ -159,8 +150,10 @@ export async function startup(argv: any, version?: string, tracer?: Tracer, ctx?
             options.ownerProfile,
         ),
         tokens,
-        lastReadOrdersTimestamp,
         state,
+        subgraphManager,
+        subgraphFetchReport,
+        subgraphStatusReport,
     };
 }
 
@@ -175,8 +168,10 @@ export const main = async (argv: any, version?: string) => {
         config,
         orderbooksOwnersProfileMap,
         tokens,
-        lastReadOrdersTimestamp,
         state,
+        subgraphManager,
+        subgraphFetchReport,
+        subgraphStatusReport,
     } = await logger.tracer.startActiveSpan("startup", async (startupSpan) => {
         const ctx = trace.setSpan(context.active(), startupSpan);
         try {
@@ -199,10 +194,10 @@ export const main = async (argv: any, version?: string) => {
         }
     });
 
-    const lastReadOrdersMap = options.subgraph.map((v) => ({
-        sg: v,
-        skip: 0,
-    }));
+    // report subgraph status check and fetch
+    subgraphStatusReport.forEach((statusReport) => logger.exportPreAssembledSpan(statusReport));
+    logger.exportPreAssembledSpan(subgraphFetchReport);
+
     const day = 24 * 60 * 60 * 1000;
     let lastGasReset = Date.now() + day;
     let lastInterval = Date.now() + poolUpdateInterval;
@@ -218,7 +213,7 @@ export const main = async (argv: any, version?: string) => {
     while (true) {
         await logger.tracer.startActiveSpan(`round-${counter}`, async (roundSpan) => {
             const roundCtx = trace.setSpan(context.active(), roundSpan);
-            const newMeta = await getMetaInfo(config, options.subgraph);
+            const newMeta = await getMetaInfo(config, subgraphManager);
             roundSpan.setAttributes({
                 ...newMeta,
                 "meta.mainAccount": config.mainAccount.account.address,
@@ -435,55 +430,26 @@ export const main = async (argv: any, version?: string) => {
             }
 
             try {
-                // handle order changes (add/remove)
-                roundSpan.setAttribute(
-                    "watch-new-orders",
-                    JSON.stringify({
-                        hasRead: lastReadOrdersMap,
-                        startTime: lastReadOrdersTimestamp,
-                    }),
-                );
+                const { result, report } = await subgraphManager.syncOrders();
+                logger.exportPreAssembledSpan(report, roundCtx); // export sync report
+
                 let ordersDidChange = false;
-                const results = await Promise.allSettled(
-                    lastReadOrdersMap.map((v) =>
-                        getOrderChanges(
-                            v.sg,
-                            lastReadOrdersTimestamp,
-                            v.skip,
-                            roundSpan,
-                            options.sgFilter,
-                        ),
-                    ),
-                );
-                for (let i = 0; i < results.length; i++) {
-                    const res = results[i];
-                    if (res.status === "fulfilled") {
-                        if (res.value.addOrders.length || res.value.removeOrders.length) {
-                            ordersDidChange = true;
-                        }
-                        lastReadOrdersMap[i].skip += res.value.count;
-                        try {
-                            await handleAddOrderbookOwnersProfileMap(
-                                orderbooksOwnersProfileMap,
-                                res.value.addOrders.map((v) => v.order),
-                                config.viemClient as any as ViemClient,
-                                tokens,
-                                options.ownerProfile,
-                                roundSpan,
-                            );
-                        } catch {
-                            /**/
-                        }
-                        try {
-                            await handleRemoveOrderbookOwnersProfileMap(
-                                orderbooksOwnersProfileMap,
-                                res.value.removeOrders.map((v) => v.order),
-                                roundSpan,
-                            );
-                        } catch {
-                            /**/
-                        }
+                for (const key in result) {
+                    const res = result[key];
+                    if (res.addOrders.length || res.removeOrders.length) {
+                        ordersDidChange = true;
                     }
+                    await handleAddOrderbookOwnersProfileMap(
+                        orderbooksOwnersProfileMap,
+                        res.addOrders.map((v) => v.order),
+                        config.viemClient as any as ViemClient,
+                        tokens,
+                        options.ownerProfile,
+                    );
+                    await handleRemoveOrderbookOwnersProfileMap(
+                        orderbooksOwnersProfileMap,
+                        res.removeOrders.map((v) => v.order),
+                    );
                 }
 
                 // in case there are new orders or removed order, re evaluate owners limits
