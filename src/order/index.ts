@@ -99,8 +99,8 @@ export class OrderManager {
             if (result[key].addOrders.length || result[key].removeOrders.length) {
                 ordersDidChange = true;
             }
-            this.addOrders(result[key].addOrders.map((v) => v.order));
-            this.removeOrders(result[key].removeOrders.map((v) => v.order));
+            await this.addOrders(result[key].addOrders.map((v) => v.order));
+            await this.removeOrders(result[key].removeOrders.map((v) => v.order));
         }
         if (ordersDidChange) this.downscaleProtection(true);
         return report;
