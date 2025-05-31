@@ -56,7 +56,7 @@ export function buildOrderbookTokenOwnerVaultsMap(
  * factor to the owner's limit.
  * This ensures that if an owner has many orders/vaults and has spread their balances across those
  * many vaults and orders, he/she will get limited.
- * Owners limits that are set by bot's admin in yaml config, are exluded from this evaluation process
+ * Owners limits that are set by bot's admin in yaml config, are excluded from this evaluation process
  */
 export async function downscaleProtection(
     orderbooksOwnersProfileMap: OrderbooksOwnersProfileMap,

@@ -37,6 +37,6 @@ export async function quoteSingleOrder(
         };
         return;
     } else {
-        return Promise.reject(`Failed to quote order, reason: reqtured no data`);
+        return Promise.reject(`Failed to quote order, reason: required no data`);
     }
 }

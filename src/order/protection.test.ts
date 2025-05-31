@@ -42,7 +42,7 @@ const mockPublicClient = {
     chain: { id: 1 },
 } as any as PublicClient;
 
-describe("buildOrderbookTokenOwnerVaultsMap", () => {
+describe("Test buildOrderbookTokenOwnerVaultsMap", () => {
     it("should correctly build the map structure", () => {
         const result = buildOrderbookTokenOwnerVaultsMap(mockOrderbooksOwnersProfileMap);
 
@@ -66,7 +66,7 @@ describe("buildOrderbookTokenOwnerVaultsMap", () => {
     });
 });
 
-describe("downscaleProtection", () => {
+describe("Test downscaleProtection", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
