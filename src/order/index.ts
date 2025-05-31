@@ -102,7 +102,10 @@ export class OrderManager {
             await this.addOrders(result[key].addOrders.map((v) => v.order));
             await this.removeOrders(result[key].removeOrders.map((v) => v.order));
         }
+
+        // run protection if there has been upstream changes
         if (ordersDidChange) this.downscaleProtection(true);
+
         return report;
     }
 
