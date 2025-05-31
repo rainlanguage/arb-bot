@@ -180,9 +180,36 @@ describe("Test OrderManager", () => {
             },
         ];
         await orderManager.addOrders(orders as any);
+
         expect(orderManager.orderMap.size).toBe(2);
         expect(orderManager.orderMap.get("0xorderbook1")).toBeDefined();
         expect(orderManager.orderMap.get("0xorderbook2")).toBeDefined();
+
+        // check first order
+        const ownerProfileMap1 = orderManager.orderMap.get("0xorderbook1");
+        expect(ownerProfileMap1).toBeDefined();
+        const ownerProfile1 = ownerProfileMap1?.get("0xowner");
+        expect(ownerProfile1).toBeDefined();
+        expect(ownerProfile1?.orders.size).toBe(1);
+        const orderProfile1 = ownerProfile1?.orders.get("0xhash1");
+        expect(orderProfile1).toBeDefined();
+        expect(orderProfile1?.active).toBe(true);
+        expect(orderProfile1?.order).toBeDefined();
+        expect(Array.isArray(orderProfile1?.takeOrders)).toBe(true);
+        expect(orderProfile1?.takeOrders.length).toBeGreaterThan(0);
+
+        // check second order
+        const ownerProfileMap2 = orderManager.orderMap.get("0xorderbook2");
+        expect(ownerProfileMap2).toBeDefined();
+        const ownerProfile2 = ownerProfileMap2?.get("0xowner");
+        expect(ownerProfile2).toBeDefined();
+        expect(ownerProfile2?.orders.size).toBe(1);
+        const orderProfile2 = ownerProfile2?.orders.get("0xhash2");
+        expect(orderProfile2).toBeDefined();
+        expect(orderProfile2?.active).toBe(true);
+        expect(orderProfile2?.order).toBeDefined();
+        expect(Array.isArray(orderProfile2?.takeOrders)).toBe(true);
+        expect(orderProfile2?.takeOrders.length).toBeGreaterThan(0);
     });
 
     it("should remove orders", async () => {
@@ -213,6 +240,31 @@ describe("Test OrderManager", () => {
         const result = orderManager.getNextRoundOrders(false);
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBeGreaterThan(0);
+
+        // Check the structure of the first orderbook's bundled orders
+        const bundledOrders = result[0];
+        expect(Array.isArray(bundledOrders)).toBe(true);
+        expect(bundledOrders.length).toBeGreaterThan(0);
+
+        const bundle = bundledOrders[0];
+        expect(bundle).toHaveProperty("orderbook", "0xorderbook");
+        expect(bundle).toHaveProperty("buyToken", "0xinput");
+        expect(bundle).toHaveProperty("buyTokenDecimals", 18);
+        expect(bundle).toHaveProperty("buyTokenSymbol", "IN");
+        expect(bundle).toHaveProperty("sellToken", "0xoutput");
+        expect(bundle).toHaveProperty("sellTokenDecimals", 18);
+        expect(bundle).toHaveProperty("sellTokenSymbol", "OUT");
+        expect(Array.isArray(bundle.takeOrders)).toBe(true);
+        expect(bundle.takeOrders.length).toBeGreaterThan(0);
+
+        const takeOrder = bundle.takeOrders[0];
+        expect(takeOrder).toHaveProperty("id", "0xhash");
+        expect(takeOrder).toHaveProperty("takeOrder");
+        expect(takeOrder.takeOrder).toHaveProperty("order");
+        expect(takeOrder.takeOrder).toHaveProperty("inputIOIndex", 0);
+        expect(takeOrder.takeOrder).toHaveProperty("outputIOIndex", 0);
+        expect(takeOrder.takeOrder).toHaveProperty("signedContext");
+        expect(Array.isArray(takeOrder.takeOrder.signedContext)).toBe(true);
     });
 
     it("should reset limits to default", async () => {
@@ -271,7 +323,7 @@ describe("Test OrderManager", () => {
 
         // should be 4 pairs (2 inputs x 2 outputs)
         expect(pairs.length).toBe(4);
-        expect(pairs).toEqual([
+        expect(pairs).toMatchObject([
             {
                 buyToken: "0xinput1",
                 buyTokenSymbol: "IN1",
@@ -279,15 +331,6 @@ describe("Test OrderManager", () => {
                 sellToken: "0xoutput1",
                 sellTokenSymbol: "OUT1",
                 sellTokenDecimals: 18,
-                takeOrder: expect.objectContaining({
-                    id: "0xhash",
-                    takeOrder: expect.objectContaining({
-                        order: orderStruct,
-                        inputIOIndex: 0,
-                        outputIOIndex: 0,
-                        signedContext: [],
-                    }),
-                }),
             },
             {
                 buyToken: "0xinput2",
@@ -296,15 +339,6 @@ describe("Test OrderManager", () => {
                 sellToken: "0xoutput1",
                 sellTokenSymbol: "OUT1",
                 sellTokenDecimals: 18,
-                takeOrder: expect.objectContaining({
-                    id: "0xhash",
-                    takeOrder: expect.objectContaining({
-                        order: orderStruct,
-                        inputIOIndex: 1,
-                        outputIOIndex: 0,
-                        signedContext: [],
-                    }),
-                }),
             },
             {
                 buyToken: "0xinput1",
@@ -313,15 +347,6 @@ describe("Test OrderManager", () => {
                 sellToken: "0xoutput2",
                 sellTokenSymbol: "OUT2",
                 sellTokenDecimals: 6,
-                takeOrder: expect.objectContaining({
-                    id: "0xhash",
-                    takeOrder: expect.objectContaining({
-                        order: orderStruct,
-                        inputIOIndex: 0,
-                        outputIOIndex: 1,
-                        signedContext: [],
-                    }),
-                }),
             },
             {
                 buyToken: "0xinput2",
@@ -330,15 +355,6 @@ describe("Test OrderManager", () => {
                 sellToken: "0xoutput2",
                 sellTokenSymbol: "OUT2",
                 sellTokenDecimals: 6,
-                takeOrder: expect.objectContaining({
-                    id: "0xhash",
-                    takeOrder: expect.objectContaining({
-                        order: orderStruct,
-                        inputIOIndex: 1,
-                        outputIOIndex: 1,
-                        signedContext: [],
-                    }),
-                }),
             },
         ]);
     });

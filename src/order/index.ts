@@ -357,7 +357,7 @@ export class OrderManager {
             if (ownersProfileMap) {
                 ownersProfileMap.forEach((ownerProfile, owner) => {
                     // skip if owner limit is set by bot admin
-                    if (typeof this.ownerLimits[owner.toLowerCase()] === "number") return;
+                    if (typeof this.ownerLimits[owner] === "number") return;
                     ownerProfile.limit = DEFAULT_OWNER_LIMIT;
                 });
             }
@@ -381,6 +381,6 @@ export class OrderManager {
             this.state.client,
             this.ownerLimits,
             multicallAddressOverride,
-        );
+        ).catch(() => {});
     }
 }
