@@ -32,21 +32,11 @@ vi.mock("./types", async (importOriginal) => {
     return {
         ...(await importOriginal()),
         Order: {
-            fromBytes: vi.fn().mockImplementation((value: any) => {
-                if (value === "0xadminBytes") {
-                    return {
-                        owner: "0xadmin",
-                        validInputs: [{ token: "0xinput", decimals: 18 }],
-                        validOutputs: [{ token: "0xoutput", decimals: 18 }],
-                    };
-                } else {
-                    return {
-                        owner: "0xowner",
-                        validInputs: [{ token: "0xinput", decimals: 18 }],
-                        validOutputs: [{ token: "0xoutput", decimals: 18 }],
-                    };
-                }
-            }),
+            fromBytes: vi.fn().mockImplementation((value: any) => ({
+                owner: value === "0xadminBytes" ? "0xadmin" : "0xowner",
+                validInputs: [{ token: "0xinput", decimals: 18 }],
+                validOutputs: [{ token: "0xoutput", decimals: 18 }],
+            })),
         },
     };
 });
