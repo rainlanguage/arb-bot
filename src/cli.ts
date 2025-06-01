@@ -9,10 +9,11 @@ import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
 import { SharedState, SharedStateConfig } from "./state";
 import { SubgraphManager, SubgraphManagerConfig } from "./subgraph";
-import { BotConfig, ViemClient, ProcessPairReportStatus } from "./types";
+import { BotConfig, ProcessPairReportStatus } from "./types";
 import { OrderManager, BundledOrders, OrderManagerConfig } from "./order";
 import { trace, Tracer, context, Context, SpanStatusCode } from "@opentelemetry/api";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
+import { RainSolverSigner } from "./signer";
 
 config();
 
@@ -195,7 +196,7 @@ export const main = async (argv: any, version?: string) => {
     let lastUsedAccountIndex = config.accounts.length;
     let avgGasCost: BigNumber | undefined;
     let counter = 1;
-    const wgc: ViemClient[] = [];
+    const wgc: RainSolverSigner[] = [];
     const wgcBuffer: { address: string; count: number }[] = [];
     const botMinBalance = ethers.utils.parseUnits(options.botMinBalance);
 
@@ -210,7 +211,7 @@ export const main = async (argv: any, version?: string) => {
                 "meta.mainAccount": config.mainAccount.account.address,
                 "meta.gitCommitHash": process?.env?.GIT_COMMIT ?? "N/A",
                 "meta.dockerTag": process?.env?.DOCKER_TAG ?? "N/A",
-                "meta.trackedTokens": JSON.stringify(config.watchedTokens),
+                "meta.trackedTokens": JSON.stringify(Array.from(state.watchedTokens.values())),
                 "meta.configurations": JSON.stringify(
                     {
                         ...options,
@@ -232,7 +233,6 @@ export const main = async (argv: any, version?: string) => {
                                 address: config.mainAccount.account.address,
                             }),
                         );
-                        config.mainAccount.BALANCE = botGasBalance;
                         if (botMinBalance.gt(botGasBalance)) {
                             const header = `bot main wallet ${
                                 config.mainAccount.account.address
@@ -311,7 +311,7 @@ export const main = async (argv: any, version?: string) => {
                     try {
                         const balances = await getBatchEthBalance(
                             config.accounts.map((v) => v.account.address),
-                            config.viemClient as any as ViemClient,
+                            state.client,
                         );
                         config.accounts.forEach((v, i) => (v.BALANCE = balances[i]));
                     } catch {
