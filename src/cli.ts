@@ -8,9 +8,9 @@ import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
 import { SharedState, SharedStateConfig } from "./state";
-import { SubgraphManager, SubgraphManagerConfig } from "./subgraph";
 import { BotConfig, ViemClient, ProcessPairReportStatus } from "./types";
 import { OrderManager, BundledOrders, OrderManagerConfig } from "./order";
+import { SgOrder, SubgraphManager, SubgraphConfig } from "./subgraph";
 import { trace, Tracer, context, Context, SpanStatusCode } from "@opentelemetry/api";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 
@@ -160,7 +160,7 @@ export const main = async (argv: any, version?: string) => {
         });
 
     // init subgraph manager and check status
-    const sgManagerConfig = SubgraphManagerConfig.tryFromAppOptions(options);
+    const sgManagerConfig = SubgraphConfig.tryFromAppOptions(options);
     const subgraphManager = new SubgraphManager(sgManagerConfig);
     try {
         const report = await subgraphManager.statusCheck();
