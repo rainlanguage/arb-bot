@@ -48,17 +48,14 @@ describe("Test OrderManager", () => {
 
     beforeEach(async () => {
         state = new (SharedState as Mock)();
-        subgraphManager = new (SubgraphManager as Mock)();
-        orderManager = new OrderManager(
-            {
-                quoteGas: 1000000n,
-                ownerLimits: {
-                    "0xadmin": 75,
-                },
+        (state as any).orderManagerConfig = {
+            quoteGas: 1000000n,
+            ownerLimits: {
+                "0xadmin": 75,
             },
-            state,
-            subgraphManager,
-        );
+        };
+        subgraphManager = new (SubgraphManager as Mock)();
+        orderManager = new OrderManager(state, subgraphManager);
     });
 
     it("should correctly fetch orders", async () => {

@@ -86,6 +86,13 @@ for (let i = 0; i < testData.length; i++) {
             client: {},
             dispair: {},
             rpcState,
+            subgraphConfig: {
+                subgraphs: [],
+            },
+            orderManagerConfig: {
+                ownerLimits: {},
+                quoteGas: 1_000_000n,
+            },
         });
         const dataFetcherPromise = RainDataFetcher.init(
             chainId,
@@ -270,14 +277,7 @@ for (let i = 0; i < testData.length; i++) {
                     deployer: deployer.address,
                 };
 
-                const orderManager = new OrderManager(
-                    {
-                        ownerLimits: {},
-                        quoteGas: 1_000_000n,
-                        subgraphs: [],
-                    },
-                    state,
-                );
+                const orderManager = new OrderManager(state);
                 await orderManager.addOrders(orders);
                 orders = orderManager.getNextRoundOrders(false);
 
@@ -587,14 +587,7 @@ for (let i = 0; i < testData.length; i++) {
                     deployer: deployer.address,
                 };
 
-                const orderManager = new OrderManager(
-                    {
-                        ownerLimits: {},
-                        quoteGas: 1_000_000n,
-                        subgraphs: [],
-                    },
-                    state,
-                );
+                const orderManager = new OrderManager(state);
                 await orderManager.addOrders(orders);
                 orders = orderManager.getNextRoundOrders(false);
 
@@ -945,14 +938,7 @@ for (let i = 0; i < testData.length; i++) {
                     deployer: deployer.address,
                 };
 
-                const orderManager = new OrderManager(
-                    {
-                        ownerLimits: {},
-                        quoteGas: 1_000_000n,
-                        subgraphs: [],
-                    },
-                    state,
-                );
+                const orderManager = new OrderManager(state);
                 await orderManager.addOrders(orders);
                 orders = orderManager.getNextRoundOrders(false);
 
