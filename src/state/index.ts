@@ -10,7 +10,7 @@ import { rainSolverTransport } from "../transport";
 import { SubgraphConfig } from "../subgraph/config";
 import { ChainConfig, getChainConfig } from "./chain";
 import { createPublicClient, PublicClient } from "viem";
-import { OrderManagerConfig } from "../order";
+import { OrderManagerConfig } from "../order/config";
 
 /**
  * Rain dispair contracts, deployer, store and interpreter
