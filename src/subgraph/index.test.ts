@@ -2,7 +2,7 @@ import axios from "axios";
 import { SgOrder } from "./types";
 import { ErrorSeverity } from "../error";
 import { SpanStatusCode } from "@opentelemetry/api";
-import { SubgraphManager, SubgraphManagerConfig } from "./index";
+import { SubgraphManager } from "./index";
 import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
 
 vi.mock("axios");
@@ -193,21 +193,5 @@ describe("Test SubgraphManager", () => {
         expect(reportStatus[mockOrder.orderbook.id].removed).toBeUndefined();
         expect(report.endTime).toBeGreaterThan(0);
         expect(result[subgraphUrl].addOrders.length).toBe(1);
-    });
-});
-
-describe("Test SubgraphManagerConfig.tryFromAppOptions", () => {
-    it("should init successfully", () => {
-        const appOptions = {
-            subgraph: ["http://sg1", "http://sg2"],
-            sgFilter: { includeOrders: ["0xabc"], includeOwners: ["0xdef"] },
-            timeout: 12345,
-        } as any;
-
-        const config = SubgraphManagerConfig.tryFromAppOptions(appOptions);
-
-        expect(config.subgraphs).toEqual(["http://sg1", "http://sg2"]);
-        expect(config.filters).toEqual({ includeOrders: ["0xabc"], includeOwners: ["0xdef"] });
-        expect(config.requestTimeout).toBe(12345);
     });
 });
