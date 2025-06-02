@@ -114,11 +114,17 @@ describe("Test WalletManager", () => {
                 parseUnits("0.05", 18),
             );
 
-            const report = await walletManager.fundWallet(targetWallet);
-
-            expect(report.status?.code).toBe(SpanStatusCode.ERROR);
-            expect(report.attributes["severity"]).toBe(ErrorSeverity.MEDIUM);
-            expect(report.status?.message).toContain("Low on funds");
+            await expect(() => walletManager.fundWallet(targetWallet)).rejects.toMatchObject({
+                status: {
+                    code: SpanStatusCode.ERROR,
+                    message: [
+                        "Low on funds to topup the wallet",
+                        "current main account balance: 0.05",
+                        "topup amount: 0.1",
+                    ].join("\n"),
+                },
+                attributes: { severity: ErrorSeverity.MEDIUM },
+            });
         });
 
         it("should successfully fund wallet", async () => {
@@ -151,11 +157,13 @@ describe("Test WalletManager", () => {
                 status: "reverted",
             });
 
-            const report = await walletManager.fundWallet(targetWallet);
-
-            expect(report.status?.code).toBe(SpanStatusCode.ERROR);
-            expect(report.attributes["severity"]).toBe(ErrorSeverity.LOW);
-            expect(report.status?.message).toContain("tx reverted");
+            await expect(() => walletManager.fundWallet(targetWallet)).rejects.toMatchObject({
+                status: {
+                    code: SpanStatusCode.ERROR,
+                    message: "Failed to topup wallet: tx reverted",
+                },
+                attributes: { severity: ErrorSeverity.LOW },
+            });
         });
     });
 

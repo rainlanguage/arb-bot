@@ -91,7 +91,11 @@ export class WalletManager {
         const reports = [];
         if (walletManager.config.type === WalletType.Mnemonic) {
             for (const [address] of walletManager.workers.signers) {
-                reports.push(await walletManager.fundWallet(address));
+                reports.push(
+                    await walletManager
+                        .fundWallet(address)
+                        .catch((error: any) => error as any as PreAssembledSpan),
+                );
             }
         }
 
@@ -103,7 +107,7 @@ export class WalletManager {
      * @param wallet - The destination wallet address
      * @param topupAmount - (optional) Topup amount, default is the top up amount in this.config
      * @returns The report of the funding process
-     * @throws If topup amount is not defined
+     * @throws If topup amount is not defined or fails to successfully top up
      */
     async fundWallet(wallet: string, topupAmount?: bigint): Promise<PreAssembledSpan> {
         let amount: bigint | undefined = topupAmount;
@@ -118,6 +122,8 @@ export class WalletManager {
 
         if (amount <= 0n) {
             report.setStatus({ code: SpanStatusCode.OK, message: "Zero topup amount" });
+            report.end();
+            return report;
         } else {
             try {
                 const mainWalletBalance = await this.mainSigner.getSelfBalance();
@@ -134,7 +140,7 @@ export class WalletManager {
                         ].join("\n"),
                     });
                     report.end();
-                    return report;
+                    return Promise.reject(report);
                 }
 
                 // fund the wallet
@@ -152,12 +158,16 @@ export class WalletManager {
                         code: SpanStatusCode.OK,
                         message: "Successfully topped up",
                     });
+                    report.end();
+                    return report;
                 } else {
                     report.setAttr("severity", ErrorSeverity.LOW);
                     report.setStatus({
                         code: SpanStatusCode.ERROR,
                         message: "Failed to topup wallet: tx reverted",
                     });
+                    report.end();
+                    return Promise.reject(report);
                 }
             } catch (error: any) {
                 report.setAttr("severity", ErrorSeverity.LOW);
@@ -166,10 +176,10 @@ export class WalletManager {
                     code: SpanStatusCode.ERROR,
                     message: errorSnapshot("Failed to topup wallet", error),
                 });
+                report.end();
+                throw report;
             }
         }
-        report.end();
-        return report;
     }
 
     /**
@@ -183,14 +193,16 @@ export class WalletManager {
         const wallet = mnemonicToAccount(this.config.key, {
             addressIndex: ++this.workers.lastUsedDerivationIndex,
         });
-        const report = await this.fundWallet(wallet.address);
+
+        const report = await this.fundWallet(wallet.address).catch(
+            (error: any) => error as any as PreAssembledSpan,
+        );
         report.name = "add-wallet";
 
         this.workers.signers.set(
             wallet.address.toLowerCase(),
             RainSolverSigner.create(wallet, this.state),
         );
-
         return report;
     }
 
