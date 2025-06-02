@@ -1,15 +1,18 @@
 import * as utils from "../utils";
+import { RpcState } from "../rpc";
 import { BigNumber } from "ethers";
-import { type SharedState } from "../state";
+import { SharedState } from "../state";
+import { RainSolverSigner } from "./index";
 import { publicActionsL2 } from "viem/op-stack";
-import { type RainSolverSigner } from "./index";
 import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
+import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import {
     sendTx,
-    waitUntilFree,
     getTxGas,
+    waitUntilFree,
     getSelfBalance,
     estimateGasCost,
+    getWriteSignerFrom,
     RainSolverSignerActions,
 } from "./actions";
 
@@ -39,6 +42,7 @@ describe("Test RainSolverSignerActions", () => {
         expect(typeof actions.waitUntilFree).toBe("function");
         expect(typeof actions.getSelfBalance).toBe("function");
         expect(typeof actions.estimateGasCost).toBe("function");
+        expect(typeof actions.asWriteSigner).toBe("function");
     });
 });
 
@@ -336,5 +340,57 @@ describe("Test getSelfBalance", () => {
             address: "0xuser",
         });
         expect(balance).toBe(expectedBalance);
+    });
+});
+
+describe("Test getWriteSignerFrom", () => {
+    const testPrivateKey = "0x1234567890123456789012345678901234567890123456789012345678901234";
+    const account = privateKeyToAccount(testPrivateKey);
+
+    it("should return same signer when no write RPC is configured", () => {
+        const mockState = new SharedState({
+            rpcState: new RpcState([{ url: "https://example.com" }]),
+            walletKey: testPrivateKey,
+            chainConfig: {
+                id: 1,
+                isSpecialL2: false,
+            },
+        } as any);
+
+        const signer = RainSolverSigner.create(account, mockState);
+        const writeSigner = getWriteSignerFrom(signer, mockState);
+
+        expect(writeSigner).toBe(signer);
+    });
+
+    it("should return new signer with write RPC when configured", () => {
+        const mockState = new SharedState({
+            rpcState: new RpcState([{ url: "https://example.com" }]),
+            writeRpcState: new RpcState([{ url: "https://example-write.com" }]),
+            walletKey: testPrivateKey,
+            chainConfig: {
+                id: 1,
+                isSpecialL2: false,
+            },
+        } as any);
+
+        // private key wallet
+        let signer: any = RainSolverSigner.create(account, mockState);
+        let writeSigner = getWriteSignerFrom(signer, mockState);
+
+        expect(writeSigner).not.toBe(signer);
+        expect(writeSigner.state.writeRpc).toEqual(mockState.writeRpc);
+
+        // mnemonic wallet
+        const acc = mnemonicToAccount(
+            "test test test test test test test test test test test junk",
+            { addressIndex: 0 },
+        );
+        signer = RainSolverSigner.create(acc, mockState);
+        writeSigner = getWriteSignerFrom(signer, mockState);
+
+        expect(writeSigner).not.toBe(signer);
+        expect(writeSigner.state.writeRpc).toEqual(mockState.writeRpc);
+        expect(writeSigner.account.address).toBe(signer.account.address);
     });
 });
