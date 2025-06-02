@@ -8,9 +8,9 @@ import { sleep, withBigintSerializer } from "./utils";
 import { ErrorSeverity, errorSnapshot } from "./error";
 import { getDataFetcher, getMetaInfo } from "./client";
 import { SharedState, SharedStateConfig } from "./state";
-import { SubgraphManager, SubgraphManagerConfig } from "./subgraph";
+import { SubgraphManager, SubgraphConfig } from "./subgraph";
 import { BotConfig, ProcessPairReportStatus } from "./types";
-import { OrderManager, BundledOrders, OrderManagerConfig } from "./order";
+import { OrderManager, BundledOrders } from "./order";
 import { trace, Tracer, context, Context, SpanStatusCode } from "@opentelemetry/api";
 import { sweepToEth, manageAccounts, sweepToMainWallet, getBatchEthBalance } from "./account";
 import { RainSolverSigner } from "./signer";
@@ -161,7 +161,7 @@ export const main = async (argv: any, version?: string) => {
         });
 
     // init subgraph manager and check status
-    const sgManagerConfig = SubgraphManagerConfig.tryFromAppOptions(options);
+    const sgManagerConfig = SubgraphConfig.tryFromAppOptions(options);
     const subgraphManager = new SubgraphManager(sgManagerConfig);
     try {
         const report = await subgraphManager.statusCheck();
@@ -173,14 +173,9 @@ export const main = async (argv: any, version?: string) => {
     }
 
     // init order manager
-    const orderManagerConfig = OrderManagerConfig.tryFromAppOptions(options);
     const orderManager = await (async () => {
         try {
-            const { orderManager, report } = await OrderManager.init(
-                orderManagerConfig,
-                state,
-                subgraphManager,
-            );
+            const { orderManager, report } = await OrderManager.init(state, subgraphManager);
             logger.exportPreAssembledSpan(report);
             return orderManager;
         } catch (error: any) {

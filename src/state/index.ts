@@ -5,10 +5,12 @@ import { AppOptions } from "../config";
 import { errorSnapshot } from "../error";
 import { getGasPrice } from "./gasPrice";
 import { LiquidityProviders } from "sushi";
+import { OrderManagerConfig } from "../order";
 import { processLiquidityProviders } from "./lps";
-import { rainSolverTransport, RainSolverTransportConfig } from "../transport";
+import { SubgraphConfig } from "../subgraph/config";
 import { ChainConfig, getChainConfig } from "./chain";
 import { createPublicClient, PublicClient } from "viem";
+import { rainSolverTransport, RainSolverTransportConfig } from "../transport";
 
 /**
  * Rain dispair contracts, deployer, store and interpreter
@@ -51,6 +53,10 @@ export type SharedStateConfig = {
     writeRpcState?: RpcState;
     /** Optional multiplier for gas price */
     gasPriceMultiplier?: number;
+    /** Subgraph configurations */
+    subgraphConfig: SubgraphConfig;
+    /** OrderManager configurations */
+    orderManagerConfig: OrderManagerConfig;
     /** Optional transaction gas multiplier */
     transactionGas?: string;
     /** RainSolver transport configuration */
@@ -103,6 +109,8 @@ export namespace SharedStateConfig {
             transactionGas: options.txGas,
             walletKey: (options.key ?? options.mnemonic)!,
             gasPriceMultiplier: options.gasPriceMultiplier,
+            subgraphConfig: SubgraphConfig.tryFromAppOptions(options),
+            orderManagerConfig: OrderManagerConfig.tryFromAppOptions(options),
             liquidityProviders: processLiquidityProviders(options.liquidityProviders),
             dispair: {
                 interpreter,
@@ -150,6 +158,10 @@ export class SharedState {
     readonly client: PublicClient;
     /** Option to multiply the gas price fetched from the rpc as percentage, default is 100, ie no change */
     readonly gasPriceMultiplier: number = 100;
+    /** Subgraph configurations */
+    readonly subgraphConfig: SubgraphConfig;
+    /** OrderManager configurations */
+    readonly orderManagerConfig: OrderManagerConfig;
     /** Optional transaction gas multiplier */
     readonly transactionGas?: string;
     /** RainSolver transport configuration */
@@ -171,7 +183,9 @@ export class SharedState {
         this.dispair = config.dispair;
         this.walletKey = config.walletKey;
         this.chainConfig = config.chainConfig;
+        this.subgraphConfig = config.subgraphConfig;
         this.liquidityProviders = config.liquidityProviders;
+        this.orderManagerConfig = config.orderManagerConfig;
         this.rpc = config.rpcState;
         this.writeRpc = config.writeRpcState;
         if (typeof config.gasPriceMultiplier === "number") {

@@ -1,7 +1,6 @@
 import { erc20Abi } from "viem";
 import { SgOrder } from "../subgraph";
 import { SharedState } from "../state";
-import { AppOptions } from "../config";
 import { shuffleArray } from "../utils";
 import { quoteSingleOrder } from "./quote";
 import { PreAssembledSpan } from "../logger";
@@ -18,25 +17,10 @@ import {
 
 export * from "./types";
 export * from "./quote";
+export * from "./config";
 
-/**
- * The default owner limit
- */
+/** The default owner limit */
 export const DEFAULT_OWNER_LIMIT = 25 as const;
-
-/** Configuration required for instantiating OrderManager */
-export type OrderManagerConfig = {
-    quoteGas: bigint;
-    ownerLimits: Record<string, number>;
-};
-export namespace OrderManagerConfig {
-    export function tryFromAppOptions(options: AppOptions) {
-        return {
-            quoteGas: options.quoteGas,
-            ownerLimits: options.ownerProfile ?? {},
-        };
-    }
-}
 
 /**
  * OrderManager is responsible for managing orders state for Rainsolver during runtime, it
@@ -57,29 +41,28 @@ export class OrderManager {
 
     /**
      * Creates a new OrderManager instance
-     * @param config - Configuration including quote gas and owner limits
-     * @param state - Shared state instance for managing global state
+     * @param state - SharedState instance
+     * @param subgraphManager - (optional) SubgraphManager instance
      */
-    constructor(config: OrderManagerConfig, state: SharedState, subgraphManager: SubgraphManager) {
+    constructor(state: SharedState, subgraphManager?: SubgraphManager) {
         this.state = state;
-        this.quoteGas = config.quoteGas;
-        this.ownerLimits = config.ownerLimits;
         this.orderMap = new Map();
-        this.subgraphManager = subgraphManager;
+        this.quoteGas = state.orderManagerConfig.quoteGas;
+        this.ownerLimits = state.orderManagerConfig.ownerLimits;
+        this.subgraphManager = subgraphManager ?? new SubgraphManager(state.subgraphConfig);
     }
 
     /**
-     * Initializes an OrderManager instance by fetches initial orders from subgraphs
-     * @param config - OrderManager configuration
-     * @param state - Shared state instance
+     * Initializes an OrderManager instance by fetching initial orders from subgraphs
+     * @param state - SharedState instance
+     * @param subgraphManager - (optional) SubgraphManager instance
      * @returns OrderManager instance and report of the fetch process
      */
     static async init(
-        config: OrderManagerConfig,
         state: SharedState,
-        subgraphManager: SubgraphManager,
+        subgraphManager?: SubgraphManager,
     ): Promise<{ orderManager: OrderManager; report: PreAssembledSpan }> {
-        const orderManager = new OrderManager(config, state, subgraphManager);
+        const orderManager = new OrderManager(state, subgraphManager);
         const report = await orderManager.fetch();
         return { orderManager, report };
     }

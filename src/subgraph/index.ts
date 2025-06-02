@@ -1,5 +1,4 @@
 import axios from "axios";
-import { AppOptions } from "../config";
 import { statusCheckQuery } from "./query";
 import { PreAssembledSpan } from "../logger";
 import { applyFilters, SgFilter } from "./filter";
@@ -13,32 +12,14 @@ import {
     SubgraphSyncState,
     SubgraphSyncResult,
 } from "./types";
+import { SubgraphConfig } from "./config";
 
-// re-export sg types
+// re-export
 export * from "./types";
+export * from "./config";
 
 // default headers for axios subgraph queries
 const headers = { "Content-Type": "application/json" } as const;
-
-/** Configuration for instantiating SubgraphManager */
-export type SubgraphManagerConfig = {
-    /** List of subgraph urls */
-    subgraphs: string[];
-    /** Subgraph filters */
-    filters?: SgFilter;
-    /** Optional query timeout */
-    requestTimeout?: number;
-};
-export namespace SubgraphManagerConfig {
-    /** Tries to create an instance from yaml config i.e. AppOptions */
-    export function tryFromAppOptions(options: AppOptions): SubgraphManagerConfig {
-        return {
-            subgraphs: Array.from(new Set(options.subgraph)),
-            filters: options.sgFilter,
-            requestTimeout: options.timeout,
-        };
-    }
-}
 
 /**
  * Manages multiple subgraph endpoints, providing methods to fetch, sync, and monitor order edtails.
@@ -57,7 +38,7 @@ export class SubgraphManager {
     /** Optional query timeout */
     requestTimeout?: number;
 
-    constructor(config: SubgraphManagerConfig) {
+    constructor(config: SubgraphConfig) {
         this.subgraphs = config.subgraphs;
         this.filters = config.filters;
         this.requestTimeout = config.requestTimeout;
