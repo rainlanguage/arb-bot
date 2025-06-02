@@ -4,8 +4,8 @@ import { BigNumber } from "ethers";
 import { SharedState } from "../state";
 import { RainSolverSigner } from "./index";
 import { publicActionsL2 } from "viem/op-stack";
+import { privateKeyToAccount } from "viem/accounts";
 import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
-import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import {
     sendTx,
     getTxGas,
@@ -344,13 +344,13 @@ describe("Test getSelfBalance", () => {
 });
 
 describe("Test getWriteSignerFrom", () => {
-    const testPrivateKey = "0x1234567890123456789012345678901234567890123456789012345678901234";
-    const account = privateKeyToAccount(testPrivateKey);
+    const account = privateKeyToAccount(
+        "0x1234567890123456789012345678901234567890123456789012345678901234",
+    );
 
     it("should return same signer when no write RPC is configured", () => {
         const mockState = new SharedState({
             rpcState: new RpcState([{ url: "https://example.com" }]),
-            walletKey: testPrivateKey,
             chainConfig: {
                 id: 1,
                 isSpecialL2: false,
@@ -358,39 +358,31 @@ describe("Test getWriteSignerFrom", () => {
         } as any);
 
         const signer = RainSolverSigner.create(account, mockState);
-        const writeSigner = getWriteSignerFrom(signer, mockState);
+        const spySigner = vi.spyOn(RainSolverSigner, "create");
+        getWriteSignerFrom(signer, mockState);
 
-        expect(writeSigner).toBe(signer);
+        expect(spySigner).toHaveBeenCalledTimes(0);
+
+        spySigner.mockRestore();
     });
 
     it("should return new signer with write RPC when configured", () => {
         const mockState = new SharedState({
             rpcState: new RpcState([{ url: "https://example.com" }]),
             writeRpcState: new RpcState([{ url: "https://example-write.com" }]),
-            walletKey: testPrivateKey,
             chainConfig: {
                 id: 1,
                 isSpecialL2: false,
             },
         } as any);
 
-        // private key wallet
-        let signer: any = RainSolverSigner.create(account, mockState);
-        let writeSigner = getWriteSignerFrom(signer, mockState);
+        const signer: any = RainSolverSigner.create(account, mockState);
+        const spySigner = vi.spyOn(RainSolverSigner, "create");
+        getWriteSignerFrom(signer, mockState);
 
-        expect(writeSigner).not.toBe(signer);
-        expect(writeSigner.state.writeRpc).toEqual(mockState.writeRpc);
+        expect(spySigner).toHaveBeenCalledTimes(1);
+        expect(spySigner).toHaveBeenCalledWith(account, mockState, true);
 
-        // mnemonic wallet
-        const acc = mnemonicToAccount(
-            "test test test test test test test test test test test junk",
-            { addressIndex: 0 },
-        );
-        signer = RainSolverSigner.create(acc, mockState);
-        writeSigner = getWriteSignerFrom(signer, mockState);
-
-        expect(writeSigner).not.toBe(signer);
-        expect(writeSigner.state.writeRpc).toEqual(mockState.writeRpc);
-        expect(writeSigner.account.address).toBe(signer.account.address);
+        spySigner.mockRestore();
     });
 });

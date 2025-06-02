@@ -1,11 +1,9 @@
 import { sleep } from "../utils";
 import { BigNumber } from "ethers";
 import { publicActionsL2 } from "viem/op-stack";
-import { privateKeyToAccount } from "viem/accounts";
 import { SharedState, TokenDetails } from "../state";
 import { RainSolverSigner, EstimateGasCostResult } from ".";
 import {
-    toHex,
     Chain,
     HDAccount,
     PrivateKeyAccount,
@@ -223,13 +221,5 @@ export async function getSelfBalance(signer: RainSolverSigner) {
 export function getWriteSignerFrom(signer: RainSolverSigner, state: SharedState): RainSolverSigner {
     // if state doesnt have write rpc configured, return the signer as is
     if (!state.writeRpc) return signer;
-    return RainSolverSigner.create(
-        privateKeyToAccount(
-            signer.account.source === "hd"
-                ? toHex(signer.account.getHdKey().privateKey!)
-                : (state.walletKey as `0x${string}`),
-        ),
-        state,
-        true,
-    );
+    return RainSolverSigner.create(signer.account, state, true);
 }
