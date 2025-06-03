@@ -1,4 +1,3 @@
-import { WalletManager } from ".";
 import { TokenDetails } from "../state";
 import { RainSolverSigner } from "../signer";
 import { PreAssembledSpan } from "../logger";
@@ -14,8 +13,8 @@ vi.mock("viem", async (importOriginal) => {
 });
 
 describe("Test sweep functions", () => {
-    let mockWalletManager: WalletManager;
-    let mockSigner: RainSolverSigner;
+    let mockFromSigner: RainSolverSigner;
+    let mockToSigner: RainSolverSigner;
     let mockToken: TokenDetails;
 
     beforeEach(() => {
@@ -30,9 +29,9 @@ describe("Test sweep functions", () => {
             decimals: 18,
         };
 
-        // setup mock signer
-        mockSigner = {
-            account: { address: "0xsigner" },
+        // setup mock from signer
+        mockFromSigner = {
+            account: { address: "0xfrom" },
             readContract: vi.fn(),
             writeContract: vi.fn(),
             getSelfBalance: vi.fn(),
@@ -41,76 +40,100 @@ describe("Test sweep functions", () => {
             sendTx: vi.fn(),
         } as any;
 
-        // setup mock wallet manager
-        mockWalletManager = {
-            mainWallet: { address: "0xmain" },
-            fundWallet: vi.fn(),
+        // setup mock to signer
+        mockToSigner = {
+            account: { address: "0xto" },
+            readContract: vi.fn(),
+            writeContract: vi.fn(),
+            getSelfBalance: vi.fn(),
+            estimateGasCost: vi.fn(),
+            waitForTransactionReceipt: vi.fn(),
+            sendTx: vi.fn(),
         } as any;
     });
 
     describe("Test transferTokenFrom", () => {
         it("should return early if token balance is zero", async () => {
-            (mockSigner.readContract as Mock).mockResolvedValue(0n);
+            (mockFromSigner.readContract as Mock).mockResolvedValue(0n);
 
-            const result = await transferTokenFrom.call(mockWalletManager, mockSigner, mockToken);
+            const result = await transferTokenFrom(mockFromSigner, mockToSigner, mockToken);
 
             expect(result).toEqual({ amount: 0n });
-            expect(mockSigner.writeContract).not.toHaveBeenCalled();
+            expect(mockFromSigner.writeContract).not.toHaveBeenCalled();
         });
 
         it("should fund wallet if gas balance is insufficient", async () => {
-            (mockSigner.readContract as Mock).mockResolvedValue(100n);
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(50n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
-            (mockWalletManager.fundWallet as Mock).mockResolvedValue({});
-            (mockSigner.writeContract as Mock).mockResolvedValue("0xhash");
-            (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({ status: "success" });
+            (mockFromSigner.readContract as Mock).mockResolvedValue(100n);
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(50n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
+            (mockToSigner.sendTx as Mock).mockResolvedValue("0xhash");
+            (mockToSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+                status: "success",
+            });
+            (mockFromSigner.writeContract as Mock).mockResolvedValue("0xtransferhash");
+            (mockFromSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+                status: "success",
+            });
 
-            await transferTokenFrom.call(mockWalletManager, mockSigner, mockToken);
+            const result = await transferTokenFrom(mockFromSigner, mockToSigner, mockToken);
 
-            expect(mockWalletManager.fundWallet).toHaveBeenCalledWith(
-                mockSigner.account.address,
-                110n, // 110% of gas cost
-            );
+            expect(mockToSigner.sendTx).toHaveBeenCalledWith({
+                to: mockFromSigner.account.address,
+                value: 110n, // 110% of gas cost
+            });
+            expect(result).toEqual({ amount: 100n, txHash: "0xtransferhash" });
         });
 
         it("should handle funding failure", async () => {
-            (mockSigner.readContract as Mock).mockResolvedValue(100n);
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(50n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
-
-            const mockSpan = new PreAssembledSpan("test");
-            mockSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Funding failed" });
-            (mockWalletManager.fundWallet as Mock).mockRejectedValue(mockSpan);
-
-            await expect(
-                transferTokenFrom.call(mockWalletManager, mockSigner, mockToken),
-            ).rejects.toThrow("Funding failed");
-        });
-
-        it("should successfully transfer tokens", async () => {
-            (mockSigner.readContract as Mock).mockResolvedValue(100n);
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 50n });
-            (mockSigner.writeContract as Mock).mockResolvedValue("0xhash");
-            (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({ status: "success" });
-
-            const result = await transferTokenFrom.call(mockWalletManager, mockSigner, mockToken);
-
-            expect(result).toEqual({ amount: 100n, txHash: "0xhash" });
-        });
-
-        it("should handle failed transfer transaction", async () => {
-            (mockSigner.readContract as Mock).mockResolvedValue(100n);
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 50n });
-            (mockSigner.writeContract as Mock).mockResolvedValue("0xhash");
-            (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+            (mockFromSigner.readContract as Mock).mockResolvedValue(100n);
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(50n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
+            (mockToSigner.sendTx as Mock).mockResolvedValue("0xhash");
+            (mockToSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
                 status: "reverted",
             });
 
             await expect(
-                transferTokenFrom.call(mockWalletManager, mockSigner, mockToken),
+                transferTokenFrom(mockFromSigner, mockToSigner, mockToken),
+            ).rejects.toMatchObject({
+                txHash: "0xhash",
+                error: new Error(
+                    "Failed to fund the wallet to transfer tokens, reason: transaction reverted onchain",
+                ),
+            });
+        });
+
+        it("should successfully transfer tokens", async () => {
+            (mockFromSigner.readContract as Mock).mockResolvedValue(100n);
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 50n });
+            (mockFromSigner.writeContract as Mock).mockResolvedValue("0xhash");
+            (mockFromSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+                status: "success",
+            });
+
+            const result = await transferTokenFrom(mockFromSigner, mockToSigner, mockToken);
+
+            expect(result).toEqual({ amount: 100n, txHash: "0xhash" });
+            expect(mockFromSigner.writeContract).toHaveBeenCalledWith({
+                address: mockToken.address,
+                abi: expect.any(Array),
+                functionName: "transfer",
+                args: [mockToSigner.account.address, 100n],
+            });
+        });
+
+        it("should handle failed transfer transaction", async () => {
+            (mockFromSigner.readContract as Mock).mockResolvedValue(100n);
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 50n });
+            (mockFromSigner.writeContract as Mock).mockResolvedValue("0xhash");
+            (mockFromSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+                status: "reverted",
+            });
+
+            await expect(
+                transferTokenFrom(mockFromSigner, mockToSigner, mockToken),
             ).rejects.toMatchObject({
                 txHash: "0xhash",
                 error: new Error("Failed to transfer tokens, reason: transaction reverted onchain"),
@@ -119,59 +142,64 @@ describe("Test sweep functions", () => {
     });
 
     describe("Test transferRemainingGasFrom", () => {
-        it("should return early if gas balance is zero", async () => {
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(0n);
+        const toAddress = "0xto" as `0x${string}`;
 
-            const result = await transferRemainingGasFrom.call(mockWalletManager, mockSigner);
+        it("should return early if gas balance is zero", async () => {
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(0n);
+
+            const result = await transferRemainingGasFrom(mockFromSigner, toAddress);
 
             expect(result).toEqual({ amount: 0n });
-            expect(mockSigner.sendTx).not.toHaveBeenCalled();
+            expect(mockFromSigner.sendTx).not.toHaveBeenCalled();
         });
 
         it("should return early if balance is less than gas cost", async () => {
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(50n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(50n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
 
-            const result = await transferRemainingGasFrom.call(mockWalletManager, mockSigner);
+            const result = await transferRemainingGasFrom(mockFromSigner, toAddress);
 
             expect(result).toEqual({ amount: 0n });
-            expect(mockSigner.sendTx).not.toHaveBeenCalled();
+            expect(mockFromSigner.sendTx).not.toHaveBeenCalled();
         });
 
         it("should successfully transfer remaining gas", async () => {
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
-            (mockSigner.sendTx as Mock).mockResolvedValue("0xhash");
-            (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({ status: "success" });
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
+            (mockFromSigner.sendTx as Mock).mockResolvedValue("0xhash");
+            (mockFromSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+                status: "success",
+            });
 
-            const result = await transferRemainingGasFrom.call(mockWalletManager, mockSigner);
+            const result = await transferRemainingGasFrom(mockFromSigner, toAddress);
 
+            // With 1000n balance and 100n gas cost, total cost is 102n (102%), remaining is 898n
             expect(result).toMatchObject({
                 txHash: "0xhash",
                 amount: 898n,
             });
-            expect(mockSigner.sendTx).toHaveBeenCalledWith({
-                to: mockWalletManager.mainWallet.address,
+            expect(mockFromSigner.sendTx).toHaveBeenCalledWith({
+                to: toAddress,
                 value: 898n,
             });
         });
 
         it("should handle failed gas transfer transaction", async () => {
-            (mockSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
-            (mockSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
-            (mockSigner.sendTx as Mock).mockResolvedValue("0xhash");
-            (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
+            (mockFromSigner.getSelfBalance as Mock).mockResolvedValue(1000n);
+            (mockFromSigner.estimateGasCost as Mock).mockResolvedValue({ totalGasCost: 100n });
+            (mockFromSigner.sendTx as Mock).mockResolvedValue("0xhash");
+            (mockFromSigner.waitForTransactionReceipt as Mock).mockResolvedValue({
                 status: "reverted",
             });
 
-            await expect(
-                transferRemainingGasFrom.call(mockWalletManager, mockSigner),
-            ).rejects.toMatchObject({
-                txHash: "0xhash",
-                error: new Error(
-                    "Failed to transfer remaining gas, reason: transaction reverted onchain",
-                ),
-            });
+            await expect(transferRemainingGasFrom(mockFromSigner, toAddress)).rejects.toMatchObject(
+                {
+                    txHash: "0xhash",
+                    error: new Error(
+                        "Failed to transfer remaining gas, reason: transaction reverted onchain",
+                    ),
+                },
+            );
         });
     });
 });

@@ -1,19 +1,17 @@
-import { WalletManager } from ".";
 import { TokenDetails } from "../state";
-import { PreAssembledSpan } from "../logger";
 import { RainSolverSigner } from "../signer";
 import { encodeFunctionData, erc20Abi } from "viem";
 
 /**
  * Transfers the given token from the given wallet to the main wallet
- * @param this - The wallet manager
  * @param from - The wallet to transfer the token from
+ * @param to - The wallet to transfer the token to
  * @param token - The token to transfer
  * @returns An object containing transaction hash and transferred amount
  */
 export async function transferTokenFrom(
-    this: WalletManager,
     from: RainSolverSigner,
+    to: RainSolverSigner,
     token: TokenDetails,
 ) {
     // exit early if the wallet has no balance of the given token
@@ -32,20 +30,27 @@ export async function transferTokenFrom(
         data: encodeFunctionData({
             abi: erc20Abi,
             functionName: "transfer",
-            args: [this.mainWallet.address, balance],
+            args: [to.account.address, balance],
         }),
     });
     // fund slightly more to ensure there is enough gas
     const totalCost = (cost.totalGasCost * 110n) / 100n;
     if (totalCost > gasBalance) {
-        await this.fundWallet(from.account.address, totalCost).catch((err) => {
-            if (err instanceof PreAssembledSpan) {
-                throw new Error(err.status?.message);
-            } else {
-                // unreachable, but satisfied
-                throw err;
-            }
+        // fund the wallet
+        const hash = await to.sendTx({ to: from.account.address, value: totalCost });
+        const receipt = await to.waitForTransactionReceipt({
+            hash,
+            confirmations: 4,
+            timeout: 100_000,
         });
+        if (receipt.status !== "success") {
+            throw {
+                txHash: hash,
+                error: new Error(
+                    "Failed to fund the wallet to transfer tokens, reason: transaction reverted onchain",
+                ),
+            };
+        }
     }
 
     // perform the transfer transaction
@@ -53,7 +58,7 @@ export async function transferTokenFrom(
         address: token.address as `0x${string}`,
         abi: erc20Abi,
         functionName: "transfer",
-        args: [this.mainWallet.address, balance],
+        args: [to.account.address, balance],
     });
     const receipt = await from.waitForTransactionReceipt({
         hash,
@@ -72,25 +77,19 @@ export async function transferTokenFrom(
 
 /**
  * Transfers the remaining gas from the given wallet to the main wallet
- * @param this - The wallet manager
  * @param from - The wallet to transfer the remaining gas from
+ * @param to - The wallet to transfer the remaining gas to
  * @returns An object containing transaction hash and transferred amount
  */
-export async function transferRemainingGasFrom(this: WalletManager, from: RainSolverSigner) {
+export async function transferRemainingGasFrom(from: RainSolverSigner, to: `0x${string}`) {
     const balance = await from.getSelfBalance();
     if (balance <= 0n) return { amount: 0n };
 
-    const cost = await from.estimateGasCost({
-        to: this.mainWallet.address,
-        value: 0n,
-    });
+    const cost = await from.estimateGasCost({ to, value: 0n });
     const totalCost = (cost.totalGasCost * 102n) / 100n;
     if (balance > totalCost) {
         const amount = balance - totalCost;
-        const hash = await from.sendTx({
-            to: this.mainWallet.address,
-            value: amount,
-        });
+        const hash = await from.sendTx({ to, value: amount });
         const receipt = await from.waitForTransactionReceipt({
             hash,
             confirmations: 4,

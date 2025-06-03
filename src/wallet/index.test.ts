@@ -507,7 +507,7 @@ describe("Test WalletManager", () => {
             walletManager.transferTokenFrom(workerSigner, mockToken).catch(() => {});
 
             expect(spy).toHaveBeenCalledTimes(1);
-            expect(spy).toHaveBeenCalledWith(workerSigner, mockToken);
+            expect(spy).toHaveBeenCalledWith(workerSigner, walletManager.mainSigner, mockToken);
 
             spy.mockRestore();
         });
@@ -520,7 +520,7 @@ describe("Test WalletManager", () => {
             walletManager.transferRemainingGasFrom(workerSigner).catch(() => {});
 
             expect(spy).toHaveBeenCalledTimes(1);
-            expect(spy).toHaveBeenCalledWith(workerSigner);
+            expect(spy).toHaveBeenCalledWith(workerSigner, walletManager.mainWallet.address);
 
             spy.mockRestore();
         });

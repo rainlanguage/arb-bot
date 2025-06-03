@@ -255,7 +255,7 @@ export class WalletManager {
      * @returns An object containing transaction hash and transferred amount
      */
     async transferTokenFrom(wallet: RainSolverSigner, token: TokenDetails) {
-        return transferTokenFrom.call(this, wallet, token);
+        return transferTokenFrom(wallet, this.mainSigner, token);
     }
 
     /**
@@ -264,7 +264,7 @@ export class WalletManager {
      * @returns An object containing transaction hash and transferred amount
      */
     async transferRemainingGasFrom(wallet: RainSolverSigner) {
-        return transferRemainingGasFrom.call(this, wallet);
+        return transferRemainingGasFrom(wallet, this.mainWallet.address);
     }
 
     /**
