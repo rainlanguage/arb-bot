@@ -394,7 +394,7 @@ export class WalletManager {
      * received amount min, status, and expected gas cost
      */
     async convertToGas(token: TokenDetails, swapCostMultiplier?: bigint) {
-        return convertToGas(this.mainSigner, token, this.state, swapCostMultiplier);
+        return convertToGas(this.mainSigner, token, swapCostMultiplier);
     }
 
     /**

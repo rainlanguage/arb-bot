@@ -534,12 +534,7 @@ describe("Test WalletManager", () => {
             walletManager.convertToGas(mockToken, 10n).catch(() => {});
 
             expect(spy).toHaveBeenCalledTimes(1);
-            expect(spy).toHaveBeenCalledWith(
-                walletManager.mainSigner,
-                mockToken,
-                singleWalletState,
-                10n,
-            );
+            expect(spy).toHaveBeenCalledWith(walletManager.mainSigner, mockToken, 10n);
 
             spy.mockRestore();
         });
