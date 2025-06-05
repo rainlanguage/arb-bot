@@ -77,6 +77,7 @@ export namespace RainSolverSigner {
             transport: rainSolverTransport(state.rpc, state.rainSolverTransportConfig),
         })
             .extend(publicActions)
+            .extend(() => ({ state }))
             .extend(
                 RainSolverSignerActions.fromSharedState(state) as any,
             ) as RainSolverSigner<account>;
