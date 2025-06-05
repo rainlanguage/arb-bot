@@ -83,6 +83,7 @@ export namespace RainSolverSigner {
             ),
         })
             .extend(publicActions)
+            .extend(() => ({ state }))
             .extend(
                 RainSolverSignerActions.fromSharedState(state) as any,
             ) as RainSolverSigner<account>;
