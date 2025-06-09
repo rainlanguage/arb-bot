@@ -57,6 +57,14 @@ describe("Test getMarketPrice", () => {
     });
 
     describe("happy", () => {
+        it("should return 1 if from/to tokens are the same", async () => {
+            const result = await getMarketPrice.call(mockSharedState, mockFromToken, mockFromToken);
+            expect(result).toEqual({
+                price: "1",
+                amountOut: "1",
+            });
+        });
+
         it("should call dataFetcher methods with correct parameters", async () => {
             const mockRoute = {
                 status: "Success",

@@ -16,6 +16,12 @@ export async function getMarketPrice(
     toToken: Token,
     blockNumber?: bigint,
 ): Promise<{ price: string; amountOut: string } | undefined> {
+    if (fromToken.address.toLowerCase() === toToken.address.toLowerCase()) {
+        return {
+            price: "1",
+            amountOut: "1",
+        };
+    }
     const amountIn = parseUnits("1", fromToken.decimals);
     const amountInFixed = parseUnits("1", 18);
     try {
