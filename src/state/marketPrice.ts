@@ -18,26 +18,32 @@ export async function getMarketPrice(
 ): Promise<{ price: string; amountOut: string } | undefined> {
     const amountIn = parseUnits("1", fromToken.decimals);
     const amountInFixed = parseUnits("1", 18);
-    await this.dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, { blockNumber });
-    const pcMap = this.dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
-    const route = Router.findBestRoute(
-        pcMap,
-        this.chainConfig.id as ChainId,
-        fromToken,
-        amountIn,
-        toToken,
-        Number(this.gasPrice),
-        undefined,
-        RPoolFilter,
-    );
-    if (route.status == "NoWay") {
-        return undefined;
-    } else {
-        const rateFixed = scale18(route.amountOutBI, toToken.decimals);
-        const price = rateFixed.mul(ONE18).div(amountInFixed).toBigInt();
-        return {
-            price: formatUnits(price, 18),
-            amountOut: formatUnits(route.amountOutBI, toToken.decimals),
-        };
+    try {
+        await this.dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, {
+            blockNumber,
+        });
+        const pcMap = this.dataFetcher.getCurrentPoolCodeMap(fromToken, toToken);
+        const route = Router.findBestRoute(
+            pcMap,
+            this.chainConfig.id as ChainId,
+            fromToken,
+            amountIn,
+            toToken,
+            Number(this.gasPrice),
+            undefined,
+            RPoolFilter,
+        );
+        if (route.status == "NoWay") {
+            return;
+        } else {
+            const ratioFixed18 = scale18(route.amountOutBI, toToken.decimals);
+            const price = ratioFixed18.mul(ONE18).div(amountInFixed).toBigInt();
+            return {
+                price: formatUnits(price, 18),
+                amountOut: formatUnits(route.amountOutBI, toToken.decimals),
+            };
+        }
+    } catch (error) {
+        return;
     }
 }
