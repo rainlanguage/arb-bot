@@ -97,6 +97,82 @@ describe("Test fundVault", () => {
         };
     });
 
+    it("should successfully fund vault without gas swap when signer has sufficient token balance", async () => {
+        (mockSigner.readContract as Mock)
+            .mockResolvedValueOnce(parseUnits("50", 18)) // vault balance below threshold
+            .mockResolvedValueOnce(18) // decimals
+            .mockResolvedValueOnce("TEST") // symbol
+            .mockResolvedValueOnce(parseUnits("2000", 18)) // sufficient token balance
+            .mockResolvedValueOnce(parseUnits("2000", 18)); // sufficient allowance
+
+        (mockSigner.writeContract as Mock).mockResolvedValue("0xdeposit");
+        (mockSigner.waitForTransactionReceipt as Mock).mockResolvedValue({ status: "success" });
+
+        const result = await fundVault(vaultDetails, mockSigner);
+
+        expect(result).toEqual({ txHash: "0xdeposit" });
+        expect(mockSigner.writeContract as Mock).toHaveBeenCalledWith({
+            address: vaultDetails.orderbook,
+            abi: expect.any(Array),
+            functionName: "deposite2",
+            args: [
+                vaultDetails.token,
+                BigInt(vaultDetails.vaultId),
+                parseUnits(vaultDetails.topupAmount, 18),
+                [],
+            ],
+        });
+        expect(mockSigner.sendTx as Mock).not.toHaveBeenCalled(); // No swap should occur
+    });
+
+    it("should successfully fund vault with gas swap when signer has insufficient token balance", async () => {
+        (mockSigner.readContract as Mock)
+            .mockResolvedValueOnce(parseUnits("50", 18)) // vault balance below threshold
+            .mockResolvedValueOnce(18) // decimals
+            .mockResolvedValueOnce("TEST") // symbol
+            .mockResolvedValueOnce(parseUnits("100", 18)) // insufficient token balance
+            .mockResolvedValueOnce(parseUnits("2000", 18)); // sufficient allowance after swap
+
+        vi.mocked(Router.routeProcessor4Params).mockReturnValue({
+            data: "0xswapdata",
+            amountOutMin: parseUnits("950", 18),
+        } as any);
+
+        (mockSigner.sendTx as Mock).mockResolvedValue("0xswap");
+        (mockSigner.writeContract as Mock).mockResolvedValue("0xdeposit");
+        (mockSigner.waitForTransactionReceipt as Mock)
+            .mockResolvedValueOnce({ status: "success" }) // swap receipt
+            .mockResolvedValueOnce({ status: "success" }); // deposit receipt
+
+        const result = await fundVault(vaultDetails, mockSigner);
+
+        expect(result).toEqual({ txHash: "0xdeposit" });
+
+        // verify swap occurred
+        expect(mockSigner.sendTx as Mock).toHaveBeenCalledWith({
+            to: "0xrp4",
+            data: "0xswapdata",
+            value: parseUnits("1", 18), // from mocked findMultiRouteExactOut
+        });
+
+        // verify deposit occurred
+        expect(mockSigner.writeContract as Mock).toHaveBeenCalledWith({
+            address: vaultDetails.orderbook,
+            abi: expect.any(Array),
+            functionName: "deposite2",
+            args: [
+                vaultDetails.token,
+                BigInt(vaultDetails.vaultId),
+                parseUnits(vaultDetails.topupAmount, 18),
+                [],
+            ],
+        });
+
+        // verify dataFetcher methods were called for swap preparation
+        expect(mockSigner.state.dataFetcher.updatePools).toHaveBeenCalled();
+        expect(mockSigner.state.dataFetcher.fetchPoolsForToken).toHaveBeenCalled();
+    });
+
     it("should fetch token details and cache them when not available", async () => {
         (mockSigner.readContract as Mock)
             .mockResolvedValueOnce(parseUnits("50", 18)) // vault balance
