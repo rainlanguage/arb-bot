@@ -6,7 +6,7 @@ import { processPair } from "../../processOrders";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
 import { finalizeRound, initializeRound, Settlement } from "./round";
-import { ProcessOrderStatus, ProcessOrderError } from "../types";
+import { ProcessOrderStatus, ProcessOrderHaltReason } from "../types";
 
 vi.mock("../../processOrders", () => ({
     processPair: vi.fn().mockResolvedValue(vi.fn()),
@@ -607,7 +607,7 @@ describe("Test finalizeRound", () => {
     describe("error handling", () => {
         it("should handle FailedToQuote error without error details", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.FailedToQuote,
+                reason: ProcessOrderHaltReason.FailedToQuote,
                 spanAttributes: { provider: "chainlink" },
                 report: { status: "failed" },
             });
@@ -626,7 +626,7 @@ describe("Test finalizeRound", () => {
             expect(result.results[0]).toEqual({
                 status: "failed",
                 error: undefined,
-                reason: ProcessOrderError.FailedToQuote,
+                reason: ProcessOrderHaltReason.FailedToQuote,
             });
             expect(result.reports[0].status?.code).toBe(SpanStatusCode.OK);
             expect(result.reports[0].status?.message).toBe("failed to quote order: 0xabc");
@@ -635,7 +635,7 @@ describe("Test finalizeRound", () => {
         it("should handle FailedToQuote error with error details", async () => {
             const error = new Error("quote service down");
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.FailedToQuote,
+                reason: ProcessOrderHaltReason.FailedToQuote,
                 spanAttributes: { "retry.count": "3" },
                 report: { status: "failed" },
                 error,
@@ -653,7 +653,7 @@ describe("Test finalizeRound", () => {
             const result: finalizeRoundType = await finalizeRound.call(mockSolver, settlements);
 
             expect(result.results[0].error).toBe(error);
-            expect(result.results[0].reason).toBe(ProcessOrderError.FailedToQuote);
+            expect(result.results[0].reason).toBe(ProcessOrderHaltReason.FailedToQuote);
             expect(result.reports[0].status?.code).toBe(SpanStatusCode.OK);
             expect(result.reports[0].status?.message).toContain("failed to quote order: 0xdef");
             expect(result.reports[0].status?.message).toContain("quote service down");
@@ -662,7 +662,7 @@ describe("Test finalizeRound", () => {
         it("should handle FailedToGetPools error with medium severity", async () => {
             const error = new Error("pool fetch failed");
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.FailedToGetPools,
+                reason: ProcessOrderHaltReason.FailedToGetPools,
                 spanAttributes: { "pool.count": "0" },
                 report: { status: "failed" },
                 error,
@@ -694,7 +694,7 @@ describe("Test finalizeRound", () => {
         it("should handle FailedToGetEthPrice error with OK status", async () => {
             const error = new Error("eth price unavailable");
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.FailedToGetEthPrice,
+                reason: ProcessOrderHaltReason.FailedToGetEthPrice,
                 spanAttributes: {},
                 report: { status: "failed" },
                 error,
@@ -720,7 +720,7 @@ describe("Test finalizeRound", () => {
 
         it("should handle FailedToUpdatePools error", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.FailedToUpdatePools,
+                reason: ProcessOrderHaltReason.FailedToUpdatePools,
                 spanAttributes: { "test.attr": "value" },
                 report: { status: "failed" },
                 error: new Error("update failed"),
@@ -749,7 +749,7 @@ describe("Test finalizeRound", () => {
         it("should handle TxFailed error with timeout (low severity)", async () => {
             const timeoutError = new TimeoutError({ body: {}, url: "http://example.com" });
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxFailed,
+                reason: ProcessOrderHaltReason.TxFailed,
                 spanAttributes: { "tx.hash": "0x123" },
                 report: { status: "failed" },
                 error: timeoutError,
@@ -769,12 +769,13 @@ describe("Test finalizeRound", () => {
             expect(result.reports[0].attributes["severity"]).toBe(ErrorSeverity.LOW);
             expect(result.reports[0].attributes["unsuccessfulClear"]).toBe(true);
             expect(result.reports[0].attributes["txSendFailed"]).toBe(true);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.ERROR);
         });
 
         it("should handle TxFailed error without timeout (high severity)", async () => {
             const error = new Error("gas too low");
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxFailed,
+                reason: ProcessOrderHaltReason.TxFailed,
                 spanAttributes: {},
                 report: { status: "failed" },
                 error,
@@ -797,7 +798,7 @@ describe("Test finalizeRound", () => {
 
         it("should handle TxFailed error without error details", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxFailed,
+                reason: ProcessOrderHaltReason.TxFailed,
                 spanAttributes: { "test.attr": "value" },
                 report: { status: "failed" },
             });
@@ -815,11 +816,12 @@ describe("Test finalizeRound", () => {
 
             expect(result.reports[0].attributes["severity"]).toBe(ErrorSeverity.HIGH);
             expect(result.reports[0].status?.message).toBe("failed to submit the transaction");
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.ERROR);
         });
 
         it("should handle TxReverted error with snapshot", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxReverted,
+                reason: ProcessOrderHaltReason.TxReverted,
                 spanAttributes: { "block.number": "12345" },
                 report: { status: "reverted" },
                 error: { snapshot: "Transaction reverted: INSUFFICIENT_LIQUIDITY" },
@@ -845,7 +847,7 @@ describe("Test finalizeRound", () => {
 
         it("should handle TxReverted error with known error (no high severity)", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxReverted,
+                reason: ProcessOrderHaltReason.TxReverted,
                 spanAttributes: { "test.attr": "value" },
                 report: { status: "failed" },
                 error: { err: new Error("INSUFFICIENT_LIQUIDITY") }, // This is typically a known error
@@ -869,7 +871,7 @@ describe("Test finalizeRound", () => {
 
         it("should handle TxReverted error with txNoneNodeError flag (high severity)", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxReverted,
+                reason: ProcessOrderHaltReason.TxReverted,
                 spanAttributes: { txNoneNodeError: true },
                 report: { status: "reverted" },
                 error: { err: new Error("unknown revert") },
@@ -895,7 +897,7 @@ describe("Test finalizeRound", () => {
             const timeoutError = new TimeoutError({ body: {}, url: "http://example.com" });
 
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxMineFailed,
+                reason: ProcessOrderHaltReason.TxMineFailed,
                 spanAttributes: { "test.attr": "value" },
                 report: { status: "failed" },
                 error: timeoutError,
@@ -915,11 +917,12 @@ describe("Test finalizeRound", () => {
             expect(result.reports[0].attributes["severity"]).toBe(ErrorSeverity.LOW);
             expect(result.reports[0].attributes["unsuccessfulClear"]).toBe(true);
             expect(result.reports[0].attributes["txMineFailed"]).toBe(true);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.ERROR);
         });
 
         it("should handle TxMineFailed error without timeout", async () => {
             const mockSettle = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxMineFailed,
+                reason: ProcessOrderHaltReason.TxMineFailed,
                 spanAttributes: { "test.attr": "value" },
                 report: { status: "failed" },
                 error: new Error("rpc error"),
@@ -937,6 +940,7 @@ describe("Test finalizeRound", () => {
             const result: finalizeRoundType = await finalizeRound.call(mockSolver, settlements);
 
             expect(result.reports[0].attributes["severity"]).toBe(ErrorSeverity.HIGH);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.ERROR);
         });
 
         it("should handle unexpected error and set reason", async () => {
@@ -961,7 +965,8 @@ describe("Test finalizeRound", () => {
             expect(result.reports[0].attributes["severity"]).toBe(ErrorSeverity.HIGH);
             expect(result.reports[0].exception?.exception).toBeInstanceOf(Error);
             expect((result.reports[0].exception?.exception as any)?.message).toBe("unexpected");
-            expect(result.results[0].reason).toBe(ProcessOrderError.UnexpectedError);
+            expect(result.results[0].reason).toBe(ProcessOrderHaltReason.UnexpectedError);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.ERROR);
         });
     });
 
@@ -974,7 +979,7 @@ describe("Test finalizeRound", () => {
             });
 
             const mockSettle2 = vi.fn().mockRejectedValue({
-                reason: ProcessOrderError.TxFailed,
+                reason: ProcessOrderHaltReason.TxFailed,
                 spanAttributes: { failed: true },
                 report: { status: "failed", txUrl: "url2" },
                 error: new Error("tx failed"),
@@ -1006,12 +1011,14 @@ describe("Test finalizeRound", () => {
             expect(result.results[0].status).toBe(ProcessOrderStatus.FoundOpportunity);
             expect(result.reports[0].name).toBe("order_ETH/USDC");
             expect(result.reports[0].attributes["success"]).toBe(true);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.OK);
 
             // Assert second result (error)
             expect(result.results[1].txUrl).toBe("url2");
-            expect(result.results[1].reason).toBe(ProcessOrderError.TxFailed);
+            expect(result.results[1].reason).toBe(ProcessOrderHaltReason.TxFailed);
             expect(result.reports[1].name).toBe("order_BTC/USDT");
             expect(result.reports[1].attributes["failed"]).toBe(true);
+            expect(result.reports[1].status?.code).toBe(SpanStatusCode.ERROR);
 
             // Assert gas costs only added for successful settlement
             expect(mockSolver.state.gasCosts).toHaveLength(1);
@@ -1040,6 +1047,7 @@ describe("Test finalizeRound", () => {
             expect(result.reports[0].name).toBe("order_ETH/USDC");
             expect(result.reports[0].attributes["details.owner"]).toBe("0x123");
             expect(result.reports[0].endTime).toBeTypeOf("number");
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.OK);
         });
 
         it("should extend span attributes from settlement result", async () => {
@@ -1062,6 +1070,7 @@ describe("Test finalizeRound", () => {
 
             expect(result.reports[0].attributes["custom.attr"]).toBe("test");
             expect(result.reports[0].attributes["another.attr"]).toBe(123);
+            expect(result.reports[0].status?.code).toBe(SpanStatusCode.OK);
         });
     });
 });

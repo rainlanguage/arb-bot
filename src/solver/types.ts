@@ -1,5 +1,5 @@
 /** Specifies reason that order process halted with failure */
-export enum ProcessOrderError {
+export enum ProcessOrderHaltReason {
     FailedToQuote = 1,
     FailedToGetEthPrice = 2,
     FailedToGetPools = 3,

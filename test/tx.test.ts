@@ -1,7 +1,7 @@
 import { assert } from "chai";
 import fixtures from "./data";
 import { ethers } from "ethers";
-import { ProcessOrderError, ProcessOrderStatus } from "../src/solver/types";
+import { ProcessOrderHaltReason, ProcessOrderStatus } from "../src/solver/types";
 import { InsufficientFundsError, TransactionReceipt } from "viem";
 import { handleReceipt, handleTransaction } from "../src/tx";
 
@@ -170,7 +170,7 @@ describe("Test tx", async function () {
             const x = {
                 error: new InsufficientFundsError(),
                 gasCost: undefined,
-                reason: ProcessOrderError.TxFailed,
+                reason: ProcessOrderHaltReason.TxFailed,
                 report: {
                     buyToken: orderPairObject.buyToken,
                     sellToken: orderPairObject.sellToken,
@@ -314,7 +314,7 @@ describe("Test tx", async function () {
             assert.fail("expected to fail, but resolved");
         } catch (e) {
             const expected = {
-                reason: ProcessOrderError.TxReverted,
+                reason: ProcessOrderHaltReason.TxReverted,
                 error: {
                     err: "transaction reverted onchain, account ran out of gas for transaction gas cost",
                     nodeError: false,

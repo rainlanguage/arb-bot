@@ -15,7 +15,7 @@ import {
 } from "./utils";
 import { BundledOrders } from "./order";
 import { RainSolverSigner, RawTransaction } from "./signer";
-import { ProcessOrderError, ProcessOrderStatus } from "./solver/types";
+import { ProcessOrderHaltReason, ProcessOrderStatus } from "./solver/types";
 
 /**
  * Handles the given transaction, starts by sending the transaction and
@@ -69,7 +69,7 @@ export async function handleTransaction(
             );
             spanAttributes["txNoneNodeError"] = !containsNodeError(e as BaseError);
             result.error = e;
-            result.reason = ProcessOrderError.TxFailed;
+            result.reason = ProcessOrderHaltReason.TxFailed;
             return async () => {
                 throw result;
             };
@@ -132,7 +132,7 @@ export async function handleTransaction(
                 withBigintSerializer,
             );
             spanAttributes["txNoneNodeError"] = !containsNodeError(e);
-            result.reason = ProcessOrderError.TxMineFailed;
+            result.reason = ProcessOrderHaltReason.TxMineFailed;
             throw result;
         }
     };
@@ -288,7 +288,7 @@ export async function handleReceipt(
             sellToken: orderPairObject.sellToken,
             actualGasCost: ethers.utils.formatUnits(actualGasCost),
         };
-        result.reason = ProcessOrderError.TxReverted;
+        result.reason = ProcessOrderHaltReason.TxReverted;
         return Promise.reject(result);
     }
 }

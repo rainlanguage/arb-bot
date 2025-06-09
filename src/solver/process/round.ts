@@ -5,7 +5,7 @@ import { processPair } from "../../processOrders";
 import { arbAbis, orderbookAbi } from "../../abis";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { Report, ProcessPairResult } from "../../types";
-import { ProcessOrderError, ProcessOrderStatus } from "../types";
+import { ProcessOrderHaltReason, ProcessOrderStatus } from "../types";
 import { ErrorSeverity, errorSnapshot, isTimeout, KnownErrors } from "../../error";
 
 /** Represents a settlement for a processed order */
@@ -158,9 +158,9 @@ export async function finalizeRound(
             // set the span attributes with the values gathered at processPair()
             report.extendAttrs(e.spanAttributes);
 
-            // act based on error reason
+            // Finalize the reports based on error type
             switch (e.reason) {
-                case ProcessOrderError.FailedToQuote: {
+                case ProcessOrderHaltReason.FailedToQuote: {
                     let message = "failed to quote order: " + orderHash;
                     if (e.error) {
                         message = errorSnapshot(message, e.error);
@@ -168,7 +168,7 @@ export async function finalizeRound(
                     report.setStatus({ code: SpanStatusCode.OK, message });
                     break;
                 }
-                case ProcessOrderError.FailedToGetPools: {
+                case ProcessOrderHaltReason.FailedToGetPools: {
                     let message = pair + ": failed to get pool details";
                     if (e.error) {
                         message = errorSnapshot(message, e.error);
@@ -178,7 +178,7 @@ export async function finalizeRound(
                     report.setStatus({ code: SpanStatusCode.ERROR, message });
                     break;
                 }
-                case ProcessOrderError.FailedToGetEthPrice: {
+                case ProcessOrderHaltReason.FailedToGetEthPrice: {
                     // set OK status because a token might not have a pool and as a result eth price cannot
                     // be fetched for it and if it is set to ERROR it will constantly error on each round
                     // resulting in lots of false positives
@@ -190,7 +190,7 @@ export async function finalizeRound(
                     report.setStatus({ code: SpanStatusCode.OK, message });
                     break;
                 }
-                case ProcessOrderError.FailedToUpdatePools: {
+                case ProcessOrderHaltReason.FailedToUpdatePools: {
                     let message = pair + ": failed to update pool details by event data";
                     if (e.error) {
                         message = errorSnapshot(message, e.error);
@@ -199,7 +199,7 @@ export async function finalizeRound(
                     report.setStatus({ code: SpanStatusCode.ERROR, message });
                     break;
                 }
-                case ProcessOrderError.TxFailed: {
+                case ProcessOrderHaltReason.TxFailed: {
                     // failed to submit the tx to mempool, this can happen for example when rpc rejects
                     // the tx for example because of low gas or invalid parameters, etc
                     let message = "failed to submit the transaction";
@@ -219,7 +219,7 @@ export async function finalizeRound(
                     report.setAttr("txSendFailed", true);
                     break;
                 }
-                case ProcessOrderError.TxReverted: {
+                case ProcessOrderHaltReason.TxReverted: {
                     // Tx reverted onchain, this can happen for example
                     // because of mev front running or false positive opportunities, etc
                     let message = "";
@@ -242,7 +242,7 @@ export async function finalizeRound(
                     report.setAttr("txReverted", true);
                     break;
                 }
-                case ProcessOrderError.TxMineFailed: {
+                case ProcessOrderHaltReason.TxMineFailed: {
                     // tx failed to get included onchain, this can happen as result of timeout, rpc dropping the tx, etc
                     let message = "transaction failed";
                     if (e.error) {
@@ -273,7 +273,7 @@ export async function finalizeRound(
                     report.setStatus({ code: SpanStatusCode.ERROR, message });
 
                     // set the reason explicitly to unexpected error
-                    e.reason = ProcessOrderError.UnexpectedError;
+                    e.reason = ProcessOrderHaltReason.UnexpectedError;
                 }
             }
 

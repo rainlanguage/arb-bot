@@ -12,7 +12,7 @@ import { BotConfig } from "./types";
 import { SpanAttrs, ProcessPairResult } from "./types";
 import { BundledOrders, quoteSingleOrder } from "./order";
 import { RainSolverSigner } from "./signer";
-import { ProcessOrderError, ProcessOrderStatus } from "./solver/types";
+import { ProcessOrderHaltReason, ProcessOrderStatus } from "./solver/types";
 
 /**
  * Processes an pair order by trying to clear it against an onchain liquidity and reporting the result
@@ -93,7 +93,7 @@ export async function processPair(args: {
         }
     } catch (e) {
         result.error = e;
-        result.reason = ProcessOrderError.FailedToQuote;
+        result.reason = ProcessOrderHaltReason.FailedToQuote;
         return async () => {
             throw result;
         };
@@ -120,7 +120,7 @@ export async function processPair(args: {
         await dataFetcher.updatePools(dataFetcherBlockNumber);
     } catch (e) {
         if (typeof e !== "string" || !e.includes("fetchPoolsForToken")) {
-            result.reason = ProcessOrderError.FailedToUpdatePools;
+            result.reason = ProcessOrderHaltReason.FailedToUpdatePools;
             result.error = e;
             return async () => {
                 throw result;
@@ -140,7 +140,7 @@ export async function processPair(args: {
         }
         await dataFetcher.fetchPoolsForToken(fromToken, toToken, PoolBlackList, options);
     } catch (e) {
-        result.reason = ProcessOrderError.FailedToGetPools;
+        result.reason = ProcessOrderHaltReason.FailedToGetPools;
         result.error = e;
         return async () => {
             throw result;
@@ -192,7 +192,7 @@ export async function processPair(args: {
                 inputToEthPrice = "0";
                 outputToEthPrice = "0";
             } else {
-                result.reason = ProcessOrderError.FailedToGetEthPrice;
+                result.reason = ProcessOrderHaltReason.FailedToGetEthPrice;
                 result.error = "no-route";
                 return async () => {
                     return Promise.reject(result);
@@ -207,7 +207,7 @@ export async function processPair(args: {
             inputToEthPrice = "0";
             outputToEthPrice = "0";
         } else {
-            result.reason = ProcessOrderError.FailedToGetEthPrice;
+            result.reason = ProcessOrderHaltReason.FailedToGetEthPrice;
             result.error = e;
             return async () => {
                 throw result;

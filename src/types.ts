@@ -6,7 +6,7 @@ import { AppOptions } from "./config";
 import { Token } from "sushi/currency";
 import { Dispair } from "./state";
 import { RainSolverSigner, RawTransaction } from "./signer";
-import { ProcessOrderError, ProcessOrderStatus } from "./solver/types";
+import { ProcessOrderHaltReason, ProcessOrderStatus } from "./solver/types";
 
 export type BotError = {
     snapshot: string;
@@ -41,7 +41,7 @@ export type Report = {
     clearedOrders?: string[];
     income?: BigNumber;
     netProfit?: BigNumber;
-    reason?: ProcessOrderError;
+    reason?: ProcessOrderHaltReason;
     error?: any;
 };
 
@@ -53,7 +53,7 @@ export type RoundReport = {
 export type SpanAttrs = Record<string, AttributeValue>;
 
 export type ProcessPairResult = {
-    reason?: ProcessOrderError;
+    reason?: ProcessOrderHaltReason;
     error?: any;
     report: Report;
     gasCost?: BigNumber;
