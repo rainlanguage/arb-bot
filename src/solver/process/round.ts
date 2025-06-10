@@ -57,7 +57,6 @@ export async function initializeRound(this: RainSolver) {
 
                 const pair = `${pairOrders.buyTokenSymbol}/${pairOrders.sellTokenSymbol}`;
                 const report = new PreAssembledSpan(`checkpoint_${pair}`);
-                // const span = tracer.startSpan(`checkpoint_${pair}`, undefined, ctx);
                 report.extendAttrs({
                     "details.pair": pair,
                     "details.orderHash": orderDetails.takeOrders[0].id,
@@ -70,17 +69,12 @@ export async function initializeRound(this: RainSolver) {
                 // to later settle without needing to pause if
                 // there are more signers available
                 const settle = await this.processOrder({
-                    // config: this.config,
                     orderDetails,
-                    // viemClient: this.state.client,
-                    // dataFetcher: this.state.dataFetcher,
                     signer,
                     arb,
                     genericArb,
                     orderbook,
-                    // pair,
                     orderbooksOrders: orders,
-                    // state: this.state,
                 });
                 settlements.push({
                     settle,
