@@ -383,14 +383,14 @@ export async function findOpp({
                     gasPrice,
                     arb,
                     inputToEthPrice:
-                        inputToEthPrice ??
+                        inputToEthPrice ||
                         inputToEthPriceFallback(
                             orderPairObject.takeOrders[0].quote!.ratio,
                             opposingOrders.takeOrders[0].quote!.ratio,
                             outputToEthPrice,
                         ),
                     outputToEthPrice:
-                        outputToEthPrice ??
+                        outputToEthPrice ||
                         outputToEthPriceFallback(
                             orderPairObject.takeOrders[0].quote!.ratio,
                             opposingOrders.takeOrders[0].quote!.ratio,
