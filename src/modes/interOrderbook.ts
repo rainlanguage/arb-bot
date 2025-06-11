@@ -51,6 +51,8 @@ export async function dryrun({
         reason: undefined,
         spanAttributes,
     };
+    spanAttributes["inputToEthPrice"] = inputToEthPrice;
+    spanAttributes["outputToEthPrice"] = outputToEthPrice;
 
     const maximumInput = scale18To(maximumInputFixed, orderPairObject.sellTokenDecimals);
     spanAttributes["maxInput"] = maximumInput.toString();

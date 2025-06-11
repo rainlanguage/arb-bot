@@ -572,8 +572,8 @@ export async function processPair(args: {
     }
 
     // record input/output to eth price in span attributes
-    spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
-    spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
+    spanAttributes["details.inputToEthPrice"] = inputToEthPrice || "no-way";
+    spanAttributes["details.outputToEthPrice"] = outputToEthPrice || "no-way";
 
     // record gas price for otel
     await getGasPrice(config, state);

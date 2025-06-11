@@ -57,6 +57,9 @@ export async function dryrun({
         reason: undefined,
         spanAttributes,
     };
+    spanAttributes["against"] = opposingOrder.id;
+    spanAttributes["inputToEthPrice"] = inputToEthPrice;
+    spanAttributes["outputToEthPrice"] = outputToEthPrice;
 
     const inputBountyVaultId = "1";
     const outputBountyVaultId = "1";
@@ -364,7 +367,12 @@ export async function findOpp({
         .sort((a, b) =>
             a.quote!.ratio.lt(b.quote!.ratio) ? -1 : a.quote!.ratio.gt(b.quote!.ratio) ? 1 : 0,
         );
-    if (!opposingOrders || !opposingOrders.length) throw undefined;
+
+    // return early if no opposing orders found
+    if (!opposingOrders || !opposingOrders.length) {
+        spanAttributes["error"] = "No opposing orders found";
+        return Promise.reject(result);
+    }
 
     const allNoneNodeErrors: (string | undefined)[] = [];
     const inputBalance = scale18(
@@ -414,7 +422,7 @@ export async function findOpp({
             });
         } catch (e: any) {
             allNoneNodeErrors.push(e?.value?.noneNodeError);
-            extendSpanAttributes(spanAttributes, e.spanAttributes, "intraOrderbook." + i);
+            extendSpanAttributes(spanAttributes, e.spanAttributes, i.toString());
         }
     }
     const noneNodeErrors = allNoneNodeErrors.filter((v) => !!v);
