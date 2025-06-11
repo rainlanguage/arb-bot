@@ -524,7 +524,8 @@ export async function processPair(args: {
     }
 
     // get in/out tokens to eth price
-    let inputToEthPrice, outputToEthPrice;
+    let inputToEthPrice = "";
+    let outputToEthPrice = "";
     try {
         const options = {
             fetchPoolsTimeout: 30000,
@@ -533,51 +534,46 @@ export async function processPair(args: {
         if (isE2eTest && (config as any).testBlockNumber) {
             (options as any).blockNumber = (config as any).testBlockNumber;
         }
-        inputToEthPrice = await getEthPrice(
-            config,
-            orderPairObject.buyToken,
-            orderPairObject.buyTokenDecimals,
-            gasPrice,
-            dataFetcher,
-            options,
-            false,
-        );
-        outputToEthPrice = await getEthPrice(
-            config,
-            orderPairObject.sellToken,
-            orderPairObject.sellTokenDecimals,
-            gasPrice,
-            dataFetcher,
-            options,
-            false,
-        );
-        if (!inputToEthPrice || !outputToEthPrice) {
-            if (config.gasCoveragePercentage === "0") {
-                inputToEthPrice = "0";
-                outputToEthPrice = "0";
-            } else {
-                result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
-                result.error = "no-route";
-                return async () => {
-                    return Promise.reject(result);
-                };
-            }
-        } else {
-            spanAttributes["details.inputToEthPrice"] = inputToEthPrice;
-            spanAttributes["details.outputToEthPrice"] = outputToEthPrice;
+        inputToEthPrice =
+            (await getEthPrice(
+                config,
+                orderPairObject.buyToken,
+                orderPairObject.buyTokenDecimals,
+                gasPrice,
+                dataFetcher,
+                options,
+                false,
+            )) ?? (config.gasCoveragePercentage === "0" ? "0" : "");
+        outputToEthPrice =
+            (await getEthPrice(
+                config,
+                orderPairObject.sellToken,
+                orderPairObject.sellTokenDecimals,
+                gasPrice,
+                dataFetcher,
+                options,
+                false,
+            )) ?? (config.gasCoveragePercentage === "0" ? "0" : "");
+        if (!inputToEthPrice && !outputToEthPrice) {
+            result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
+            result.error = "no-route for both in/out tokens";
+            return async () => {
+                return Promise.reject(result);
+            };
         }
     } catch (e) {
-        if (config.gasCoveragePercentage === "0") {
-            inputToEthPrice = "0";
-            outputToEthPrice = "0";
-        } else {
+        if (!inputToEthPrice && !outputToEthPrice) {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
             result.error = e;
             return async () => {
-                throw result;
+                return Promise.reject(result);
             };
         }
     }
+
+    // record input/output to eth price in span attributes
+    spanAttributes["details.inputToEthPrice"] = inputToEthPrice || "no-way";
+    spanAttributes["details.outputToEthPrice"] = outputToEthPrice || "no-way";
 
     // record gas price for otel
     await getGasPrice(config, state);
