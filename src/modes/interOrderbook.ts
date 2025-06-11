@@ -11,6 +11,8 @@ import {
     estimateProfit,
     withBigintSerializer,
     extendSpanAttributes,
+    inputToEthPriceFallback,
+    outputToEthPriceFallback,
 } from "../utils";
 
 const obInterface = new ethers.utils.Interface(orderbookAbi);
@@ -380,8 +382,20 @@ export async function findOpp({
                     maximumInput,
                     gasPrice,
                     arb,
-                    inputToEthPrice,
-                    outputToEthPrice,
+                    inputToEthPrice:
+                        inputToEthPrice ??
+                        inputToEthPriceFallback(
+                            orderPairObject.takeOrders[0].quote!.ratio,
+                            opposingOrders.takeOrders[0].quote!.ratio,
+                            outputToEthPrice,
+                        ),
+                    outputToEthPrice:
+                        outputToEthPrice ??
+                        outputToEthPriceFallback(
+                            orderPairObject.takeOrders[0].quote!.ratio,
+                            opposingOrders.takeOrders[0].quote!.ratio,
+                            inputToEthPrice,
+                        ),
                     config,
                     viemClient,
                     l1GasPrice,

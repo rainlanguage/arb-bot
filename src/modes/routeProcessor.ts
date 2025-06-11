@@ -399,6 +399,12 @@ export async function findOpp({
         spanAttributes,
     };
 
+    if (!ethPrice) {
+        spanAttributes["error"] = "no route to get price of input token to eth";
+        result.reason = RouteProcessorDryrunHaltReason.NoRoute;
+        throw result;
+    }
+
     let noRoute = true;
     const hasPriceMatch = {
         value: true,
