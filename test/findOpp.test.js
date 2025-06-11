@@ -367,6 +367,14 @@ describe("Test find opp", async function () {
                 inputToEthPrice,
                 outputToEthPrice,
                 against: opposingOrderPairObject.takeOrders[0].id,
+                opposingOrderQuote: JSON.stringify({
+                    maxOutput: ethers.utils.formatUnits(
+                        opposingOrderPairObject.takeOrders[0].quote.maxOutput,
+                    ),
+                    ratio: ethers.utils.formatUnits(
+                        opposingOrderPairObject.takeOrders[0].quote.ratio,
+                    ),
+                }),
                 "gasEst.final.gasLimit": gasLimitEstimation.toString(),
                 "gasEst.final.totalCost": gasLimitEstimation.mul(gasPrice).toString(),
                 "gasEst.final.gasPrice": gasPrice.toString(),

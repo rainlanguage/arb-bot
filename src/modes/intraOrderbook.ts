@@ -60,6 +60,10 @@ export async function dryrun({
     spanAttributes["against"] = opposingOrder.id;
     spanAttributes["inputToEthPrice"] = inputToEthPrice;
     spanAttributes["outputToEthPrice"] = outputToEthPrice;
+    spanAttributes["opposingOrderQuote"] = JSON.stringify({
+        maxOutput: ethers.utils.formatUnits(opposingOrder.quote!.maxOutput),
+        ratio: ethers.utils.formatUnits(opposingOrder.quote!.ratio),
+    });
 
     const inputBountyVaultId = "1";
     const outputBountyVaultId = "1";
