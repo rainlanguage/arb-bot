@@ -535,7 +535,7 @@ export async function processPair(args: {
             (options as any).blockNumber = (config as any).testBlockNumber;
         }
         inputToEthPrice =
-            ((await getEthPrice(
+            (await getEthPrice(
                 config,
                 orderPairObject.buyToken,
                 orderPairObject.buyTokenDecimals,
@@ -543,11 +543,9 @@ export async function processPair(args: {
                 dataFetcher,
                 options,
                 false,
-            )) ?? config.gasCoveragePercentage === "0")
-                ? "0"
-                : "";
+            )) ?? (config.gasCoveragePercentage === "0" ? "0" : "");
         outputToEthPrice =
-            ((await getEthPrice(
+            (await getEthPrice(
                 config,
                 orderPairObject.sellToken,
                 orderPairObject.sellTokenDecimals,
@@ -555,9 +553,7 @@ export async function processPair(args: {
                 dataFetcher,
                 options,
                 false,
-            )) ?? config.gasCoveragePercentage === "0")
-                ? "0"
-                : "";
+            )) ?? (config.gasCoveragePercentage === "0" ? "0" : "");
         if (!inputToEthPrice && !outputToEthPrice) {
             result.reason = ProcessPairHaltReason.FailedToGetEthPrice;
             result.error = "no-route for both in/out tokens";
