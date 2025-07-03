@@ -64,7 +64,7 @@ describe("Test trySimulateTrade", () => {
                 client: {},
             },
             appOptions: {
-                arbAddress: "0xarb",
+                genericArbAddress: "0xarb",
                 gasCoveragePercentage: "0",
                 gasLimitMultiplier: 120,
             },

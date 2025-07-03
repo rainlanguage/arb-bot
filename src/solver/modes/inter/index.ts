@@ -25,6 +25,15 @@ export async function findBestInterOrderbookTrade(
     inputToEthPrice: string,
     outputToEthPrice: string,
 ): Promise<SimulationResult> {
+    // bail early if generic arb address is not set
+    if (!this.appOptions.genericArbAddress) {
+        return Result.err({
+            spanAttributes: {
+                error: "No generic arb address was set in config, cannot perform inter-orderbook trades",
+            },
+        });
+    }
+
     const spanAttributes: Attributes = {};
     const blockNumber = await this.state.client.getBlockNumber();
     const counterpartyOrders = this.orderManager.getCounterpartyOrders(orderDetails, false);

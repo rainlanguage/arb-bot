@@ -31,7 +31,7 @@ export type SimulateInterOrderbookTradeArgs = {
 };
 
 /**
- * Attempts to simulate a trade against the given counterparty order
+ * Attempts to simulate a inter-orderbook trade against the given counterparty order
  * @param this - The RainSolver instance context
  * @param args - The arguments for simulating the trade
  */
@@ -121,7 +121,7 @@ export async function trySimulateTrade(
             functionName: "arb3",
             args: [orderDetails.orderbook as `0x${string}`, takeOrdersConfigStruct, task],
         }),
-        to: this.appOptions.arbAddress as `0x${string}`,
+        to: this.appOptions.genericArbAddress as `0x${string}`,
         gasPrice,
     };
 

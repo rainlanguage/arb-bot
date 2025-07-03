@@ -35,6 +35,9 @@ describe("Test findBestInterOrderbookTrade", () => {
             orderManager: {
                 getCounterpartyOrders: vi.fn(),
             },
+            appOptions: {
+                genericArbAddress: "0xarb",
+            },
         } as any;
 
         orderDetails = {
