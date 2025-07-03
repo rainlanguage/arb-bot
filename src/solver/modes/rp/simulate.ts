@@ -6,13 +6,14 @@ import { ChainId, Router } from "sushi";
 import { Result } from "../../../result";
 import { BundledOrders } from "../../../order";
 import { Attributes } from "@opentelemetry/api";
-import { RainSolverSigner } from "../../../signer";
+import { RainSolverSigner, RawTransaction } from "../../../signer";
 import { estimateProfit, visualizeRoute } from "./utils";
 import { ONE18, scale18, scale18To } from "../../../math";
-import { RPoolFilter, extendSpanAttributes } from "../../../utils";
+import { RPoolFilter } from "../../../utils";
 import { TakeOrdersConfigType, SimulationResult } from "../../types";
 import { getBountyEnsureRainlang, parseRainlang } from "../../../task";
 import { encodeAbiParameters, encodeFunctionData, formatUnits, maxUint256, parseUnits } from "viem";
+import { extendObjectWithHeader } from "../../../logger";
 
 /** Specifies the reason that route processor simulation failed */
 export enum RouteProcessorSimulationHaltReason {
@@ -153,14 +154,14 @@ export async function trySimulateTrade(
         },
         signedContext: [],
     };
-    const rawtx: any = {
+    const rawtx: RawTransaction = {
         data: encodeFunctionData({
             abi: ArbAbi,
             functionName: "arb3",
             args: [orderDetails.orderbook as `0x${string}`, takeOrdersConfigStruct, task],
         }),
-        to: this.appOptions.arbAddress,
-        gasPrice: gasPrice,
+        to: this.appOptions.arbAddress as `0x${string}`,
+        gasPrice,
     };
 
     // initial dryrun with 0 minimum sender output to get initial
@@ -181,7 +182,7 @@ export async function trySimulateTrade(
     let { estimation, estimatedGasCost } = initDryrunResult.value;
     // include dryrun initial gas estimation in logs
     Object.assign(spanAttributes, initDryrunResult.value.spanAttributes);
-    extendSpanAttributes(
+    extendObjectWithHeader(
         spanAttributes,
         {
             gasLimit: estimation.gas.toString(),
@@ -238,7 +239,7 @@ export async function trySimulateTrade(
         ({ estimation, estimatedGasCost } = finalDryrunResult.value);
         // include dryrun final gas estimation in otel logs
         Object.assign(spanAttributes, finalDryrunResult.value.spanAttributes);
-        extendSpanAttributes(
+        extendObjectWithHeader(
             spanAttributes,
             {
                 gasLimit: estimation.gas.toString(),
