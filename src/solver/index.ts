@@ -1,4 +1,4 @@
-import { BotConfig } from "../types";
+import { Result } from "../result";
 import { AppOptions } from "../config";
 import { SharedState } from "../state";
 import { OrderManager } from "../order";
@@ -6,7 +6,6 @@ import { WalletManager } from "../wallet";
 import { finalizeRound, initializeRound } from "./process/round";
 import { processOrder, ProcessOrderArgs } from "./process/order";
 import { ProcessOrderFailure, ProcessOrderSuccess } from "./types";
-import { Result } from "../result";
 
 /**
  * RainSolver is the main class that orchestrates the Rain Orderbook solver logic
@@ -21,21 +20,16 @@ export class RainSolver {
     /** The wallet manager instance */
     readonly walletManager: WalletManager;
 
-    /** @deprecated Temporary for backward compatibility */
-    readonly config: BotConfig;
-
     constructor(
         state: SharedState,
         appOptions: AppOptions,
         orderManager: OrderManager,
         walletManager: WalletManager,
-        config: BotConfig,
     ) {
         this.state = state;
         this.appOptions = appOptions;
         this.orderManager = orderManager;
         this.walletManager = walletManager;
-        this.config = config;
     }
 
     /**
