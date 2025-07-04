@@ -13,7 +13,7 @@ import { extendObjectWithHeader } from "../../logger";
 
 /** Arguments for finding the best trade */
 export type FindBestTradeArgs = {
-    /** The order details to fin the best trade for */
+    /** The order details to find the best trade for */
     orderDetails: BundledOrders;
     /** The signer that performs the trade simulation */
     signer: RainSolverSigner;
@@ -23,7 +23,7 @@ export type FindBestTradeArgs = {
     outputToEthPrice: string;
     /** The token to be received */
     toToken: Token;
-    /** The token to be traded */
+    /** The token to be sold */
     fromToken: Token;
 };
 
@@ -36,7 +36,7 @@ export type FindBestTradeArgs = {
  * results. If all strategies fail, it aggregates error information and returns a comprehensive error result.
  *
  * @param this - The instance of `RainSolver`
- * @param args - The arguments required to evaluate trade options.
+ * @param args - The arguments required to find the best trade
  */
 export async function findBestTrade(
     this: RainSolver,
@@ -52,6 +52,7 @@ export async function findBestTrade(
             toToken,
             fromToken,
         ),
+        // include intra and inter orderbook trades types only if rpOnly is false
         ...(!this.appOptions.rpOnly
             ? [
                   findBestIntraOrderbookTrade.call(
@@ -73,8 +74,12 @@ export async function findBestTrade(
     ];
     const results = await Promise.all(promises);
 
-    // pick the result with highest estimated profit
+    // if at least one result is ok, we can proceed to pick the best one
     if (results.some((v) => v.isOk())) {
+        // sort results descending by estimated profit,
+        // so those that are errors will be at the end
+        // and the first one will be the one with highest estimated profit
+        // as we know at least one result is ok, so we can safely access it
         const pick = results.sort((a, b) => {
             if (a.isErr() && b.isErr()) return 0;
             if (a.isErr()) return 1;
@@ -94,6 +99,8 @@ export async function findBestTrade(
     } else {
         const spanAttributes: Attributes = {};
         let noneNodeError: string | undefined = undefined;
+
+        // extend span attributes with the result error attrs and trade type header
         for (const result of results) {
             assert(result.isErr()); // just for type check as we know all results are errors
             extendObjectWithHeader(spanAttributes, result.error.spanAttributes, result.error.type);

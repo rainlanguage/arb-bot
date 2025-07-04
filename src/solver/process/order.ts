@@ -2,7 +2,6 @@ import { RainSolver } from "..";
 import { Result } from "../../result";
 import { toNumber } from "../../math";
 import { Token } from "sushi/currency";
-import { findBestTrade } from "../modes";
 import { PoolBlackList } from "../../utils";
 import { BundledOrders } from "../../order";
 import { errorSnapshot } from "../../error";
@@ -186,7 +185,7 @@ export async function processOrder(
         spanAttributes["details.gasPriceL1"] = this.state.l1GasPrice.toString();
     }
 
-    const trade = await findBestTrade.call(this, {
+    const trade = await this.findBestTrade({
         orderDetails,
         signer,
         toToken,

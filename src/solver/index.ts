@@ -3,9 +3,10 @@ import { AppOptions } from "../config";
 import { SharedState } from "../state";
 import { OrderManager } from "../order";
 import { WalletManager } from "../wallet";
+import { findBestTrade, FindBestTradeArgs } from "./modes";
 import { finalizeRound, initializeRound } from "./process/round";
 import { processOrder, ProcessOrderArgs } from "./process/order";
-import { ProcessOrderFailure, ProcessOrderSuccess } from "./types";
+import { FindBestTradeResult, ProcessOrderFailure, ProcessOrderSuccess } from "./types";
 
 /**
  * RainSolver is the main class that orchestrates the Rain Orderbook solver logic
@@ -58,5 +59,15 @@ export class RainSolver {
         args: ProcessOrderArgs,
     ): Promise<() => Promise<Result<ProcessOrderSuccess, ProcessOrderFailure>>> {
         return processOrder.call(this, args);
+    }
+
+    /**
+     * Finds the most profitable trade transaction for the given order to be
+     * broadcasted onchain, it calls the `findBestTrade` function with `this`
+     * context and the provided arguments.
+     * @param args - The arguments required to find the best trade
+     */
+    async findBestTrade(args: FindBestTradeArgs): Promise<FindBestTradeResult> {
+        return findBestTrade.call(this, args);
     }
 }

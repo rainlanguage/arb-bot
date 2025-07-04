@@ -74,8 +74,8 @@ describe("Test processOrder", () => {
         mockRainSolver = {
             state: mockState,
             orderManager: mockOrderManager,
-            config: {},
             appOptions: {},
+            findBestTrade,
         } as any;
     });
 

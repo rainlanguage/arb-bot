@@ -46,7 +46,6 @@ describe("Test initializeRound", () => {
             orderManager: mockOrderManager,
             walletManager: mockWalletManager,
             state: mockState,
-            config: {},
             appOptions: mockAppOptions,
             processOrder: vi.fn(),
         } as any;
