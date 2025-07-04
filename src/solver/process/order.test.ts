@@ -33,8 +33,6 @@ describe("Test processOrder", () => {
     let mockArgs: ProcessOrderArgs;
     let mockOrderManager: OrderManager;
     let mockState: SharedState;
-    let mockOrderbook: any;
-    let mockArb: any;
 
     beforeEach(() => {
         mockOrderManager = {
@@ -55,8 +53,6 @@ describe("Test processOrder", () => {
             getMarketPrice: vi.fn().mockResolvedValue({ price: "100", amountOut: "100" }),
             gasPrice: 100n,
         } as any;
-        mockOrderbook = { address: "0xORDERBOOK" };
-        mockArb = {};
         mockArgs = {
             orderDetails: {
                 sellTokenDecimals: 18,
